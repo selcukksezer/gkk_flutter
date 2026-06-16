@@ -1,0 +1,499 @@
+{
+  "lib/screens/auth/character_select_screen.dart": {
+    "buttons": 1,
+    "taps": 1,
+    "actions": 2,
+    "rpcs": [
+      "get_character_classes"
+    ]
+  },
+  "lib/screens/auth/login_screen.dart": {
+    "buttons": 3,
+    "taps": 0,
+    "actions": 3,
+    "rpcs": []
+  },
+  "lib/screens/auth/register_screen.dart": {
+    "buttons": 2,
+    "taps": 0,
+    "actions": 2,
+    "rpcs": []
+  },
+  "lib/screens/auth/splash_screen.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/bank/bank_screen.dart": {
+    "buttons": 13,
+    "taps": 2,
+    "actions": 15,
+    "rpcs": []
+  },
+  "lib/screens/character/character_screen.dart": {
+    "buttons": 2,
+    "taps": 5,
+    "actions": 7,
+    "rpcs": [
+      "claim_alchemist_detox"
+    ]
+  },
+  "lib/screens/chat/chat_screen.dart": {
+    "buttons": 6,
+    "taps": 9,
+    "actions": 15,
+    "rpcs": []
+  },
+  "lib/screens/chat/chat_screen_new.dart": {
+    "buttons": 5,
+    "taps": 8,
+    "actions": 13,
+    "rpcs": []
+  },
+  "lib/screens/crafting/crafting_screen.dart": {
+    "buttons": 10,
+    "taps": 3,
+    "actions": 13,
+    "rpcs": []
+  },
+  "lib/screens/dungeon/dungeon_battle_screen.dart": {
+    "buttons": 6,
+    "taps": 0,
+    "actions": 6,
+    "rpcs": [
+      "attack_dungeon",
+      "collect_dungeon_rewards"
+    ]
+  },
+  "lib/screens/dungeon/dungeon_screen.dart": {
+    "buttons": 10,
+    "taps": 3,
+    "actions": 13,
+    "rpcs": []
+  },
+  "lib/screens/dungeon/dungeon_victory_effects.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/dungeon/widgets/dungeon_cave_palettes.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/dungeon/widgets/featured_cave_dungeon_card.dart": {
+    "buttons": 0,
+    "taps": 4,
+    "actions": 4,
+    "rpcs": []
+  },
+  "lib/screens/enhancement/enhancement_screen.dart": {
+    "buttons": 1,
+    "taps": 7,
+    "actions": 8,
+    "rpcs": []
+  },
+  "lib/screens/enhancement/enhancement_screen_new.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/facilities/facilities_screen.dart": {
+    "buttons": 5,
+    "taps": 1,
+    "actions": 6,
+    "rpcs": []
+  },
+  "lib/screens/facilities/facility_detail_screen.dart": {
+    "buttons": 9,
+    "taps": 0,
+    "actions": 9,
+    "rpcs": []
+  },
+  "lib/screens/guild/guild_monument_donate_screen.dart": {
+    "buttons": 2,
+    "taps": 0,
+    "actions": 2,
+    "rpcs": [
+      "donate_to_monument"
+    ]
+  },
+  "lib/screens/guild/guild_monument_screen.dart": {
+    "buttons": 3,
+    "taps": 0,
+    "actions": 3,
+    "rpcs": [
+      "upgrade_monument"
+    ]
+  },
+  "lib/screens/guild/guild_screen.dart": {
+    "buttons": 10,
+    "taps": 6,
+    "actions": 16,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/battle_result_screen.dart": {
+    "buttons": 1,
+    "taps": 1,
+    "actions": 2,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/guild_war_defense_sheet.dart": {
+    "buttons": 1,
+    "taps": 0,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/guild_war_hub_screen.dart": {
+    "buttons": 4,
+    "taps": 4,
+    "actions": 8,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/territory_detail_screen.dart": {
+    "buttons": 3,
+    "taps": 0,
+    "actions": 3,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/tournament_detail_screen.dart": {
+    "buttons": 1,
+    "taps": 0,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/war_logs_screen.dart": {
+    "buttons": 0,
+    "taps": 1,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/attack_log_tile.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/defense_power_bar.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/guild_war_empty_state.dart": {
+    "buttons": 1,
+    "taps": 0,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/guild_war_season_header.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/guild_war_skeleton.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/guild_war_sub_screen_scaffold.dart": {
+    "buttons": 0,
+    "taps": 1,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/guild_war_tab_bar.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/kingdom_election_panel.dart": {
+    "buttons": 1,
+    "taps": 0,
+    "actions": 1,
+    "rpcs": [
+      "get_current_election",
+      "vote_in_election"
+    ]
+  },
+  "lib/screens/guild_war/widgets/ranking_podium.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/territory_card.dart": {
+    "buttons": 2,
+    "taps": 1,
+    "actions": 3,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/territory_map_view.dart": {
+    "buttons": 0,
+    "taps": 2,
+    "actions": 2,
+    "rpcs": []
+  },
+  "lib/screens/guild_war/widgets/tournament_card.dart": {
+    "buttons": 2,
+    "taps": 0,
+    "actions": 2,
+    "rpcs": []
+  },
+  "lib/screens/home/home_screen.dart": {
+    "buttons": 2,
+    "taps": 16,
+    "actions": 18,
+    "rpcs": []
+  },
+  "lib/screens/home/widgets/hero_showcase.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/home/widgets/pantheon_board.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/home/widgets/sticky_action_bar.dart": {
+    "buttons": 0,
+    "taps": 1,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/hospital/hospital_screen.dart": {
+    "buttons": 10,
+    "taps": 0,
+    "actions": 10,
+    "rpcs": [
+      "attempt_hospital_escape",
+      "heal_with_gems"
+    ]
+  },
+  "lib/screens/inventory/inventory_screen.dart": {
+    "buttons": 9,
+    "taps": 8,
+    "actions": 17,
+    "rpcs": []
+  },
+  "lib/screens/leaderboard/leaderboard_screen.dart": {
+    "buttons": 1,
+    "taps": 4,
+    "actions": 5,
+    "rpcs": []
+  },
+  "lib/screens/loot/loot_chest_theme.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/loot/loot_chest_widgets.dart": {
+    "buttons": 2,
+    "taps": 1,
+    "actions": 3,
+    "rpcs": []
+  },
+  "lib/screens/loot/loot_hub_screen.dart": {
+    "buttons": 8,
+    "taps": 1,
+    "actions": 9,
+    "rpcs": [
+      "get_loot_boxes_with_stats",
+      "get_spin_wheels_with_stats"
+    ]
+  },
+  "lib/screens/market/market_screen.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_browse_tab.dart": {
+    "buttons": 1,
+    "taps": 2,
+    "actions": 3,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_helpers.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_item_icon.dart": {
+    "buttons": 0,
+    "taps": 0,
+    "actions": 0,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_listing_card.dart": {
+    "buttons": 0,
+    "taps": 1,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_my_market_tab.dart": {
+    "buttons": 2,
+    "taps": 3,
+    "actions": 5,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_price_edit_sheet.dart": {
+    "buttons": 2,
+    "taps": 0,
+    "actions": 2,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_quantity_sheet.dart": {
+    "buttons": 2,
+    "taps": 1,
+    "actions": 3,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_sell_tab.dart": {
+    "buttons": 1,
+    "taps": 1,
+    "actions": 2,
+    "rpcs": []
+  },
+  "lib/screens/market/widgets/market_tab_bar.dart": {
+    "buttons": 0,
+    "taps": 1,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/mekans/mekan_arena_screen.dart": {
+    "buttons": 3,
+    "taps": 1,
+    "actions": 4,
+    "rpcs": []
+  },
+  "lib/screens/mekans/mekan_create_screen.dart": {
+    "buttons": 1,
+    "taps": 2,
+    "actions": 3,
+    "rpcs": []
+  },
+  "lib/screens/mekans/mekan_detail_screen.dart": {
+    "buttons": 5,
+    "taps": 2,
+    "actions": 7,
+    "rpcs": []
+  },
+  "lib/screens/mekans/mekans_screen.dart": {
+    "buttons": 4,
+    "taps": 5,
+    "actions": 9,
+    "rpcs": []
+  },
+  "lib/screens/mekans/my_mekan_screen.dart": {
+    "buttons": 11,
+    "taps": 2,
+    "actions": 13,
+    "rpcs": []
+  },
+  "lib/screens/mekans/widgets/mekan_design.dart": {
+    "buttons": 1,
+    "taps": 4,
+    "actions": 5,
+    "rpcs": []
+  },
+  "lib/screens/mekans/widgets/mekan_scaffold.dart": {
+    "buttons": 0,
+    "taps": 1,
+    "actions": 1,
+    "rpcs": []
+  },
+  "lib/screens/prison/prison_screen.dart": {
+    "buttons": 4,
+    "taps": 0,
+    "actions": 4,
+    "rpcs": [
+      "attempt_prison_escape",
+      "release_from_prison"
+    ]
+  },
+  "lib/screens/pvp/pvp_history_screen.dart": {
+    "buttons": 1,
+    "taps": 1,
+    "actions": 2,
+    "rpcs": []
+  },
+  "lib/screens/pvp/pvp_screen.dart": {
+    "buttons": 3,
+    "taps": 1,
+    "actions": 4,
+    "rpcs": []
+  },
+  "lib/screens/pvp/pvp_tournament_screen.dart": {
+    "buttons": 2,
+    "taps": 0,
+    "actions": 2,
+    "rpcs": [
+      "get_tournament_bracket",
+      "join_pvp_tournament"
+    ]
+  },
+  "lib/screens/quests/quests_screen.dart": {
+    "buttons": 11,
+    "taps": 1,
+    "actions": 12,
+    "rpcs": [
+      "claim_quest_reward",
+      "complete_quest",
+      "get_available_quests"
+    ]
+  },
+  "lib/screens/reputation/reputation_screen.dart": {
+    "buttons": 5,
+    "taps": 1,
+    "actions": 6,
+    "rpcs": [
+      "get_reputation"
+    ]
+  },
+  "lib/screens/season/season_screen.dart": {
+    "buttons": 3,
+    "taps": 1,
+    "actions": 4,
+    "rpcs": []
+  },
+  "lib/screens/settings/settings_screen.dart": {
+    "buttons": 7,
+    "taps": 0,
+    "actions": 7,
+    "rpcs": [
+      "delete_account",
+      "update_user_profile"
+    ]
+  },
+  "lib/screens/shop/shop_screen.dart": {
+    "buttons": 8,
+    "taps": 4,
+    "actions": 12,
+    "rpcs": []
+  },
+  "lib/screens/trade/trade_screen.dart": {
+    "buttons": 9,
+    "taps": 3,
+    "actions": 12,
+    "rpcs": [
+      "add_trade_item",
+      "cancel_trade",
+      "confirm_trade",
+      "get_trade_history",
+      "initiate_trade"
+    ]
+  }
+}

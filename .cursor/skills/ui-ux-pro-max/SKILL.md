@@ -1,0 +1,1 @@
+../../skill/design-skill/SKILL.MD

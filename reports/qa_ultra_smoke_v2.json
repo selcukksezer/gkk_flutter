@@ -1,0 +1,84 @@
+{
+  "run_id": "12345678-1234-1234-1234-123456789abc",
+  "bots": 1000,
+  "days": 30,
+  "events": 30000,
+  "success": true,
+  "summary": {
+    "bots": 1000,
+    "economy": {
+      "gems_out": 41255,
+      "gold_in": 8697536,
+      "gold_out": 4652273,
+      "item_in": 15885,
+      "item_out": 0
+    },
+    "exploits": [
+      {
+        "attempts": 300,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "cooldown_bypass",
+        "severity": "high",
+        "success": 0
+      },
+      {
+        "attempts": 400,
+        "impact_gems": 31,
+        "impact_gold": 0,
+        "key": "hospital_escape_abuse",
+        "severity": "medium",
+        "success": 2
+      },
+      {
+        "attempts": 400,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "market_price_manipulation",
+        "severity": "high",
+        "success": 0
+      },
+      {
+        "attempts": 121,
+        "impact_gems": 0,
+        "impact_gold": 80219,
+        "key": "multi_account_gold_funnel",
+        "severity": "critical",
+        "success": 97
+      },
+      {
+        "attempts": 30,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "premium_stack_abuse",
+        "severity": "critical",
+        "success": 4
+      },
+      {
+        "attempts": 400,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "prison_escape_abuse",
+        "severity": "high",
+        "success": 0
+      }
+    ],
+    "retention": {
+      "d1": 0.929,
+      "d30": 0.299,
+      "d7": 0.698
+    },
+    "segments": {
+      "casual": 200,
+      "exploit": 10,
+      "guild": 40,
+      "hardcore": 150,
+      "multi": 10,
+      "newbie": 150,
+      "normal": 200,
+      "pvp": 60,
+      "trader": 80,
+      "whale": 100
+    }
+  }
+}
