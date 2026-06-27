@@ -12,6 +12,7 @@ void main() {
         AppRoutes.dungeon,
         AppRoutes.pvp,
         AppRoutes.leaderboard,
+        AppRoutes.reputation,
         AppRoutes.season,
         AppRoutes.guild,
         AppRoutes.guildWar,
@@ -30,6 +31,7 @@ void main() {
         AppRoutes.prison,
         AppRoutes.chat,
         AppRoutes.settings,
+        AppRoutes.horseRace,
       ];
 
       final Set<String> covered = SmokeRouteRegistry.quickMenuRoutes
@@ -41,7 +43,7 @@ void main() {
         expect(covered, contains(path), reason: 'Missing quick menu route: $path');
       }
 
-      expect(SmokeRouteRegistry.quickMenuRouteCount, 24);
+      expect(SmokeRouteRegistry.quickMenuRouteCount, 26);
     });
 
     test('includes mandatory sub-screens', () {

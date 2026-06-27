@@ -43,6 +43,11 @@ Widget _gameTransitionBuilder(
       }
 
       final double t = animation.value;
+      // If the route is rebuilt before the first animation tick (common during
+      // startup redirect churn), opacity stays at 0 and the screen looks black.
+      if (t == 0 && animation.status == AnimationStatus.forward) {
+        return child;
+      }
       final double veilOpacity = t <= 0.45 ? t / 0.45 : (1 - t) / 0.55;
       final double contentOpacity = ((t - 0.3) / 0.7).clamp(0.0, 1.0);
       final double scale = 0.97 + (0.03 * contentOpacity);

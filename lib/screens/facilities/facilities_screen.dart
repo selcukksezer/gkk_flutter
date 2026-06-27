@@ -35,7 +35,7 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
     final profile = playerState.profile;
     final int level = profile?.level ?? 1;
     final int gold = profile?.gold ?? 0;
-    final int gems = profile?.gems ?? 0;
+    final double gems = profile?.gems ?? 0;
     final int globalSuspicion = profile?.globalSuspicionLevel ?? 0;
     final bool inPrison = _isFuture(profile?.prisonUntil);
     final String prisonReason = (profile?.prisonReason == null || profile!.prisonReason!.trim().isEmpty)
@@ -416,7 +416,7 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
     }
   }
 
-  Future<void> _handleBribe(BuildContext context, FacilitiesState facilitiesState, int gems) async {
+  Future<void> _handleBribe(BuildContext context, FacilitiesState facilitiesState, num gems) async {
         final int globalSuspicion = ref.read(playerProvider).profile?.globalSuspicionLevel ?? 0;
         if (globalSuspicion <= 0) {
           AppMessenger.show(context, 'Şüphe 0 iken rüşvet verilemez');

@@ -6,6 +6,7 @@ import '../../components/layout/game_chrome.dart';
 import '../../models/guild_war_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/guild_war_provider.dart';
+import '../../providers/guild_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
@@ -37,7 +38,8 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(guildProvider.notifier).loadGuild();
       ref.read(guildWarProvider.notifier).loadAll();
     });
   }
@@ -125,11 +127,13 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   Widget build(BuildContext context) {
     final warState = ref.watch(guildWarProvider);
     final profile = ref.watch(playerProvider).profile;
-    final guildId = profile?.guildId;
-    final guildName = profile?.guildName;
+    final guildState = ref.watch(guildProvider);
+    final guildId = guildState.guild?.guildId ?? profile?.guildId;
+    final guildName = guildState.guild?.name ?? profile?.guildName;
 
     Future<void> logout() async {
       await ref.read(authProvider.notifier).logout();
+      ref.read(guildProvider.notifier).clear();
       ref.read(playerProvider.notifier).clear();
     }
 

@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/player_model.dart';
+import '../../providers/daily_reward_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../common/profile_avatar.dart';
+import '../daily_reward/daily_reward_dialog.dart';
 
 /// Premium palette — quick menu only (does not affect global chrome).
 abstract final class _QuickMenuTheme {
@@ -28,7 +30,7 @@ abstract final class _MenuAssets {
   static const String base = 'assets/menuitems/';
 }
 
-enum GameMenuAction { navigate, chat, logout, none }
+enum GameMenuAction { navigate, chat, logout, dailyReward, none }
 
 class GameMenuItem {
   const GameMenuItem({
@@ -38,6 +40,7 @@ class GameMenuItem {
     this.route,
     this.action = GameMenuAction.navigate,
     this.accentColor,
+    this.showBadge = false,
   });
 
   final String label;
@@ -46,6 +49,7 @@ class GameMenuItem {
   final String? route;
   final GameMenuAction action;
   final Color? accentColor;
+  final bool showBadge;
 }
 
 /// All quick-menu destinations (4-column grid).
@@ -171,6 +175,12 @@ const List<GameMenuItem> kGameMenuItems = <GameMenuItem>[
     route: AppRoutes.quests,
   ),
   GameMenuItem(
+    label: 'Günlük Ödül',
+    icon: Icons.card_giftcard_rounded,
+    action: GameMenuAction.dailyReward,
+    accentColor: _QuickMenuTheme.gold,
+  ),
+  GameMenuItem(
     label: 'Hastane',
     icon: Icons.local_hospital_outlined,
     assetPath: '${_MenuAssets.base}hastane.png',
@@ -202,7 +212,12 @@ const List<GameMenuItem> kGameMenuItems = <GameMenuItem>[
     action: GameMenuAction.logout,
     accentColor: AppColors.danger,
   ),
-  GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
+  GameMenuItem(
+    label: 'At Yarisi',
+    icon: Icons.sports_motorsports_rounded,
+    route: AppRoutes.horseRace,
+    accentColor: AppColors.gold,
+  ),
   GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
   GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
 ];
@@ -250,15 +265,30 @@ Future<void> showGameQuickMenu(
   );
 }
 
-class _GameQuickMenuPanel extends ConsumerWidget {
+class _GameQuickMenuPanel extends ConsumerStatefulWidget {
   const _GameQuickMenuPanel({this.onLogout, required this.onOpenChat});
 
   final Future<void> Function()? onLogout;
   final void Function(BuildContext context) onOpenChat;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_GameQuickMenuPanel> createState() => _GameQuickMenuPanelState();
+}
+
+class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(dailyRewardProvider.notifier).loadStatus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profile = ref.watch(playerProvider).profile;
+    final bool canClaimDaily =
+        ref.watch(dailyRewardProvider).status?.canClaim ?? false;
     final String displayName = profile == null
         ? 'Oyuncu'
         : ((profile.displayName ?? profile.username).trim().isEmpty
@@ -354,10 +384,11 @@ class _GameQuickMenuPanel extends ConsumerWidget {
                         Flexible(
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                            child: _MenuGrid(
-                              onLogout: onLogout,
-                              onOpenChat: onOpenChat,
-                            ),
+                        child: _MenuGrid(
+                          onLogout: widget.onLogout,
+                          onOpenChat: widget.onOpenChat,
+                          canClaimDaily: canClaimDaily,
+                        ),
                           ),
                         ),
                       ],
@@ -465,14 +496,19 @@ class _MenuProfileStrip extends StatelessWidget {
   }
 }
 
-class _MenuGrid extends StatelessWidget {
-  const _MenuGrid({this.onLogout, required this.onOpenChat});
+class _MenuGrid extends ConsumerWidget {
+  const _MenuGrid({
+    this.onLogout,
+    required this.onOpenChat,
+    required this.canClaimDaily,
+  });
 
   final Future<void> Function()? onLogout;
   final void Function(BuildContext context) onOpenChat;
+  final bool canClaimDaily;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -488,12 +524,27 @@ class _MenuGrid extends StatelessWidget {
         if (item.action == GameMenuAction.none) {
           return const SizedBox.shrink();
         }
-        return _MenuTile(item: item, onTap: () => _handleTap(context, item));
+        return _MenuTile(
+          item: item.action == GameMenuAction.dailyReward
+              ? GameMenuItem(
+                  label: item.label,
+                  icon: item.icon,
+                  action: item.action,
+                  accentColor: item.accentColor,
+                  showBadge: canClaimDaily,
+                )
+              : item,
+          onTap: () => _handleTap(context, ref, item),
+        );
       },
     );
   }
 
-  Future<void> _handleTap(BuildContext context, GameMenuItem item) async {
+  Future<void> _handleTap(
+    BuildContext context,
+    WidgetRef ref,
+    GameMenuItem item,
+  ) async {
     Navigator.of(context).pop();
     switch (item.action) {
       case GameMenuAction.chat:
@@ -502,6 +553,8 @@ class _MenuGrid extends StatelessWidget {
         if (onLogout != null) {
           await onLogout!();
         }
+      case GameMenuAction.dailyReward:
+        await showDailyRewardDialog(context, ref, viewOnly: false);
       case GameMenuAction.navigate:
         final String? route = item.route;
         if (route == null) return;
@@ -550,7 +603,26 @@ class _MenuTileState extends State<_MenuTile> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                _MenuIcon(item: widget.item),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    _MenuIcon(item: widget.item),
+                    if (widget.item.showBadge)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: AppColors.danger,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 5),
                 Text(
                   widget.item.label,

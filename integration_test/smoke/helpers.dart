@@ -47,6 +47,23 @@ class SmokeEnv {
   static bool get hasCredentials =>
       (email ?? '').isNotEmpty && (password ?? '').isNotEmpty;
 
+  static bool get skipDailyReward {
+    const String fromDefine = String.fromEnvironment('QA_SKIP_DAILY_REWARD');
+    if (fromDefine == '1' || fromDefine.toLowerCase() == 'true') return true;
+    return false;
+  }
+
+  /// Optional comma-separated route filter, e.g. `/home,/dungeon`.
+  static List<String>? get auditRoutesOnly {
+    const String fromDefine = String.fromEnvironment('AUDIT_ROUTES');
+    if (fromDefine.isEmpty) return null;
+    return fromDefine
+        .split(',')
+        .map((String s) => s.trim())
+        .where((String s) => s.isNotEmpty)
+        .toList();
+  }
+
   static void requireCredentials() {
     if (!hasCredentials) {
       fail(

@@ -69,7 +69,7 @@ class PlayerProfile {
   final int level;
   final int xp;
   final int gold;
-  final int gems;
+  final double gems;
   final int energy;
   final int maxEnergy;
   final int attack;
@@ -124,7 +124,7 @@ class PlayerProfile {
     int? level,
     int? xp,
     int? gold,
-    int? gems,
+    double? gems,
     int? energy,
     int? maxEnergy,
     int? attack,
@@ -255,7 +255,7 @@ class PlayerProfile {
       level: (json['level'] as num).toInt(),
       xp: (json['xp'] as num).toInt(),
       gold: (json['gold'] as num).toInt(),
-      gems: (json['gems'] as num).toInt(),
+      gems: (json['gems'] as num).toDouble(),
       energy: (json['energy'] as num).toInt(),
       maxEnergy: (json['max_energy'] as num).toInt(),
       attack: (json['attack'] as num).toInt(),

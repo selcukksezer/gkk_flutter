@@ -44,7 +44,7 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
     final String usernameStr = profile?.username ?? '';
     final int profileLevel = profile?.level ?? 1;
     final int gold = profile?.gold ?? 0;
-    final int gems = profile?.gems ?? 0;
+    final double gems = profile?.gems ?? 0;
     final int energy = profile?.energy ?? 0;
     final int tolerance = profile?.tolerance ?? 0;
 
@@ -123,7 +123,7 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           _buildStatRight(
-                            _compact(gems),
+                            _formatGems(gems),
                             Icons.diamond_rounded,
                             Colors.blue,
                           ),
@@ -214,6 +214,15 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
     return value.toString();
+  }
+
+  String _formatGems(num value) {
+    final double v = value.toDouble();
+    final double abs = v.abs();
+    if (abs >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
+    if (abs >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toStringAsFixed(2);
   }
 
   Color _toleranceColor(int value) {

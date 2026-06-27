@@ -1,0 +1,60 @@
+{
+  "runs": 500,
+  "config": {
+    "house_edge": 0.92,
+    "gem_bet_per_round": 1,
+    "gold_bet_per_round": 10000
+  },
+  "success": true,
+  "generated_at": "2026-06-19T07:48:24.167386+00:00",
+  "fairness_check": {
+    "verdict": "PASS: winner distribution is probabilistic, not fixed",
+    "avg_winner_gold_mult": 1.99,
+    "lowest_gem_mult_wins": 82,
+    "lowest_gold_mult_wins": 262,
+    "always_lowest_gem_wins": false,
+    "always_lowest_gold_wins": false,
+    "lowest_gem_mult_win_pct": 16.4,
+    "lowest_gold_mult_win_pct": 52.4
+  },
+  "gold_lowest_mult_strategy": {
+    "wins": 262,
+    "losses": 238,
+    "rounds": 500,
+    "rtp_pct": 58.98,
+    "net_profit": -2050848,
+    "total_payout": 2949152,
+    "win_rate_pct": 52.4,
+    "total_wagered": 5000000
+  },
+  "gold_highest_mult_strategy": {
+    "wins": 22,
+    "losses": 478,
+    "rounds": 500,
+    "rtp_pct": 20.12,
+    "net_profit": -3993888,
+    "total_payout": 1006112,
+    "win_rate_pct": 4.4,
+    "total_wagered": 5000000
+  },
+  "gems_lowest_mult_strategy": {
+    "wins": 82,
+    "losses": 418,
+    "rounds": 500,
+    "rtp_pct": 18.57,
+    "net_profit": -407.16,
+    "total_payout": 92.84,
+    "win_rate_pct": 16.4,
+    "total_wagered": 500
+  },
+  "gems_highest_mult_strategy": {
+    "wins": 86,
+    "losses": 414,
+    "rounds": 500,
+    "rtp_pct": 29.58,
+    "net_profit": -352.11,
+    "total_payout": 147.89,
+    "win_rate_pct": 17.2,
+    "total_wagered": 500
+  }
+}

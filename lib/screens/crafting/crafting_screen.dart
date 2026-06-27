@@ -241,7 +241,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                 return const SizedBox.shrink();
               }
 
-              final int playerGems = playerState.profile?.gems ?? 0;
+              final double playerGems = playerState.profile?.gems ?? 0;
               final int gemCost = (craftState.selectedBatchCount - 1).clamp(
                 0,
                 craftingBatchLimit,
@@ -335,7 +335,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
         .where((CraftRecipe r) => _recipeMatchesTab(r, craftState.selectedTab))
         .toList();
 
-    final int playerGems = playerState.profile?.gems ?? 0;
+    final double playerGems = playerState.profile?.gems ?? 0;
 
     return Scaffold(
       appBar: GameTopBar(title: 'Zanaat', onLogout: onLogout),

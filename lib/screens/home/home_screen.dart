@@ -10,14 +10,17 @@ import '../../components/common/gkk_action_tile.dart';
 import '../../components/common/gkk_card.dart';
 import '../../components/common/gkk_progress_bar.dart';
 import '../../components/common/gkk_stat_tile.dart';
+import '../../components/daily_reward/daily_reward_dialog.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
 import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/daily_reward_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../repositories/inventory_repository.dart';
+import '../../qa/qa_flags.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -36,6 +39,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _dailyRewardShownThisSession = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,10 +54,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ]);
   }
 
+  Future<void> _maybeShowDailyReward() async {
+    if (QaFlags.skipDailyRewardDialog) return;
+
+    await ref.read(dailyRewardProvider.notifier).loadStatus();
+    if (!mounted) return;
+
+    final status = ref.read(dailyRewardProvider).status;
+    if (status?.canClaim == true && !_dailyRewardShownThisSession) {
+      _dailyRewardShownThisSession = true;
+      await showDailyRewardDialog(context, ref);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final inventoryState = ref.watch(inventoryProvider);
+
+    ref.listen<PlayerState>(playerProvider, (PlayerState? prev, PlayerState next) {
+      if (next.status == PlayerStatus.ready && prev?.status != PlayerStatus.ready) {
+        deferProviderUpdate(_maybeShowDailyReward);
+      }
+    });
 
     return Scaffold(
       appBar: GameTopBar(

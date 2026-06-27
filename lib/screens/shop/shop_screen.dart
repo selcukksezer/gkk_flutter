@@ -259,7 +259,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     }
 
     final profile = ref.read(playerProvider).profile;
-    final int wallet =
+    final num wallet =
         currency == 'gems' ? (profile?.gems ?? 0) : (profile?.gold ?? 0);
     if (wallet < totalPrice) {
       AppMessenger.showError(

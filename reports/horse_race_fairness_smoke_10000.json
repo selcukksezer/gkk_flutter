@@ -1,0 +1,143 @@
+{
+  "config": {
+    "gem_bet_per_round": 1,
+    "gold_bet_per_round": 10000,
+    "house_edge": 0.92,
+    "house_edge_meaning": "target RTP (0.92 = 92% player return)",
+    "multiplier_formula": "(1 / win_probability) * house_edge",
+    "payout_formula": "bet_amount * multiplier (RTP already in multiplier)"
+  },
+  "fairness_check": {
+    "always_lowest_gold_wins": false,
+    "avg_winner_gold_mult": 4.06,
+    "gems_low_beats_high": true,
+    "highest_gem_mult_win_pct": 9.56,
+    "highest_gem_mult_wins": 956,
+    "lowest_gem_mult_win_pct": 29.94,
+    "lowest_gem_mult_wins": 2994,
+    "lowest_gold_mult_win_pct": 29.94,
+    "lowest_gold_mult_wins": 2994,
+    "verdict": "PASS: inverse odds + aligned gem ranks"
+  },
+  "gems_highest_mult_strategy": {
+    "losses": 9044,
+    "net_profit": -6654,
+    "rounds": 10000,
+    "rtp_pct": 33.46,
+    "target_rtp_pct": 92,
+    "total_payout": 3346,
+    "total_wagered": 10000,
+    "win_rate_pct": 9.56,
+    "wins": 956
+  },
+  "gems_lowest_mult_strategy": {
+    "losses": 7006,
+    "net_profit": -1006.88,
+    "rounds": 10000,
+    "rtp_pct": 89.93,
+    "target_rtp_pct": 92,
+    "total_payout": 8993.12,
+    "total_wagered": 10000,
+    "win_rate_pct": 29.94,
+    "wins": 2994
+  },
+  "generated_at": "2026-06-19T08:11:40.119841+00:00",
+  "gold_highest_mult_strategy": {
+    "losses": 9044,
+    "net_profit": -52200000,
+    "rounds": 10000,
+    "rtp_pct": 47.8,
+    "target_rtp_pct": 92,
+    "total_payout": 47800000,
+    "total_wagered": 100000000,
+    "win_rate_pct": 9.56,
+    "wins": 956
+  },
+  "gold_lowest_mult_strategy": {
+    "losses": 7006,
+    "net_profit": -7175500,
+    "rounds": 10000,
+    "rtp_pct": 92.82,
+    "target_rtp_pct": 92,
+    "total_payout": 92824500,
+    "total_wagered": 100000000,
+    "win_rate_pct": 29.94,
+    "wins": 2994
+  },
+  "runs": 10000,
+  "sample_rounds": [
+    {
+      "highest_gem_mult": 3.5,
+      "lowest_gem_mult": 3.27,
+      "lowest_gold_mult": 3.27,
+      "run": 1,
+      "winner_gold_mult": 5,
+      "winner_sort_order": 6
+    },
+    {
+      "highest_gem_mult": 3.5,
+      "lowest_gem_mult": 2.88,
+      "lowest_gold_mult": 2.88,
+      "run": 2,
+      "winner_gold_mult": 2.88,
+      "winner_sort_order": 1
+    },
+    {
+      "highest_gem_mult": 3.5,
+      "lowest_gem_mult": 3.5,
+      "lowest_gold_mult": 3.64,
+      "run": 3,
+      "winner_gold_mult": 4.48,
+      "winner_sort_order": 2
+    },
+    {
+      "highest_gem_mult": 3.5,
+      "lowest_gem_mult": 3.26,
+      "lowest_gold_mult": 3.26,
+      "run": 4,
+      "winner_gold_mult": 3.26,
+      "winner_sort_order": 1
+    },
+    {
+      "highest_gem_mult": 3.5,
+      "lowest_gem_mult": 2.82,
+      "lowest_gold_mult": 2.82,
+      "run": 5,
+      "winner_gold_mult": 3.91,
+      "winner_sort_order": 3
+    }
+  ],
+  "success": true,
+  "winner_distribution_by_sort_order": [
+    {
+      "sort_order": 1,
+      "win_pct": 29.94,
+      "wins": 2994
+    },
+    {
+      "sort_order": 2,
+      "win_pct": 23.87,
+      "wins": 2387
+    },
+    {
+      "sort_order": 3,
+      "win_pct": 16.92,
+      "wins": 1692
+    },
+    {
+      "sort_order": 4,
+      "win_pct": 10.56,
+      "wins": 1056
+    },
+    {
+      "sort_order": 5,
+      "win_pct": 9.15,
+      "wins": 915
+    },
+    {
+      "sort_order": 6,
+      "win_pct": 9.56,
+      "wins": 956
+    }
+  ]
+}

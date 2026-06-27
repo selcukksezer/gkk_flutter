@@ -59,14 +59,19 @@ class _GkkMobileAppState extends State<GkkMobileApp> {
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Stream<dynamic> stream) {
     _subscription = stream.listen((_) {
-      notifyListeners();
+      // Coalesce rapid token refresh events so GoRouter redirect does not
+      // restart the home page transition mid-animation (black screen).
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(milliseconds: 250), notifyListeners);
     });
   }
 
   late final StreamSubscription<dynamic> _subscription;
+  Timer? _debounceTimer;
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _subscription.cancel();
     super.dispose();
   }

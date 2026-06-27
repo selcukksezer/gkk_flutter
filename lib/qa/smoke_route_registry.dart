@@ -39,6 +39,11 @@ class SmokeRouteRegistry {
     ),
     SmokeRouteEntry(label: 'Sıralama', path: '/leaderboard'),
     SmokeRouteEntry(
+      label: 'İtibar',
+      path: '/reputation',
+      keyRpcs: <String>['get_reputation'],
+    ),
+    SmokeRouteEntry(
       label: 'Battle Pass',
       path: '/season',
       keyRpcs: <String>['bp_ensure_player_initialized', 'buy_vip_pass'],
@@ -68,6 +73,11 @@ class SmokeRouteRegistry {
       label: 'Kasa Acma',
       path: '/loot',
       keyRpcs: <String>['get_loot_boxes_with_stats'],
+    ),
+    SmokeRouteEntry(
+      label: 'At Yarisi',
+      path: '/horse-race',
+      keyRpcs: <String>['get_horse_race_state', 'place_horse_race_bet', 'qa_smoke_horse_race_fairness'],
     ),
     SmokeRouteEntry(label: 'Pazar', path: '/market', keyRpcs: <String>['loadTickers', 'loadMyOrders']),
     SmokeRouteEntry(label: 'Mağaza', path: '/shop'),

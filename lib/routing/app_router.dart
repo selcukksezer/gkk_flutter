@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/services/supabase_service.dart';
+import '../qa/qa_flags.dart';
 // Removed achievements_screen.dart
 import '../screens/auth/character_select_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -26,6 +29,7 @@ import '../models/guild_war_model.dart';
 import '../screens/guild/guild_monument_screen.dart';
 import '../screens/guild/guild_monument_donate_screen.dart';
 import '../screens/hospital/hospital_screen.dart';
+import '../screens/horse_race/horse_race_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/inventory/inventory_screen.dart';
 import '../screens/leaderboard/leaderboard_screen.dart';
@@ -59,6 +63,7 @@ class AppRoutes {
   static const String inventory = '/inventory';
   static const String dungeon = '/dungeon';
   static const String character = '/character';
+  static const String horseRace = '/horse-race';
   static const String hospital = '/hospital';
   static const String market = '/market';
   static const String facilities = '/facilities';
@@ -96,6 +101,35 @@ class AppRoutes {
   static const String trade = '/trade';
 }
 
+/// Deduplicates parallel redirect profile lookups during startup.
+Future<Map<String, dynamic>?> _fetchRedirectUserProfile(String authId) {
+  if (_redirectProfileInflight != null && _redirectProfileUserId == authId) {
+    return _redirectProfileInflight!;
+  }
+
+  _redirectProfileUserId = authId;
+  _redirectProfileInflight = SupabaseService.client
+      .from('users')
+      .select('character_class, is_banned')
+      .eq('auth_id', authId)
+      .maybeSingle()
+      .timeout(const Duration(seconds: 12))
+      .then((dynamic response) {
+        if (response is Map<String, dynamic>) return response;
+        if (response == null) return null;
+        return Map<String, dynamic>.from(response as Map);
+      })
+      .whenComplete(() {
+        _redirectProfileInflight = null;
+        _redirectProfileUserId = null;
+      });
+
+  return _redirectProfileInflight!;
+}
+
+Future<Map<String, dynamic>?>? _redirectProfileInflight;
+String? _redirectProfileUserId;
+
 GoRouter createAppRouter({Listenable? refreshListenable}) {
   return GoRouter(
   initialLocation: AppRoutes.splash,
@@ -123,14 +157,8 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
       final currentUser = SupabaseService.client.auth.currentUser;
       if (currentUser != null) {
         try {
-          final dynamic response = await SupabaseService.client
-              .from('users')
-              .select('character_class, is_banned')
-              .eq('auth_id', currentUser.id)
-              .maybeSingle();
-          final Map<String, dynamic>? profile = response is Map<String, dynamic>
-              ? response
-              : (response == null ? null : Map<String, dynamic>.from(response as Map));
+          final Map<String, dynamic>? profile =
+              await _fetchRedirectUserProfile(currentUser.id);
           final bool isBanned = profile?['is_banned'] == true;
           if (isBanned) {
             await SupabaseService.client.auth.signOut();
@@ -143,10 +171,10 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
           if (!hasSelectedClass && !isOnboardingRoute) {
             return AppRoutes.characterSelect;
           }
-          if (hasSelectedClass && isOnboardingRoute) {
+          if (hasSelectedClass && isOnboardingRoute && !QaFlags.forceCharacterSelectRoute) {
             return AppRoutes.home;
           }
-        } catch (e) { print("APP_ROUTER_ERROR: $e");
+        } catch (e) {
           if (!isOnboardingRoute) {
             return AppRoutes.characterSelect;
           }
@@ -176,6 +204,7 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     ),
     gameRoute(
       path: AppRoutes.home,
+      instant: true,
       build: (BuildContext context, GoRouterState state) => const HomeScreen(),
     ),
     gameRoute(
@@ -281,6 +310,10 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     gameRoute(
       path: AppRoutes.loot,
       build: (BuildContext context, GoRouterState state) => const LootHubScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.horseRace,
+      build: (BuildContext context, GoRouterState state) => const HorseRaceScreen(),
     ),
     gameRoute(
       path: AppRoutes.mekans,

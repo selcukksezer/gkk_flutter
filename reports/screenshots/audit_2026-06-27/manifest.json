@@ -1,0 +1,304 @@
+{
+  "run_id": "2026-06-27T10:06:18.745370+00:00",
+  "output_dir": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27",
+  "device": "176302EF-495E-4A8E-B936-2DC1537C067C",
+  "captured": 42,
+  "failed": 0,
+  "failures": [],
+  "screenshots": [
+    {
+      "route": "/bank",
+      "slug": "bank",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/bank.png",
+      "bytes": 850963,
+      "status": "captured"
+    },
+    {
+      "route": "/character",
+      "slug": "character",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/character.png",
+      "bytes": 3524109,
+      "status": "captured"
+    },
+    {
+      "route": "/chat",
+      "slug": "chat",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/chat.png",
+      "bytes": 2295082,
+      "status": "captured"
+    },
+    {
+      "route": "/crafting",
+      "slug": "crafting",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/crafting.png",
+      "bytes": 1751640,
+      "status": "captured"
+    },
+    {
+      "route": "/dungeon",
+      "slug": "dungeon",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/dungeon.png",
+      "bytes": 4155583,
+      "status": "captured"
+    },
+    {
+      "route": "/dungeon/battle",
+      "slug": "dungeon_battle",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/dungeon_battle.png",
+      "bytes": 1195896,
+      "status": "captured"
+    },
+    {
+      "route": "/enhancement",
+      "slug": "enhancement",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/enhancement.png",
+      "bytes": 2172502,
+      "status": "captured"
+    },
+    {
+      "route": "/facilities",
+      "slug": "facilities",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/facilities.png",
+      "bytes": 1428746,
+      "status": "captured"
+    },
+    {
+      "route": "/facilities/farm",
+      "slug": "facilities_farm",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/facilities_farm.png",
+      "bytes": 1432949,
+      "status": "captured"
+    },
+    {
+      "route": "/guild",
+      "slug": "guild",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/guild.png",
+      "bytes": 1766694,
+      "status": "captured"
+    },
+    {
+      "route": "/guild/monument",
+      "slug": "guild_monument",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/guild_monument.png",
+      "bytes": 1547697,
+      "status": "captured"
+    },
+    {
+      "route": "/guild/monument/donate",
+      "slug": "guild_monument_donate",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/guild_monument_donate.png",
+      "bytes": 405550,
+      "status": "captured"
+    },
+    {
+      "route": "/guild-war",
+      "slug": "guild_war",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/guild_war.png",
+      "bytes": 1984292,
+      "status": "captured"
+    },
+    {
+      "route": "/guild-war/logs",
+      "slug": "guild_war_logs",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/guild_war_logs.png",
+      "bytes": 1412073,
+      "status": "captured"
+    },
+    {
+      "route": "/guild-war/territory/00000000-0000-0000-0000-000000030001",
+      "slug": "guild_war_territory_00000000_0000_0000_0000_000000030001",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/guild_war_territory_00000000_0000_0000_0000_000000030001.png",
+      "bytes": 1991834,
+      "status": "captured"
+    },
+    {
+      "route": "/guild-war/tournament/00000000-0000-0000-0000-000000020002",
+      "slug": "guild_war_tournament_00000000_0000_0000_0000_000000020002",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/guild_war_tournament_00000000_0000_0000_0000_000000020002.png",
+      "bytes": 1634765,
+      "status": "captured"
+    },
+    {
+      "route": "/home",
+      "slug": "home",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/home.png",
+      "bytes": 5996845,
+      "status": "captured"
+    },
+    {
+      "route": "/horse-race",
+      "slug": "horse_race",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/horse_race.png",
+      "bytes": 2770999,
+      "status": "captured"
+    },
+    {
+      "route": "/hospital",
+      "slug": "hospital",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/hospital.png",
+      "bytes": 1589276,
+      "status": "captured"
+    },
+    {
+      "route": "/inventory",
+      "slug": "inventory",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/inventory.png",
+      "bytes": 2084815,
+      "status": "captured"
+    },
+    {
+      "route": "/leaderboard",
+      "slug": "leaderboard",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/leaderboard.png",
+      "bytes": 1935639,
+      "status": "captured"
+    },
+    {
+      "route": "/login",
+      "slug": "login",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/login.png",
+      "bytes": 388424,
+      "status": "captured"
+    },
+    {
+      "route": "/loot",
+      "slug": "loot",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/loot.png",
+      "bytes": 6115325,
+      "status": "captured"
+    },
+    {
+      "route": "/market",
+      "slug": "market",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/market.png",
+      "bytes": 704231,
+      "status": "captured"
+    },
+    {
+      "route": "/mekans",
+      "slug": "mekans",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/mekans.png",
+      "bytes": 3674251,
+      "status": "captured"
+    },
+    {
+      "route": "/mekans/7bd9915c-5984-43a5-a41f-63df9bce7081",
+      "slug": "mekans_7bd9915c_5984_43a5_a41f_63df9bce7081",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/mekans_7bd9915c_5984_43a5_a41f_63df9bce7081.png",
+      "bytes": 2756677,
+      "status": "captured"
+    },
+    {
+      "route": "/mekans/7bd9915c-5984-43a5-a41f-63df9bce7081/arena",
+      "slug": "mekans_7bd9915c_5984_43a5_a41f_63df9bce7081_arena",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/mekans_7bd9915c_5984_43a5_a41f_63df9bce7081_arena.png",
+      "bytes": 3800764,
+      "status": "captured"
+    },
+    {
+      "route": "/mekans/create",
+      "slug": "mekans_create",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/mekans_create.png",
+      "bytes": 3337920,
+      "status": "captured"
+    },
+    {
+      "route": "/my-mekan",
+      "slug": "my_mekan",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/my_mekan.png",
+      "bytes": 2589569,
+      "status": "captured"
+    },
+    {
+      "route": "/onboarding/character-select",
+      "slug": "onboarding_character_select",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/onboarding_character_select.png",
+      "bytes": 5711454,
+      "status": "captured"
+    },
+    {
+      "route": "/prison",
+      "slug": "prison",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/prison.png",
+      "bytes": 1649429,
+      "status": "captured"
+    },
+    {
+      "route": "/pvp",
+      "slug": "pvp",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/pvp.png",
+      "bytes": 1777684,
+      "status": "captured"
+    },
+    {
+      "route": "/pvp/history",
+      "slug": "pvp_history",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/pvp_history.png",
+      "bytes": 1582632,
+      "status": "captured"
+    },
+    {
+      "route": "/pvp/tournament",
+      "slug": "pvp_tournament",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/pvp_tournament.png",
+      "bytes": 1537478,
+      "status": "captured"
+    },
+    {
+      "route": "/quests",
+      "slug": "quests",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/quests.png",
+      "bytes": 1194353,
+      "status": "captured"
+    },
+    {
+      "route": "/register",
+      "slug": "register",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/register.png",
+      "bytes": 234668,
+      "status": "captured"
+    },
+    {
+      "route": "/reputation",
+      "slug": "reputation",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/reputation.png",
+      "bytes": 1305316,
+      "status": "captured"
+    },
+    {
+      "route": "/season",
+      "slug": "season",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/season.png",
+      "bytes": 703807,
+      "status": "captured"
+    },
+    {
+      "route": "/settings",
+      "slug": "settings",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/settings.png",
+      "bytes": 1707474,
+      "status": "captured"
+    },
+    {
+      "route": "/shop",
+      "slug": "shop",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/shop.png",
+      "bytes": 2019170,
+      "status": "captured"
+    },
+    {
+      "route": "/",
+      "slug": "splash",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/splash.png",
+      "bytes": 388424,
+      "status": "captured"
+    },
+    {
+      "route": "/trade",
+      "slug": "trade",
+      "file": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/audit_2026-06-27/trade.png",
+      "bytes": 1363212,
+      "status": "captured"
+    }
+  ]
+}

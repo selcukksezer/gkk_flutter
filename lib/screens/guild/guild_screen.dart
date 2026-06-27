@@ -66,14 +66,25 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchQueryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ref.read(playerProvider.notifier).loadProfile();
       await ref.read(guildProvider.notifier).loadGuild();
+      if (!ref.read(guildProvider).hasValidGuild) {
+        await ref.read(guildProvider.notifier).loadRecommendedGuilds();
+      }
     });
+  }
+
+  void _onSearchQueryChanged() {
+    if (_searchController.text.trim().isEmpty) {
+      ref.read(guildProvider.notifier).clearSearchResults();
+    }
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchQueryChanged);
     _searchController.dispose();
     _createNameController.dispose();
     _createDescController.dispose();
@@ -96,7 +107,9 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
     if (!ok) {
       final err = ref.read(guildProvider).error;
       if (err != null) _showSnack(err);
+      return;
     }
+    _showSnack('Loncaya katıldınız!');
   }
 
   Future<void> _leaveGuild() async {
@@ -124,19 +137,83 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
     if (!ok) {
       final err = ref.read(guildProvider).error;
       if (err != null) _showSnack(err);
+      return;
     }
+    _showSnack('Loncadan ayrıldınız.');
+  }
+
+  Future<void> _disbandGuild() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Loncayı Dağıt'),
+        content: const Text(
+          'Loncayı dağıtmak tüm üyeleri çıkarır ve anıt ilerlemesini siler. Emin misiniz?',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Dağıt'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final ok = await ref.read(guildProvider.notifier).disbandGuild();
+    if (!ok) {
+      final err = ref.read(guildProvider).error;
+      if (err != null) _showSnack(err);
+      return;
+    }
+    _showSnack('Lonca dağıtıldı.');
   }
 
   Future<void> _showCreateDialog() async {
     _createNameController.clear();
     _createDescController.clear();
+    const int createCost = 10000000;
+    final int playerGold = ref.read(playerProvider).profile?.gold ?? 0;
+    final bool canAfford = playerGold >= createCost;
+
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Lonca Kur'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: canAfford
+                    ? const Color(0x334B6FFF)
+                    : Colors.red.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: canAfford
+                      ? const Color(0xFF4B6FFF)
+                      : Colors.red.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Text(
+                canAfford
+                    ? 'Maliyet: 10.000.000 altın (bakiyeniz: ${_formatGold(playerGold)})'
+                    : 'Yetersiz altın: 10.000.000 gerekli (bakiyeniz: ${_formatGold(playerGold)})',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: canAfford ? const Color(0xFF8BAEFF) : Colors.redAccent,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: _createNameController,
               decoration: const InputDecoration(labelText: 'Lonca Adı'),
@@ -155,24 +232,100 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
             child: const Text('İptal'),
           ),
           FilledButton(
-            onPressed: () async {
-              final name = _createNameController.text.trim();
-              if (name.isEmpty) return;
-              Navigator.of(ctx).pop();
-              final ok = await ref.read(guildProvider.notifier).createGuild(
-                    name: name,
-                    description: _createDescController.text.trim(),
-                  );
-              if (!ok) {
-                final err = ref.read(guildProvider).error;
-                if (err != null) _showSnack(err);
-              }
-            },
-            child: const Text('Kur'),
+            onPressed: canAfford
+                ? () async {
+                    final name = _createNameController.text.trim();
+                    if (name.isEmpty) return;
+                    Navigator.of(ctx).pop();
+                    final ok = await ref
+                        .read(guildProvider.notifier)
+                        .createGuild(
+                          name: name,
+                          description: _createDescController.text.trim(),
+                        );
+                    if (!ok) {
+                      final err = ref.read(guildProvider).error;
+                      if (err != null) _showSnack(err);
+                      return;
+                    }
+                    _showSnack('Lonca kuruldu!');
+                  }
+                : null,
+            child: const Text('Kur (10M Altın)'),
           ),
         ],
       ),
     );
+  }
+
+  String _formatGold(int gold) {
+    if (gold >= 1000000) {
+      return '${(gold / 1000000).toStringAsFixed(gold % 1000000 == 0 ? 0 : 1)}M';
+    }
+    if (gold >= 1000) {
+      return '${(gold / 1000).toStringAsFixed(gold % 1000 == 0 ? 0 : 1)}K';
+    }
+    return gold.toString();
+  }
+
+  Future<void> _showMinJoinPowerDialog(int current) async {
+    final TextEditingController controller =
+        TextEditingController(text: current > 0 ? '$current' : '');
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Katılım Güç Limiti'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              '0 = limit yok. Yeni üyeler bu gücün altındaysa katılamaz.',
+              style: TextStyle(fontSize: 12, color: Colors.white54),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Minimum güç',
+                suffixText: 'güç',
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final int? value = int.tryParse(controller.text.trim());
+              if (value == null || value < 0) {
+                _showSnack('Geçerli bir sayı girin (0 veya üzeri).');
+                return;
+              }
+              Navigator.of(ctx).pop();
+              final ok =
+                  await ref.read(guildProvider.notifier).setMinJoinPower(value);
+              if (!ok) {
+                final err = ref.read(guildProvider).error;
+                if (err != null) _showSnack(err);
+                return;
+              }
+              _showSnack(
+                value == 0
+                    ? 'Güç limiti kaldırıldı.'
+                    : 'Katılım güç limiti $value olarak ayarlandı.',
+              );
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
   }
 
   Future<void> _showMemberActions({
@@ -258,9 +411,15 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
   }) async {
     setState(() => _memberActionLoading = true);
     try {
-      await SupabaseService.client.rpc(rpcName, params: <String, dynamic>{
-        'p_member_id': memberId,
-      });
+      final dynamic response = await SupabaseService.client.rpc(
+        rpcName,
+        params: <String, dynamic>{'p_member_id': memberId},
+      );
+      final GuildRpcResult result = GuildRpcResult.fromResponse(response);
+      if (!result.success) {
+        _showSnack(result.error ?? 'İşlem başarısız.');
+        return;
+      }
       await ref.read(guildProvider.notifier).loadGuild();
       _showSnack(successMsg);
     } catch (e) {
@@ -277,8 +436,15 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
 
     Future<void> onLogout() async {
       await ref.read(authProvider.notifier).logout();
+      ref.read(guildProvider.notifier).clear();
       ref.read(playerProvider.notifier).clear();
     }
+
+    final String myPlayerId = playerState.profile?.id ?? '';
+    final String myAuthId = playerState.profile?.authId ?? '';
+    final GuildRole myRole = guildState.hasValidGuild
+        ? _myRole(guildState.guild!, myPlayerId, myAuthId)
+        : GuildRole.member;
 
     return Scaffold(
       appBar: GameTopBar(title: 'Lonca', onLogout: onLogout),
@@ -292,13 +458,17 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
             colors: <Color>[Color(0xFF10131D), Color(0xFF171E2C), Color(0xFF10131D)],
           ),
         ),
-        child: guildState.isLoading
+        child: guildState.isLoading && !guildState.hasValidGuild
             ? const Center(child: CircularProgressIndicator())
-            : guildState.guild == null
+            : !guildState.hasValidGuild
                 ? _NoGuildView(
                     searchController: _searchController,
                     searchResults: guildState.searchResults,
-                    isLoading: guildState.isLoading,
+                    recommendedGuilds: guildState.recommendedGuilds,
+                    myPower: playerState.profile?.power ?? 0,
+                    isSearching: guildState.isSearching,
+                    isLoadingRecommended: guildState.isLoadingRecommended,
+                    isMutating: guildState.isMutating,
                     error: guildState.error,
                     onSearch: _search,
                     onJoin: _joinGuild,
@@ -306,28 +476,41 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
                   )
                 : _GuildView(
                     guild: guildState.guild!,
-                    myPlayerId: playerState.profile?.id ?? '',
-                    myRole: _myRole(guildState.guild!, playerState.profile?.id ?? ''),
+                    myPlayerId: myPlayerId,
+                    myRole: myRole,
                     memberActionLoading: _memberActionLoading,
                     onMemberTap: (member) => _showMemberActions(
                       member: member,
-                      myRole: _myRole(guildState.guild!, playerState.profile?.id ?? ''),
-                      myPlayerId: playerState.profile?.id ?? '',
+                      myRole: myRole,
+                      myPlayerId: myPlayerId,
                     ),
-                    onLeave: _leaveGuild,
+                    onLeave: myRole == GuildRole.leader ? _disbandGuild : _leaveGuild,
+                    leaveLabel: myRole == GuildRole.leader ? 'Dağıt' : 'Çık',
                     onGuildWar: () => context.go(AppRoutes.guildWar),
                     onMonument: () => context.go(AppRoutes.guildMonument),
+                    onEditMinJoinPower: myRole == GuildRole.leader
+                        ? () => _showMinJoinPowerDialog(
+                              guildState.guild!.minJoinPower,
+                            )
+                        : null,
                   ),
       ),
     );
   }
 
-  GuildRole _myRole(GuildData guild, String playerId) {
-    if (guild.members == null) {
-      return guild.leaderId == playerId ? GuildRole.leader : GuildRole.member;
+  GuildRole _myRole(GuildData guild, String playerId, String authId) {
+    if (guild.members != null) {
+      for (final m in guild.members!) {
+        if (m.playerId == playerId) return m.role;
+      }
     }
-    for (final m in guild.members!) {
-      if (m.playerId == playerId) return m.role;
+    if (authId.isNotEmpty && guild.leaderId == authId) {
+      return GuildRole.leader;
+    }
+    final String? profileRole = ref.read(playerProvider).profile?.guildRole;
+    if (profileRole == 'leader') return GuildRole.leader;
+    if (profileRole == 'officer' || profileRole == 'commander') {
+      return GuildRole.officer;
     }
     return GuildRole.member;
   }
@@ -340,7 +523,11 @@ class _NoGuildView extends StatelessWidget {
   const _NoGuildView({
     required this.searchController,
     required this.searchResults,
-    required this.isLoading,
+    required this.recommendedGuilds,
+    required this.myPower,
+    required this.isSearching,
+    required this.isLoadingRecommended,
+    required this.isMutating,
     this.error,
     required this.onSearch,
     required this.onJoin,
@@ -349,11 +536,17 @@ class _NoGuildView extends StatelessWidget {
 
   final TextEditingController searchController;
   final List<GuildData> searchResults;
-  final bool isLoading;
+  final List<GuildData> recommendedGuilds;
+  final int myPower;
+  final bool isSearching;
+  final bool isLoadingRecommended;
+  final bool isMutating;
   final String? error;
   final VoidCallback onSearch;
   final Future<void> Function(String) onJoin;
   final VoidCallback onCreate;
+
+  bool get _hasSearchQuery => searchController.text.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -392,14 +585,23 @@ class _NoGuildView extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               FilledButton(
-                onPressed: onSearch,
-                child: const Text('Ara'),
+                onPressed: isSearching ? null : onSearch,
+                child: isSearching
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Ara'),
               ),
             ],
           ),
+          if (isMutating) ...<Widget>[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
           const SizedBox(height: 16),
-          // Search results
-          if (searchResults.isNotEmpty) ...<Widget>[
+          if (searchResults.isNotEmpty && _hasSearchQuery) ...<Widget>[
             const Text(
               'Sonuçlar',
               style: TextStyle(
@@ -409,7 +611,54 @@ class _NoGuildView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             ...searchResults.map(
-              (guild) => _GuildResultTile(guild: guild, onJoin: onJoin),
+              (guild) => _GuildResultTile(
+                guild: guild,
+                myPower: myPower,
+                onJoin: onJoin,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ] else if (_hasSearchQuery && !isSearching) ...<Widget>[
+            const Text(
+              'Aramanızla eşleşen lonca bulunamadı.',
+              style: TextStyle(color: Colors.white38, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+          ] else if (isLoadingRecommended) ...<Widget>[
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ] else if (recommendedGuilds.isNotEmpty) ...<Widget>[
+            const Row(
+              children: <Widget>[
+                Icon(Icons.recommend_rounded,
+                    size: 16, color: Color(0xFF4B6FFF)),
+                SizedBox(width: 6),
+                Text(
+                  'Önerilen Loncalar',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white54,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Katılabileceğiniz, yer açık loncalar',
+              style: TextStyle(fontSize: 11, color: Colors.white38),
+            ),
+            const SizedBox(height: 8),
+            ...recommendedGuilds.map(
+              (guild) => _GuildResultTile(
+                guild: guild,
+                myPower: myPower,
+                onJoin: onJoin,
+              ),
             ),
             const SizedBox(height: 16),
           ],
@@ -435,10 +684,18 @@ class _NoGuildView extends StatelessWidget {
 }
 
 class _GuildResultTile extends StatelessWidget {
-  const _GuildResultTile({required this.guild, required this.onJoin});
+  const _GuildResultTile({
+    required this.guild,
+    required this.myPower,
+    required this.onJoin,
+  });
 
   final GuildData guild;
+  final int myPower;
   final Future<void> Function(String) onJoin;
+
+  bool get _powerTooLow =>
+      guild.minJoinPower > 0 && myPower < guild.minJoinPower;
 
   @override
   Widget build(BuildContext context) {
@@ -461,14 +718,23 @@ class _GuildResultTile extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  'Lv.${guild.level} · ${guild.memberCount}/${guild.maxMembers} üye · ${guild.totalPower} güç',
+                  'Lv.${guild.level} · Anıt Lv.${guild.monumentLevel} · ${guild.memberCount}/${guild.maxMembers} üye · ${guild.totalPower} güç'
+                  '${guild.minJoinPower > 0 ? ' · Min ${guild.minJoinPower} güç' : ''}',
                   style: const TextStyle(fontSize: 11, color: Colors.white54),
                 ),
+                if (_powerTooLow)
+                  Text(
+                    'Gücünüz yetersiz ($myPower / ${guild.minJoinPower})',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.orange.shade300,
+                    ),
+                  ),
               ],
             ),
           ),
           FilledButton(
-            onPressed: () => onJoin(guild.guildId),
+            onPressed: _powerTooLow ? null : () => onJoin(guild.guildId),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF4B6FFF),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -495,8 +761,10 @@ class _GuildView extends StatelessWidget {
     required this.memberActionLoading,
     required this.onMemberTap,
     required this.onLeave,
+    required this.leaveLabel,
     required this.onGuildWar,
     required this.onMonument,
+    this.onEditMinJoinPower,
   });
 
   final GuildData guild;
@@ -505,8 +773,10 @@ class _GuildView extends StatelessWidget {
   final bool memberActionLoading;
   final Future<void> Function(GuildMemberData) onMemberTap;
   final VoidCallback onLeave;
+  final String leaveLabel;
   final VoidCallback onGuildWar;
   final VoidCallback onMonument;
+  final VoidCallback? onEditMinJoinPower;
 
   @override
   Widget build(BuildContext context) {
@@ -574,8 +844,25 @@ class _GuildView extends StatelessWidget {
                     _StatChip(
                         icon: Icons.paid_rounded,
                         label: '${guild.monumentGoldPool} 🪙 Havuz'),
+                    _StatChip(
+                        icon: Icons.shield_rounded,
+                        label: guild.minJoinPower > 0
+                            ? 'Min ${guild.minJoinPower} güç'
+                            : 'Güç limiti yok'),
                   ],
                 ),
+                if (onEditMinJoinPower != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: onEditMinJoinPower,
+                    icon: const Icon(Icons.tune_rounded, size: 16),
+                    label: const Text('Katılım Güç Limiti'),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF4B6FFF)),
+                      foregroundColor: const Color(0xFF8BAEFF),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -612,7 +899,7 @@ class _GuildView extends StatelessWidget {
                   side: const BorderSide(color: Colors.red),
                   foregroundColor: Colors.red,
                 ),
-                child: const Text('Çık'),
+                child: Text(leaveLabel),
               ),
             ],
           ),
@@ -637,9 +924,9 @@ class _GuildView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (sortedMembers.isEmpty)
-            const Text(
-              'Üye listesi yüklenemedi.',
-              style: TextStyle(color: Colors.white38),
+            Text(
+              guild.loadError ?? 'Henüz üye kaydı yok.',
+              style: const TextStyle(color: Colors.white38),
             )
           else
             ...sortedMembers.map(

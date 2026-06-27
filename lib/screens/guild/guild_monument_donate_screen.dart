@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/guild_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
@@ -161,11 +162,15 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
 
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(playerProvider).profile;
+    final hasGuild = ref.watch(hasGuildMembershipProvider);
 
-    Future<void> logout() async { await ref.read(authProvider.notifier).logout(); ref.read(playerProvider.notifier).clear(); }
+    Future<void> logout() async {
+      await ref.read(authProvider.notifier).logout();
+      ref.read(guildProvider.notifier).clear();
+      ref.read(playerProvider.notifier).clear();
+    }
 
-    if (profile?.guildId == null) {
+    if (!hasGuild) {
       return Scaffold(
         appBar: GameTopBar(title: 'Anıta Bağış', onLogout: logout),
         body: const Center(child: Text('Lonca bulunamadı.', style: TextStyle(color: Colors.white54))),

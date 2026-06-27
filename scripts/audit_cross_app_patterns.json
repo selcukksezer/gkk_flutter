@@ -1,0 +1,115 @@
+[
+  {
+    "id": "cross-bottom-clearance",
+    "priority": "P2",
+    "title": "gameBottomBarClearance padding eksik",
+    "match_keywords": [
+      "gameBottomBarClearance",
+      "bottom clearance",
+      "FAB + bottom bar",
+      "bottom bar için eksik"
+    ],
+    "solution": "Scroll body sonuna AppSpacing.gameBottomBarClearance veya GameChrome padding token ekle",
+    "target_file": "lib/components/layout/game_chrome.dart"
+  },
+  {
+    "id": "cross-nav-bottom-bar",
+    "priority": "P0",
+    "title": "GameBottomBar yanlış Home highlight",
+    "match_keywords": [
+      "GameBottomBar",
+      "_activeIndex",
+      "Home aktif",
+      "Home highlight",
+      "Home seçili",
+      "menü rotası",
+      "bottom bar'da yok",
+      "Cross-cutting nav"
+    ],
+    "solution": "lib/components/layout/game_chrome.dart — _activeIndex prefix map (/pvp, /guild, /trade vb.) veya bilinmeyen route için Menü (index 4) fallback",
+    "target_file": "lib/components/layout/game_chrome.dart"
+  },
+  {
+    "id": "cross-logout-clear",
+    "priority": "P1",
+    "title": "Logout sırasında provider clear tutarsız",
+    "match_keywords": [
+      "logout",
+      "inventory clear yok",
+      "inventoryProvider.clear",
+      "provider clear",
+      "stale cache"
+    ],
+    "solution": "Merkezi logout() helper: player, inventory, guild, facilities, pvp* provider invalidate/clear",
+    "target_file": "lib/providers/auth_provider.dart"
+  },
+  {
+    "id": "cross-rarity-color",
+    "priority": "P2",
+    "title": "_rarityColor hex map tekrarı",
+    "match_keywords": [
+      "_rarityColor",
+      "rarityColor",
+      "rarity border",
+      "rarity hex"
+    ],
+    "solution": "Merkezi item_rarity.dart veya AppColors.rarityFor() — shop/bank/trade/loot'taki duplicate map kaldır",
+    "target_file": "lib/theme/item_rarity.dart"
+  },
+  {
+    "id": "cross-gem-format",
+    "priority": "P2",
+    "title": "Gem/gold format tutarsızlığı (500 vs 500.0)",
+    "match_keywords": [
+      "500.0",
+      "500 vs",
+      "gem format",
+      "gem wallet",
+      "formatting drift"
+    ],
+    "solution": "Merkezi formatGems()/formatGold() helper; int gems için ondalık gösterme",
+    "target_file": "lib/utils/formatters.dart"
+  },
+  {
+    "id": "cross-ref-listen-build",
+    "priority": "P2",
+    "title": "ref.listen build() içinde — navigasyon yan etkisi",
+    "match_keywords": [
+      "ref.listen",
+      "build() içinde",
+      "build içinde",
+      "listener build"
+    ],
+    "solution": "ref.listen → initState/post-frame callback veya ref.listenManual; build saf kalır",
+    "target_file": null
+  },
+  {
+    "id": "cross-raw-exception-ui",
+    "priority": "P2",
+    "title": "Ham exception/RPC metni UI'da gösteriliyor",
+    "match_keywords": [
+      "raw exception",
+      "$e",
+      "history.error!",
+      "RPC metni",
+      "teknik metin",
+      "teknik hata"
+    ],
+    "solution": "User-friendly error string + retry CTA; debug'da only kDebugMode ile detay",
+    "target_file": null
+  },
+  {
+    "id": "cross-header-english",
+    "priority": "P2",
+    "title": "GameTopBar / header İngilizce route adları",
+    "match_keywords": [
+      "GameTopBar",
+      "AppBar başlık İngilizce",
+      "title: 'Home'",
+      "Header `Hi`",
+      "route adı"
+    ],
+    "solution": "AppStrings.routes.* ile Türkçe başlık; Semantics label güncelle",
+    "target_file": "lib/components/layout/game_chrome.dart"
+  }
+]

@@ -4,29 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
 import '../../core/services/supabase_service.dart';
+import '../../models/guild_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/guild_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
-
-const _kBonuses = [
-  (5, 'XP Bonusu', '+%5 XP'),
-  (10, 'Gold Bonusu', '+%3 Gold'),
-  (15, 'Max Enerji', '+5 Max Enerji'),
-  (20, 'Overdose Koruması', '-%10 Overdose Şansı'),
-  (25, 'Tesis Hız', '-%5 Üretim Süresi'),
-  (30, 'Zindan Şansı', '+10 Loot Şansı'),
-  (35, 'Crafting Bonusu', '+%3 Craft Başarısı'),
-  (40, 'PvP Kalkanı', '+%5 PvP Savunması'),
-];
-
-String _sizeLabel(int count) {
-  if (count <= 10) return 'Küçük Lonca (0.35x)';
-  if (count <= 20) return 'Orta Lonca (0.55x)';
-  if (count <= 30) return 'Büyük Lonca (0.75x)';
-  if (count <= 40) return 'Çok Büyük Lonca (0.90x)';
-  return 'Maksimum Lonca (1.00x)';
-}
 
 class GuildMonumentScreen extends ConsumerStatefulWidget {
   const GuildMonumentScreen({super.key});
@@ -37,8 +20,10 @@ class GuildMonumentScreen extends ConsumerStatefulWidget {
 
 class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
   Map<String, dynamic>? _guild;
+  Map<String, dynamic>? _nextCost;
   bool _loading = true;
   bool _upgrading = false;
+  String? _loadError;
   int _memberCount = 0;
   List<Map<String, dynamic>> _contributors = [];
   List<Map<String, dynamic>> _blueprints = [];
@@ -46,15 +31,29 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!ref.read(hasGuildMembershipProvider)) {
+        await ref.read(guildProvider.notifier).loadGuild();
+      }
+      await _load();
+    });
   }
 
   Future<void> _load() async {
-    final profile = ref.read(playerProvider).profile;
-    final guildId = profile?.guildId;
-    if (guildId == null) { setState(() => _loading = false); return; }
+    final guildState = ref.read(guildProvider);
+    final guildId = guildState.guild?.guildId ?? ref.read(playerProvider).profile?.guildId;
+    if (guildId == null || guildId.isEmpty) {
+      setState(() {
+        _loading = false;
+        _loadError = null;
+      });
+      return;
+    }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final results = await Future.wait(<Future<dynamic>>[
         SupabaseService.client.from('guilds').select().eq('id', guildId).single(),
@@ -62,24 +61,63 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
         SupabaseService.client.from('guild_contributions').select('user_id, contribution_score, gold_donated').eq('guild_id', guildId).order('contribution_score', ascending: false).limit(5),
         SupabaseService.client.from('guild_blueprints').select('blueprint_type, fragments, fragments_required, is_complete').eq('guild_id', guildId).order('blueprint_type'),
       ]);
+      final List<Map<String, dynamic>> rawContributors =
+          (results[2] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final Map<String, String> usernamesByAuthId = <String, String>{};
+      final List<String> contributorIds = rawContributors
+          .map((c) => c['user_id']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+      if (contributorIds.isNotEmpty) {
+        final List<dynamic> userRows = await SupabaseService.client
+            .from('users')
+            .select('auth_id, username')
+            .inFilter('auth_id', contributorIds);
+        for (final dynamic row in userRows) {
+          final Map<String, dynamic> u = Map<String, dynamic>.from(row as Map);
+          final String? authId = u['auth_id']?.toString();
+          if (authId != null && authId.isNotEmpty) {
+            usernamesByAuthId[authId] =
+                (u['username'] ?? 'Oyuncu').toString();
+          }
+        }
+      }
+      for (final Map<String, dynamic> c in rawContributors) {
+        final String? uid = c['user_id']?.toString();
+        c['username'] = uid != null ? usernamesByAuthId[uid] : null;
+      }
+      Map<String, dynamic>? preview;
+      try {
+        final dynamic rawPreview = await SupabaseService.client.rpc(
+          'get_monument_upgrade_preview',
+          params: {'p_guild_id': guildId},
+        );
+        if (rawPreview is Map) preview = Map<String, dynamic>.from(rawPreview);
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _guild = Map<String, dynamic>.from(results[0] as Map);
           _memberCount = (results[1] as List).length;
-          _contributors = (results[2] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          _contributors = rawContributors;
           _blueprints = (results[3] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          _nextCost = preview;
           _loading = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = 'Anıt verileri yüklenemedi: $e';
+        });
+      }
     }
   }
 
   Future<void> _upgrade() async {
     final profile = ref.read(playerProvider).profile;
-    final role = profile?.guildRole;
-    if (role != 'leader' && role != 'commander') {
+    if (!canUpgradeMonument(profile?.guildRole)) {
       AppMessenger.show(context, 'Yetkiniz yok!');
       return;
     }
@@ -88,10 +126,11 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
       final data = await SupabaseService.client.rpc('upgrade_monument', params: {'p_user_id': profile?.authId}) as Map;
       final result = Map<String, dynamic>.from(data);
       if (result['success'] == true) {
-        AppMessenger.show(context, 'Anıt seviye ${result['new_level']} oldu');
+        if (mounted) AppMessenger.show(context, 'Anıt seviye ${result['new_level']} oldu');
+        await ref.read(guildProvider.notifier).loadGuild();
         await _load();
       } else {
-        AppMessenger.showError(context, result['error'] as String? ?? 'Yükseltme başarısız');
+        if (mounted) AppMessenger.showError(context, result['error'] as String? ?? 'Yükseltme başarısız');
       }
     } catch (e) {
       if (mounted) AppMessenger.showError(context, 'Hata: $e');
@@ -102,15 +141,20 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasGuild = ref.watch(hasGuildMembershipProvider);
     final profile = ref.watch(playerProvider).profile;
-    final canUpgrade = profile?.guildRole == 'leader' || profile?.guildRole == 'commander';
+    final canUpgrade = canUpgradeMonument(profile?.guildRole);
     final monLevel = (_guild?['monument_level'] as num?)?.toInt() ?? 0;
     final structural = (_guild?['monument_structural'] as num?)?.toInt() ?? 0;
     final mystical = (_guild?['monument_mystical'] as num?)?.toInt() ?? 0;
     final critical = (_guild?['monument_critical'] as num?)?.toInt() ?? 0;
     final goldPool = (_guild?['monument_gold_pool'] as num?)?.toInt() ?? 0;
 
-    Future<void> logout() async { await ref.read(authProvider.notifier).logout(); ref.read(playerProvider.notifier).clear(); }
+    Future<void> logout() async {
+      await ref.read(authProvider.notifier).logout();
+      ref.read(guildProvider.notifier).clear();
+      ref.read(playerProvider.notifier).clear();
+    }
 
     return Scaffold(
       appBar: GameTopBar(title: '🏛️ Lonca Anıtı', onLogout: logout),
@@ -118,7 +162,7 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.guildMonument, onLogout: logout),
       body: Container(
         decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF10131D), Color(0xFF171E2C), Color(0xFF10131D)])),
-        child: profile?.guildId == null
+        child: !hasGuild
             ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Text('Bir Loncaya Üye Değilsiniz', style: TextStyle(fontSize: 18, color: Colors.redAccent)),
                 const SizedBox(height: 16),
@@ -126,12 +170,25 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
               ]))
             : _loading
                 ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
+                : _loadError != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_loadError!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
+                              const SizedBox(height: 16),
+                              ElevatedButton(onPressed: _load, child: const Text('Tekrar Dene')),
+                            ],
+                          ),
+                        ),
+                      )
+                    : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        // Header
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -157,7 +214,6 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Monument info card
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(color: const Color(0xFF1A2030), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.3))),
@@ -190,7 +246,7 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text('$_memberCount / 50 Aktif Üye', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                          Text(_sizeLabel(_memberCount), style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11)),
+                                          Text(guildSizeLabel(_memberCount), style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11)),
                                         ],
                                       ),
                                     ),
@@ -202,7 +258,37 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Resource grid
+                        if (_nextCost != null && _nextCost!['max_level'] != true) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1A2030),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Sonraki Seviye (${_nextCost!['next_level']}) Maliyeti',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFBBF24)),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Yapısal: ${_nextCost!['structural']} · Mistik: ${_nextCost!['mystical']} · Kritik: ${_nextCost!['critical']} · Altın: ${_nextCost!['gold']}',
+                                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                                ),
+                                if (_nextCost!['blueprint_type'] != null)
+                                  Text(
+                                    'Blueprint: ${_nextCost!['blueprint_type']}',
+                                    style: const TextStyle(fontSize: 11, color: Colors.greenAccent),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+
                         GridView.count(
                           crossAxisCount: 2,
                           shrinkWrap: true,
@@ -219,7 +305,6 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Monument bonuses
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(color: const Color(0xFF1A2030), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.purple.withValues(alpha: 0.3))),
@@ -234,27 +319,33 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                 physics: const NeverScrollableScrollPhysics(),
                                 mainAxisSpacing: 8,
                                 crossAxisSpacing: 8,
-                                childAspectRatio: 2.5,
-                                children: _kBonuses.map((b) => Container(
+                                childAspectRatio: 2.2,
+                                children: kMonumentBonuses.map((b) {
+                                  final bool unlocked = monLevel >= b.$1;
+                                  return Container(
                                   padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+                                  decoration: BoxDecoration(
+                                    color: unlocked ? Colors.green.withValues(alpha: 0.08) : Colors.white10,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: unlocked ? Colors.green.withValues(alpha: 0.4) : Colors.white12),
+                                  ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text('Lv ${b.$1}', style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                                      Text('Lv ${b.$1}', style: TextStyle(color: unlocked ? Colors.greenAccent : Colors.white38, fontSize: 10)),
                                       Text(b.$2, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                                      Text(b.$3, style: const TextStyle(color: Colors.greenAccent, fontSize: 11)),
+                                      Text(b.$3, style: TextStyle(color: unlocked ? Colors.greenAccent : Colors.white54, fontSize: 10)),
                                     ],
                                   ),
-                                )).toList(),
+                                );
+                                }).toList(),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 12),
 
-                        // Contributors
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(color: const Color(0xFF1A2030), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.withValues(alpha: 0.3))),
@@ -271,7 +362,10 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                   decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
                                   child: Row(
                                     children: [
-                                      Text('#${i + 1} ${(_contributors[i]['user_id'] as String? ?? '').substring(0, 8)}', style: const TextStyle(fontSize: 13)),
+                                      Text(
+                                        '#${i + 1} ${(_contributors[i]['username'] as String?) ?? 'Bilinmeyen'}',
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
                                       const Spacer(),
                                       Text('${(_contributors[i]['contribution_score'] as num?)?.toInt() ?? 0}', style: const TextStyle(color: Color(0xFFFBBF24), fontWeight: FontWeight.bold)),
                                     ],
@@ -282,7 +376,6 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Blueprints
                         if (_blueprints.isNotEmpty)
                           Container(
                             padding: const EdgeInsets.all(16),
