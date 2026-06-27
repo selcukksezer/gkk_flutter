@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../components/layout/game_chrome.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/player_provider.dart';
+import '../../routing/app_router.dart';
+import '../../utils/logout_helper.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
-import '../../l10n/l10n.dart';
 import '../../theme/app_colors.dart';
 
 // ============================================================================
@@ -25,6 +28,10 @@ class _ChatDesignSystem {
   static const Color colorError = Color(0xFFF87171);
   static const Color colorWarning = Color(0xFFFB923C);
   static const Color colorInfo = Color(0xFF0EA5E9);
+
+  // Presence (brand palette)
+  static const Color colorOnline = Color(0xFF00FF66);
+  static const Color colorOffline = Color(0xFF8E9CAE);
 
   // Background & surfaces (dark theme)
   static const Color colorBgSecondary = Color(0xFF090D15);
@@ -63,7 +70,7 @@ class _ChatDesignSystem {
   static const LinearGradient gradientBgPanel = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xfff0141b26), Color(0xfff0090d15)],
+    colors: [Color(0xFF141B26), Color(0xFF090D15)],
   );
 
   static const LinearGradient gradientGlobal = LinearGradient(
@@ -161,6 +168,34 @@ extension _ChatChannelX on _ChatChannel {
   }
 }
 
+class _OnlineStatusDot extends StatelessWidget {
+  const _OnlineStatusDot({required this.online, this.size = 7});
+
+  final bool online;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: online ? _ChatDesignSystem.colorOnline : _ChatDesignSystem.colorOffline.withValues(alpha: 0.55),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.35), width: 1),
+        boxShadow: online
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: _ChatDesignSystem.colorOnline.withValues(alpha: 0.45),
+                  blurRadius: 4,
+                ),
+              ]
+            : null,
+      ),
+    );
+  }
+}
+
 // ============================================================================
 // DATA MODELS
 // ============================================================================
@@ -177,6 +212,7 @@ class _ChatMessage {
     this.recipientUserId,
     this.guildId,
     this.deletedAt,
+    this.senderIsOnline,
   });
 
   final String id;
@@ -189,6 +225,7 @@ class _ChatMessage {
   final String? recipientUserId;
   final String? guildId;
   final String? deletedAt;
+  final bool? senderIsOnline;
 
   factory _ChatMessage.fromJson(Map<String, dynamic> json) {
     final String rawChannel = (json['channel']?.toString() ?? 'global').toLowerCase();
@@ -205,6 +242,7 @@ class _ChatMessage {
       recipientUserId: json['recipient_user_id']?.toString(),
       guildId: json['guild_id']?.toString(),
       deletedAt: json['deleted_at']?.toString(),
+      senderIsOnline: json['sender_is_online'] as bool?,
     );
   }
 }
@@ -214,16 +252,19 @@ class _ChatUserSummary {
     required this.id,
     required this.username,
     this.displayName,
+    this.isOnline,
   });
 
   final String id;
   final String username;
   final String? displayName;
+  final bool? isOnline;
 
   factory _ChatUserSummary.fromJson(Map<String, dynamic> json) => _ChatUserSummary(
         id: json['id']?.toString() ?? '',
         username: json['username']?.toString() ?? 'oyuncu',
         displayName: json['display_name']?.toString(),
+        isOnline: json['is_online'] as bool?,
       );
 }
 
@@ -235,7 +276,7 @@ class _ChatDmConversation {
     required this.lastMessageAt,
     required this.unreadCount,
     this.peerDisplayName,
-    this.peerIsOnline = false,
+    this.peerIsOnline,
   });
 
   final String peerUserId;
@@ -244,7 +285,7 @@ class _ChatDmConversation {
   final String lastMessageContent;
   final DateTime lastMessageAt;
   final int unreadCount;
-  final bool peerIsOnline;
+  final bool? peerIsOnline;
 
   factory _ChatDmConversation.fromJson(Map<String, dynamic> json) {
     final DateTime ts = DateTime.tryParse(json['last_message_at']?.toString() ?? '')?.toLocal() ?? DateTime.now();
@@ -255,7 +296,7 @@ class _ChatDmConversation {
       lastMessageContent: json['last_message_content']?.toString() ?? '',
       lastMessageAt: ts,
       unreadCount: ((json['unread_count'] as num?) ?? 0).toInt().clamp(0, 99),
-      peerIsOnline: json['peer_is_online'] == true,
+      peerIsOnline: json['peer_is_online'] as bool?,
     );
   }
 }
@@ -453,11 +494,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _presenceByUserId[userId] = online;
   }
 
+  void _seedPresenceFromMessages(Iterable<_ChatMessage> messages) {
+    for (final _ChatMessage message in messages) {
+      _seedPresence(message.senderId, message.senderIsOnline);
+    }
+  }
+
+  List<String> _collectPresenceUserIds() {
+    final Set<String> ids = <String>{};
+    for (final _ChatDmConversation conversation in _dmConversations) {
+      if (conversation.peerUserId.isNotEmpty) ids.add(conversation.peerUserId);
+    }
+    if (_activeDmPeer != null && _activeDmPeer!.id.isNotEmpty) {
+      ids.add(_activeDmPeer!.id);
+    }
+    for (final _ChatUserSummary user in _dmSearchResults) {
+      if (user.id.isNotEmpty) ids.add(user.id);
+    }
+    for (final _ChatMessage message in _currentMessages) {
+      if (!message.isSystem && message.senderId.isNotEmpty && !_isOwnSender(message.senderId)) {
+        ids.add(message.senderId);
+      }
+    }
+    return ids.toList();
+  }
+
   void _startPresencePolling() {
-    _presenceTimer ??= Timer.periodic(const Duration(seconds: 30), (_) {
-      unawaited(_refreshPresence());
-    });
+    _presenceTimer?.cancel();
     unawaited(_refreshPresence());
+    _presenceTimer = Timer.periodic(const Duration(seconds: 30), (_) => unawaited(_refreshPresence()));
   }
 
   void _stopPresencePolling() {
@@ -466,18 +531,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _refreshPresence() async {
-    final Set<String> userIds = <String>{
-      ..._dmConversations.map((c) => c.peerUserId),
-      ..._dmSearchResults.map((u) => u.id),
-      if (_activeDmPeer != null) _activeDmPeer!.id,
-    }.where((String id) => id.isNotEmpty).toSet();
-
-    if (userIds.isEmpty) return;
+    final List<String> userIds = _collectPresenceUserIds();
+    if (userIds.isEmpty || !mounted) return;
 
     try {
       final dynamic res = await _rpc(
         'get_chat_presence',
-        params: <String, dynamic>{'p_user_ids': userIds.toList(growable: false)},
+        params: <String, dynamic>{'p_user_ids': userIds},
       );
       if (!mounted) return;
       if (res is List) {
@@ -495,25 +555,59 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Widget _onlineDot(String userId, {bool? fallback, double size = 8}) {
-    final bool online = _isUserOnline(userId, fallback: fallback);
-    final Color color = online ? AppColors.toxicNeon : AppColors.mutedTitanium;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        boxShadow: online
-            ? <BoxShadow>[BoxShadow(color: color.withValues(alpha: 0.55), blurRadius: 4)]
-            : null,
-      ),
+  Widget _buildPresenceNameRow({
+    required String label,
+    String? userId,
+    bool? fallbackOnline,
+    required TextStyle style,
+    double dotSize = 7,
+  }) {
+    final bool online = _isUserOnline(userId ?? '', fallback: fallbackOnline);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (userId != null && userId.isNotEmpty) ...<Widget>[
+          _OnlineStatusDot(online: online, size: dotSize),
+          const SizedBox(width: 6),
+        ],
+        Flexible(
+          child: Text(label, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ],
     );
+  }
+
+  bool? _peerPresenceFallback(String peerUserId) {
+    for (final _ChatDmConversation conversation in _dmConversations) {
+      if (conversation.peerUserId == peerUserId) return conversation.peerIsOnline;
+    }
+    if (_activeDmPeer?.id == peerUserId) return _activeDmPeer?.isOnline;
+    for (final _ChatUserSummary user in _dmSearchResults) {
+      if (user.id == peerUserId) return user.isOnline;
+    }
+    return null;
   }
 
   int get _dmUnreadCount => _dmConversations.fold<int>(0, (int total, _ChatDmConversation item) => total + item.unreadCount);
 
   List<_ChatMessage> get _currentMessages => _messages[_activeChannel] ?? const <_ChatMessage>[];
+
+  String get _topBarTitle {
+    if (_activeChannel == _ChatChannel.dm) {
+      if (_activeDmPeer != null) {
+        return '@${_activeDmPeer!.username}';
+      }
+      return 'Özel Mesajlar';
+    }
+    return switch (_activeChannel) {
+      _ChatChannel.global => 'Genel Sohbet',
+      _ChatChannel.guild => 'Lonca Sohbeti',
+      _ChatChannel.trade => 'Pazar Sohbeti',
+      _ChatChannel.dm => 'Özel Mesajlar',
+    };
+  }
+
+  Future<void> _logoutHandler() => performLogout(ref);
 
   _ChatBan? get _activeBan {
     for (final _ChatBan ban in _moderationState.activeBans) {
@@ -595,7 +689,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted) return;
     setState(() {
       _messages[channel] = parsed;
+      _seedPresenceFromMessages(parsed);
     });
+    unawaited(_refreshPresence());
     _scheduleScrollToBottom(immediate: true);
   }
 
@@ -610,10 +706,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ..sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
 
       if (!mounted) return;
-      setState(() => _dmConversations = items);
-      for (final _ChatDmConversation conv in items) {
-        _seedPresence(conv.peerUserId, conv.peerIsOnline);
-      }
+      setState(() {
+        _dmConversations = items;
+        for (final _ChatDmConversation conversation in items) {
+          _seedPresence(conversation.peerUserId, conversation.peerIsOnline);
+        }
+      });
       unawaited(_refreshPresence());
     } finally {
       if (mounted) setState(() => _isDmLoading = false);
@@ -633,7 +731,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted) return;
     setState(() {
       _messages[_ChatChannel.dm] = parsed;
+      _seedPresenceFromMessages(parsed);
     });
+    unawaited(_refreshPresence());
     _scheduleScrollToBottom(immediate: true);
   }
 
@@ -658,7 +758,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .toList(growable: false);
 
       if (!mounted) return;
-      setState(() => _dmSearchResults = users);
+      setState(() {
+        _dmSearchResults = users;
+        for (final _ChatUserSummary user in users) {
+          _seedPresence(user.id, user.isOnline);
+        }
+      });
+      unawaited(_refreshPresence());
     } finally {
       if (mounted) setState(() => _isDmSearchLoading = false);
     }
@@ -1425,9 +1531,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.sohbet),
-        centerTitle: true,
+      resizeToAvoidBottomInset: true,
+      extendBody: true,
+      appBar: GameTopBar(title: _topBarTitle, onLogout: _logoutHandler),
+      bottomNavigationBar: GameBottomBar(
+        currentRoute: AppRoutes.chat,
+        onLogout: _logoutHandler,
       ),
       body: body,
     );
@@ -1482,26 +1591,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           );
         }),
-          GestureDetector(
-            onTap: _openBlockedUsersSheet,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceMd, vertical: _ChatDesignSystem.spaceSm),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusXl),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const Icon(Icons.volume_off_rounded, size: 14, color: Colors.white70),
-                  const SizedBox(width: 6),
-                  Text('Susturulanlar${_blockedUsers.isEmpty ? '' : ' (${_blockedUsers.length})'}',
-                      style: const TextStyle(fontSize: 12, color: Colors.white70)),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1786,7 +1875,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: <Widget>[
-                                            Text('@${user.username}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorTextPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                            _buildPresenceNameRow(
+                                              label: '@${user.username}',
+                                              userId: user.id,
+                                              fallbackOnline: user.isOnline,
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorTextPrimary),
+                                            ),
                                             if (user.displayName != null) Text(user.displayName!, style: const TextStyle(fontSize: 10, color: _ChatDesignSystem.colorTextTertiary), maxLines: 1, overflow: TextOverflow.ellipsis),
                                           ],
                                         ),
@@ -1869,14 +1963,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        _onlineDot(_activeDmPeer!.id, size: 7),
-                        const SizedBox(width: 6),
                         Expanded(
-                          child: Text(
-                            '@${_activeDmPeer!.username}',
+                          child: _buildPresenceNameRow(
+                            label: '@${_activeDmPeer!.username}',
+                            userId: _activeDmPeer!.id,
+                            fallbackOnline: _peerPresenceFallback(_activeDmPeer!.id),
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            dotSize: 8,
                           ),
                         ),
                       ],
@@ -1936,9 +2029,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      _onlineDot(conv.peerUserId, fallback: conv.peerIsOnline, size: 7),
-                      const SizedBox(width: 6),
-                      Expanded(child: Text('@${conv.peerUsername}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      Expanded(
+                        child: _buildPresenceNameRow(
+                          label: '@${conv.peerUsername}',
+                          userId: conv.peerUserId,
+                          fallbackOnline: conv.peerIsOnline,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: conv.unreadCount > 0 ? FontWeight.w800 : FontWeight.w700,
+                            color: _ChatDesignSystem.colorTextPrimary,
+                          ),
+                        ),
+                      ),
                       Text(_formatTime(conv.lastMessageAt), style: TextStyle(fontSize: 10, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.5))),
                     ],
                   ),
@@ -2033,12 +2135,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             );
           }
 
+          final double maxBubbleWidth = math.min(
+            520,
+            MediaQuery.sizeOf(context).width * 0.78,
+          );
+
           return Padding(
             padding: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
             child: Align(
               alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 380),
+                constraints: BoxConstraints(maxWidth: maxBubbleWidth),
                 child: GestureDetector(
                   onLongPress: isOwn ? null : () => _mutePlayer(m.senderId, playerName: m.senderName),
                   child: Container(
@@ -2057,14 +2164,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceSm, vertical: _ChatDesignSystem.spaceXs),
-                              decoration: BoxDecoration(
-                                color: isOwn ? _ChatDesignSystem.colorGlobalAccent.withValues(alpha: 0.2) : _activeChannel.accentColor.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusSm),
+                            if (isOwn)
+                              Flexible(
+                                child: Text(
+                                  'Sen',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _ChatDesignSystem.colorGlobalAccent,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              )
+                            else
+                              Flexible(
+                                child: _buildPresenceNameRow(
+                                  label: m.senderName,
+                                  userId: m.senderId,
+                                  fallbackOnline: m.senderIsOnline,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _activeChannel.accentColor,
+                                  ),
+                                ),
                               ),
-                              child: Text(isOwn ? 'Sen' : m.senderName, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: isOwn ? _ChatDesignSystem.colorGlobalAccent : _activeChannel.accentColor), maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ),
                             const SizedBox(width: _ChatDesignSystem.spaceSm),
                             Text(_formatTime(m.timestamp), style: TextStyle(fontSize: 9, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.6))),
                           ],
@@ -2086,26 +2211,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildComposer() {
     final bool canSend = !_isSending && _activeBan == null && _messageController.text.trim().isNotEmpty;
     final int charCount = _messageController.text.length;
+    final double bottomBarPadding = widget.asPanel
+        ? 0
+        : gameBottomBarClearance(context) - MediaQuery.paddingOf(context).bottom;
 
-    return Container(
-      padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08)))),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          if (charCount > _maxMessageLength * 0.8)
-            Padding(
-              padding: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: <Widget>[
-                  Text('$charCount/$_maxMessageLength', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: charCount >= _maxMessageLength ? _ChatDesignSystem.colorError : _ChatDesignSystem.colorWarning)),
-                ],
-              ),
-            ),
-          Row(
+    return SafeArea(
+      top: false,
+      bottom: widget.asPanel,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomBarPadding),
+        child: Container(
+          padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08)))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Expanded(
+              if (charCount > _maxMessageLength * 0.8)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      Text('$charCount/$_maxMessageLength', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: charCount >= _maxMessageLength ? _ChatDesignSystem.colorError : _ChatDesignSystem.colorWarning)),
+                    ],
+                  ),
+                ),
+              Row(
+                children: <Widget>[
+                  Expanded(
                 child: Container(
                   decoration: BoxDecoration(
                     color: _ChatDesignSystem.colorBgSecondary.withValues(alpha: 0.5),
@@ -2131,25 +2264,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: _ChatDesignSystem.spaceMd),
-              GestureDetector(
-                onTap: canSend ? _sendMessage : null,
-                child: Container(
-                  padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-                  decoration: BoxDecoration(
-                    gradient: canSend ? LinearGradient(colors: [_activeChannel.accentColor.withValues(alpha: 0.4), _activeChannel.accentColor.withValues(alpha: 0.2)]) : LinearGradient(colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.04)]),
-                    border: Border.all(color: canSend ? _activeChannel.accentColor.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1)),
-                    borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
                   ),
-                  child: _isSending
-                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(_activeChannel.accentColor)))
-                      : Icon(Icons.send_rounded, size: 16, color: canSend ? _activeChannel.accentColor : Colors.white.withValues(alpha: 0.3)),
-                ),
+                  const SizedBox(width: _ChatDesignSystem.spaceSm),
+                  PopupMenuButton<String>(
+                    tooltip: 'Sohbet seçenekleri',
+                    icon: Icon(Icons.more_vert_rounded, size: 20, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.8)),
+                    color: _ChatDesignSystem.colorBgSecondary,
+                    onSelected: (String value) {
+                      if (value == 'blocked') {
+                        _openBlockedUsersSheet();
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'blocked',
+                        child: Row(
+                          children: <Widget>[
+                            const Icon(Icons.volume_off_rounded, size: 16, color: Colors.white70),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Susturulanlar${_blockedUsers.isEmpty ? '' : ' (${_blockedUsers.length})'}',
+                              style: const TextStyle(fontSize: 13, color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: _ChatDesignSystem.spaceSm),
+                  GestureDetector(
+                    onTap: canSend ? _sendMessage : null,
+                    child: Container(
+                      padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
+                      decoration: BoxDecoration(
+                        gradient: canSend ? LinearGradient(colors: [_activeChannel.accentColor.withValues(alpha: 0.4), _activeChannel.accentColor.withValues(alpha: 0.2)]) : LinearGradient(colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.04)]),
+                        border: Border.all(color: canSend ? _activeChannel.accentColor.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1)),
+                        borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
+                      ),
+                      child: _isSending
+                          ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(_activeChannel.accentColor)))
+                          : Icon(Icons.send_rounded, size: 16, color: canSend ? _activeChannel.accentColor : Colors.white.withValues(alpha: 0.3)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

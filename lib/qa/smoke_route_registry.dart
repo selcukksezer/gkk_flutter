@@ -44,7 +44,7 @@ class SmokeRouteRegistry {
       keyRpcs: <String>['get_reputation'],
     ),
     SmokeRouteEntry(
-      label: 'Battle Pass',
+      label: 'Savaş Geçidi',
       path: '/season',
       keyRpcs: <String>['bp_ensure_player_initialized', 'buy_vip_pass'],
     ),
@@ -70,12 +70,12 @@ class SmokeRouteRegistry {
       keyRpcs: <String>['get_monument_dashboard', 'upgrade_monument', 'donate_to_monument'],
     ),
     SmokeRouteEntry(
-      label: 'Kasa Acma',
+      label: 'Kasa Açma',
       path: '/loot',
       keyRpcs: <String>['get_loot_boxes_with_stats'],
     ),
     SmokeRouteEntry(
-      label: 'At Yarisi',
+      label: 'At Yarışı',
       path: '/horse-race',
       keyRpcs: <String>['get_horse_race_state', 'place_horse_race_bet', 'qa_smoke_horse_race_fairness'],
     ),
@@ -92,7 +92,7 @@ class SmokeRouteRegistry {
       path: '/crafting',
       keyRpcs: <String>['get_craft_recipes', 'start_crafting', 'claim_crafted_item'],
     ),
-    SmokeRouteEntry(label: 'Item Upgrade', path: '/enhancement'),
+    SmokeRouteEntry(label: 'Eşya Yükseltme', path: '/enhancement'),
     SmokeRouteEntry(
       label: 'Tesisler',
       path: '/facilities',

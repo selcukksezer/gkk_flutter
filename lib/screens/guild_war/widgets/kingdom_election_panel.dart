@@ -115,17 +115,20 @@ class KingdomCandidate {
     required this.id,
     required this.name,
     required this.voteCount,
+    this.rank,
   });
 
   final String id;
   final String name;
   final int voteCount;
+  final int? rank;
 
   factory KingdomCandidate.fromJson(Map<String, dynamic> json) {
     return KingdomCandidate(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       voteCount: (json['vote_count'] as num?)?.toInt() ?? 0,
+      rank: (json['rank'] as num?)?.toInt(),
     );
   }
 }
@@ -279,6 +282,18 @@ class _KingdomElectionPanelState extends State<KingdomElectionPanel> {
             subtitle: 'Aday loncalar',
             accent: WarPalette.solar,
           ),
+        if (data.isActive && data.candidates.isEmpty)
+          const WarDottedPanel(
+            child: Text(
+              'Aktif sezon sıralamasında henüz aday lonca yok. Lonca Savaşı sıralamasına giren ilk 20 lonca burada listelenir.',
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.35,
+                fontWeight: FontWeight.w700,
+                color: WarPalette.titanium,
+              ),
+            ),
+          ),
         if (_voterStatusMessage(data) != null)
           WarDottedPanel(
             borderColor: data.voter.canVote
@@ -327,7 +342,9 @@ class _KingdomElectionPanelState extends State<KingdomElectionPanel> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          candidate.name,
+                          candidate.rank != null
+                              ? '#${candidate.rank} ${candidate.name}'
+                              : candidate.name,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,

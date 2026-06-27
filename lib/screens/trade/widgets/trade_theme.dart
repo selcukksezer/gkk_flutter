@@ -102,6 +102,22 @@ class TradeNeonPanel extends StatelessWidget {
   }
 }
 
+Color _tradeButtonGradientEnd(Color color) {
+  if (color == AppColors.liquidGold) {
+    return AppColors.warningSolar.withValues(alpha: 0.85);
+  }
+  if (color == AppColors.mysticRuby) {
+    return AppColors.coralFlare.withValues(alpha: 0.9);
+  }
+  if (color == AppColors.toxicNeon) {
+    return AppColors.liquidGold.withValues(alpha: 0.75);
+  }
+  if (color == AppColors.cyberFuchsia) {
+    return AppColors.mysticRuby.withValues(alpha: 0.85);
+  }
+  return color.withValues(alpha: 0.55);
+}
+
 class TradePrimaryButton extends StatelessWidget {
   const TradePrimaryButton({
     super.key,
@@ -109,12 +125,16 @@ class TradePrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.color = AppColors.liquidGold,
     this.textColor = AppColors.carbonVoid,
+    this.height = 46,
+    this.fontSize = 13,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final Color color;
   final Color textColor;
+  final double height;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -126,13 +146,17 @@ class TradePrimaryButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          height: 46,
+          height: height,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             gradient: disabled
                 ? null
-                : LinearGradient(colors: <Color>[color, AppColors.warningSolar.withValues(alpha: 0.85)]),
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[color, _tradeButtonGradientEnd(color)],
+                  ),
             color: disabled ? AppColors.darkObsidian : null,
             boxShadow: disabled
                 ? null
@@ -145,7 +169,7 @@ class TradePrimaryButton extends StatelessWidget {
             style: TextStyle(
               color: disabled ? AppColors.mutedTitanium : textColor,
               fontWeight: FontWeight.w800,
-              fontSize: 13,
+              fontSize: fontSize,
               letterSpacing: 0.6,
             ),
           ),
@@ -161,30 +185,58 @@ class TradeSecondaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.color = AppColors.mysticRuby,
+    this.textColor = AppColors.textPrimary,
+    this.height = 46,
+    this.fontSize = 13,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final Color color;
+  final Color textColor;
+  final double height;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
+    final bool disabled = onPressed == null;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 46,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: height,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.55)),
-            color: color.withValues(alpha: 0.12),
+            gradient: disabled
+                ? null
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      color.withValues(alpha: 0.72),
+                      _tradeButtonGradientEnd(color).withValues(alpha: 0.55),
+                    ],
+                  ),
+            color: disabled ? AppColors.darkObsidian : null,
+            border: Border.all(color: color.withValues(alpha: disabled ? 0.25 : 0.45)),
+            boxShadow: disabled
+                ? null
+                : <BoxShadow>[
+                    BoxShadow(color: color.withValues(alpha: 0.22), blurRadius: 8, offset: const Offset(0, 3)),
+                  ],
           ),
           child: Text(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13),
+            style: TextStyle(
+              color: disabled ? AppColors.mutedTitanium : textColor,
+              fontWeight: FontWeight.w800,
+              fontSize: fontSize,
+              letterSpacing: 0.4,
+            ),
           ),
         ),
       ),
