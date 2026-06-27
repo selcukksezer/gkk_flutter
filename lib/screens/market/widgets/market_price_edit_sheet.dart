@@ -5,6 +5,7 @@ import '../../../models/market_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import 'market_helpers.dart';
+import '../../../l10n/l10n.dart';
 
 class MarketPriceEditSheet extends StatefulWidget {
   const MarketPriceEditSheet({
@@ -127,7 +128,7 @@ class _MarketPriceEditSheetState extends State<MarketPriceEditSheet> {
                       foregroundColor: AppColors.textSecondary,
                       side: const BorderSide(color: AppColors.borderDefault),
                     ),
-                    child: const Text('Vazgec'),
+                    child: Text(context.l10n.vazgec),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -135,7 +136,7 @@ class _MarketPriceEditSheetState extends State<MarketPriceEditSheet> {
                   child: FilledButton(
                     onPressed: _price > 0 ? () => Navigator.of(context).pop(_price) : null,
                     style: FilledButton.styleFrom(backgroundColor: AppColors.accentBlue),
-                    child: const Text('Kaydet'),
+                    child: Text(context.l10n.kaydet),
                   ),
                 ),
               ],

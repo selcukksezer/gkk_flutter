@@ -7,6 +7,7 @@ import '../../providers/player_provider.dart';
 import '../../providers/pvp_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 class PvpTournamentScreen extends ConsumerStatefulWidget {
   const PvpTournamentScreen({super.key});
@@ -56,7 +57,7 @@ class _PvpTournamentScreenState extends ConsumerState<PvpTournamentScreen> {
     }
 
     return GameSubScreenScaffold(
-      title: 'Haftalık Turnuva',
+      title: context.l10n.haftal_k_turnuva,
       onLogout: logout,
       fallbackRoute: AppRoutes.pvp,
       bottomNavRoute: AppRoutes.pvpTournament,

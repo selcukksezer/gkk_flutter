@@ -2,7 +2,8 @@
 
 **Tarih:** 2026-06-27  
 **Kaynak audit:** `reports/audits/audit_2026-06-27/`  
-**İlerleme:** 0 / 456  
+**İlerleme:** 52 / 455  
+**Son güncelleme:** 2026-06-27 — gen-l10n (GameTopBar, menüler, dil seçici)
 **Üretim:** `python3 scripts/generate_audit_todo.py`
 
 ---
@@ -11,7 +12,7 @@
 
 | P0 | P1 | P2 | Cross-App | Sayfa Bazlı | QA Görevleri | Toplam |
 |----|----|----|-----------|-------------|--------------|--------|
-| 16 | 41 | 387 | 14 | 430 | 12 | 456 |
+| 16 | 41 | 386 | 13 | 430 | 12 | 455 |
 
 > Cross-app maddeler tek fix ile birden fazla sayfayı kapatır. Tamamlandığında ilgili sayfa maddelerini de işaretleyin.
 
@@ -20,65 +21,59 @@
 
 ## A. Cross-App Düzeltmeler (tek fix, çok sayfa)
 
-- [ ] **[P0] GameBottomBar yanlış Home highlight**
+- [x] **[P0] GameBottomBar yanlış Home highlight**
   - **Sorun:** `currentRoute: AppRoutes.bank` geçiliyor; bottom bar 5 sabit rota dışında `/bank` → `_activeIndex` fallback 0 (Home). Screenshot: Banka ekranı + "Home" aktif. (+35 ek rapor varyasyonu)
   - **Çözüm:** lib/components/layout/game_chrome.dart — _activeIndex prefix map (/pvp, /guild, /trade vb.) veya bilinmeyen route için Menü (index 4) fallback
   - **Hedef dosya:** `lib/components/layout/game_chrome.dart`
   - **Etkilenen raporlar (33):** [bank.md](reports/audits/audit_2026-06-27/bank.md), [chat.md](reports/audits/audit_2026-06-27/chat.md), [crafting.md](reports/audits/audit_2026-06-27/crafting.md), [dungeon.md](reports/audits/audit_2026-06-27/dungeon.md), [dungeon_battle.md](reports/audits/audit_2026-06-27/dungeon_battle.md), [enhancement.md](reports/audits/audit_2026-06-27/enhancement.md), [facilities.md](reports/audits/audit_2026-06-27/facilities.md), [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md), [guild.md](reports/audits/audit_2026-06-27/guild.md), [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md), [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md), [guild_war.md](reports/audits/audit_2026-06-27/guild_war.md), [guild_war_logs.md](reports/audits/audit_2026-06-27/guild_war_logs.md), [guild_war_territory_detail.md](reports/audits/audit_2026-06-27/guild_war_territory_detail.md), [guild_war_tournament_detail.md](reports/audits/audit_2026-06-27/guild_war_tournament_detail.md), [hospital.md](reports/audits/audit_2026-06-27/hospital.md), [leaderboard.md](reports/audits/audit_2026-06-27/leaderboard.md), [loot.md](reports/audits/audit_2026-06-27/loot.md), [market.md](reports/audits/audit_2026-06-27/market.md), [mekan_arena.md](reports/audits/audit_2026-06-27/mekan_arena.md), [mekan_create.md](reports/audits/audit_2026-06-27/mekan_create.md), [mekan_detail.md](reports/audits/audit_2026-06-27/mekan_detail.md), [mekans.md](reports/audits/audit_2026-06-27/mekans.md), [prison.md](reports/audits/audit_2026-06-27/prison.md), [pvp.md](reports/audits/audit_2026-06-27/pvp.md), [pvp_history.md](reports/audits/audit_2026-06-27/pvp_history.md), [pvp_tournament.md](reports/audits/audit_2026-06-27/pvp_tournament.md), [quests.md](reports/audits/audit_2026-06-27/quests.md), [reputation.md](reports/audits/audit_2026-06-27/reputation.md), [season.md](reports/audits/audit_2026-06-27/season.md), [settings.md](reports/audits/audit_2026-06-27/settings.md), [shop.md](reports/audits/audit_2026-06-27/shop.md), [trade.md](reports/audits/audit_2026-06-27/trade.md)
 
-- [ ] **[P0] Loot currentRoute AppRoutes.shop copy-paste bug**
+- [x] **[P0] Loot currentRoute AppRoutes.shop copy-paste bug**
   - **Sorun:** Loot currentRoute AppRoutes.shop copy-paste bug
   - **Çözüm:** currentRoute: AppRoutes.loot olarak düzelt
   - **Hedef dosya:** `lib/screens/loot/loot_hub_screen.dart`
   - **Etkilenen raporlar (1):** [loot.md](reports/audits/audit_2026-06-27/loot.md)
 
-- [ ] **[P0] Trade karşı teklif realtime senkronu yok**
+- [x] **[P0] Trade karşı teklif realtime senkronu yok**
   - **Sorun:** Trade karşı teklif realtime senkronu yok
   - **Çözüm:** Supabase Realtime veya polling; Onayla disabled + Beta banner
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
   - **Etkilenen raporlar (1):** [trade.md](reports/audits/audit_2026-06-27/trade.md)
 
-- [ ] **[P1] Chat GameChrome dışında — header/nav kopuk**
+- [x] **[P1] Chat GameChrome dışında — header/nav kopuk**
   - **Sorun:** Chat GameChrome dışında — header/nav kopuk
   - **Çözüm:** GameTopBar + GameBottomBar entegrasyonu veya chat-specific chrome
   - **Hedef dosya:** `lib/screens/chat/chat_screen.dart`
   - **Etkilenen raporlar (1):** [chat.md](reports/audits/audit_2026-06-27/chat.md)
 
-- [ ] **[P1] Facility route slug farm ≠ farming**
+- [x] **[P1] Facility route slug farm ≠ farming**
   - **Sorun:** Facility route slug farm ≠ farming
   - **Çözüm:** Router alias farm→farming veya smoke manifest düzelt
   - **Hedef dosya:** `lib/routing/app_router.dart`
   - **Etkilenen raporlar (1):** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
 
-- [ ] **[P1] Guild war tournament/territory null → SizedBox.shrink()**
+- [x] **[P1] Guild war tournament/territory null → SizedBox.shrink()**
   - **Sorun:** Guild war tournament/territory null → SizedBox.shrink()
   - **Çözüm:** Empty/error widget + geri CTA
   - **Hedef dosya:** `lib/screens/guild_war/tournament_detail_screen.dart`
   - **Etkilenen raporlar (2):** [guild_war_territory_detail.md](reports/audits/audit_2026-06-27/guild_war_territory_detail.md), [guild_war_tournament_detail.md](reports/audits/audit_2026-06-27/guild_war_tournament_detail.md)
 
-- [ ] **[P1] Logout sırasında provider clear tutarsız**
+- [x] **[P1] Logout sırasında provider clear tutarsız**
   - **Sorun:** Satır 102-105 yalnızca `auth` + `player` clear; home/inventory `inventoryProvider.clear()` çağırır. Character'den logout nadir ama stale inventory state riski. (+22 ek rapor varyasyonu)
   - **Çözüm:** Merkezi logout() helper: player, inventory, guild, facilities, pvp* provider invalidate/clear
   - **Hedef dosya:** `lib/providers/auth_provider.dart`
   - **Etkilenen raporlar (23):** [character.md](reports/audits/audit_2026-06-27/character.md), [crafting.md](reports/audits/audit_2026-06-27/crafting.md), [dungeon_battle.md](reports/audits/audit_2026-06-27/dungeon_battle.md), [facilities.md](reports/audits/audit_2026-06-27/facilities.md), [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md), [guild_war.md](reports/audits/audit_2026-06-27/guild_war.md), [guild_war_logs.md](reports/audits/audit_2026-06-27/guild_war_logs.md), [guild_war_territory_detail.md](reports/audits/audit_2026-06-27/guild_war_territory_detail.md), [guild_war_tournament_detail.md](reports/audits/audit_2026-06-27/guild_war_tournament_detail.md), [home.md](reports/audits/audit_2026-06-27/home.md), [horse_race.md](reports/audits/audit_2026-06-27/horse_race.md), [inventory.md](reports/audits/audit_2026-06-27/inventory.md), [loot.md](reports/audits/audit_2026-06-27/loot.md), [market.md](reports/audits/audit_2026-06-27/market.md), [mekans.md](reports/audits/audit_2026-06-27/mekans.md), [my_mekan.md](reports/audits/audit_2026-06-27/my_mekan.md), [onboarding_character_select.md](reports/audits/audit_2026-06-27/onboarding_character_select.md), [pvp_history.md](reports/audits/audit_2026-06-27/pvp_history.md), [pvp_tournament.md](reports/audits/audit_2026-06-27/pvp_tournament.md), [quests.md](reports/audits/audit_2026-06-27/quests.md), [season.md](reports/audits/audit_2026-06-27/season.md), [shop.md](reports/audits/audit_2026-06-27/shop.md), [trade.md](reports/audits/audit_2026-06-27/trade.md)
 
-- [ ] **[P2] DefensePowerBar current > max (2600/1000)**
+- [x] **[P2] DefensePowerBar current > max (2600/1000)**
   - **Sorun:** DefensePowerBar current > max (2600/1000)
   - **Çözüm:** clamp(current, 0, max) veya max değeri backend'den doğru çek
   - **Hedef dosya:** `lib/screens/guild_war/territory_detail_screen.dart`
   - **Etkilenen raporlar (1):** [guild_war_territory_detail.md](reports/audits/audit_2026-06-27/guild_war_territory_detail.md)
 
-- [ ] **[P2] GameTopBar / header İngilizce route adları**
+- [x] **[P2] GameTopBar / header İngilizce route adları**
   - **Sorun:** Top bar `Hi, qa_smoke_primary...` truncated greeting (`game_chrome.dart` displayName logic); kimlik kartında tam `qa_smoke_primary` + `@username` yok. Screenshot'ta üst "Hi, qa_smoke_primary..." alt kart "qa_smoke_primary" — aynı veri, farklı format. (+10 ek rapor varyasyonu)
-  - **Çözüm:** AppStrings.routes.* ile Türkçe başlık; Semantics label güncelle
-  - **Hedef dosya:** `lib/components/layout/game_chrome.dart`
+  - **Çözüm:** Flutter gen-l10n (`app_tr.arb` + `app_en.arb`); selamlama kaldırıldı; Semantics label; menü/başlıklar l10n; Ayarlar → dil seçici (`localeProvider`)
+  - **Hedef dosya:** `lib/components/layout/game_chrome.dart`, `lib/l10n/`, `lib/providers/locale_provider.dart`
   - **Etkilenen raporlar (9):** [character.md](reports/audits/audit_2026-06-27/character.md), [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md), [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md), [home.md](reports/audits/audit_2026-06-27/home.md), [inventory.md](reports/audits/audit_2026-06-27/inventory.md), [market.md](reports/audits/audit_2026-06-27/market.md), [mekans.md](reports/audits/audit_2026-06-27/mekans.md), [pvp.md](reports/audits/audit_2026-06-27/pvp.md), [season.md](reports/audits/audit_2026-06-27/season.md)
-
-- [ ] **[P2] Gem/gold format tutarsızlığı (500 vs 500.0)**
-  - **Sorun:** Header `'💎 $playerGems'` (satır 381-387) — screenshot **500.0**; `GameTopBar` **500**. Aynı shop/bank teması. (+2 ek rapor varyasyonu)
-  - **Çözüm:** Merkezi formatGems()/formatGold() helper; int gems için ondalık gösterme
-  - **Hedef dosya:** `lib/utils/formatters.dart`
-  - **Etkilenen raporlar (3):** [crafting.md](reports/audits/audit_2026-06-27/crafting.md), [facilities.md](reports/audits/audit_2026-06-27/facilities.md), [shop.md](reports/audits/audit_2026-06-27/shop.md)
 
 - [ ] **[P2] Ham exception/RPC metni UI'da gösteriliyor**
   - **Sorun:** `'Banka yuklenemedi: $e'` (satır 148), `'Tasima basarisiz: $e'` — Postgrest/RLS metni kullanıcıya. (+10 ek rapor varyasyonu)
@@ -249,31 +244,31 @@ if (res is! Map<String, dynamic>) {
   - **Kaynak rapor:** [chat.md](reports/audits/audit_2026-06-27/chat.md)
   - **Hedef dosya:** `lib/screens/chat/chat_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Bottom inset — composer + sistem gesture
+- [x] **[P1 · UI/UX]** Bottom inset — composer + sistem gesture
   - **Sorun:** `_buildComposer` `SafeArea` kısmi; full-screen chat'te home indicator overlap riski; FAB modal (`asPanel`) vs route farklı padding.
   - **Çözüm:** `MediaQuery.padding.bottom` + `viewInsets` keyboard aware scroll.
   - **Kaynak rapor:** [chat.md](reports/audits/audit_2026-06-27/chat.md)
   - **Hedef dosya:** `lib/screens/chat/chat_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Gradient typo — panel arka plan
+- [x] **[P1 · UI/UX]** Gradient typo — panel arka plan
   - **Sorun:** `gradientBgPanel` colors `0xfff0141b26`, `0xfff0090d15` (`chat_screen.dart` 61–64) — fazla `f` prefix; alpha/channel şüpheli parse.
   - **Çözüm:** `Color(0xFF141B26)`, `Color(0xFF090D15)`.
   - **Kaynak rapor:** [chat.md](reports/audits/audit_2026-06-27/chat.md)
   - **Hedef dosya:** `lib/screens/chat/chat_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Kanal chip + moderasyon — 5. chip kalabalık
+- [x] **[P1 · UI/UX]** Kanal chip + moderasyon — 5. chip kalabalık
   - **Sorun:** `_buildChannelBar` 4 kanal + `Susturulanlar` aynı satır (`chat_screen.dart` 1281–1344). Screenshot'ta 5 chip; "Susturulanlar" kanal değil — mental model karışır.
   - **Çözüm:** Susturulanlar AppBar action veya composer menü.
   - **Kaynak rapor:** [chat.md](reports/audits/audit_2026-06-27/chat.md)
   - **Hedef dosya:** `lib/screens/chat/chat_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Kullanıcı etiketi — solid mavi tag
+- [x] **[P1 · UI/UX]** Kullanıcı etiketi — solid mavi tag
   - **Sorun:** Mesaj başlığında username `Container` solid accent background (`chat_screen.dart` 1892–1895). Screenshot'ta mavi blok isimden büyük; mesaj gövdesi ikincil.
   - **Çözüm:** İnce text-only username; renk kanal accent.
   - **Kaynak rapor:** [chat.md](reports/audits/audit_2026-06-27/chat.md)
   - **Hedef dosya:** `lib/screens/chat/chat_screen.dart`
 
-- [ ] **[P1 · UI/UX]** `maxWidth: 380` — dar bubble
+- [x] **[P1 · UI/UX]** `maxWidth: 380` — dar bubble
   - **Sorun:** `ConstrainedBox(maxWidth: 380)` telefon genişliğinin ~%50'si (`chat_screen.dart` 1869–1870). Screenshot sağda boş alan; kısa mesajlar bile dar sütun.
   - **Çözüm:** `maxWidth: min(520, width * 0.78)`.
   - **Kaynak rapor:** [chat.md](reports/audits/audit_2026-06-27/chat.md)
@@ -613,13 +608,13 @@ void initState() {
   - **Kaynak rapor:** [facilities.md](reports/audits/audit_2026-06-27/facilities.md)
   - **Hedef dosya:** `lib/screens/facilities/facilities_screen.dart`
 
-- [ ] **[P2 · UI/UX]** `Card` widget — tema uyumsuz
+- [x] **[P2 · UI/UX]** `Card` widget — tema uyumsuz
   - **Sorun:** Üst kartlar `Card()` default Material — `Operasyon Merkezi` cyan accent (`0xFF67E8F9`) app gold/coral sisteminden kopuk (satır 85–138).
   - **Çözüm:** `GkkCard` veya `AppColors` surface token.
   - **Kaynak rapor:** [facilities.md](reports/audits/audit_2026-06-27/facilities.md)
   - **Hedef dosya:** `lib/screens/facilities/facilities_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Şüphe çubuğu — renk uygulanmıyor
+- [x] **[P2 · UI/UX]** Şüphe çubuğu — renk uygulanmıyor
   - **Sorun:** `%` label `_suspicionColor(globalSuspicion)` kullanır (satır 169–175) ama `LinearProgressIndicator` `valueColor` yok — varsayılan tema rengi (screenshot'ta nötr/gri bar, %0 yeşil label).
   - **Çözüm:** `valueColor: AlwaysStoppedAnimation(_suspicionColor(globalSuspicion))`.
   - **Kaynak rapor:** [facilities.md](reports/audits/audit_2026-06-27/facilities.md)
@@ -628,19 +623,19 @@ void initState() {
 ### facility_detail — [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
 **Kaynak kod:** `lib/screens/facilities/facility_detail_screen.dart`
 
-- [ ] **[P1 · UI/UX]** AppBar — generic başlık
+- [x] **[P1 · UI/UX]** AppBar — generic başlık
   - **Sorun:** `title: 'Tesis Konsolu'` (satır 110-111); body'de de aynı (satır 169-170). Facility adı (`Çiftlik`) ikincil.
   - **Çözüm:** `meta?.name ?? widget.type` AppBar'da.
   - **Kaynak rapor:** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
   - **Hedef dosya:** `lib/screens/facilities/facility_detail_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Empty state — CTA yok
+- [x] **[P1 · UI/UX]** Empty state — CTA yok
   - **Sorun:** `facility == null` Card yalnızca metin (satır 139-151); "Tesisi aç" / facilities hub linki yok.
   - **Çözüm:** `context.go(AppRoutes.facilities)` + unlock şartları.
   - **Kaynak rapor:** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
   - **Hedef dosya:** `lib/screens/facilities/facility_detail_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Tesis bulunamadı — smoke route mismatch (Screenshot QA)
+- [x] **[P1 · UI/UX]** Tesis bulunamadı — smoke route mismatch (Screenshot QA)
   - **Sorun:** Screenshot `Tesis bulunamadı` / `Bu tesis henüz açılmamış`; muhtemel neden: screenshot `/facilities/farm` ama `_facilityMeta` anahtarı `farming` (satır 799-807). `widget.type == 'farm'` → meta null → facility loop boş.
   - **Çözüm:** Route alias `farm` → `farming`; veya smoke manifest `farming` kullan.
   - **Kaynak rapor:** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
@@ -676,19 +671,19 @@ void initState() {
   - **Kaynak rapor:** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
   - **Hedef dosya:** `lib/screens/facilities/facility_detail_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Card widget — tema dışı default
+- [x] **[P2 · UI/UX]** Card widget — tema dışı default
   - **Sorun:** `Card()` default Material (satır 140, 154); koyu gradient body üzerinde açık tema flash riski.
   - **Çözüm:** `GkkCard` veya `color: AppColors.bgCard`.
   - **Kaynak rapor:** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
   - **Hedef dosya:** `lib/screens/facilities/facility_detail_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Nadirlik Simülatörü — 10 seviye scroll duvarı
+- [x] **[P2 · UI/UX]** Nadirlik Simülatörü — 10 seviye scroll duvarı
   - **Sorun:** `List.generate(10, ...)` overview tab'de (satır 360-434); çiftlik açık olsa bile çok uzun sayfa.
   - **Çözüm:** Accordion veya ayrı "Drop tablosu" ekranı.
   - **Kaynak rapor:** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
   - **Hedef dosya:** `lib/screens/facilities/facility_detail_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Nadirlik — İngilizce etiketler
+- [x] **[P2 · UI/UX]** Nadirlik — İngilizce etiketler
   - **Sorun:** `_rarityLabel` → `'⚪ Common'` (satır 935-951); UI Türkçe ama rarity İngilizce.
   - **Çözüm:** `Yaygın`, `Nadir` vb. TR map.
   - **Kaynak rapor:** [facility_detail.md](reports/audits/audit_2026-06-27/facility_detail.md)
@@ -774,7 +769,7 @@ void initState() {
 ### guild_monument — [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
 **Kaynak kod:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Tema tutarsızlığı — hardcoded renkler
+- [x] **[P1 · UI/UX]** Tema tutarsızlığı — hardcoded renkler
   - **Sorun:** `Color(0xFF1A2030)`, `Colors.blue`, `Color(0xFFFBBF24)`, `Color(0xFF6366F1)` doğrudan (`guild_monument_screen.dart` 195–351); `AppColors` / `AppTextStyles` kullanılmıyor. Guild ekranı ve guild war farklı palette.
   - **Çözüm:** `AppColors.bgCard`, `AppColors.gold`, `AppTextStyles.title`.
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
@@ -797,44 +792,44 @@ class GuildMonumentRepository {
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `_load` — N+1 username fetch pattern
+- [x] **[P2 · Kod/Refaktör]** `_load` — N+1 username fetch pattern
   - **Sorun:** Contributors çek → ayrı `users.inFilter` (satır 73–76); doğru ama ekran içinde 90 satır veri katmanı.
   - **Çözüm:** final data = await client.rpc('get_monument_dashboard', params: {'p_guild_id': guildId});
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `_upgrade` — `as Map` unsafe cast
+- [x] **[P2 · Kod/Refaktör]** `_upgrade` — `as Map` unsafe cast
   - **Sorun:** `rpc('upgrade_monument') as Map` (satır 126); wrong type runtime crash.
   - **Çözüm:** if (data is! Map<String, dynamic>) { ... return; }
 final result = data;
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `context.go` donate — stack replace
+- [x] **[P2 · Kod/Refaktör]** `context.go` donate — stack replace
   - **Sorun:** `Bağış Yap` → `context.go(AppRoutes.guildMonumentDonate)` (satır 199); geri tuşu monument'e dönmez (go vs push).
   - **Çözüm:** context.push(AppRoutes.guildMonumentDonate);
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Aksiyon satırı — küçük ekran taşma
+- [x] **[P2 · UI/UX]** Aksiyon satırı — küçük ekran taşma
   - **Sorun:** `Row` içinde `Bağış Yap` + `Yükselt` yan yana (`guild_monument_screen.dart` 196–211). Dar genişlikte butonlar sıkışır veya overflow.
   - **Çözüm:** `Wrap` veya `Column` + full-width butonlar; `canUpgrade` için FAB.
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Bonus grid — `childAspectRatio: 2.2` overflow
+- [x] **[P2 · UI/UX]** Bonus grid — `childAspectRatio: 2.2` overflow
   - **Sorun:** `kMonumentBonuses` 5+ satır, her hücrede Lv + title + effect 3 satır (`guild_monument_screen.dart` 316–342). `mainAxisSize: min` ama aspect ratio düşük → metin clip.
   - **Çözüm:** `ListView` satır bazlı; unlocked/locked accordion.
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Empty state — minimal bilgi
+- [x] **[P2 · UI/UX]** Empty state — minimal bilgi
   - **Sorun:** `!hasGuild` → kırmızı metin + `Lonca Bul` (`guild_monument_screen.dart` 165–170). Screenshot merkezde tek satır; anıt sistemi ne işe yarar açıklanmıyor, görsel/ikon yok.
   - **Çözüm:** `MekanEmpty` tarzı illüstrasyon + "Loncaya katılarak anıt yükselt" + birincil/ikincil CTA.
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_screen.dart`
 
-- [ ] **[P2 · UI/UX]** `_ResourceTile` — `childAspectRatio: 3` sıkışıklık
+- [x] **[P2 · UI/UX]** `_ResourceTile` — `childAspectRatio: 3` sıkışıklık
   - **Sorun:** Grid 2×2, label `fontSize: 10`, value `14` (`guild_monument_screen.dart` 292–304, 428). "Yapısal Kaynak" uzun label tek satırda sıkışır.
   - **Çözüm:** `childAspectRatio: 2.2`; kısa label ("Yapısal") + tooltip.
   - **Kaynak rapor:** [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md)
@@ -843,7 +838,7 @@ final result = data;
 ### guild_monument_donate — [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
 **Kaynak kod:** `lib/screens/guild/guild_monument_donate_screen.dart`
 
-- [ ] **[P1 · Kod/Refaktör]** Bağış sonrası guild/player refresh yok
+- [x] **[P1 · Kod/Refaktör]** Bağış sonrası guild/player refresh yok
   - **Sorun:** Monument ekranına dönünce stale anıt seviyesi.
   - **Çözüm:** Bölüm 2 refactor önerisine bakınız.
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
@@ -873,37 +868,37 @@ final result = data;
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_donate_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** İki farklı Scaffold yapısı
+- [x] **[P2 · Kod/Refaktör]** İki farklı Scaffold yapısı
   - **Sorun:** `!hasGuild` vs normal (satır 173-223); chrome tutarsız.
   - **Çözüm:** Bölüm 2 refactor önerisine bakınız.
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_donate_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Başarı sonrası — hard `go` monument
+- [x] **[P2 · UI/UX]** Başarı sonrası — hard `go` monument
   - **Sorun:** `context.go(AppRoutes.guildMonument)` (satır 107); geri stack silinir.
   - **Çözüm:** `pop` + refresh veya "Başka bağış" CTA.
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_donate_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Envanter/stok önizlemesi yok
+- [x] **[P2 · UI/UX]** Envanter/stok önizlemesi yok
   - **Sorun:** Yapısal/mistik/kritik kaynak input var ama oyuncunun elinde ne kadar olduğu gösterilmiyor.
   - **Çözüm:** `inventoryProvider` ile `Sahip: X` satırı.
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_donate_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Input default — `'0'` her alan
+- [x] **[P2 · UI/UX]** Input default — `'0'` her alan
   - **Sorun:** Controller `text: '0'` (satır 21-24); kullanıcı silmeden bağış yapamaz veya yanlışlıkla 0 gönderir.
   - **Çözüm:** Boş placeholder; `hintText: '0'`.
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_donate_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Lonca yok — kırık empty state (Screenshot QA)
+- [x] **[P2 · UI/UX]** Lonca yok — kırık empty state (Screenshot QA)
   - **Sorun:** Screenshot: `Lonca bulunamadı.` tek satır, ortada (satır 173-177); AppBar bile minimal, bottom nav yok, CTA yok (`Lonca Bul` / `Geri`).
   - **Çözüm:** Empty illustration + `context.go(AppRoutes.guild)` CTA; monument donate smoke için guild fixture.
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
   - **Hedef dosya:** `lib/screens/guild/guild_monument_donate_screen.dart`
 
-- [ ] **[P2 · UI/UX]** `suffixText: 'max $remaining'` — İngilizce
+- [x] **[P2 · UI/UX]** `suffixText: 'max $remaining'` — İngilizce
   - **Sorun:** `_resourceInput` suffix (satır 148); label Türkçe.
   - **Çözüm:** `'en fazla $remaining'`.
   - **Kaynak rapor:** [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md)
@@ -2876,19 +2871,17 @@ lib/screens/shop/shop_repository.dart  // buy_shop_item, gold exchange RPC
   - **Hedef dosya:** `lib/screens/auth/splash_screen.dart`
 
 ### trade — [trade.md](reports/audits/audit_2026-06-27/trade.md)
-**Kaynak kod:** `lib/screens/trade/trade_screen.dart`
+**Kaynak kod:** `lib/screens/trade/trade_screen.dart` (+ `lib/components/trade/*`, `lib/providers/trade_invite_provider.dart`, Supabase trade migrations)
 
-- [ ] **[P0 · Kod/Refaktör]** Local state — sunucu sync yok
+- [x] **[P0 · Kod/Refaktör]** Local state — sunucu sync yok
   - **Sorun:** `_myOffer`, `_tradeStatus` yalnızca client; app kill → stale session; `_confirmTrade` session null ise yine `done` (satır 160-168).
-  - **Çözüm:** class TradeSessionNotifier extends AsyncNotifier<TradeSession> {
-  StreamSubscription? _realtime;
-}
+  - **Çözüm:** 2s polling `get_trade_session_details` + `get_my_active_trade_session` restore; confirm RPC response parse.
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
-- [ ] **[P0 · Kod/Refaktör]** RPC param adı tutarsızlığı
-  - **Sorun:** `add_trade_item`: `session_id`; `confirm_trade`/`cancel_trade`: `p_session_id` (satır 136, 162, 186) — overload/migration riski.
-  - **Çözüm:** params: {'p_session_id': _sessionId}
+- [x] **[P0 · Kod/Refaktör]** RPC param adı tutarsızlığı
+  - **Sorun:** `add_trade_item`: `session_id`; `confirm_trade`/`cancel_trade`: `p_session_id` — overload/migration riski + ambiguous column 42702.
+  - **Çözüm:** Tüm trade RPC'ler `p_session_id` / `p_item_row_id`; migration `20260627_080000_fix_add_trade_item_ambiguous`.
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
@@ -2898,11 +2891,11 @@ lib/screens/shop/shop_repository.dart  // buy_shop_item, gold exchange RPC
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
-- [ ] **[P0 · UI/UX]** Durum makinesi — gelen istek UI yok
+- [x] **[P0 · UI/UX]** Durum makinesi — gelen istek UI yok
   - **Sorun:** Yalnızca outbound search (`initiate_trade`); pending/active inbound trade listesi, push/badge yok.
-  - **Çözüm:** `get_pending_trades` banner + notification.
+  - **Çözüm:** `TradeInviteHost` global popup + `get_pending_trade_invites` polling; kabul/red + 4s engel.
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
-  - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
+  - **Hedef dosya:** `lib/components/trade/trade_invite_host.dart`
 
 - [ ] **[P0 · UI/UX]** Miktar — her zaman 1
   - **Sorun:** `_addItemToOffer` `'quantity': 1` sabit (satır 130); stackable eşyada partial trade yok.
@@ -2910,21 +2903,21 @@ lib/screens/shop/shop_repository.dart  // buy_shop_item, gold exchange RPC
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
-- [ ] **[P1 · Kod/Refaktör]** `_removeFromOffer` — sunucu sync yok
+- [x] **[P1 · Kod/Refaktör]** `_removeFromOffer` — sunucu sync yok
   - **Sorun:** Local remove only; backend offer stale kalır.
-  - **Çözüm:** Bölüm 2 refactor önerisine bakınız.
+  - **Çözüm:** `remove_trade_item` RPC + session refresh.
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Oturum ID — debug metni prod'da
-  - **Sorun:** `'Oturum: ${_sessionId!.substring(0, 8)}...'` (satır 495-497) 10px `white38` — oyuncu için anlamsız.
-  - **Çözüm:** Dev-only `kDebugMode` veya destek menüsüne taşı.
+- [x] **[P1 · UI/UX]** Oturum ID — debug metni prod'da
+  - **Sorun:** `'Oturum: ${_sessionId!.substring(0, 8)}...'` prod'da anlamsız.
+  - **Çözüm:** Oturum ID UI kaldırıldı.
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `_addToHistory` — optimistic + immediate reload
-  - **Sorun:** Satır 201-211 fake id `th${timestamp}` insert sonra `_loadHistory()` — duplicate flash.
-  - **Çözüm:** await _loadHistory(); // optimistic skip veya merge by id
+- [x] **[P2 · Kod/Refaktör]** `_addToHistory` — optimistic + immediate reload
+  - **Sorun:** Confirm sonrası fake id + duplicate flash.
+  - **Çözüm:** Confirm tamamlanınca yalnızca `_loadHistory()`; optimistic insert kaldırıldı.
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
@@ -2934,9 +2927,9 @@ lib/screens/shop/shop_repository.dart  // buy_shop_item, gold exchange RPC
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Karşı teklif paneli — bilinçli ama kırıcı placeholder
-  - **Sorun:** `_buildActiveState` sağ kolon (satır 571-588): `'Gerçek zamanlı senkronizasyon henüz desteklenmiyor.'` + `Icons.sync_disabled`. P2P ticaretin yarısı çalışmıyor ama Onayla aktif.
-  - **Çözüm:** Realtime channel (Supabase Realtime) veya polling; tamamlanana kadar Onayla disabled + `Beta` banner.
+- [x] **[P2 · UI/UX]** Karşı teklif paneli — bilinçli ama kırıcı placeholder
+  - **Sorun:** `'Gerçek zamanlı senkronizasyon henüz desteklenmiyor.'` — partner offer görünmüyordu.
+  - **Çözüm:** 2s polling + jsonb parse fix; karşı teklif paneli canlı; gold sync.
   - **Kaynak rapor:** [trade.md](reports/audits/audit_2026-06-27/trade.md)
   - **Hedef dosya:** `lib/screens/trade/trade_screen.dart`
 

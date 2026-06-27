@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../components/common/item_icon_view.dart';
 import 'loot_chest_theme.dart';
+import '../../l10n/l10n.dart';
 
 class LootChestGridPainter extends CustomPainter {
   @override
@@ -382,7 +383,7 @@ class LootDropPreviewDialog extends StatelessWidget {
                         Builder(
                           builder: (BuildContext context) {
                             return _buildActionButton(
-                              label: 'DROP ÖNİZLEME',
+                              label: context.l10n.drop_ni_zleme,
                               onPressed: () => Navigator.of(context).pop(),
                               isPrimary: true,
                             );
@@ -390,7 +391,7 @@ class LootDropPreviewDialog extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         _buildActionButton(
-                          label: 'KAPAT',
+                          label: context.l10n.kapat_2,
                           onPressed: () => Navigator.of(context).pop(),
                           isPrimary: false,
                         ),

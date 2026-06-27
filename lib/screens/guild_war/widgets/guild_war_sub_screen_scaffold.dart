@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../components/layout/game_chrome.dart';
-import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
+import 'guild_war_design.dart';
 
 /// Sub-screens under guild war with back navigation.
 class GuildWarSubScreenScaffold extends ConsumerWidget {
@@ -32,41 +32,28 @@ class GuildWarSubScreenScaffold extends ConsumerWidget {
           ? GameBottomBar(currentRoute: currentRoute!, onLogout: onLogout)
           : null,
       floatingActionButton: floatingAction,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Material(
-            color: AppColors.bgSurface.withValues(alpha: 0.95),
-            child: SafeArea(
-              bottom: false,
-              child: InkWell(
+      body: WarBackdrop(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
+              child: WarPressable(
                 onTap: () => context.pop(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.bgCard,
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                          border: Border.all(color: AppColors.borderDefault),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 16,
-                          color: AppColors.gold,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
+                child: WarNeonCard(
+                  accent: WarPalette.gold,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  radius: 12,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: WarPalette.gold),
+                      SizedBox(width: 6),
                       Text(
                         'Geri',
                         style: TextStyle(
-                          color: AppColors.gold.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w700,
+                          color: WarPalette.gold,
+                          fontWeight: FontWeight.w800,
                           fontSize: 13,
                         ),
                       ),
@@ -75,9 +62,9 @@ class GuildWarSubScreenScaffold extends ConsumerWidget {
                 ),
               ),
             ),
-          ),
-          Expanded(child: body),
-        ],
+            Expanded(child: body),
+          ],
+        ),
       ),
     );
   }

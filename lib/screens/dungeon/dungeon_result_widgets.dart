@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/dungeon_model.dart';
 import 'dungeon_item_utils.dart';
 import 'dungeon_victory_effects.dart';
+import '../../l10n/l10n.dart';
 
 /// Scale-in wrapper for victory/defeat cards.
 class AnimatedResultCard extends StatefulWidget {
@@ -337,7 +338,7 @@ class DungeonVictoryPanel extends StatelessWidget {
     final List<Widget> badges = <Widget>[
       VictoryBadge(
         icon: '💰',
-        label: 'ALTIN',
+        label: context.l10n.altin,
         value: '$gold',
         color: const Color(0xFFDDB200),
       ),
@@ -352,7 +353,7 @@ class DungeonVictoryPanel extends StatelessWidget {
         const SizedBox(width: kBadgeGapBetween),
         VictoryBadge(
           icon: '🎒',
-          label: 'EŞYA',
+          label: context.l10n.e_ya,
           value: '${items.length}',
           color: const Color(0xFF3B82F6),
         ),

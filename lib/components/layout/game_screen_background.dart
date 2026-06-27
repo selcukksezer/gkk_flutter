@@ -1,6 +1,169 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import 'game_chrome.dart';
+
+/// Scroll list layout — moderate gaps between sections; bottom bar clearance at end.
+abstract final class GameScrollLayout {
+  /// Major blocks (hero, panel groups, section titles + content).
+  static const double sectionGap = AppSpacing.md;
+
+  /// Stacked cards or rows inside one block.
+  static const double itemGap = AppSpacing.sm;
+
+  /// Section title → first child below it.
+  static const double titleGap = AppSpacing.sm;
+
+  static Widget get sectionSpacer => const SizedBox(height: sectionGap);
+  static Widget get itemSpacer => const SizedBox(height: itemGap);
+  static Widget get titleSpacer => const SizedBox(height: titleGap);
+
+  static EdgeInsets pagePadding(BuildContext context) => padding(context);
+
+  /// Bottom inset so last scroll item clears [GameBottomBar] (extendBody safe).
+  static double bottomInset(BuildContext context) => gameBottomBarClearance(context);
+
+  /// Standard scroll padding — bottom always clears overlay nav.
+  static EdgeInsets padding(
+    BuildContext context, {
+    double horizontal = AppSpacing.base,
+    double top = AppSpacing.base,
+    double bottomExtra = 0,
+  }) =>
+      EdgeInsets.fromLTRB(
+        horizontal,
+        top,
+        horizontal,
+        bottomInset(context) + bottomExtra,
+      );
+
+  /// Like [padding] with explicit edges; bottom = bar clearance (+ optional extra).
+  static EdgeInsets fromLTRB(
+    BuildContext context, {
+    required double left,
+    required double top,
+    required double right,
+    double bottomExtra = 0,
+  }) =>
+      EdgeInsets.fromLTRB(
+        left,
+        top,
+        right,
+        bottomInset(context) + bottomExtra,
+      );
+
+  /// Keeps L/T/R from [base]; bottom = bar clearance + [base.bottom].
+  static EdgeInsets withClearance(BuildContext context, EdgeInsets base) =>
+      EdgeInsets.fromLTRB(
+        base.left,
+        base.top,
+        base.right,
+        bottomInset(context) + base.bottom,
+      );
+
+  static Widget bottomSpacer(BuildContext context) =>
+      SizedBox(height: bottomInset(context));
+}
+
+/// Wraps a scroll block with consistent top spacing (skip [leadingGap] on first item).
+class GameScrollSection extends StatelessWidget {
+  const GameScrollSection({
+    super.key,
+    required this.child,
+    this.leadingGap = true,
+  });
+
+  final Widget child;
+  final bool leadingGap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!leadingGap) return child;
+    return Padding(
+      padding: const EdgeInsets.only(top: GameScrollLayout.sectionGap),
+      child: child,
+    );
+  }
+}
+
+/// Fixed-column grid for [ListView] children — avoids [GridView] shrinkWrap phantom space.
+class GameFixedGrid extends StatelessWidget {
+  const GameFixedGrid({
+    super.key,
+    required this.crossAxisCount,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.spacing = AppSpacing.sm,
+  });
+
+  final int crossAxisCount;
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    if (itemCount <= 0) return const SizedBox.shrink();
+
+    final List<Widget> items = List<Widget>.generate(
+      itemCount,
+      (int index) => itemBuilder(context, index),
+    );
+
+    return GameGridColumns(
+      crossAxisCount: crossAxisCount,
+      spacing: spacing,
+      children: items,
+    );
+  }
+}
+
+/// Fixed-height grid rows for [ListView] children — avoids [GridView] shrinkWrap phantom space.
+class GameGridColumns extends StatelessWidget {
+  const GameGridColumns({
+    super.key,
+    required this.crossAxisCount,
+    required this.children,
+    this.spacing = AppSpacing.sm,
+  });
+
+  final int crossAxisCount;
+  final List<Widget> children;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    final List<Widget> rows = <Widget>[];
+    for (int i = 0; i < children.length; i += crossAxisCount) {
+      if (i > 0) rows.add(SizedBox(height: spacing));
+      final List<Widget> rowChildren = <Widget>[];
+      for (int col = 0; col < crossAxisCount; col++) {
+        if (col > 0) rowChildren.add(SizedBox(width: spacing));
+        final int index = i + col;
+        rowChildren.add(
+          Expanded(
+            child: index < children.length ? children[index] : const SizedBox.shrink(),
+          ),
+        );
+      }
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: rowChildren,
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
+  }
+}
 
 /// Dotted grid overlay — Carbon Void / Space Navy aesthetic.
 class DotGridPainter extends CustomPainter {

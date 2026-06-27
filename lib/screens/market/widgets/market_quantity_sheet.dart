@@ -4,6 +4,7 @@ import '../../../models/market_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import 'market_helpers.dart';
+import '../../../l10n/l10n.dart';
 
 enum MarketQuantityMode { buy, sell }
 
@@ -249,7 +250,7 @@ class _MarketQuantitySheetState extends State<MarketQuantitySheet> {
                       foregroundColor: AppColors.textSecondary,
                       side: const BorderSide(color: AppColors.borderDefault),
                     ),
-                    child: const Text('Vazgec'),
+                    child: Text(context.l10n.vazgec),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),

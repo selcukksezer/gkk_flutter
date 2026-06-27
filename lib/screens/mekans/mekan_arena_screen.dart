@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/pvp_provider.dart';
@@ -250,7 +251,7 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
               ],
             )
           : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 32),
+              padding: GameScrollLayout.fromLTRB(context, left: 14, top: 8, right: 14),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: _opponents.length,
               separatorBuilder: (BuildContext context, int index) => const SizedBox(height: 10),
@@ -285,7 +286,7 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
               ],
             )
           : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 32),
+              padding: GameScrollLayout.fromLTRB(context, left: 14, top: 8, right: 14),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: _ranking.length,
               itemBuilder: (BuildContext context, int i) {

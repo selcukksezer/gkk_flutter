@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/inventory_model.dart';
 import '../../providers/auth_provider.dart';
@@ -1601,7 +1602,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }
 
     return Scaffold(
-      appBar: GameTopBar(title: '🏦 Banka', onLogout: logoutHandler),
+      appBar: GameTopBar(title: context.l10n.screenTitleBank, onLogout: logoutHandler),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.bank, onLogout: logoutHandler),
       body: Container(

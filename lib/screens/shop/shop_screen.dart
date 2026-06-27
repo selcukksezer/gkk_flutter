@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -227,7 +229,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     switch ((rarity ?? '').toLowerCase()) {
       case 'uncommon': return const Color(0xFF22C55E);
       case 'rare':     return const Color(0xFF3B82F6);
-      case 'epic':     return const Color(0xFFA855F7);
+      case 'epic':     return AppColors.rarityEpic;
       case 'legendary':return const Color(0xFFF59E0B);
       case 'mythic':   return const Color(0xFFEF4444);
       default:         return const Color(0xFF94A3B8);
@@ -471,7 +473,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     return Stack(
       children: [
         Scaffold(
-      appBar: GameTopBar(title: 'Mağaza', onLogout: _doLogout),
+      appBar: GameTopBar(title: context.l10n.routeShop, onLogout: _doLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.shop, onLogout: _doLogout),
       body: Container(
@@ -502,11 +504,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                             color: Colors.amber, fontWeight: FontWeight.w700)),
                     const SizedBox(width: 20),
                     const Icon(Icons.diamond_rounded,
-                        color: Colors.purpleAccent, size: 16),
+                        color: AppColors.accentCyan, size: 16),
                     const SizedBox(width: 6),
                     Text('$gems',
                         style: const TextStyle(
-                            color: Colors.purpleAccent, fontWeight: FontWeight.w700)),
+                            color: AppColors.accentCyan, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -517,7 +519,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
               tabAlignment: TabAlignment.start,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white38,
-              indicatorColor: Colors.purpleAccent,
+              indicatorColor: AppColors.accentCyan,
               tabs: const <Tab>[
                 Tab(text: '💎 Gem'),
                 Tab(text: '💰 Altın'),
@@ -633,7 +635,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                               Expanded(
                                 child: OutlinedButton(
                                   onPressed: () => setState(() => _quantityDialogItem = null),
-                                  child: const Text('İptal'),
+                                  child: Text(context.l10n.commonCancel),
                                 ),
                               ),
                             ],
@@ -687,11 +689,11 @@ class _GemPackagesTab extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: pkg.isBestValue
-                  ? const <Color>[Color(0xFF4A00E0), Color(0xFF8E2DE2)]
+                  ? <Color>[AppColors.liquidGold, AppColors.goldDim]
                   : const <Color>[Color(0xFF1A1D2E), Color(0xFF252840)],
             ),
             border: Border.all(
-              color: pkg.isBestValue ? Colors.purpleAccent : Colors.white12,
+              color: pkg.isBestValue ? AppColors.liquidGold : Colors.white12,
               width: pkg.isBestValue ? 2 : 1,
             ),
           ),
@@ -714,7 +716,7 @@ class _GemPackagesTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
               ],
-              const Icon(Icons.diamond_rounded, color: Colors.purpleAccent, size: 44),
+              const Icon(Icons.diamond_rounded, color: AppColors.accentCyan, size: 44),
               const SizedBox(height: 8),
               Text('${pkg.gems} 💎',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
@@ -724,7 +726,7 @@ class _GemPackagesTab extends StatelessWidget {
               FilledButton(
                 onPressed: purchaseLoading ? null : () => onBuyGem(pkg),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.purpleAccent,
+                  backgroundColor: AppColors.accentCyan,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                   textStyle:
@@ -802,11 +804,11 @@ class _GoldPackagesTab extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         const Icon(Icons.diamond_rounded,
-                            size: 12, color: Colors.purpleAccent),
+                            size: 12, color: AppColors.accentCyan),
                         const SizedBox(width: 4),
                         Text('${pkg.gemCost} Elmas',
                             style: const TextStyle(
-                                color: Colors.purpleAccent, fontSize: 12)),
+                                color: AppColors.accentCyan, fontSize: 12)),
                       ],
                     ),
                   ],
@@ -979,9 +981,9 @@ class _ItemsTab extends StatelessWidget {
               child: TextField(
                 onChanged: onSearchChanged,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
-                  hintText: 'Eşya ara...',
-                  hintStyle: TextStyle(color: Colors.white38, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: context.l10n.e_ya_ara,
+                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
                   border: InputBorder.none,

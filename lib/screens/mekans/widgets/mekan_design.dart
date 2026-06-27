@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../components/common/item_icon_view.dart';
 import '../../../theme/app_colors.dart';
 import 'mekan_theme.dart';
+import '../../../l10n/l10n.dart';
 
 /// Next-gen neon palette for the Mekan ("Han") experience.
 /// Scoped to mekan screens only; the rest of the app keeps [AppColors].
@@ -459,7 +460,7 @@ class LootStockCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   if (contraband)
-                    const GlowChip(icon: Icons.warning_amber_rounded, label: 'KACAK', color: MekanPalette.neon)
+                    GlowChip(icon: Icons.warning_amber_rounded, label: context.l10n.kacak, color: MekanPalette.neon)
                   else if (isHanOnly)
                     const GlowChip(icon: Icons.local_fire_department_rounded, label: 'HAN', color: MekanPalette.fuchsia)
                   else

@@ -130,8 +130,11 @@ Future<Map<String, dynamic>?> _fetchRedirectUserProfile(String authId) {
 Future<Map<String, dynamic>?>? _redirectProfileInflight;
 String? _redirectProfileUserId;
 
+final GlobalKey<NavigatorState> appRootNavigatorKey = GlobalKey<NavigatorState>();
+
 GoRouter createAppRouter({Listenable? refreshListenable}) {
   return GoRouter(
+  navigatorKey: appRootNavigatorKey,
   initialLocation: AppRoutes.splash,
   refreshListenable: refreshListenable,
   errorBuilder: (BuildContext context, GoRouterState state) => const HomeScreen(),

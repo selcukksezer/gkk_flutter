@@ -1,10 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'components/trade/trade_invite_host.dart';
+import 'core/services/presence_service.dart';
 import 'core/services/supabase_service.dart';
+import 'l10n/l10n.dart';
+import 'providers/locale_provider.dart';
 import 'routing/app_router.dart';
 import 'theme/app_theme.dart';
 
@@ -15,16 +20,17 @@ Future<void> main() async {
   runApp(const ProviderScope(child: GkkMobileApp()));
 }
 
-class GkkMobileApp extends StatefulWidget {
+class GkkMobileApp extends ConsumerStatefulWidget {
   const GkkMobileApp({super.key});
 
   @override
-  State<GkkMobileApp> createState() => _GkkMobileAppState();
+  ConsumerState<GkkMobileApp> createState() => _GkkMobileAppState();
 }
 
-class _GkkMobileAppState extends State<GkkMobileApp> {
+class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
   late final GoRouter _router;
   late final _RouterRefreshNotifier _routerRefreshNotifier;
+  StreamSubscription<dynamic>? _presenceAuthSub;
 
   @override
   void initState() {
@@ -36,10 +42,23 @@ class _GkkMobileAppState extends State<GkkMobileApp> {
     _router = createAppRouter(
       refreshListenable: _routerRefreshNotifier,
     );
+    if (SupabaseService.isInitialized &&
+        SupabaseService.client.auth.currentSession != null) {
+      PresenceService.instance.start();
+    }
+    _presenceAuthSub = authRefreshStream.listen((_) {
+      if (!SupabaseService.isInitialized) return;
+      if (SupabaseService.client.auth.currentSession != null) {
+        PresenceService.instance.start();
+      } else {
+        PresenceService.instance.stop();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _presenceAuthSub?.cancel();
     _routerRefreshNotifier.dispose();
     _router.dispose();
     super.dispose();
@@ -47,11 +66,23 @@ class _GkkMobileAppState extends State<GkkMobileApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'GKK Mobile',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      routerConfig: _router,
+    final Locale locale = ref.watch(localeProvider);
+
+    return TradeInviteHost(
+      child: MaterialApp.router(
+        title: 'GKK Mobile',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.dark,
+        locale: locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        routerConfig: _router,
+      ),
     );
   }
 }

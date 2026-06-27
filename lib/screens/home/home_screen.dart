@@ -12,16 +12,17 @@ import '../../components/common/gkk_progress_bar.dart';
 import '../../components/common/gkk_stat_tile.dart';
 import '../../components/daily_reward/daily_reward_dialog.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
 import '../../models/player_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/daily_reward_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../repositories/inventory_repository.dart';
 import '../../qa/qa_flags.dart';
 import '../../routing/app_router.dart';
+import '../../l10n/l10n.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
@@ -30,6 +31,7 @@ import 'widgets/pantheon_board.dart';
 import 'widgets/hero_showcase.dart';
 import 'widgets/sticky_action_bar.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../utils/logout_helper.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -80,22 +82,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: GameTopBar(
-        title: 'Home',
+        title: context.l10n.routeHome,
         onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-          ref.read(inventoryProvider.notifier).clear();
-        },
+          await performLogout(ref);
+},
       ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.home,
         leadingOverlay: StickyActionBar(),
         onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-          ref.read(inventoryProvider.notifier).clear();
-        },
+          await performLogout(ref);
+},
       ),
       body: switch (playerState.status) {
         PlayerStatus.initial || PlayerStatus.loading => const Center(
@@ -206,7 +204,6 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
         .where((item) => item.itemType == ItemType.potion && item.quantity > 0)
         .toList();
 
-    final double bottomBarClearance = gameBottomBarClearance(context);
 
     return Stack(
       children: <Widget>[
@@ -259,11 +256,12 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
         Positioned.fill(
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.base,
-              AppSpacing.md,
-              AppSpacing.base,
-              bottomBarClearance + kGameChatFabSize + AppSpacing.md,
+            padding: GameScrollLayout.fromLTRB(
+              context,
+              left: AppSpacing.base,
+              top: AppSpacing.md,
+              right: AppSpacing.base,
+              bottomExtra: kGameChatFabSize + AppSpacing.md,
             ),
             children: <Widget>[
               // Promo Banner
@@ -967,7 +965,7 @@ class _StatsGrid extends StatelessWidget {
         label: 'GEM',
         emoji: '💎',
         value: _compact(gems),
-        color: AppColors.accentPurple,
+        color: AppColors.accentCyan,
       ),
       _StatItem(
         label: 'ENERJİ',
@@ -997,16 +995,10 @@ class _StatsGrid extends StatelessWidget {
       ),
     ];
 
-    return GridView.builder(
+    return GameFixedGrid(
+      crossAxisCount: 2,
+      spacing: AppSpacing.sm,
       itemCount: stats.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpacing.sm,
-        crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 1.55,
-      ),
       itemBuilder: (context, index) {
         final _StatItem s = stats[index];
         return GkkStatTile(
@@ -1070,16 +1062,10 @@ class _PrimaryActions extends StatelessWidget {
       ),
     ];
 
-    return GridView.builder(
+    return GameFixedGrid(
+      crossAxisCount: 4,
+      spacing: AppSpacing.sm,
       itemCount: actions.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: AppSpacing.sm,
-        crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 0.82,
-      ),
       itemBuilder: (context, index) {
         final _ActionItem item = actions[index];
         return GkkActionTile(
@@ -1273,7 +1259,7 @@ class _SecondaryActions extends StatelessWidget {
         emoji: '🏆',
         label: 'Sıralama',
         onTap: onNavigateLeaderboard,
-        color: AppColors.accentPurple,
+        color: AppColors.accentBlue,
       ),
       _ActionItem(
         emoji: '🥊',
@@ -1291,22 +1277,16 @@ class _SecondaryActions extends StatelessWidget {
         emoji: '✨',
         label: 'Sezon',
         onTap: onNavigateSeason,
-        color: AppColors.accentPurple,
+        color: AppColors.liquidGold,
       ),
     ];
 
     return AnimatedCrossFade(
       firstChild: const SizedBox.shrink(),
-      secondChild: GridView.builder(
+      secondChild: GameFixedGrid(
+        crossAxisCount: 4,
+        spacing: AppSpacing.sm,
         itemCount: actions.length,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: AppSpacing.sm,
-          crossAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 0.88,
-        ),
         itemBuilder: (context, index) {
           final _ActionItem item = actions[index];
           return GkkActionTile(

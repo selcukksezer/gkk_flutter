@@ -1,10 +1,44 @@
 import 'package:flutter/material.dart';
 
-import '../../../components/common/gkk_card.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
+import 'guild_war_design.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+
+class KingdomElectionVoter {
+  const KingdomElectionVoter({
+    required this.isLeader,
+    required this.canVote,
+    required this.alreadyVoted,
+    required this.maxRank,
+    this.guildRank,
+  });
+
+  final bool isLeader;
+  final bool canVote;
+  final bool alreadyVoted;
+  final int maxRank;
+  final int? guildRank;
+
+  factory KingdomElectionVoter.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const KingdomElectionVoter(
+        isLeader: false,
+        canVote: false,
+        alreadyVoted: false,
+        maxRank: 20,
+      );
+    }
+    return KingdomElectionVoter(
+      isLeader: json['is_leader'] == true,
+      canVote: json['can_vote'] == true,
+      alreadyVoted: json['already_voted'] == true,
+      maxRank: (json['max_rank'] as num?)?.toInt() ?? 20,
+      guildRank: (json['guild_rank'] as num?)?.toInt(),
+    );
+  }
+}
 
 class KingdomElectionData {
   const KingdomElectionData({
@@ -16,6 +50,12 @@ class KingdomElectionData {
     this.endAt,
     this.candidates = const [],
     this.winner,
+    this.voter = const KingdomElectionVoter(
+      isLeader: false,
+      canVote: false,
+      alreadyVoted: false,
+      maxRank: 20,
+    ),
   });
 
   final String status;
@@ -26,6 +66,7 @@ class KingdomElectionData {
   final DateTime? endAt;
   final List<KingdomCandidate> candidates;
   final KingdomWinner? winner;
+  final KingdomElectionVoter voter;
 
   bool get isActive => status == 'active';
   bool get isCompleted => status == 'completed';
@@ -50,6 +91,9 @@ class KingdomElectionData {
       winner: winnerJson is Map
           ? KingdomWinner.fromJson(Map<String, dynamic>.from(winnerJson))
           : null,
+      voter: KingdomElectionVoter.fromJson(
+        json['voter'] is Map ? Map<String, dynamic>.from(json['voter'] as Map) : null,
+      ),
     );
   }
 
@@ -149,8 +193,11 @@ class _KingdomElectionPanelState extends State<KingdomElectionPanel> {
 
       if (!mounted) return;
 
-      if (result is Map && result['error'] != null) {
-        AppMessenger.showError(context, result['error'] as String);
+      if (result is Map && (result['error'] != null || result['success'] == false)) {
+        AppMessenger.showError(
+          context,
+          (result['error'] ?? 'Oy kullanılamadı.') as String,
+        );
       } else {
         AppMessenger.showSuccess(context, '👑 Oyunuz kaydedildi!');
         await _load();
@@ -171,15 +218,34 @@ class _KingdomElectionPanelState extends State<KingdomElectionPanel> {
     return '${diff.inMinutes}dk kaldı';
   }
 
+  String? _voterStatusMessage(KingdomElectionData data) {
+    if (!data.votingOpen) return null;
+    final KingdomElectionVoter v = data.voter;
+    if (v.alreadyVoted) return 'Bu seçimde loncan adına oy kullandın.';
+    if (!v.isLeader) return 'Oy kullanmak için lonca lideri olmalısın.';
+    if (v.guildRank == null) return 'Loncan bu sezon sıralamada değil — oy hakkın yok.';
+    if (v.guildRank! > v.maxRank) {
+      return 'Oy hakkı yalnızca ilk ${v.maxRank} loncanın liderlerine ait. Loncan #$v.guildRank sırada.';
+    }
+    if (v.canVote) return 'Loncan #$v.guildRank sırada — oy kullanabilirsin.';
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const SizedBox.shrink();
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator(color: WarPalette.gold)),
+      );
     }
 
     final data = _data;
     if (data == null || !data.hasData) {
-      return const SizedBox.shrink();
+      return const WarEmptyTab(
+        icon: '👑',
+        message: 'Krallık seçimi şu an aktif değil. Sezon sonunda aday loncalar burada listelenecek.',
+      );
     }
 
     final totalVotes = data.candidates.fold<int>(0, (sum, c) => sum + c.voteCount);
@@ -195,78 +261,90 @@ class _KingdomElectionPanelState extends State<KingdomElectionPanel> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+      children: <Widget>[
         if (data.isCompleted && winner != null)
           _KingBanner(winner: winner, month: data.month)
-        else if (data.isActive) ...[
-          Text(
-            '👑 Krallık Seçimi (${data.month ?? ''})',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.gold,
+        else if (data.isActive) ...<Widget>[
+          WarSectionHeader(
+            title: 'Krallık Seçimi',
+            subtitle: data.month ?? '',
+            accent: WarPalette.solar,
+            trailing: data.endAt != null
+                ? WarStatusPill(label: _countdown(data.endAt), color: WarPalette.gold, pulse: true)
+                : null,
+          ),
+        ] else
+          const WarSectionHeader(
+            title: 'Krallık',
+            subtitle: 'Aday loncalar',
+            accent: WarPalette.solar,
+          ),
+        if (_voterStatusMessage(data) != null)
+          WarDottedPanel(
+            borderColor: data.voter.canVote
+                ? WarPalette.neon.withValues(alpha: 0.35)
+                : WarPalette.coral.withValues(alpha: 0.35),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  data.voter.canVote ? '✅' : 'ℹ️',
+                  style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _voterStatusMessage(data)!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 1.35,
+                      fontWeight: FontWeight.w700,
+                      color: data.voter.canVote ? WarPalette.neon : WarPalette.titanium,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          if (data.endAt != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              '⏳ ${_countdown(data.endAt)}',
-              style: const TextStyle(color: AppColors.goldLight, fontSize: 12),
-            ),
-          ],
-        ],
-        const SizedBox(height: AppSpacing.base),
-        ...data.candidates.map((candidate) {
+        ...data.candidates.map((KingdomCandidate candidate) {
           final ratio = totalVotes > 0 ? candidate.voteCount / totalVotes : 0.0;
           final isKing = winner != null && candidate.id == winner.id;
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: GkkCard(
-              accentColor: isKing ? AppColors.gold : null,
-              borderGlow: isKing,
-              padding: const EdgeInsets.all(AppSpacing.md),
+            child: WarNeonCard(
+              accent: isKing ? WarPalette.gold : WarPalette.solar,
+              glow: isKing,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: <Widget>[
                   Row(
-                    children: [
+                    children: <Widget>[
                       Icon(
-                        isKing ? Icons.emoji_events : Icons.shield_outlined,
-                        color: AppColors.gold,
+                        isKing ? Icons.emoji_events_rounded : Icons.shield_outlined,
+                        color: WarPalette.gold,
+                        size: 20,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           candidate.name,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
                           ),
                         ),
                       ),
                       if (isKing)
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.gold.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(99),
-                            border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
-                          ),
-                          child: const Text(
-                            'KRAL',
-                            style: TextStyle(
-                              color: AppColors.gold,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                        const Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: WarStatusPill(label: 'Kral', color: WarPalette.gold),
                         ),
                       Text(
-                        '${candidate.voteCount} Oy',
+                        '${candidate.voteCount} oy',
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.gold,
+                          fontWeight: FontWeight.w900,
+                          color: WarPalette.gold,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -277,23 +355,16 @@ class _KingdomElectionPanelState extends State<KingdomElectionPanel> {
                     child: LinearProgressIndicator(
                       value: ratio,
                       minHeight: 6,
-                      backgroundColor: AppColors.borderFaint,
-                      color: isKing ? AppColors.gold : AppColors.accentBlue,
+                      backgroundColor: WarPalette.obsidian,
+                      color: isKing ? WarPalette.gold : WarPalette.fuchsia,
                     ),
                   ),
-                  if (data.votingOpen && data.id != null) ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton(
-                        onPressed: () => _vote(data.id!, candidate.id),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accentBlue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                        child: const Text('Oy Ver'),
-                      ),
+                  if (data.voter.canVote && data.id != null) ...<Widget>[
+                    const SizedBox(height: 10),
+                    WarGoldButton(
+                      label: 'Oy Ver',
+                      onPressed: () => _vote(data.id!, candidate.id),
+                      expand: false,
                     ),
                   ],
                 ],
@@ -314,39 +385,31 @@ class _KingBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GkkCard(
-      borderGlow: true,
-      accentColor: AppColors.gold,
-      gradient: LinearGradient(
-        colors: [
-          AppColors.gold.withValues(alpha: 0.12),
-          AppColors.bgCard,
-        ],
-      ),
-      padding: const EdgeInsets.all(AppSpacing.base),
+    return WarHeroBanner(
+      accent: WarPalette.solar,
       child: Row(
-        children: [
-          const Text('👑', style: TextStyle(fontSize: 36)),
+        children: <Widget>[
+          const Text('👑', style: TextStyle(fontSize: 40)),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 Text(
                   month != null ? 'Krallık — $month' : 'Krallık',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  style: const TextStyle(color: WarPalette.titanium, fontSize: 11, fontWeight: FontWeight.w700),
                 ),
                 Text(
                   winner.name,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.goldLight,
+                    color: WarPalette.gold,
                   ),
                 ),
                 Text(
                   '${winner.voteCount} oy ile seçildi',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: const TextStyle(color: WarPalette.titanium, fontSize: 12),
                 ),
               ],
             ),

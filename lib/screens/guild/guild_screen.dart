@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/guild_model.dart';
 import '../../providers/auth_provider.dart';
@@ -447,7 +448,7 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
         : GuildRole.member;
 
     return Scaffold(
-      appBar: GameTopBar(title: 'Lonca', onLogout: onLogout),
+      appBar: GameTopBar(title: context.l10n.routeGuild, onLogout: onLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.guild, onLogout: onLogout),
       body: Container(
@@ -571,7 +572,7 @@ class _NoGuildView extends StatelessWidget {
                 child: TextField(
                   controller: searchController,
                   decoration: InputDecoration(
-                    hintText: 'Lonca ara...',
+                    hintText: context.l10n.lonca_ara,
                     prefixIcon: const Icon(Icons.search_rounded),
                     filled: true,
                     fillColor: Colors.white10,
@@ -671,7 +672,7 @@ class _NoGuildView extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onCreate,
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Lonca Kur'),
+            label: Text(context.l10n.lonca_kur),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Color(0xFF4B6FFF)),
               foregroundColor: const Color(0xFF4B6FFF),
@@ -742,7 +743,7 @@ class _GuildResultTile extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               textStyle: const TextStyle(fontSize: 12),
             ),
-            child: const Text('Katıl'),
+            child: Text(context.l10n.kat_l),
           ),
         ],
       ),
@@ -856,7 +857,7 @@ class _GuildView extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onEditMinJoinPower,
                     icon: const Icon(Icons.tune_rounded, size: 16),
-                    label: const Text('Katılım Güç Limiti'),
+                    label: Text(context.l10n.kat_l_m_g_limiti),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFF4B6FFF)),
                       foregroundColor: const Color(0xFF8BAEFF),
@@ -875,7 +876,7 @@ class _GuildView extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onGuildWar,
                   icon: const Icon(Icons.flag_rounded, size: 16),
-                  label: const Text('Lonca Savaşı'),
+                  label: Text(context.l10n.lonca_sava),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.white24),
                   ),

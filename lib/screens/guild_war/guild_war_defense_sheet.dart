@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../l10n/l10n.dart';
 
 Future<int?> showGuildWarDefenseSheet(BuildContext context) {
   return showModalBottomSheet<int>(
@@ -88,7 +89,7 @@ class _DefenseSheetState extends State<_DefenseSheet> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: const Text('Savunma Ekle'),
+              child: Text(context.l10n.savunma_ekle_2),
             ),
           ),
         ],

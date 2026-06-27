@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -59,7 +60,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Kayit')),
+      appBar: AppBar(title: Text(context.l10n.kayit)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -95,7 +96,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: isLoading ? null : () => context.go(AppRoutes.login),
-                child: const Text('Giris Ekranina Don'),
+                child: Text(context.l10n.giris_ekranina_don),
               ),
             ],
           ),

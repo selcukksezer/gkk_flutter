@@ -6,14 +6,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/crafting_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/crafting_provider.dart';
 import '../../providers/inventory_provider.dart';
+import '../../theme/app_colors.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../utils/logout_helper.dart';
 
 // ---------------------------------------------------------------------------
 // Tab configuration
@@ -28,20 +32,7 @@ const List<(String, String)> _kTabs = <(String, String)>[
   ('scroll', '📜 Yazıtlar'),
 ];
 
-Color _rarityColor(String rarity) {
-  switch (rarity) {
-    case 'uncommon':
-      return Colors.green;
-    case 'rare':
-      return Colors.blue;
-    case 'epic':
-      return Colors.purple;
-    case 'legendary':
-      return Colors.orange;
-    default:
-      return Colors.grey;
-  }
-}
+Color _rarityColor(String rarity) => AppColors.forRarity(rarity);
 
 String _formatDuration(int totalSeconds) {
   if (totalSeconds <= 0) return 'Hazır';
@@ -326,9 +317,8 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
     final hasMaterials = ref.watch(hasMaterialsProvider);
 
     Future<void> onLogout() async {
-      await ref.read(authProvider.notifier).logout();
-      ref.read(playerProvider.notifier).clear();
-    }
+      await performLogout(ref);
+}
 
     // Filtered recipes
     final List<CraftRecipe> filtered = craftState.recipes
@@ -338,7 +328,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
     final double playerGems = playerState.profile?.gems ?? 0;
 
     return Scaffold(
-      appBar: GameTopBar(title: 'Zanaat', onLogout: onLogout),
+      appBar: GameTopBar(title: context.l10n.routeCrafting, onLogout: onLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.crafting,
@@ -414,7 +404,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                   ),
                                 )
                               : GridView.builder(
-                                  padding: const EdgeInsets.all(12),
+                                  padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(12)),
                                   gridDelegate:
                                       const SliverGridDelegateWithMaxCrossAxisExtent(
                                         maxCrossAxisExtent: 180,
@@ -685,16 +675,10 @@ class _PreviewPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+          GameFixedGrid(
+            crossAxisCount: 3,
+            spacing: 8,
             itemCount: recipe!.ingredients.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 0.84,
-            ),
             itemBuilder: (BuildContext context, int index) {
               final ing = recipe!.ingredients[index];
               final int owned = ownedQuantities[ing.itemId] ?? 0;
@@ -740,7 +724,7 @@ class _PreviewPanel extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 4),
                     Text(
                       '$owned / $required',
                       style: TextStyle(
@@ -1019,7 +1003,7 @@ class _RecipeCard extends StatelessWidget {
             if (recipe.gemCost > 0)
               Text(
                 '💎 ${recipe.gemCost}',
-                style: TextStyle(fontSize: 10, color: Colors.purple.shade200),
+                style: TextStyle(fontSize: 10, color: AppColors.accentCyan),
               ),
             const SizedBox(height: 4),
             if (!hasMaterials)
@@ -1348,7 +1332,7 @@ class _QueueItemTile extends StatelessWidget {
                 value: progress,
                 backgroundColor: Colors.white.withValues(alpha: 0.10),
                 valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF6366F1),
+                  AppColors.cyberFuchsia,
                 ),
               ),
             ),

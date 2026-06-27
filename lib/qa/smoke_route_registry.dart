@@ -67,7 +67,7 @@ class SmokeRouteRegistry {
       label: 'Anıt',
       path: '/guild/monument',
       sampleSubPaths: <String>['/guild/monument/donate'],
-      keyRpcs: <String>['upgrade_monument', 'donate_to_monument'],
+      keyRpcs: <String>['get_monument_dashboard', 'upgrade_monument', 'donate_to_monument'],
     ),
     SmokeRouteEntry(
       label: 'Kasa Acma',

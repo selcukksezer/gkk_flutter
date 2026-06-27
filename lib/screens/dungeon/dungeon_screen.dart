@@ -17,6 +17,7 @@ import 'dungeon_victory_effects.dart';
 import 'widgets/dungeon_progress_row.dart';
 import 'widgets/featured_cave_dungeon_card.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 // ─── Zone definitions ─────────────────────────────────────────────────────────
 
@@ -318,7 +319,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
     return Scaffold(
       backgroundColor: const Color(0xFF080B12),
       appBar: GameTopBar(
-        title: 'Zindan',
+        title: context.l10n.zindan,
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();
@@ -1267,7 +1268,7 @@ class _ErrorState extends StatelessWidget {
               style: const TextStyle(color: Color(0xFF4A5880)),
             ),
             const SizedBox(height: 16),
-            OutlinedButton(onPressed: onRetry, child: const Text('Tekrar Dene')),
+            OutlinedButton(onPressed: onRetry, child: Text(context.l10n.commonRetry)),
           ],
         ),
       ),
@@ -1426,7 +1427,7 @@ class _ResultDialog extends StatelessWidget {
     final List<Widget> badges = <Widget>[
       _badge(
         icon: '💰',
-        label: 'ALTIN',
+        label: context.l10n.altin,
         value: '$gold',
         color: const Color(0xFFDDB200),
       ),
@@ -1441,7 +1442,7 @@ class _ResultDialog extends StatelessWidget {
         const SizedBox(width: _badgeGapBetween),
         _badge(
           icon: '🎒',
-          label: 'EŞYA',
+          label: context.l10n.e_ya,
           value: '${items.length}',
           color: const Color(0xFF3B82F6),
         ),
@@ -1551,7 +1552,7 @@ class _DefeatResultDialog extends StatelessWidget {
                   backgroundColor: const Color(0xFF991B1B),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('🏥 Hastane'),
+                child: Text(context.l10n.hastane_2),
               ),
             ),
           const SizedBox(height: 8),
@@ -1608,7 +1609,7 @@ class _HospitalResultDialog extends StatelessWidget {
                 backgroundColor: const Color(0xFF991B1B),
                 foregroundColor: Colors.white,
               ),
-              child: const Text('🏥 Hastane'),
+              child: Text(context.l10n.hastane_2),
             ),
           ),
           const SizedBox(height: 8),

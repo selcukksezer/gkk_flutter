@@ -1,13 +1,23 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../components/layout/game_chrome.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/player_provider.dart';
-import '../../providers/inventory_provider.dart';
-import '../../models/inventory_model.dart';
-import '../../routing/app_router.dart';
-import '../../core/services/supabase_service.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import 'package:gkk_flutter/components/common/item_icon_view.dart';
+
+import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
+import '../../core/services/supabase_service.dart';
+import '../../l10n/l10n.dart';
+import '../../models/inventory_model.dart';
+import '../../models/item_model.dart';
+import '../../providers/inventory_provider.dart';
+import '../../providers/player_provider.dart';
+import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
+import '../../utils/logout_helper.dart';
+import 'widgets/trade_theme.dart';
 
 class TradeScreen extends ConsumerStatefulWidget {
   const TradeScreen({super.key});
@@ -21,14 +31,22 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
   String _tradeStatus = 'idle';
   String _partnerName = '';
   String? _sessionId;
-  List<Map<String, dynamic>> _myOffer = [];
+  List<Map<String, dynamic>> _myOffer = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> _partnerOffer = <Map<String, dynamic>>[];
+  int _myGold = 0;
+  int _partnerGold = 0;
+  bool _myConfirmed = false;
+  bool _partnerConfirmed = false;
   bool _processing = false;
-  List<Map<String, dynamic>> _history = [];
+  List<Map<String, dynamic>> _history = <Map<String, dynamic>>[];
   bool _historyLoading = false;
   String? _historyError;
-  final TextEditingController _searchController = TextEditingController();
+  Timer? _sessionPollTimer;
 
-  static const Map<String, String> _statusLabels = {
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _goldController = TextEditingController();
+
+  static const Map<String, String> _statusLabels = <String, String>{
     'idle': '',
     'searching': '⏳ Oyuncu aranıyor...',
     'pending': '⏳ Ticaret başlatıldı, karşı taraf bekleniyor...',
@@ -42,8 +60,61 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(inventoryProvider.notifier).loadInventory();
-      _loadHistory();
+      unawaited(_loadHistory());
     });
+  }
+
+  @override
+  void dispose() {
+    _stopSessionPolling();
+    _searchController.dispose();
+    _goldController.dispose();
+    super.dispose();
+  }
+
+  void _startSessionPolling() {
+    _sessionPollTimer ??= Timer.periodic(const Duration(seconds: 2), (_) {
+      unawaited(_refreshTradeSession());
+    });
+  }
+
+  void _stopSessionPolling() {
+    _sessionPollTimer?.cancel();
+    _sessionPollTimer = null;
+  }
+
+  List<Map<String, dynamic>> _parseTradeItems(dynamic raw) {
+    if (raw == null) return <Map<String, dynamic>>[];
+    dynamic decoded = raw;
+    if (raw is String) {
+      try {
+        decoded = jsonDecode(raw);
+      } catch (_) {
+        return <Map<String, dynamic>>[];
+      }
+    }
+    if (decoded is! List) return <Map<String, dynamic>>[];
+    return decoded
+        .whereType<Map>()
+        .map((Map<dynamic, dynamic> row) => Map<String, dynamic>.from(row))
+        .toList(growable: false);
+  }
+
+  List<Map<String, dynamic>> _parseHistoryEntries(dynamic raw) {
+    if (raw == null) return <Map<String, dynamic>>[];
+    dynamic decoded = raw;
+    if (raw is String) {
+      try {
+        decoded = jsonDecode(raw);
+      } catch (_) {
+        return <Map<String, dynamic>>[];
+      }
+    }
+    if (decoded is! List) return <Map<String, dynamic>>[];
+    return decoded
+        .whereType<Map>()
+        .map((Map<dynamic, dynamic> row) => Map<String, dynamic>.from(row))
+        .toList(growable: false);
   }
 
   Future<void> _loadHistory() async {
@@ -52,37 +123,80 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
       _historyError = null;
     });
     try {
-      final raw = await SupabaseService.client.rpc('get_trade_history');
+      final dynamic raw = await SupabaseService.client.rpc('get_trade_history');
       if (!mounted) return;
-      final List<Map<String, dynamic>> loaded = [];
-      if (raw is List) {
-        for (final entry in raw) {
-          if (entry is Map) {
-            loaded.add(Map<String, dynamic>.from(entry));
-          }
-        }
-      }
       setState(() {
-        _history = loaded;
+        _history = _parseHistoryEntries(raw);
         _historyLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _historyLoading = false;
-        _historyError = 'Geçmiş yüklenemedi: $e';
+        _historyError = 'Geçmiş yüklenemedi';
       });
     }
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  Future<void> _refreshTradeSession() async {
+    final String? sessionId = _sessionId;
+    if (sessionId == null || sessionId.isEmpty) return;
+
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'get_trade_session_details',
+        params: <String, dynamic>{'p_session_id': sessionId},
+      );
+      if (!mounted || raw is! Map) return;
+      final Map<String, dynamic> data = Map<String, dynamic>.from(raw);
+      if (data['success'] != true) return;
+
+      final String status = (data['status'] as String?) ?? 'active';
+      final List<Map<String, dynamic>> myItems = _parseTradeItems(data['my_items']);
+      final List<Map<String, dynamic>> partnerItems = _parseTradeItems(data['partner_items']);
+      final int myGold = (data['my_gold'] as num?)?.toInt() ?? 0;
+      final int partnerGold = (data['partner_gold'] as num?)?.toInt() ?? 0;
+      final bool myConfirmed = data['my_confirmed'] == true;
+      final bool partnerConfirmed = data['partner_confirmed'] == true;
+      final String? partnerName = data['partner_name'] as String?;
+
+      setState(() {
+        _myOffer = myItems;
+        _partnerOffer = partnerItems;
+        _myGold = myGold;
+        _partnerGold = partnerGold;
+        _myConfirmed = myConfirmed;
+        _partnerConfirmed = partnerConfirmed;
+        if (partnerName != null && partnerName.isNotEmpty) {
+          _partnerName = partnerName;
+        }
+
+        if (status == 'completed') {
+          _tradeStatus = 'done';
+          _stopSessionPolling();
+          ref.read(inventoryProvider.notifier).loadInventory();
+          ref.read(playerProvider.notifier).loadProfile();
+        } else if (status == 'cancelled') {
+          _resetTrade();
+        } else if (status == 'pending') {
+          _tradeStatus = 'pending';
+        } else if (myConfirmed && !partnerConfirmed) {
+          _tradeStatus = 'confirming';
+        } else {
+          _tradeStatus = 'active';
+        }
+
+        if (myGold > 0 && _goldController.text.isEmpty) {
+          _goldController.text = myGold.toString();
+        }
+      });
+    } catch (_) {
+      // Polling retries.
+    }
   }
 
   Future<void> _handleSearch() async {
-    final target = _searchController.text.trim();
+    final String target = _searchController.text.trim();
     if (target.isEmpty) {
       AppMessenger.showWarning(context, 'Oyuncu adı girin!');
       return;
@@ -92,13 +206,15 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
       _tradeStatus = 'searching';
     });
     try {
-      final raw = await SupabaseService.client
-          .rpc('initiate_trade', params: {'target_username': target});
+      final dynamic raw = await SupabaseService.client.rpc(
+        'initiate_trade',
+        params: <String, dynamic>{'target_username': target},
+      );
       if (!mounted) return;
       String sessionId = '';
       String partnerName = target;
       if (raw is Map) {
-        if (raw['session_id'] != null) sessionId = raw['session_id'] as String;
+        sessionId = raw['session_id']?.toString() ?? '';
         partnerName = (raw['partner_name'] as String?) ?? target;
       }
       setState(() {
@@ -107,49 +223,99 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
         _tradeStatus = sessionId.isNotEmpty ? 'active' : 'pending';
         _processing = false;
       });
-      AppMessenger.show(context, '$target ile ticaret başlatıldı');
+      if (sessionId.isNotEmpty) {
+        _startSessionPolling();
+        await _refreshTradeSession();
+      }
+      if (mounted) {
+        AppMessenger.show(context, '$target ile ticaret başlatıldı');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _tradeStatus = 'idle';
         _processing = false;
       });
-      AppMessenger.show(context, 'Ticaret başlatılamadı: $e');
+      AppMessenger.show(context, 'Ticaret başlatılamadı');
     }
   }
 
   Future<void> _addItemToOffer(InventoryItem item) async {
-    if (_myOffer.any((o) => o['row_id'] == item.rowId)) {
+    if (_myOffer.any((Map<String, dynamic> o) => o['row_id'] == item.rowId)) {
       AppMessenger.showWarning(context, 'Bu eşya zaten teklifte');
       return;
     }
-    setState(() => _myOffer.add({
-          'row_id': item.rowId,
-          'item_id': item.itemId,
-          'name': item.name,
-          'quantity': 1,
-          'rarity': item.rarity.name,
-        }));
     if (_sessionId != null) {
       try {
-        await SupabaseService.client.rpc('add_trade_item',
-            params: {'session_id': _sessionId, 'item_row_id': item.rowId});
+        await SupabaseService.client.rpc(
+          'add_trade_item',
+          params: <String, dynamic>{
+            'p_session_id': _sessionId,
+            'p_item_row_id': item.rowId,
+          },
+        );
       } catch (e) {
         if (mounted) {
-          AppMessenger.show(context, 'Eşya sunucuya eklenemedi: $e');
+          AppMessenger.show(context, 'Eşya sunucuya eklenemedi');
         }
+        return;
       }
     }
-    AppMessenger.show(context, '${item.name} teklife eklendi');
+    await _refreshTradeSession();
+    if (mounted) {
+      AppMessenger.show(context, '${item.name} teklife eklendi');
+    }
   }
 
-  void _removeFromOffer(String rowId) {
-    setState(() => _myOffer.removeWhere((o) => o['row_id'] == rowId));
+  Future<void> _removeFromOffer(String rowId) async {
+    if (_sessionId != null) {
+      try {
+        await SupabaseService.client.rpc(
+          'remove_trade_item',
+          params: <String, dynamic>{
+            'p_session_id': _sessionId,
+            'p_item_row_id': rowId,
+          },
+        );
+      } catch (_) {
+        if (mounted) {
+          AppMessenger.show(context, 'Eşya kaldırılamadı');
+        }
+        return;
+      }
+    }
+    await _refreshTradeSession();
+  }
+
+  Future<void> _applyGold() async {
+    if (_sessionId == null) return;
+    final int amount = int.tryParse(_goldController.text.trim()) ?? 0;
+    if (amount < 0) {
+      AppMessenger.showWarning(context, 'Geçersiz altın miktarı');
+      return;
+    }
+    setState(() => _processing = true);
+    try {
+      await SupabaseService.client.rpc(
+        'set_trade_gold',
+        params: <String, dynamic>{
+          'p_session_id': _sessionId,
+          'p_amount': amount,
+        },
+      );
+      await _refreshTradeSession();
+    } catch (_) {
+      if (mounted) {
+        AppMessenger.show(context, 'Altın eklenemedi');
+      }
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
   }
 
   Future<void> _confirmTrade() async {
-    if (_myOffer.isEmpty) {
-      AppMessenger.showWarning(context, 'En az 1 eşya ekleyin!');
+    if (_myOffer.isEmpty && _myGold <= 0) {
+      AppMessenger.showWarning(context, 'En az 1 eşya veya altın ekleyin!');
       return;
     }
     setState(() {
@@ -158,23 +324,23 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
     });
     try {
       if (_sessionId != null) {
-        await SupabaseService.client
-            .rpc('confirm_trade', params: {'p_session_id': _sessionId});
+        await SupabaseService.client.rpc(
+          'confirm_trade',
+          params: <String, dynamic>{'p_session_id': _sessionId},
+        );
       }
       if (!mounted) return;
-      _addToHistory('completed');
-      setState(() {
-        _tradeStatus = 'done';
-        _processing = false;
-      });
-      AppMessenger.showSuccess(context, '🎉 Ticaret tamamlandı!');
+      await _refreshTradeSession();
+      if (_tradeStatus == 'done') {
+        AppMessenger.showSuccess(context, '🎉 Ticaret tamamlandı!');
+        await _loadHistory();
+      }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _tradeStatus = 'active';
-        _processing = false;
-      });
-      AppMessenger.show(context, 'Ticaret onaylanamadı: $e');
+      setState(() => _tradeStatus = 'active');
+      AppMessenger.show(context, 'Ticaret onaylanamadı');
+    } finally {
+      if (mounted) setState(() => _processing = false);
     }
   }
 
@@ -182,171 +348,158 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
     setState(() => _processing = true);
     if (_sessionId != null) {
       try {
-        await SupabaseService.client
-            .rpc('cancel_trade', params: {'p_session_id': _sessionId});
-      } catch (e) {
-        if (!mounted) return;
-        AppMessenger.show(context, 'İptal sunucuya iletilemedi: $e');
+        await SupabaseService.client.rpc(
+          'cancel_trade',
+          params: <String, dynamic>{'p_session_id': _sessionId},
+        );
+      } catch (_) {
+        if (mounted) {
+          AppMessenger.show(context, 'İptal sunucuya iletilemedi');
+        }
       }
     }
     if (!mounted) return;
-    if (_tradeStatus != 'idle' && _partnerName.isNotEmpty) {
-      _addToHistory('cancelled');
-    }
     _resetTrade();
     setState(() => _processing = false);
     AppMessenger.showInfo(context, 'Ticaret iptal edildi');
-  }
-
-  void _addToHistory(String status) {
-    // Optimistically add the entry locally, then refresh from server
-    setState(() => _history.insert(0, {
-          'id': 'th${DateTime.now().millisecondsSinceEpoch}',
-          'date': DateTime.now().toIso8601String().substring(0, 10),
-          'partner': _partnerName,
-          'my_items': _myOffer.map((o) => '${o['name']} x${o['quantity']}').toList(),
-          'their_items': <String>[],
-          'status': status,
-        }));
-    _loadHistory();
+    await _loadHistory();
   }
 
   void _resetTrade() {
+    _stopSessionPolling();
     setState(() {
       _tradeStatus = 'idle';
       _searchController.clear();
+      _goldController.clear();
       _partnerName = '';
       _sessionId = null;
-      _myOffer = [];
+      _myOffer = <Map<String, dynamic>>[];
+      _partnerOffer = <Map<String, dynamic>>[];
+      _myGold = 0;
+      _partnerGold = 0;
+      _myConfirmed = false;
+      _partnerConfirmed = false;
     });
   }
 
   void _showItemPicker(BuildContext context) {
-    final inventoryItems = ref
+    final List<InventoryItem> inventoryItems = ref
         .read(inventoryProvider)
         .items
-        .where((i) => !i.isEquipped && i.isTradeable)
+        .where((InventoryItem i) => !i.isEquipped && i.isTradeable)
         .toList();
-    showModalBottomSheet(
+
+    showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF171E2C),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Column(children: [
-        const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('📤 Eşya Seç',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.spaceNavy,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        const Divider(color: Colors.white12, height: 1),
-        Expanded(
-          child: inventoryItems.isEmpty
-              ? const Center(
-                  child: Text('Taşınabilir eşya yok', style: TextStyle(color: Colors.white54)))
-              : ListView.builder(
-                  itemCount: inventoryItems.length,
-                  itemBuilder: (ctx, i) {
-                    final item = inventoryItems[i];
-                    return ListTile(
-                      leading: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle, color: _rarityColor(item.rarity.name)),
-                      ),
-                      title: Text(item.name, style: const TextStyle(color: Colors.white)),
-                      subtitle:
-                          Text('x${item.quantity}', style: const TextStyle(color: Colors.white54)),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _addItemToOffer(item);
+        child: Column(
+          children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                '📤 Eşya Seç',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(color: Colors.white12, height: 1),
+            Expanded(
+              child: inventoryItems.isEmpty
+                  ? const Center(child: Text('Taşınabilir eşya yok', style: TextStyle(color: Colors.white54)))
+                  : ListView.builder(
+                      itemCount: inventoryItems.length,
+                      itemBuilder: (BuildContext ctx, int i) {
+                        final InventoryItem item = inventoryItems[i];
+                        return ListTile(
+                          leading: ItemIconView(
+                            iconValue: item.icon,
+                            itemId: item.itemId,
+                            itemType: item.itemType,
+                            size: 32,
+                          ),
+                          title: Text(item.name, style: const TextStyle(color: Colors.white)),
+                          subtitle: Text('x${item.quantity}', style: const TextStyle(color: Colors.white54)),
+                          onTap: () {
+                            Navigator.pop(context);
+                            unawaited(_addItemToOffer(item));
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
+                    ),
+            ),
+          ],
         ),
-      ]),
+      ),
     );
   }
 
-  Color _rarityColor(String rarity) {
-    switch (rarity.toLowerCase()) {
-      case 'uncommon':
-        return const Color(0xFF22C55E);
-      case 'rare':
-        return const Color(0xFF3B82F6);
-      case 'epic':
-        return const Color(0xFFA855F7);
-      case 'legendary':
-        return const Color(0xFFF59E0B);
-      case 'mythic':
-        return const Color(0xFFEF4444);
-      default:
-        return const Color(0xFF94A3B8);
+  Color _rarityColor(String rarity) => AppColors.forRarity(rarity);
+
+  ItemType? _parseItemType(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    for (final ItemType type in ItemType.values) {
+      if (type.name == raw.toLowerCase()) return type;
     }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    logoutHandler() async {
-      await ref.read(authProvider.notifier).logout();
-      ref.read(playerProvider.notifier).clear();
-    }
-
     return Scaffold(
-      appBar: GameTopBar(title: '🤝 Ticaret', onLogout: logoutHandler),
+      appBar: GameTopBar(
+        title: context.l10n.screenTitleTrade,
+        onLogout: () => performLogout(ref),
+      ),
       extendBody: true,
-      bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.trade, onLogout: logoutHandler),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF10131D), Color(0xFF171E2C)],
-          ),
-        ),
+      bottomNavigationBar: GameBottomBar(
+        currentRoute: AppRoutes.trade,
+        onLogout: () => performLogout(ref),
+      ),
+      body: TradeBackdrop(
         child: SafeArea(
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              child: Row(children: [
-                _buildTab(0, '🤝 Ticaret'),
-                const SizedBox(width: 8),
-                _buildTab(1, '📜 Geçmiş'),
-              ]),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: _tabIndex == 0 ? _buildTradeTab() : _buildHistoryTab(),
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: Row(
+                  children: <Widget>[
+                    _buildTab(0, '🤝 Ticaret'),
+                    const SizedBox(width: 8),
+                    _buildTab(1, '📜 Geçmiş'),
+                  ],
+                ),
               ),
-            ),
-          ]),
+              const SizedBox(height: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: GameScrollLayout.pagePadding(context),
+                  child: _tabIndex == 0 ? _buildTradeTab() : _buildHistoryTab(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTab(int index, String label) {
-    final active = _tabIndex == index;
+    final bool active = _tabIndex == index;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _tabIndex = index),
-        child: Container(
+        child: TradeNeonPanel(
+          accent: active ? AppColors.liquidGold : AppColors.mutedTitanium,
           padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: active ? const Color(0xFF3B82F6) : Colors.white.withValues(alpha: 0.08),
-            border: Border.all(
-              color: active ? const Color(0xFF3B82F6) : Colors.white.withValues(alpha: 0.12),
-            ),
-          ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: active ? Colors.white : Colors.white54,
+              color: active ? AppColors.liquidGold : AppColors.mutedTitanium,
               fontSize: 13,
               fontWeight: active ? FontWeight.bold : FontWeight.normal,
             ),
@@ -357,354 +510,408 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
   }
 
   Widget _buildTradeTab() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (_tradeStatus != 'idle' && (_statusLabels[_tradeStatus] ?? '').isNotEmpty)
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: Colors.white.withValues(alpha: 0.08),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          ),
-          child: Text(_statusLabels[_tradeStatus] ?? '',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (_tradeStatus != 'idle' && (_statusLabels[_tradeStatus] ?? '').isNotEmpty)
+          TradeNeonPanel(
+            accent: AppColors.cyberFuchsia,
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              _statusLabels[_tradeStatus] ?? '',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ),
-      if (_tradeStatus == 'idle') _buildIdleState(),
-      if (_tradeStatus == 'searching') _buildSearchingState(),
-      if (_tradeStatus == 'pending') _buildPendingState(),
-      if (_tradeStatus == 'active') _buildActiveState(),
-      if (_tradeStatus == 'confirming') _buildConfirmingState(),
-      if (_tradeStatus == 'done') _buildDoneState(),
-    ]);
+              style: const TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
+            ),
+          ),
+        if (_tradeStatus != 'idle' && (_statusLabels[_tradeStatus] ?? '').isNotEmpty)
+          const SizedBox(height: 8),
+        if (_tradeStatus == 'idle') _buildIdleState(),
+        if (_tradeStatus == 'searching') _buildSearchingState(),
+        if (_tradeStatus == 'pending') _buildPendingState(),
+        if (_tradeStatus == 'active' || _tradeStatus == 'confirming') _buildActiveState(),
+        if (_tradeStatus == 'done') _buildDoneState(),
+      ],
+    );
   }
 
   Widget _buildIdleState() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-        color: Colors.white.withValues(alpha: 0.04),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Ticaret yapmak istediğiniz oyuncuyu arayın.',
-            style: TextStyle(color: Colors.white54, fontSize: 13)),
-        const SizedBox(height: 12),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Oyuncu adı...',
-                hintStyle: const TextStyle(color: Colors.white38),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.08),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.white12),
+    return TradeNeonPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Ticaret yapmak istediğiniz oyuncuyu arayın.',
+            style: TextStyle(color: AppColors.mutedTitanium, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Oyuncu adı...',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: AppColors.darkObsidian.withValues(alpha: 0.6),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: AppColors.mutedTitanium.withValues(alpha: 0.3)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: AppColors.mutedTitanium.withValues(alpha: 0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.liquidGold),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.white12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF3B82F6)),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
-            ),
+              const SizedBox(width: 8),
+              TradePrimaryButton(
+                label: '🔍 Ara',
+                onPressed: _processing ? null : _handleSearch,
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: _processing ? null : _handleSearch,
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6), foregroundColor: Colors.white),
-            child: const Text('🔍 Ara'),
-          ),
-        ]),
-      ]),
+        ],
+      ),
     );
   }
 
   Widget _buildSearchingState() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.04),
+    return TradeNeonPanel(
+      child: const Column(
+        children: <Widget>[
+          Text('🔍', style: TextStyle(fontSize: 32)),
+          SizedBox(height: 8),
+          Text('Oyuncu aranıyor...', style: TextStyle(color: AppColors.mutedTitanium)),
+          SizedBox(height: 8),
+          CircularProgressIndicator(color: AppColors.liquidGold),
+        ],
       ),
-      child: const Column(children: [
-        Text('🔍', style: TextStyle(fontSize: 32)),
-        SizedBox(height: 8),
-        Text('Oyuncu aranıyor...', style: TextStyle(color: Colors.white54)),
-        SizedBox(height: 8),
-        CircularProgressIndicator(color: Color(0xFF3B82F6)),
-      ]),
     );
   }
 
   Widget _buildPendingState() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.04),
-      ),
-      child: Column(children: [
-        const Text('⏳', style: TextStyle(fontSize: 32)),
-        const SizedBox(height: 8),
-        Text('$_partnerName bekleniyor...',
+    return TradeNeonPanel(
+      accent: AppColors.warningSolar,
+      child: Column(
+        children: <Widget>[
+          const Text('⏳', style: TextStyle(fontSize: 32)),
+          const SizedBox(height: 8),
+          Text(
+            '$_partnerName bekleniyor...',
             style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center),
-        const SizedBox(height: 4),
-        const Text('Ticaret isteği gönderildi.',
-            style: TextStyle(color: Colors.white54), textAlign: TextAlign.center),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: _processing ? null : _cancelTrade,
-          style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
-          child: const Text('İptal Et'),
-        ),
-      ]),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Ticaret isteği gönderildi.',
+            style: TextStyle(color: AppColors.mutedTitanium),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          TradeSecondaryButton(label: 'İptal Et', onPressed: _processing ? null : _cancelTrade),
+        ],
+      ),
     );
   }
 
   Widget _buildActiveState() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          color: Colors.white.withValues(alpha: 0.04),
-        ),
-        child: Row(children: [
-          const Text('🤝', style: TextStyle(fontSize: 20)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$_partnerName ile Ticaret',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-              if (_sessionId != null)
-                Text(
-                  'Oturum: ${_sessionId!.length > 8 ? '${_sessionId!.substring(0, 8)}...' : _sessionId!}',
-                  style: const TextStyle(color: Colors.white38, fontSize: 10),
-                ),
-            ]),
-          ),
-          TextButton(
-            onPressed: _cancelTrade,
-            child: const Text('İptal', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ]),
-      ),
-      const SizedBox(height: 8),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.4)),
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.05),
-            ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('📤 Teklifim',
-                  style: TextStyle(color: Color(0xFF3B82F6), fontSize: 11)),
-              const SizedBox(height: 6),
-              if (_myOffer.isEmpty)
-                Container(
-                  constraints: const BoxConstraints(minHeight: 80),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                  ),
-                  child: const Center(
-                      child: Text('Eşya ekle', style: TextStyle(color: Colors.white38, fontSize: 11))),
-                )
-              else
-                ..._myOffer.map((offer) => Container(
-                      padding: const EdgeInsets.all(6),
-                      margin: const EdgeInsets.only(bottom: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(6),
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                      child: Row(children: [
-                        Expanded(
-                          child: Text(
-                            (offer['name'] as String?) ?? '',
-                            style: TextStyle(
-                                color: _rarityColor((offer['rarity'] as String?) ?? 'common'),
-                                fontSize: 11),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _removeFromOffer((offer['row_id'] as String?) ?? ''),
-                          child: const Icon(Icons.close, size: 14, color: Colors.redAccent),
-                        ),
-                      ]),
-                    )),
-            ]),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-              color: Colors.white.withValues(alpha: 0.04),
-            ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('📥 Karşı Teklif',
-                  style: TextStyle(color: Colors.white54, fontSize: 11)),
-              const SizedBox(height: 6),
-              Container(
-                constraints: const BoxConstraints(minHeight: 80),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                ),
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.sync_disabled, color: Colors.white24, size: 20),
-                    SizedBox(height: 4),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        TradeNeonPanel(
+          accent: AppColors.liquidGold,
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: <Widget>[
+              const Text('🤝', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
                     Text(
-                      'Gerçek zamanlı senkronizasyon henüz desteklenmiyor.\nKarşı tarafın teklifi burada görünecek.',
-                      style: TextStyle(color: Colors.white38, fontSize: 10),
-                      textAlign: TextAlign.center,
+                      '$_partnerName ile Ticaret',
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                     ),
+                    if (_partnerConfirmed)
+                      const Text('Karşı taraf onayladı', style: TextStyle(color: AppColors.toxicNeon, fontSize: 10)),
                   ],
                 ),
               ),
-            ]),
+              TextButton(
+                onPressed: _cancelTrade,
+                child: const Text('İptal', style: TextStyle(color: AppColors.mysticRuby)),
+              ),
+            ],
           ),
         ),
-      ]),
-      const SizedBox(height: 8),
-      SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: _buildOfferPanel(
+                title: '📤 Teklifim',
+                offers: _myOffer,
+                goldAmount: _myGold,
+                accent: AppColors.liquidGold,
+                isMine: true,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildOfferPanel(
+                title: '📥 Karşı Teklif',
+                offers: _partnerOffer,
+                goldAmount: _partnerGold,
+                accent: AppColors.cyberFuchsia,
+                isMine: false,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TradeNeonPanel(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: TextField(
+                  controller: _goldController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Altın miktarı',
+                    hintStyle: TextStyle(color: AppColors.mutedTitanium.withValues(alpha: 0.6)),
+                    prefixIcon: const Icon(Icons.monetization_on, color: AppColors.liquidGold, size: 18),
+                    filled: true,
+                    fillColor: AppColors.darkObsidian.withValues(alpha: 0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TradePrimaryButton(
+                label: 'Altın Koy',
+                onPressed: _processing ? null : _applyGold,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TradePrimaryButton(
+          label: '➕ Eşya Ekle',
           onPressed: () => _showItemPicker(context),
-          icon: const Icon(Icons.add, size: 16),
-          label: const Text('➕ Eşya Ekle'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white70,
-            side: const BorderSide(color: Colors.white24),
-          ),
+          color: AppColors.cyberFuchsia,
+          textColor: Colors.white,
         ),
-      ),
-      const SizedBox(height: 8),
-      Row(children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _processing ? null : _cancelTrade,
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
-            child: const Text('❌ İptal'),
-          ),
+        const SizedBox(height: 8),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: TradeSecondaryButton(label: '❌ İptal', onPressed: _processing ? null : _cancelTrade),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TradePrimaryButton(
+                label: _myConfirmed ? '⏳ Bekleniyor' : '✅ Onayla',
+                onPressed: (_processing || _myConfirmed) ? null : _confirmTrade,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _processing ? null : _confirmTrade,
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E), foregroundColor: Colors.white),
-            child: const Text('✅ Onayla'),
-          ),
-        ),
-      ]),
-    ]);
+      ],
+    );
   }
 
-  Widget _buildConfirmingState() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.04),
+  Widget _buildOfferPanel({
+    required String title,
+    required List<Map<String, dynamic>> offers,
+    required int goldAmount,
+    required Color accent,
+    required bool isMine,
+  }) {
+    return TradeNeonPanel(
+      accent: accent,
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(title, style: TextStyle(color: accent, fontSize: 11, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          if (goldAmount > 0)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              margin: const EdgeInsets.only(bottom: 6),
+              decoration: BoxDecoration(
+                color: AppColors.liquidGold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.monetization_on, color: AppColors.liquidGold, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$goldAmount altın',
+                    style: const TextStyle(color: AppColors.liquidGold, fontSize: 11, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          if (offers.isEmpty)
+            Container(
+              constraints: const BoxConstraints(minHeight: 80),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.mutedTitanium.withValues(alpha: 0.2)),
+              ),
+              child: Text(
+                isMine ? 'Eşya ekle' : 'Bekleniyor...',
+                style: const TextStyle(color: AppColors.mutedTitanium, fontSize: 11),
+              ),
+            )
+          else
+            ...offers.map((Map<String, dynamic> offer) {
+              final String rowId = offer['row_id']?.toString() ?? '';
+              final String name = offer['name']?.toString() ?? '';
+              final int qty = (offer['quantity'] as num?)?.toInt() ?? 1;
+              final String rarity = offer['rarity']?.toString() ?? 'common';
+              return Container(
+                padding: const EdgeInsets.all(6),
+                margin: const EdgeInsets.only(bottom: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  color: AppColors.darkObsidian.withValues(alpha: 0.5),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    ItemIconView(
+                      iconValue: offer['icon']?.toString() ?? '',
+                      itemId: offer['item_id']?.toString(),
+                      itemType: _parseItemType(offer['item_type']?.toString()),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        qty > 1 ? '$name x$qty' : name,
+                        style: TextStyle(color: _rarityColor(rarity), fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isMine && rowId.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => unawaited(_removeFromOffer(rowId)),
+                        child: const Icon(Icons.close, size: 14, color: AppColors.mysticRuby),
+                      ),
+                  ],
+                ),
+              );
+            }),
+        ],
       ),
-      child: Column(children: [
-        const Text('⏳', style: TextStyle(fontSize: 28)),
-        const SizedBox(height: 8),
-        const Text('Onayınız alındı',
-            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        const Text('Karşı tarafın onayı bekleniyor...',
-            style: TextStyle(color: Colors.white54), textAlign: TextAlign.center),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: _processing ? null : _cancelTrade,
-          style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
-          child: const Text('İptal Et'),
-        ),
-      ]),
     );
   }
 
   Widget _buildDoneState() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
-        color: const Color(0xFF22C55E).withValues(alpha: 0.05),
+    return TradeNeonPanel(
+      accent: AppColors.toxicNeon,
+      child: Column(
+        children: <Widget>[
+          const Text('🎉', style: TextStyle(fontSize: 48)),
+          const SizedBox(height: 8),
+          const Text(
+            'Ticaret Tamamlandı!',
+            style: TextStyle(color: AppColors.toxicNeon, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$_partnerName ile ticaret başarıyla gerçekleşti.',
+            style: const TextStyle(color: AppColors.mutedTitanium),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          TradePrimaryButton(label: 'Yeni Ticaret', onPressed: _resetTrade),
+        ],
       ),
-      child: Column(children: [
-        const Text('🎉', style: TextStyle(fontSize: 48)),
-        const SizedBox(height: 8),
-        const Text('Ticaret Tamamlandı!',
-            style: TextStyle(
-                color: Color(0xFF22C55E), fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text('$_partnerName ile ticaret başarıyla gerçekleşti.',
-            style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: _resetTrade,
-          style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3B82F6), foregroundColor: Colors.white),
-          child: const Text('Yeni Ticaret'),
-        ),
-      ]),
     );
+  }
+
+  Widget _buildHistoryItemRow(Map<String, dynamic> item) {
+    final String name = item['name']?.toString() ?? '';
+    final int qty = (item['quantity'] as num?)?.toInt() ?? 1;
+    final bool hasIcon = item.containsKey('icon');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: <Widget>[
+          if (hasIcon)
+            ItemIconView(
+              iconValue: item['icon']?.toString() ?? '',
+              itemId: item['item_id']?.toString(),
+              itemType: _parseItemType(item['item_type']?.toString()),
+              size: 20,
+            ),
+          if (hasIcon) const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              qty > 1 ? '$name x$qty' : name,
+              style: TextStyle(
+                color: _rarityColor(item['rarity']?.toString() ?? 'common'),
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _historyItems(dynamic raw) {
+    if (raw is List) {
+      return raw.map((dynamic entry) {
+        if (entry is Map) return Map<String, dynamic>.from(entry);
+        return <String, dynamic>{'name': entry.toString()};
+      }).toList();
+    }
+    return <Map<String, dynamic>>[];
   }
 
   Widget _buildHistoryTab() {
     if (_historyLoading) {
       return const Padding(
         padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6))),
+        child: Center(child: CircularProgressIndicator(color: AppColors.liquidGold)),
       );
     }
     if (_historyError != null) {
       return Padding(
         padding: const EdgeInsets.all(32),
         child: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(_historyError!,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _loadHistory,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6), foregroundColor: Colors.white),
-              child: const Text('Tekrar Dene'),
-            ),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                _historyError!,
+                style: const TextStyle(color: AppColors.mysticRuby, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              TradePrimaryButton(label: 'Tekrar Dene', onPressed: _loadHistory),
+            ],
+          ),
         ),
       );
     }
@@ -712,78 +919,109 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
       return const Padding(
         padding: EdgeInsets.all(32),
         child: Center(
-            child: Text('Henüz ticaret geçmişi yok.',
-                style: TextStyle(color: Colors.white54))),
+          child: Text('Henüz ticaret geçmişi yok.', style: TextStyle(color: AppColors.mutedTitanium)),
+        ),
       );
     }
+
     return Column(
-      children: _history.map((entry) {
-        final completed = entry['status'] == 'completed';
-        final myItems = List<String>.from((entry['my_items'] as List?) ?? []);
-        final theirItems = List<String>.from((entry['their_items'] as List?) ?? []);
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-            color: Colors.white.withValues(alpha: 0.04),
+      children: _history.map((Map<String, dynamic> entry) {
+        final bool completed = entry['status'] == 'completed';
+        final List<Map<String, dynamic>> myItems = _historyItems(entry['my_items']);
+        final List<Map<String, dynamic>> theirItems = _historyItems(entry['their_items']);
+        final int myGold = (entry['my_gold'] as num?)?.toInt() ?? 0;
+        final int theirGold = (entry['their_gold'] as num?)?.toInt() ?? 0;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: TradeNeonPanel(
+            accent: completed ? AppColors.toxicNeon : AppColors.mysticRuby,
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    const Text('🤝', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            (entry['partner'] as String?) ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            (entry['date'] as String?) ?? '',
+                            style: const TextStyle(color: AppColors.mutedTitanium, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: (completed ? AppColors.toxicNeon : AppColors.mysticRuby).withValues(alpha: 0.2),
+                      ),
+                      child: Text(
+                        completed ? '✓ Tamamlandı' : '✕ İptal',
+                        style: TextStyle(
+                          color: completed ? AppColors.toxicNeon : AppColors.mysticRuby,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Text('📤 Ben verdim:', style: TextStyle(color: AppColors.mutedTitanium, fontSize: 10)),
+                          if (myGold > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text('💰 $myGold altın', style: const TextStyle(color: AppColors.liquidGold, fontSize: 11)),
+                            ),
+                          if (myItems.isEmpty && myGold == 0)
+                            const Text('—', style: TextStyle(color: AppColors.mutedTitanium, fontSize: 11))
+                          else
+                            ...myItems.map(_buildHistoryItemRow),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Text('📥 Ben aldım:', style: TextStyle(color: AppColors.mutedTitanium, fontSize: 10)),
+                          if (theirGold > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text('💰 $theirGold altın', style: const TextStyle(color: AppColors.liquidGold, fontSize: 11)),
+                            ),
+                          if (theirItems.isEmpty && theirGold == 0)
+                            const Text('—', style: TextStyle(color: AppColors.mutedTitanium, fontSize: 11))
+                          else
+                            ...theirItems.map(_buildHistoryItemRow),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const Text('🤝', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text((entry['partner'] as String?) ?? '',
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                  Text((entry['date'] as String?) ?? '',
-                      style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                ]),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6),
-                  color: completed
-                      ? const Color(0xFF22C55E).withValues(alpha: 0.2)
-                      : const Color(0xFFDC2626).withValues(alpha: 0.2),
-                ),
-                child: Text(
-                  completed ? '✓ Tamamlandı' : '✕ İptal',
-                  style: TextStyle(
-                      color: completed ? const Color(0xFF22C55E) : const Color(0xFFDC2626),
-                      fontSize: 10),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 8),
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('📤 Ben verdim:',
-                      style: TextStyle(color: Colors.white38, fontSize: 10)),
-                  if (myItems.isEmpty)
-                    const Text('—', style: TextStyle(color: Colors.white38, fontSize: 11))
-                  else
-                    ...myItems.map(
-                        (item) => Text('• $item', style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                ]),
-              ),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('📥 Ben aldım:',
-                      style: TextStyle(color: Colors.white38, fontSize: 10)),
-                  if (theirItems.isEmpty)
-                    const Text('—', style: TextStyle(color: Colors.white38, fontSize: 11))
-                  else
-                    ...theirItems.map(
-                        (item) => Text('• $item', style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                ]),
-              ),
-            ]),
-          ]),
         );
       }).toList(),
     );

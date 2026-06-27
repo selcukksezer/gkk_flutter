@@ -13,6 +13,7 @@ import '../../providers/player_provider.dart';
 import '../../core/utils/power_formula.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 class HospitalScreen extends ConsumerStatefulWidget {
   const HospitalScreen({super.key});
@@ -302,7 +303,7 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen> {
 
     return Scaffold(
       appBar: GameTopBar(
-        title: '🏥 Hastane',
+        title: context.l10n.hastane_2,
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();

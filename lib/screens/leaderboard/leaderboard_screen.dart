@@ -6,6 +6,7 @@ import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../l10n/l10n.dart';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -357,7 +358,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: GameTopBar(
-        title: 'Sıralama',
+        title: context.l10n.s_ralama,
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();
@@ -432,14 +433,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Row(
                 children: <Widget>[
-                  _TimeframeBtn(label: 'Tüm Zamanlar', selected: !_weekly, onTap: () {
+                  _TimeframeBtn(label: context.l10n.t_m_zamanlar, selected: !_weekly, onTap: () {
                     if (_weekly) {
                       setState(() => _weekly = false);
                       _load();
                     }
                   }),
                   const SizedBox(width: 6),
-                  _TimeframeBtn(label: 'Haftalık', selected: _weekly, onTap: () {
+                  _TimeframeBtn(label: context.l10n.haftal_k, selected: _weekly, onTap: () {
                     if (!_weekly) {
                       setState(() => _weekly = true);
                       _load();
@@ -454,7 +455,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                         style: const TextStyle(fontSize: 12),
                         decoration: InputDecoration(
                           isDense: true,
-                          hintText: 'Oyuncu veya lonca ara...',
+                          hintText: context.l10n.oyuncu_veya_lonca_ara,
                           hintStyle: const TextStyle(fontSize: 12, color: Colors.white38),
                           prefixIcon: const Icon(Icons.search, size: 16),
                           filled: true,

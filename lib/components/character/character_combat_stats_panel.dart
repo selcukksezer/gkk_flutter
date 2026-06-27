@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../layout/game_screen_background.dart';
+
 /// Combat stats — compact unified panel, no icon glow, no inner tiles.
 class CharacterCombatStatsPanel extends StatelessWidget {
   const CharacterCombatStatsPanel({
@@ -103,16 +105,10 @@ class CharacterCombatStatsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        GridView.builder(
+        GameFixedGrid(
+          crossAxisCount: 4,
+          spacing: 2,
           itemCount: stats.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            mainAxisSpacing: 2,
-            crossAxisSpacing: 2,
-            childAspectRatio: 0.78,
-          ),
           itemBuilder: (BuildContext context, int index) {
             return _CombatStatTile(stat: stats[index], iconSize: _iconSize);
           },
@@ -147,7 +143,7 @@ class _CombatStatTile extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Image.asset(

@@ -3,14 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../models/guild_war_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/guild_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../utils/logout_helper.dart';
+import 'guild_war_defense_sheet.dart';
+import 'widgets/guild_war_design.dart';
 import 'widgets/guild_war_season_header.dart';
 import 'widgets/guild_war_skeleton.dart';
 import 'widgets/guild_war_tab_bar.dart';
@@ -19,7 +22,6 @@ import 'widgets/ranking_podium.dart';
 import 'widgets/territory_card.dart';
 import 'widgets/territory_map_view.dart';
 import 'widgets/tournament_card.dart';
-import 'guild_war_defense_sheet.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
 class GuildWarHubScreen extends ConsumerStatefulWidget {
@@ -33,6 +35,9 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _territoryMapView = true;
+
+  static const List<String> _tabLabels = <String>['Sıralama', 'Turnuva', 'Bölge', 'Krallık'];
+  static const List<String> _tabIcons = <String>['🏅', '🏆', '🗺', '👑'];
 
   @override
   void initState() {
@@ -56,7 +61,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
 
   int? _myRank(List<GuildWarRanking> rankings, String? guildName) {
     if (guildName == null) return null;
-    for (final r in rankings) {
+    for (final GuildWarRanking r in rankings) {
       if (r.guildName == guildName) return r.rank;
     }
     return null;
@@ -64,42 +69,34 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
 
   int? _myPoints(List<GuildWarRanking> rankings, String? guildName) {
     if (guildName == null) return null;
-    for (final r in rankings) {
+    for (final GuildWarRanking r in rankings) {
       if (r.guildName == guildName) return r.points;
     }
     return null;
   }
 
   Future<void> _joinTournament(String id) async {
-    final error = await ref.read(guildWarProvider.notifier).joinTournament(id);
+    final String? error = await ref.read(guildWarProvider.notifier).joinTournament(id);
     if (!mounted) return;
     if (error != null) {
       AppMessenger.showError(context, error);
     } else {
-      AppMessenger.showSuccess(context, '✅ Turnuvaya kaydoldunuz!');
+      AppMessenger.showSuccess(context, 'Turnuvaya kaydoldun!');
     }
   }
 
   Future<void> _attackTerritory(TerritoryData territory) async {
-    final confirmed = await showDialog<bool>(
+    final bool? confirmed = await WarDialog.confirm(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.bgCard,
-        title: const Text('⚔ Bölge Saldırısı'),
-        content: Text('${territory.name} bölgesine saldırmak istediğinize emin misiniz?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Saldır!'),
-          ),
-        ],
-      ),
+      title: '⚔ Bölge Saldırısı',
+      message: '${territory.name} bölgesine saldırmak istediğine emin misin?',
+      confirmLabel: 'Saldır',
+      accent: WarPalette.ruby,
     );
     if (confirmed != true) return;
 
-    final result = await ref.read(guildWarProvider.notifier).attackTerritory(territory.id);
+    final GuildWarAttackResult? result =
+        await ref.read(guildWarProvider.notifier).attackTerritory(territory.id);
     if (!mounted || result == null) return;
 
     if (result.error != null) {
@@ -111,97 +108,67 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   }
 
   Future<void> _addDefense(TerritoryData territory) async {
-    final gems = await showGuildWarDefenseSheet(context);
+    final int? gems = await showGuildWarDefenseSheet(context);
     if (gems == null || gems <= 0) return;
 
-    final error = await ref.read(guildWarProvider.notifier).addDefense(territory.id, gems);
+    final String? error = await ref.read(guildWarProvider.notifier).addDefense(territory.id, gems);
     if (!mounted) return;
     if (error != null) {
       AppMessenger.showError(context, error);
     } else {
-      AppMessenger.showSuccess(context, '🛡 Savunma eklendi!');
+      AppMessenger.showSuccess(context, 'Savunma eklendi!');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final warState = ref.watch(guildWarProvider);
+    final GuildWarState warState = ref.watch(guildWarProvider);
     final profile = ref.watch(playerProvider).profile;
     final guildState = ref.watch(guildProvider);
-    final guildId = guildState.guild?.guildId ?? profile?.guildId;
-    final guildName = guildState.guild?.name ?? profile?.guildName;
+    final String? guildId = guildState.guild?.guildId ?? profile?.guildId;
+    final String? guildName = guildState.guild?.name ?? profile?.guildName;
 
-    Future<void> logout() async {
-      await ref.read(authProvider.notifier).logout();
-      ref.read(guildProvider.notifier).clear();
-      ref.read(playerProvider.notifier).clear();
-    }
+    Future<void> logout() async => performLogout(ref);
 
     return Scaffold(
-      appBar: GameTopBar(title: '⚔ Lonca Savaşı', onLogout: logout),
+      appBar: GameTopBar(title: context.l10n.screenTitleGuildWar, onLogout: logout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.guildWar, onLogout: logout),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF090D14), Color(0xFF101722), Color(0xFF090D14)],
-          ),
-        ),
+      body: WarBackdrop(
         child: warState.isLoading
             ? const GuildWarSkeleton()
             : NestedScrollView(
-                headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) => <Widget>[
                   SliverOverlapAbsorber(
                     handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
                     sliver: SliverToBoxAdapter(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+                        children: <Widget>[
                           GuildWarSeasonHeader(
                             season: warState.season,
                             myRank: _myRank(warState.rankings, guildName),
                             myPoints: _myPoints(warState.rankings, guildName),
+                            guildName: guildName,
                           ),
-                          if (guildId == null)
-                            Container(
-                              margin: const EdgeInsets.fromLTRB(
-                                AppSpacing.base,
-                                AppSpacing.sm,
-                                AppSpacing.base,
-                                0,
-                              ),
-                              padding: const EdgeInsets.all(AppSpacing.md),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-                              ),
-                              child: TextButton(
-                                onPressed: () => context.go(AppRoutes.guild),
-                                child: const Text('Lonca Bul'),
-                              ),
-                            ),
+                          if (guildId == null) _NoGuildBanner(onFindGuild: () => context.go(AppRoutes.guild)),
+                          if (warState.error != null) _ErrorBanner(message: warState.error!),
                           GuildWarTabBar(
                             controller: _tabController,
-                            tabs: const ['🏅 Sıralama', '🏆 Turnuva', '🗺 Bölge', '👑 Krallık'],
+                            tabs: _tabLabels,
+                            icons: _tabIcons,
                           ),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(
                               AppSpacing.base,
                               AppSpacing.sm,
                               AppSpacing.base,
-                              AppSpacing.sm,
+                              AppSpacing.xs,
                             ),
-                            child: OutlinedButton.icon(
+                            child: WarOutlineButton(
+                              label: 'Savaş Kayıtları',
+                              icon: Icons.history_rounded,
                               onPressed: () => context.push(AppRoutes.guildWarLogs),
-                              icon: const Icon(Icons.history, size: 16),
-                              label: const Text('Savaş Kayıtları', style: TextStyle(fontSize: 12)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
-                                side: const BorderSide(color: AppColors.borderDefault),
-                              ),
                             ),
                           ),
                         ],
@@ -211,19 +178,10 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
                 ],
                 body: TabBarView(
                   controller: _tabController,
-                  children: [
-                    _scrollTab(
-                      child: RankingPodium(
-                        rankings: warState.rankings,
-                        highlightGuildName: guildName,
-                      ),
-                    ),
-                    _scrollTab(
-                      child: _buildTournamentsList(warState.tournaments, guildId),
-                    ),
-                    _scrollTab(
-                      child: _buildTerritoriesContent(warState.territories, guildId),
-                    ),
+                  children: <Widget>[
+                    _scrollTab(child: RankingPodium(rankings: warState.rankings, highlightGuildName: guildName)),
+                    _scrollTab(child: _buildTournamentsList(warState.tournaments, guildId)),
+                    _scrollTab(child: _buildTerritoriesContent(warState.territories, guildId)),
                     _scrollTab(child: const KingdomElectionPanel()),
                   ],
                 ),
@@ -234,21 +192,26 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
 
   Widget _scrollTab({required Widget child}) {
     return Builder(
-      builder: (context) => RefreshIndicator(
-        color: AppColors.gold,
+      builder: (BuildContext context) => RefreshIndicator(
+        color: WarPalette.gold,
+        backgroundColor: WarPalette.navy,
         onRefresh: _refresh,
         child: CustomScrollView(
           key: PageStorageKey<Object>(child.runtimeType),
           physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
+          slivers: <Widget>[
             SliverOverlapInjector(
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                AppSpacing.sm,
+                AppSpacing.base,
+                warBottomInset(context),
+              ),
               sliver: SliverToBoxAdapter(child: child),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
           ],
         ),
       ),
@@ -256,16 +219,32 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   }
 
   Widget _buildTournamentsList(List<GuildWarTournament> tournaments, String? guildId) {
+    if (tournaments.isEmpty) {
+      return const WarEmptyTab(
+        icon: '🏆',
+        message: 'Aktif turnuva yok. Yeni sezon başladığında burada görünecek.',
+      );
+    }
+
     return Column(
-      children: [
-        for (final t in tournaments) ...[
-          TournamentCard(
-            tournament: t,
-            onJoin: guildId != null && t.isActive ? () => _joinTournament(t.id) : null,
-            onDetail: () => context.push('${AppRoutes.guildWar}/tournament/${t.id}'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const WarSectionHeader(
+          title: 'Aktif Turnuvalar',
+          subtitle: 'Loncanı kaydet, ödül havuzundan pay al',
+          accent: WarPalette.fuchsia,
+        ),
+        for (int i = 0; i < tournaments.length; i++)
+          WarFadeSlide(
+            index: i,
+            child: TournamentCard(
+              tournament: tournaments[i],
+              onJoin: guildId != null && tournaments[i].isActive
+                  ? () => _joinTournament(tournaments[i].id)
+                  : null,
+              onDetail: () => context.push('${AppRoutes.guildWar}/tournament/${tournaments[i].id}'),
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-        ],
       ],
     );
   }
@@ -273,40 +252,49 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   Widget _buildTerritoriesContent(List<TerritoryData> territories, String? guildId) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+      children: <Widget>[
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            _ViewToggle(
+          children: <Widget>[
+            WarFilterChip(
               label: 'Harita',
               selected: _territoryMapView,
               onTap: () => setState(() => _territoryMapView = true),
+              accent: WarPalette.neon,
             ),
             const SizedBox(width: 8),
-            _ViewToggle(
+            WarFilterChip(
               label: 'Liste',
               selected: !_territoryMapView,
               onTap: () => setState(() => _territoryMapView = false),
+              accent: WarPalette.gold,
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
         if (_territoryMapView)
-          SizedBox(
-            height: 420,
-            child: TerritoryMapView(
-              territories: territories,
-              playerGuildId: guildId,
-              onTerritoryTap: (t) => context.push('${AppRoutes.guildWar}/territory/${t.id}'),
-            ),
+          TerritoryMapView(
+            territories: territories,
+            playerGuildId: guildId,
+            onTerritoryTap: (TerritoryData t) =>
+                context.push('${AppRoutes.guildWar}/territory/${t.id}'),
+          )
+        else if (territories.isEmpty)
+          const WarEmptyTab(
+            icon: '🗺',
+            message: 'Henüz ele geçirilebilir bölge yok.',
           )
         else
           Column(
-            children: [
-              for (final t in territories) ...[
+            children: <Widget>[
+              const WarSectionHeader(
+                title: 'Bölge Listesi',
+                subtitle: 'Saldır veya savunma güçlendir',
+                accent: WarPalette.ruby,
+              ),
+              for (final TerritoryData t in territories)
                 Builder(
-                  builder: (context) {
-                    final isOwner = t.ownerGuildId == guildId;
+                  builder: (BuildContext context) {
+                    final bool isOwner = t.ownerGuildId == guildId;
                     return TerritoryCard(
                       territory: t,
                       isOwner: isOwner,
@@ -316,8 +304,6 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
                     );
                   },
                 ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
             ],
           ),
       ],
@@ -325,37 +311,64 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   }
 }
 
-class _ViewToggle extends StatelessWidget {
-  const _ViewToggle({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+class _NoGuildBanner extends StatelessWidget {
+  const _NoGuildBanner({required this.onFindGuild});
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback onFindGuild;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.18) : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-          border: Border.all(
-            color: selected ? AppColors.gold : AppColors.borderDefault,
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
+      child: WarDottedPanel(
+        borderColor: WarPalette.coral.withValues(alpha: 0.35),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Row(
+              children: <Widget>[
+                Text('⚠️', style: TextStyle(fontSize: 22)),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Loncaya üye değilsin',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Savaşa katılmak ve bölge ele geçirmek için bir loncaya katıl.',
+              style: TextStyle(fontSize: 11, color: WarPalette.titanium, height: 1.35),
+            ),
+            const SizedBox(height: 10),
+            WarGoldButton(label: 'Lonca Bul', onPressed: onFindGuild, icon: Icons.groups_rounded),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
+      child: WarDottedPanel(
+        borderColor: WarPalette.ruby.withValues(alpha: 0.4),
         child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: selected ? AppColors.gold : AppColors.textTertiary,
-          ),
+          'Veri yüklenemedi. Aşağı çekerek yenile.',
+          style: const TextStyle(color: WarPalette.ruby, fontSize: 12, fontWeight: FontWeight.w700),
         ),
       ),
     );

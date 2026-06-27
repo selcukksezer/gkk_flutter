@@ -9,6 +9,7 @@ import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import 'horse_race_live_view.dart';
 import 'horse_race_provider.dart';
+import '../../l10n/l10n.dart';
 
 Color _parseColor(String raw) {
   final String hex = raw.replaceAll('#', '');
@@ -103,7 +104,7 @@ class _HorseRaceScreenState extends ConsumerState<HorseRaceScreen> {
       appBar: immersiveRace
           ? null
           : GameTopBar(
-              title: 'At Yarisi',
+              title: context.l10n.at_yarisi,
               onLogout: () async {
                 await ref.read(authProvider.notifier).logout();
                 ref.read(playerProvider.notifier).clear();

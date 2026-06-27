@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -162,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             alignment: Alignment.center,
                             child: TextButton(
                               onPressed: isLoading ? null : () => context.push(AppRoutes.register),
-                              child: const Text('Hesabin yok mu? Kayit Ol'),
+                              child: Text(context.l10n.hesabin_yok_mu_kayit_ol),
                             ),
                           ),
                         ],

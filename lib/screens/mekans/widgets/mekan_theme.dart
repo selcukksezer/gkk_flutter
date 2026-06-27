@@ -38,7 +38,7 @@ class MekanTypeVisual {
       case 'luks_lounge':
         return const MekanTypeVisual(
           icon: Icons.diamond_rounded,
-          accent: AppColors.accentPurple,
+          accent: AppColors.liquidGold,
           label: 'Lüks Lounge',
         );
       case 'yeralti':

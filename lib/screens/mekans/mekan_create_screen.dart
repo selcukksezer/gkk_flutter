@@ -9,6 +9,7 @@ import '../../routing/app_router.dart';
 import 'widgets/mekan_design.dart';
 import 'widgets/mekan_scaffold.dart';
 import 'widgets/mekan_theme.dart';
+import '../../l10n/l10n.dart';
 
 class MekanCreateScreen extends ConsumerStatefulWidget {
   const MekanCreateScreen({super.key});
@@ -79,7 +80,7 @@ class _MekanCreateScreenState extends ConsumerState<MekanCreateScreen> {
         gold >= selected.cost;
 
     return MekanSubScaffold(
-      title: 'Mekan Ac',
+      title: context.l10n.mekan_ac,
       body: Column(
         children: <Widget>[
           Expanded(
@@ -112,7 +113,7 @@ class _MekanCreateScreenState extends ConsumerState<MekanCreateScreen> {
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           labelText: 'Mekan adi',
-                          hintText: 'Orn: Golge Han Bar',
+                          hintText: context.l10n.orn_golge_han_bar,
                           labelStyle: const TextStyle(color: MekanPalette.textMid),
                           hintStyle: const TextStyle(color: MekanPalette.textLow),
                           counterStyle: const TextStyle(color: MekanPalette.textLow),
@@ -133,7 +134,7 @@ class _MekanCreateScreenState extends ConsumerState<MekanCreateScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const NeonSectionHeader(title: 'Mekan Turu', subtitle: 'Her tur farkli kapasite ve PvP yetenegi sunar', accent: MekanPalette.gold),
+                NeonSectionHeader(title: context.l10n.mekan_turu, subtitle: context.l10n.her_tur_farkli_kapasite_ve_pvp_yetenegi_sunar, accent: MekanPalette.gold),
                 const SizedBox(height: 12),
                 ...MekanTypeInfo.all.map((MekanTypeInfo info) {
                   final bool locked = level < info.reqLevel || gold < info.cost;

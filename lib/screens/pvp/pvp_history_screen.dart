@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/pvp_provider.dart';
 import '../../routing/app_router.dart';
+import '../../l10n/l10n.dart';
 
 class PvpHistoryScreen extends ConsumerStatefulWidget {
   const PvpHistoryScreen({super.key});
@@ -69,7 +70,7 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
     }
 
     return GameSubScreenScaffold(
-      title: '⚔️ PvP Maç Geçmişi',
+      title: context.l10n.pvp_ma_ge_mi_i,
       onLogout: logout,
       fallbackRoute: AppRoutes.pvp,
       bottomNavRoute: AppRoutes.pvpHistory,
@@ -128,7 +129,7 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
                               const SizedBox(height: 12),
                               TextButton(
                                 onPressed: () => ref.read(pvpHistoryProvider.notifier).load(),
-                                child: const Text('Yenile'),
+                                child: Text(context.l10n.yenile),
                               ),
                             ],
                           ),
@@ -145,7 +146,7 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
                                   const SizedBox(height: 12),
                                   TextButton(
                                     onPressed: () => ref.read(pvpHistoryProvider.notifier).load(),
-                                    child: const Text('Yenile'),
+                                    child: Text(context.l10n.yenile),
                                   ),
                                 ],
                               ),

@@ -11,8 +11,11 @@ import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
+import '../layout/game_screen_background.dart';
 import '../common/profile_avatar.dart';
 import '../daily_reward/daily_reward_dialog.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n.dart';
 
 /// Premium palette — quick menu only (does not affect global chrome).
 abstract final class _QuickMenuTheme {
@@ -52,183 +55,48 @@ class GameMenuItem {
   final bool showBadge;
 }
 
-/// All quick-menu destinations (4-column grid).
-const List<GameMenuItem> kGameMenuItems = <GameMenuItem>[
-  GameMenuItem(
-    label: 'Ana Sayfa',
-    icon: Icons.home_rounded,
-    assetPath: '${_MenuAssets.base}anasayfa.png',
-    route: AppRoutes.home,
-  ),
-  GameMenuItem(
-    label: 'Envanter',
-    icon: Icons.inventory_2_rounded,
-    assetPath: '${_MenuAssets.base}envanter.png',
-    route: AppRoutes.inventory,
-  ),
-  GameMenuItem(
-    label: 'Karakter',
-    icon: Icons.person_outline_rounded,
-    assetPath: '${_MenuAssets.base}karakter.png',
-    route: AppRoutes.character,
-  ),
-  GameMenuItem(
-    label: 'Zindan',
-    icon: Icons.shield_moon_outlined,
-    assetPath: '${_MenuAssets.base}zindan.png',
-    route: AppRoutes.dungeon,
-  ),
-  GameMenuItem(
-    label: 'PvP',
-    icon: Icons.sports_kabaddi_rounded,
-    assetPath: '${_MenuAssets.base}pvp.png',
-    route: AppRoutes.pvp,
-  ),
-  GameMenuItem(
-    label: 'Sıralama',
-    icon: Icons.leaderboard_rounded,
-    assetPath: '${_MenuAssets.base}siralama.png',
-    route: AppRoutes.leaderboard,
-  ),
-  GameMenuItem(
-    label: 'Battle Pass',
-    icon: Icons.ac_unit_rounded,
-    assetPath: '${_MenuAssets.base}battlepass.png',
-    route: AppRoutes.season,
-  ),
-  GameMenuItem(
-    label: 'Lonca',
-    icon: Icons.groups_outlined,
-    assetPath: '${_MenuAssets.base}lonca.png',
-    route: AppRoutes.guild,
-  ),
-  GameMenuItem(
-    label: 'Lonca Savaşı',
-    icon: Icons.flag_outlined,
-    assetPath: '${_MenuAssets.base}loncasavasi.png',
-    route: AppRoutes.guildWar,
-  ),
-  GameMenuItem(
-    label: 'Anıt',
-    icon: Icons.account_balance_outlined,
-    assetPath: '${_MenuAssets.base}anit.png',
-    route: AppRoutes.guildMonument,
-  ),
-  GameMenuItem(
-    label: 'Kasa Acma',
-    icon: Icons.casino_outlined,
-    assetPath: '${_MenuAssets.base}kasaacma.png',
-    route: AppRoutes.loot,
-  ),
-  GameMenuItem(
-    label: 'Pazar',
-    icon: Icons.storefront_outlined,
-    assetPath: '${_MenuAssets.base}pazar.png',
-    route: AppRoutes.market,
-  ),
-  GameMenuItem(
-    label: 'Mağaza',
-    icon: Icons.shopping_bag_outlined,
-    assetPath: '${_MenuAssets.base}magaza.png',
-    route: AppRoutes.shop,
-  ),
-  GameMenuItem(
-    label: 'Banka',
-    icon: Icons.account_balance_wallet_outlined,
-    assetPath: '${_MenuAssets.base}banka.png',
-    route: AppRoutes.bank,
-  ),
-  GameMenuItem(
-    label: 'Ticaret',
-    icon: Icons.swap_horiz_rounded,
-    assetPath: '${_MenuAssets.base}ticaret.png',
-    route: AppRoutes.trade,
-  ),
-  GameMenuItem(
-    label: 'Zanaat',
-    icon: Icons.handyman_outlined,
-    assetPath: '${_MenuAssets.base}zanaat.png',
-    route: AppRoutes.crafting,
-  ),
-  GameMenuItem(
-    label: 'Item Upgrade',
-    icon: Icons.auto_fix_high_outlined,
-    assetPath: '${_MenuAssets.base}itemupgrade.png',
-    route: AppRoutes.enhancement,
-  ),
-  GameMenuItem(
-    label: 'Tesisler',
-    icon: Icons.factory_outlined,
-    assetPath: '${_MenuAssets.base}tesis.png',
-    route: AppRoutes.facilities,
-  ),
-  GameMenuItem(
-    label: 'Mekanlar',
-    icon: Icons.location_city_outlined,
-    assetPath: '${_MenuAssets.base}mekan.png',
-    route: AppRoutes.mekans,
-  ),
-  GameMenuItem(
-    label: 'Görevler',
-    icon: Icons.task_alt_rounded,
-    assetPath: '${_MenuAssets.base}gorev.png',
-    route: AppRoutes.quests,
-  ),
-  GameMenuItem(
-    label: 'Günlük Ödül',
-    icon: Icons.card_giftcard_rounded,
-    action: GameMenuAction.dailyReward,
-    accentColor: _QuickMenuTheme.gold,
-  ),
-  GameMenuItem(
-    label: 'Hastane',
-    icon: Icons.local_hospital_outlined,
-    assetPath: '${_MenuAssets.base}hastane.png',
-    route: AppRoutes.hospital,
-  ),
-  GameMenuItem(
-    label: 'Hapishane',
-    icon: Icons.gavel_rounded,
-    assetPath: '${_MenuAssets.base}hapishane.png',
-    route: AppRoutes.prison,
-  ),
-  GameMenuItem(
-    label: 'Sohbet',
-    icon: Icons.chat_outlined,
-    assetPath: '${_MenuAssets.base}sohbet.png',
-    route: AppRoutes.chat,
-    action: GameMenuAction.chat,
-  ),
-  GameMenuItem(
-    label: 'Ayarlar',
-    icon: Icons.settings_outlined,
-    assetPath: '${_MenuAssets.base}ayarlar.png',
-    route: AppRoutes.settings,
-  ),
-  GameMenuItem(
-    label: 'Çıkış Yap',
-    icon: Icons.logout_rounded,
-    assetPath: '${_MenuAssets.base}cikis.png',
-    action: GameMenuAction.logout,
-    accentColor: AppColors.danger,
-  ),
-  GameMenuItem(
-    label: 'At Yarisi',
-    icon: Icons.sports_motorsports_rounded,
-    route: AppRoutes.horseRace,
-    accentColor: AppColors.gold,
-  ),
-  GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
-  GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
+/// All quick-menu destinations (4-column grid). Labels from [l10n].
+List<GameMenuItem> buildGameMenuItems(AppLocalizations l10n) => <GameMenuItem>[
+  GameMenuItem(label: l10n.navHome, icon: Icons.home_rounded, assetPath: '${_MenuAssets.base}anasayfa.png', route: AppRoutes.home),
+  GameMenuItem(label: l10n.navInventory, icon: Icons.inventory_2_rounded, assetPath: '${_MenuAssets.base}envanter.png', route: AppRoutes.inventory),
+  GameMenuItem(label: l10n.navCharacter, icon: Icons.person_outline_rounded, assetPath: '${_MenuAssets.base}karakter.png', route: AppRoutes.character),
+  GameMenuItem(label: l10n.navDungeon, icon: Icons.shield_moon_outlined, assetPath: '${_MenuAssets.base}zindan.png', route: AppRoutes.dungeon),
+  GameMenuItem(label: l10n.routePvp, icon: Icons.sports_kabaddi_rounded, assetPath: '${_MenuAssets.base}pvp.png', route: AppRoutes.pvp),
+  GameMenuItem(label: l10n.routeLeaderboard, icon: Icons.leaderboard_rounded, assetPath: '${_MenuAssets.base}siralama.png', route: AppRoutes.leaderboard),
+  GameMenuItem(label: l10n.routeSeason, icon: Icons.ac_unit_rounded, assetPath: '${_MenuAssets.base}battlepass.png', route: AppRoutes.season),
+  GameMenuItem(label: l10n.routeGuild, icon: Icons.groups_outlined, assetPath: '${_MenuAssets.base}lonca.png', route: AppRoutes.guild),
+  GameMenuItem(label: l10n.routeGuildWar, icon: Icons.flag_outlined, assetPath: '${_MenuAssets.base}loncasavasi.png', route: AppRoutes.guildWar),
+  GameMenuItem(label: l10n.menuMonument, icon: Icons.account_balance_outlined, assetPath: '${_MenuAssets.base}anit.png', route: AppRoutes.guildMonument),
+  GameMenuItem(label: l10n.menuLoot, icon: Icons.casino_outlined, assetPath: '${_MenuAssets.base}kasaacma.png', route: AppRoutes.loot),
+  GameMenuItem(label: l10n.routeMarket, icon: Icons.storefront_outlined, assetPath: '${_MenuAssets.base}pazar.png', route: AppRoutes.market),
+  GameMenuItem(label: l10n.routeShop, icon: Icons.shopping_bag_outlined, assetPath: '${_MenuAssets.base}magaza.png', route: AppRoutes.shop),
+  GameMenuItem(label: l10n.routeBank, icon: Icons.account_balance_wallet_outlined, assetPath: '${_MenuAssets.base}banka.png', route: AppRoutes.bank),
+  GameMenuItem(label: l10n.routeTrade, icon: Icons.swap_horiz_rounded, assetPath: '${_MenuAssets.base}ticaret.png', route: AppRoutes.trade),
+  GameMenuItem(label: l10n.routeCrafting, icon: Icons.handyman_outlined, assetPath: '${_MenuAssets.base}zanaat.png', route: AppRoutes.crafting),
+  GameMenuItem(label: l10n.menuItemUpgrade, icon: Icons.auto_fix_high_outlined, assetPath: '${_MenuAssets.base}itemupgrade.png', route: AppRoutes.enhancement),
+  GameMenuItem(label: l10n.routeFacilities, icon: Icons.factory_outlined, assetPath: '${_MenuAssets.base}tesis.png', route: AppRoutes.facilities),
+  GameMenuItem(label: l10n.menuMekans, icon: Icons.location_city_outlined, assetPath: '${_MenuAssets.base}mekan.png', route: AppRoutes.mekans),
+  GameMenuItem(label: l10n.menuQuests, icon: Icons.task_alt_rounded, assetPath: '${_MenuAssets.base}gorev.png', route: AppRoutes.quests),
+  GameMenuItem(label: l10n.menuDailyReward, icon: Icons.card_giftcard_rounded, action: GameMenuAction.dailyReward, accentColor: _QuickMenuTheme.gold),
+  GameMenuItem(label: l10n.menuHospital, icon: Icons.local_hospital_outlined, assetPath: '${_MenuAssets.base}hastane.png', route: AppRoutes.hospital),
+  GameMenuItem(label: l10n.menuPrison, icon: Icons.gavel_rounded, assetPath: '${_MenuAssets.base}hapishane.png', route: AppRoutes.prison),
+  GameMenuItem(label: l10n.menuChat, icon: Icons.chat_outlined, assetPath: '${_MenuAssets.base}sohbet.png', route: AppRoutes.chat, action: GameMenuAction.chat),
+  GameMenuItem(label: l10n.menuSettings, icon: Icons.settings_outlined, assetPath: '${_MenuAssets.base}ayarlar.png', route: AppRoutes.settings),
+  GameMenuItem(label: l10n.menuLogout, icon: Icons.logout_rounded, assetPath: '${_MenuAssets.base}cikis.png', action: GameMenuAction.logout, accentColor: AppColors.danger),
+  GameMenuItem(label: l10n.routeHorseRace, icon: Icons.sports_motorsports_rounded, route: AppRoutes.horseRace, accentColor: AppColors.gold),
+  const GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
+  const GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
 ];
 
-/// Labels for smoke tests — non-empty menu entries only.
-List<String> get kGameMenuLabels => kGameMenuItems
-    .where(
-      (GameMenuItem i) => i.action != GameMenuAction.none && i.label.isNotEmpty,
-    )
-    .map((GameMenuItem i) => i.label)
-    .toList();
+List<String> kGameMenuLabelsTr() {
+  final AppLocalizations l10n = lookupAppLocalizations(const Locale('tr'));
+  return buildGameMenuItems(l10n)
+      .where((GameMenuItem i) => i.action != GameMenuAction.none && i.label.isNotEmpty)
+      .map((GameMenuItem i) => i.label)
+      .toList(growable: false);
+}
+
+List<String> get kGameMenuLabels => kGameMenuLabelsTr();
 
 double _panelBottomInset(BuildContext context) {
   const double safeMin = 10;
@@ -245,7 +113,7 @@ Future<void> showGameQuickMenu(
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
-    barrierLabel: 'Menü',
+    barrierLabel: context.l10n.menuBarrier,
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 280),
     pageBuilder: (BuildContext ctx, _, __) {
@@ -290,7 +158,7 @@ class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
     final bool canClaimDaily =
         ref.watch(dailyRewardProvider).status?.canClaim ?? false;
     final String displayName = profile == null
-        ? 'Oyuncu'
+        ? context.l10n.playerDefault
         : ((profile.displayName ?? profile.username).trim().isEmpty
               ? profile.username
               : (profile.displayName ?? profile.username));
@@ -509,18 +377,13 @@ class _MenuGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.78,
-      ),
-      itemCount: kGameMenuItems.length,
+    final List<GameMenuItem> menuItems = buildGameMenuItems(context.l10n);
+    return GameFixedGrid(
+      crossAxisCount: 4,
+      spacing: 8,
+      itemCount: menuItems.length,
       itemBuilder: (BuildContext context, int index) {
-        final GameMenuItem item = kGameMenuItems[index];
+        final GameMenuItem item = menuItems[index];
         if (item.action == GameMenuAction.none) {
           return const SizedBox.shrink();
         }

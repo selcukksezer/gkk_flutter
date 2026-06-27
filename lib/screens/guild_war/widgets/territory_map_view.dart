@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../components/layout/game_screen_background.dart';
 import '../../../models/guild_war_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import 'defense_power_bar.dart';
+import 'guild_war_design.dart';
 
 class TerritoryMapView extends StatelessWidget {
   const TerritoryMapView({
@@ -17,52 +19,53 @@ class TerritoryMapView extends StatelessWidget {
   final String? playerGuildId;
   final ValueChanged<TerritoryData> onTerritoryTap;
 
-  static const List<String> _icons = ['🏰', '🌾', '🐉', '⚓'];
+  static const List<String> _icons = <String>['🏰', '🌾', '🐉', '⚓', '🔥', '🏔'];
 
   @override
   Widget build(BuildContext context) {
     if (territories.isEmpty) {
-      return const SizedBox.shrink();
+      return const WarEmptyTab(
+        icon: '🗺',
+        message: 'Haritada henüz bölge yok. Sezon ilerledikçe bölgeler açılacak.',
+      );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.base),
-      child: Column(
-        children: [
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.95,
-              ),
-              itemCount: territories.length,
-              itemBuilder: (context, index) {
-                final t = territories[index];
-                final isOwner = t.ownerGuildId == playerGuildId;
-                return _MapTile(
-                  territory: t,
-                  icon: _icons[index % _icons.length],
-                  isOwner: isOwner,
-                  onTap: () => onTerritoryTap(t),
-                );
-              },
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _LegendDot(color: AppColors.gold, label: 'Senin loncan'),
-                const SizedBox(width: 16),
-                _LegendDot(color: AppColors.borderDefault, label: 'Diğer'),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const WarSectionHeader(
+          title: 'Savaş Haritası',
+          subtitle: 'Bölgeye dokunarak detayları gör',
+          accent: WarPalette.neon,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        GameFixedGrid(
+          crossAxisCount: 2,
+          spacing: 10,
+          itemCount: territories.length,
+          itemBuilder: (BuildContext context, int index) {
+            final TerritoryData t = territories[index];
+            final bool isOwner = t.ownerGuildId == playerGuildId;
+            return _MapTile(
+              territory: t,
+              icon: _icons[index % _icons.length],
+              isOwner: isOwner,
+              onTap: () => onTerritoryTap(t),
+            );
+          },
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            _LegendDot(color: WarPalette.gold, label: 'Senin loncan'),
+            const SizedBox(width: 16),
+            _LegendDot(color: WarPalette.titanium, label: 'Diğer'),
+            const SizedBox(width: 16),
+            _LegendDot(color: WarPalette.coral, label: 'Sahipsiz'),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -80,66 +83,58 @@ class _MapTile extends StatelessWidget {
   final bool isOwner;
   final VoidCallback onTap;
 
+  Color get _accent {
+    if (isOwner) return WarPalette.gold;
+    if (territory.isUnclaimed) return WarPalette.coral;
+    return WarPalette.ruby;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return WarPressable(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isOwner
-                ? [const Color(0xFF2A2010), const Color(0xFF1A2238)]
-                : [AppColors.bgCard, AppColors.bgSurface],
-          ),
-          border: Border.all(
-            color: isOwner ? AppColors.gold.withValues(alpha: 0.6) : AppColors.borderDefault,
-            width: isOwner ? 2 : 1,
-          ),
-          boxShadow: isOwner
-              ? [
-                  BoxShadow(
-                    color: AppColors.gold.withValues(alpha: 0.15),
-                    blurRadius: 16,
-                    spreadRadius: -2,
-                  ),
-                ]
-              : null,
-        ),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 28)),
-            const Spacer(),
-            Text(
-              territory.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                color: AppColors.textPrimary,
+      child: WarHeroBanner(
+        accent: _accent,
+        child: SizedBox(
+          height: 130,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Text(icon, style: const TextStyle(fontSize: 26)),
+                  const Spacer(),
+                  if (isOwner)
+                    const WarStatusPill(label: 'Sen', color: WarPalette.gold),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              territory.isUnclaimed ? 'Sahipsiz' : (territory.ownerGuildName ?? '—'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
-            ),
-            const SizedBox(height: 6),
-            DefensePowerBar(
-              current: territory.defensePower,
-              max: territory.baseDefensePower,
-              height: 5,
-              showLabel: false,
-            ),
-          ],
+              const Spacer(),
+              Text(
+                territory.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                territory.isUnclaimed ? 'Sahipsiz' : (territory.ownerGuildName ?? '—'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: WarPalette.titanium, fontSize: 10),
+              ),
+              const SizedBox(height: 6),
+              DefensePowerBar(
+                current: territory.defensePower,
+                max: territory.baseDefensePower,
+                height: 4,
+                showLabel: false,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -156,17 +151,14 @@ class _LegendDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
+      children: <Widget>[
         Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(color: AppColors.textTertiary, fontSize: 10)),
+        const SizedBox(width: 5),
+        Text(label, style: const TextStyle(color: WarPalette.titanium, fontSize: 10)),
       ],
     );
   }

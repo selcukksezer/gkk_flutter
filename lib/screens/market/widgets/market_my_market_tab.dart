@@ -10,6 +10,7 @@ import '../../../models/inventory_model.dart';
 import 'market_item_icon.dart';
 import 'market_listing_card.dart';
 import 'market_price_edit_sheet.dart';
+import '../../../l10n/l10n.dart';
 
 class MarketMyMarketTab extends ConsumerWidget {
   const MarketMyMarketTab({super.key});
@@ -46,7 +47,7 @@ class MarketMyMarketTab extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               _miniAction(
-                label: 'Fiyat',
+                label: context.l10n.fiyat,
                 color: AppColors.accentBlue,
                 onTap: () => _editPrice(context, ref, order),
               ),

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../components/common/gkk_card.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../models/guild_war_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../utils/logout_helper.dart';
+import 'widgets/guild_war_design.dart';
+import 'widgets/guild_war_empty_state.dart';
 import 'widgets/guild_war_sub_screen_scaffold.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
@@ -66,134 +69,128 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
     final t = _tournament;
     final guildId = ref.watch(playerProvider).profile?.guildId;
 
-    Future<void> logout() async {
-      await ref.read(authProvider.notifier).logout();
-      ref.read(playerProvider.notifier).clear();
-    }
+    Future<void> logout() async => performLogout(ref);
 
     return GuildWarSubScreenScaffold(
       title: '🏆 Turnuva Detay',
       onLogout: logout,
       currentRoute: AppRoutes.guildWar,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF090D14), Color(0xFF101722)],
-          ),
-        ),
-        child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
-            : t == null
-                ? const SizedBox.shrink()
-                : Column(
-                    children: [
-                      Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.all(AppSpacing.base),
-                          children: [
-                            GkkCard(
-                              borderGlow: t.isActive,
-                              accentColor: AppColors.gold,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    t.name,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      color: AppColors.textPrimary,
-                                    ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: WarPalette.gold))
+          : t == null
+              ? GuildWarEmptyState(
+                  icon: '🏆',
+                  title: 'Turnuva bulunamadı',
+                  subtitle:
+                      'Bu turnuva silinmiş veya artık mevcut değil. Lonca Savaşı merkezinden aktif turnuvalara bakabilirsin.',
+                  actionLabel: 'Lonca Savaşı\'na Dön',
+                  onAction: () => context.go(AppRoutes.guildWar),
+                )
+              : Column(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        padding: GameScrollLayout.pagePadding(context),
+                        children: [
+                          WarHeroBanner(
+                            accent: t.isActive ? WarPalette.gold : WarPalette.titanium,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  t.name,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.textPrimary,
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text('🏆 Ödül: ${t.prizePool}', style: const TextStyle(color: AppColors.gold)),
-                                  Text('👥 ${t.guildCount} Lonca', style: const TextStyle(color: AppColors.textSecondary)),
-                                ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '🏆 Ödül: ${t.prizePool}',
+                                  style: const TextStyle(color: WarPalette.gold),
+                                ),
+                                Text(
+                                  '👥 ${t.guildCount} Lonca',
+                                  style: const TextStyle(color: WarPalette.titanium),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const WarSectionHeader(title: 'Katılımcılar'),
+                          for (int i = 0; i < _participants.length; i++)
+                            WarFadeSlide(
+                              index: i,
+                              child: WarNeonCard(
+                                accent: WarPalette.gold,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.shield_outlined, color: WarPalette.gold, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        _participants[i].guildName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: AppSpacing.base),
-                            const Text(
-                              'Katılımcılar',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            ..._participants.map(
-                              (p) => Padding(
-                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                child: GkkCard(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          if (_participants.length >= 2) ...[
+                            const WarSectionHeader(title: 'Eşleşmeler', accent: WarPalette.fuchsia),
+                            for (int i = 0; i < _participants.length ~/ 2; i++)
+                              WarFadeSlide(
+                                index: i,
+                                child: WarNeonCard(
+                                  accent: WarPalette.fuchsia,
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.shield_outlined, color: AppColors.gold, size: 20),
-                                      const SizedBox(width: 10),
                                       Expanded(
                                         child: Text(
-                                          p.guildName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textPrimary,
-                                          ),
+                                          _participants[i * 2].guildName,
+                                          style: const TextStyle(color: AppColors.textPrimary),
+                                        ),
+                                      ),
+                                      const Text(
+                                        ' VS ',
+                                        style: TextStyle(
+                                          color: WarPalette.ruby,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          _participants[i * 2 + 1].guildName,
+                                          textAlign: TextAlign.end,
+                                          style: const TextStyle(color: AppColors.textPrimary),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
-                            ),
-                            if (_participants.length >= 2) ...[
-                              const SizedBox(height: AppSpacing.base),
-                              const Text(
-                                'Eşleşmeler',
-                                style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              ...List.generate(
-                                _participants.length ~/ 2,
-                                (i) {
-                                  final a = _participants[i * 2];
-                                  final b = _participants[i * 2 + 1];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                    child: GkkCard(
-                                      child: Row(
-                                        children: [
-                                          Expanded(child: Text(a.guildName, style: const TextStyle(color: AppColors.textPrimary))),
-                                          const Text(' VS ', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w800)),
-                                          Expanded(child: Text(b.guildName, textAlign: TextAlign.end, style: const TextStyle(color: AppColors.textPrimary))),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
                           ],
-                        ),
+                        ],
                       ),
-                      if (t.isActive && guildId != null)
-                        SafeArea(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppSpacing.base),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _join,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.gold,
-                                  foregroundColor: AppColors.bgDeep,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                ),
-                                child: const Text('Turnuvaya Katıl'),
-                              ),
-                            ),
+                    ),
+                    if (t.isActive && guildId != null)
+                      SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.base),
+                          child: WarGoldButton(
+                            label: 'Turnuvaya Katıl',
+                            onPressed: _join,
+                            expand: true,
                           ),
                         ),
-                    ],
-                  ),
-      ),
+                      ),
+                  ],
+                ),
     );
   }
 }

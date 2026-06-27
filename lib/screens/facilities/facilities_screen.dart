@@ -4,12 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../theme/app_colors.dart';
 import '../../models/facility_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/facilities_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import 'widgets/facilities_ui.dart';
+import 'widgets/facility_hub_cards.dart';
+import 'widgets/facilities_dialogs.dart';
+import '../../utils/logout_helper.dart';
 
 class FacilitiesScreen extends ConsumerStatefulWidget {
   const FacilitiesScreen({super.key});
@@ -38,196 +42,251 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
     final double gems = profile?.gems ?? 0;
     final int globalSuspicion = profile?.globalSuspicionLevel ?? 0;
     final bool inPrison = _isFuture(profile?.prisonUntil);
-    final String prisonReason = (profile?.prisonReason == null || profile!.prisonReason!.trim().isEmpty)
+    final String prisonReason =
+        (profile?.prisonReason == null || profile!.prisonReason!.trim().isEmpty)
         ? 'Bilinmiyor'
         : profile.prisonReason!;
 
     final Map<String, PlayerFacility> unlockedByType = <String, PlayerFacility>{
-      for (final facility in facilitiesState.facilities) facility.facilityType: facility,
+      for (final facility in facilitiesState.facilities)
+        facility.facilityType: facility,
     };
 
     final List<_TierGroup> tiers = <_TierGroup>[
-      _TierGroup(tier: 1, label: '🏚️ Tier 1 — Başlangıç', facilities: _basicFacilities),
-      _TierGroup(tier: 2, label: '🏗️ Tier 2 — Gelişmiş', facilities: _organicFacilities),
-      _TierGroup(tier: 3, label: '🏰 Tier 3 — İleri', facilities: _mysticalFacilities),
+      _TierGroup(
+        tier: 1,
+        label: '🏚️ Tier 1 — Başlangıç',
+        facilities: _basicFacilities,
+      ),
+      _TierGroup(
+        tier: 2,
+        label: '🏗️ Tier 2 — Gelişmiş',
+        facilities: _organicFacilities,
+      ),
+      _TierGroup(
+        tier: 3,
+        label: '🏰 Tier 3 — İleri',
+        facilities: _mysticalFacilities,
+      ),
     ];
 
     return Scaffold(
       appBar: GameTopBar(
         title: 'Tesisler',
         onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
+          await performLogout(ref);
+},
       ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
-
         currentRoute: AppRoutes.facilities,
 
         onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
-
+          await performLogout(ref);
+},
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF090D14), Color(0xFF101722), Color(0xFF090D14)],
+      body: facilitiesScreenShell(
+        child: switch (facilitiesState.status) {
+          FacilitiesStatus.initial || FacilitiesStatus.loading => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(
+                color: AppColors.liquidGold,
+                strokeWidth: 2,
+              ),
+            ),
           ),
-        ),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
-          children: <Widget>[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+          FacilitiesStatus.error => facilitiesErrorPanel(
+            message: facilitiesState.errorMessage ?? 'Tesisler yüklenemedi',
+            onRetry: () =>
+                ref.read(facilitiesProvider.notifier).loadFacilities(),
+          ),
+          FacilitiesStatus.ready => ListView(
+            padding: FacilitiesUi.scrollPadding(context),
+            children: <Widget>[
+              facilitiesPanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text(
-                      'Operasyon Merkezi',
-                      style: TextStyle(fontSize: 11, letterSpacing: 1.5, color: Color(0xFF67E8F9)),
-                    ),
-                    const SizedBox(height: 4),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text('Tesis Ağı', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                              SizedBox(height: 4),
+                              const Text(
+                                'Tesis Ağı',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
                               Text(
-                                'İstasyonları yönet, üretimi ölçekle, riski kontrol et.',
-                                style: TextStyle(fontSize: 12, color: Colors.white70),
+                                '${unlockedByType.length}/15 aktif • Lv.$level',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.mutedTitanium,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: <Widget>[
-                            const Text('Aktif Tesis', style: TextStyle(fontSize: 10, color: Colors.white60)),
-                            Text(
-                              '${unlockedByType.length} / 15',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF67E8F9)),
-                            ),
-                          ],
+                        facilitiesStatChip('Altın', _formatGold(gold)),
+                        const SizedBox(width: FacilitiesUi.gapSm),
+                        facilitiesStatChip(
+                          'Gem',
+                          gems.toStringAsFixed(0),
+                          valueColor: AppColors.liquidGold,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: <Widget>[
-                        Expanded(child: _tinyStat('Seviye', 'Lv.$level')),
-                        const SizedBox(width: 6),
-                        Expanded(child: _tinyStat('Altın', _formatGold(gold))),
-                        const SizedBox(width: 6),
-                        Expanded(child: _tinyStat('Gem', '$gems')),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
 
-            if (inPrison) ...<Widget>[
-              const SizedBox(height: 10),
-              Card(
-                color: const Color(0xCC4A1111),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
+              if (inPrison)
+                facilitiesPanel(
+                  borderColor: AppColors.mysticRuby.withValues(alpha: 0.4),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      const Text('👮 Cezaevindesiniz, operasyonlar kilitli.', style: TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 6),
-                      Text('📄 Gerekçe: $prisonReason', style: const TextStyle(fontSize: 12)),
+                      const Text('👮', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Text(
+                              'Cezaevi — operasyonlar kilitli',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              prisonReason,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.mutedTitanium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
 
-            const SizedBox(height: 10),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+              facilitiesPanel(
                 child: Column(
                   children: <Widget>[
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget>[
-                        const Text('🕵️ Genel Şüphe İndeksi', style: TextStyle(fontWeight: FontWeight.w700)),
+                        const Expanded(
+                          child: Text(
+                            '🕵️ Şüphe',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
                         Text(
                           '%$globalSuspicion',
                           style: TextStyle(
+                            fontSize: 12,
                             fontWeight: FontWeight.w800,
                             color: _suspicionColor(globalSuspicion),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: FacilitiesUi.gapSm),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(999),
                       child: LinearProgressIndicator(
                         value: (globalSuspicion / 100).clamp(0, 1),
-                        minHeight: 8,
-                        backgroundColor: Colors.white12,
+                        minHeight: 6,
+                        backgroundColor: AppColors.darkObsidian,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          _suspicionColor(globalSuspicion),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: FacilitiesUi.gap),
                     Row(
                       children: <Widget>[
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Yüksek şüphe, baskın ve hapis riskini artırır.',
-                            style: TextStyle(fontSize: 11, color: Colors.white70),
+                            globalSuspicion <= 0
+                                ? 'Şüphe yok'
+                                : 'Baskın riski artar',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: AppColors.mutedTitanium,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        FilledButton(
-                          onPressed: (gems < 5 || inPrison)
-                              ? null
-                              : () => _handleBribe(context, facilitiesState, gems),
-                          child: const Text('💎 5 Rüşvet Ver'),
+                        SizedBox(
+                          height: 30,
+                          child: FilledButton(
+                            onPressed:
+                                (gems < 5 || inPrison || globalSuspicion <= 0)
+                                ? null
+                                : () => _handleBribe(
+                                    context,
+                                    facilitiesState,
+                                    gems,
+                                  ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.liquidGold,
+                              foregroundColor: AppColors.carbonVoid,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                            ),
+                            child: const Text(
+                              '💎 Rüşvet',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    if (globalSuspicion <= 0) ...<Widget>[
-                      const SizedBox(height: 6),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Şüphe 0 iken rüşvet verilemez.',
-                          style: TextStyle(fontSize: 11, color: Colors.white60),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 10),
-            ...tiers.map((tierGroup) => _buildTierSection(
-                  context,
-                  tierGroup: tierGroup,
-                  level: level,
-                  gold: gold,
-                  inPrison: inPrison,
-                  unlockedByType: unlockedByType,
-                )),
-          ],
-        ),
+              ...() {
+                int cardIndex = 0;
+                return tiers.map((_TierGroup tierGroup) {
+                  final Widget section = _buildTierSection(
+                    context,
+                    tierGroup: tierGroup,
+                    level: level,
+                    gold: gold,
+                    inPrison: inPrison,
+                    unlockedByType: unlockedByType,
+                    animationStartIndex: cardIndex,
+                  );
+                  cardIndex += tierGroup.facilities.length;
+                  return section;
+                });
+              }(),
+            ],
+          ),
+        },
       ),
     );
   }
@@ -239,121 +298,52 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
     required int gold,
     required bool inPrison,
     required Map<String, PlayerFacility> unlockedByType,
+    required int animationStartIndex,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Text(tierGroup.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-            Text('${tierGroup.facilities.length} istasyon', style: const TextStyle(fontSize: 10, color: Colors.white60)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        GridView.builder(
-          itemCount: tierGroup.facilities.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 1.15,
-          ),
-          itemBuilder: (BuildContext context, int index) {
-            final _FacilityCardData facility = tierGroup.facilities[index];
-            final PlayerFacility? playerFacility = unlockedByType[facility.type];
-            final bool isUnlocked = playerFacility != null;
-            final bool canUnlock = !isUnlocked && level >= facility.unlockLevel && gold >= facility.unlockCost;
+    final Color accent = facTierAccent(tierGroup.tier);
 
-            return InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => _onFacilityTap(
-                context,
-                facility: facility,
-                isUnlocked: isUnlocked,
-                canUnlock: canUnlock,
-                inPrison: inPrison,
-                level: level,
-                gold: gold,
-              ),
-              child: Ink(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isUnlocked ? const Color(0x8040E0FF) : Colors.white24,
-                  ),
-                  color: isUnlocked ? const Color(0xD2141E2C) : const Color(0xD2181A20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        Text(facility.icon, style: const TextStyle(fontSize: 22)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(999),
-                            color: isUnlocked ? const Color(0x3334D399) : Colors.white12,
-                          ),
-                          child: Text(
-                            isUnlocked ? 'Aktif' : 'Kilitli',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: isUnlocked ? const Color(0xFF86EFAC) : Colors.white70,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      facility.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                    const Spacer(),
-                    if (isUnlocked)
-                      Row(
-                        children: <Widget>[
-                          Expanded(child: Text('Lv.${playerFacility.level}', style: const TextStyle(fontSize: 11))),
-                          Expanded(
-                            child: Text(
-                              '⏳ ${playerFacility.facilityQueue.length}',
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            '🔒 Gereken Seviye: ${facility.unlockLevel}',
-                            style: const TextStyle(fontSize: 10, color: Colors.white70),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '🪙 Maliyet: ${_formatGold(facility.unlockCost)}',
-                            style: const TextStyle(fontSize: 10, color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 10),
-      ],
+    final List<Widget Function(int index)> cardBuilders =
+        <Widget Function(int index)>[];
+    for (int i = 0; i < tierGroup.facilities.length; i++) {
+      final _FacilityCardData facility = tierGroup.facilities[i];
+      final int animIndex = animationStartIndex + i;
+      cardBuilders.add((int _) {
+        final PlayerFacility? playerFacility = unlockedByType[facility.type];
+        final bool isUnlocked = playerFacility != null;
+        final bool canUnlock =
+            !isUnlocked &&
+            level >= facility.unlockLevel &&
+            gold >= facility.unlockCost;
+        final String footer = isUnlocked
+            ? 'Lv.${playerFacility.level} • Kuyruk ${playerFacility.facilityQueue.length}'
+            : 'Lv.${facility.unlockLevel} • ${_formatGold(facility.unlockCost)}g';
+
+        return FacHubFacilityCard(
+          animationIndex: animIndex,
+          icon: facility.icon,
+          name: facility.name,
+          isUnlocked: isUnlocked,
+          footer: footer,
+          accentColor: accent,
+          onTap: () => _onFacilityTap(
+            context,
+            facility: facility,
+            isUnlocked: isUnlocked,
+            canUnlock: canUnlock,
+            inPrison: inPrison,
+            level: level,
+            gold: gold,
+          ),
+        );
+      });
+    }
+
+    return FacTierSection(
+      tier: tierGroup.tier,
+      title: tierGroup.label,
+      trailing: '${tierGroup.facilities.length} istasyon',
+      accentColor: accent,
+      children: facBuildFacilityCardRows(cardBuilder: cardBuilders),
     );
   }
 
@@ -367,7 +357,10 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
     required int gold,
   }) async {
     if (inPrison) {
-      AppMessenger.show(context, 'Cezaevindeyken detaylara erişilemez. Kefalet ödeyerek serbest kalabilirsiniz.');
+      AppMessenger.show(
+        context,
+        'Cezaevindeyken detaylara erişilemez. Kefalet ödeyerek serbest kalabilirsiniz.',
+      );
       return;
     }
 
@@ -377,24 +370,18 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
     }
 
     if (canUnlock) {
-      final bool confirm = await showDialog<bool>(
-            context: context,
-            builder: (BuildContext context) => AlertDialog(
-              title: const Text('Onay'),
-              content: Text(
-                '${facility.name} açmak için ${_formatGold(facility.unlockCost)} altını harcamak istediğinize emin misiniz?',
-              ),
-              actions: <Widget>[
-                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Vazgeç')),
-                FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Onayla')),
-              ],
-            ),
-          ) ??
-          false;
+      final bool confirm = await showFacUnlockDialog(
+        context,
+        facilityName: facility.name,
+        facilityIcon: facility.icon,
+        formattedCost: _formatGold(facility.unlockCost),
+      );
 
       if (!confirm) return;
 
-      final bool ok = await ref.read(facilitiesProvider.notifier).unlockFacility(facilityType: facility.type);
+      final bool ok = await ref
+          .read(facilitiesProvider.notifier)
+          .unlockFacility(facilityType: facility.type);
       if (!mounted) return;
       AppMessenger.show(
         context,
@@ -411,47 +398,49 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
     }
 
     if (gold < facility.unlockCost) {
-      AppMessenger.show(context, '${_formatGold(facility.unlockCost)} altın gerekli');
+      AppMessenger.show(
+        context,
+        '${_formatGold(facility.unlockCost)} altın gerekli',
+      );
       return;
     }
   }
 
-  Future<void> _handleBribe(BuildContext context, FacilitiesState facilitiesState, num gems) async {
-        final int globalSuspicion = ref.read(playerProvider).profile?.globalSuspicionLevel ?? 0;
-        if (globalSuspicion <= 0) {
-          AppMessenger.show(context, 'Şüphe 0 iken rüşvet verilemez');
-          return;
-        }
+  Future<void> _handleBribe(
+    BuildContext context,
+    FacilitiesState facilitiesState,
+    num gems,
+  ) async {
+    final int globalSuspicion =
+        ref.read(playerProvider).profile?.globalSuspicionLevel ?? 0;
+    if (globalSuspicion <= 0) {
+      AppMessenger.show(context, 'Şüphe 0 iken rüşvet verilemez');
+      return;
+    }
 
     if (gems < 5) {
       AppMessenger.show(context, 'Rüşvet için 5 gem gerekli');
       return;
     }
 
-    final PlayerFacility? unlocked = facilitiesState.facilities.isNotEmpty ? facilitiesState.facilities.first : null;
-    if (unlocked == null) {
+    final PlayerFacility? bribeTarget = ref
+        .read(facilitiesProvider.notifier)
+        .pickBribeTarget();
+    if (bribeTarget == null) {
       AppMessenger.show(context, 'Rüşvet için açık tesis yok');
       return;
     }
 
-    final bool confirm = await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) => AlertDialog(
-            content: Text('Seçilen tesis: ${unlocked.facilityType}. 5 Gem ile rüşvet vermek istiyor musunuz?'),
-            actions: <Widget>[
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Vazgeç')),
-              FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Onayla')),
-            ],
-          ),
-        ) ??
-        false;
+    final bool confirm = await showFacBribeDialog(
+      context,
+      facilityType: bribeTarget.facilityType,
+    );
 
     if (!confirm) return;
 
-    final bool ok = await ref.read(facilitiesProvider.notifier).bribeOfficials(
-          facilityType: unlocked.facilityType,
-          gemAmount: 5,
-        );
+    final bool ok = await ref
+        .read(facilitiesProvider.notifier)
+        .bribeOfficials(facilityType: bribeTarget.facilityType, gemAmount: 5);
     if (!mounted) return;
 
     if (ok) {
@@ -466,25 +455,12 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
           : (ref.read(facilitiesProvider).errorMessage ?? 'Rüşvet başarısız'),
     );
   }
+}
 
-  Widget _tinyStat(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: Colors.black26,
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white60)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
+Color _suspicionColor(int value) {
+  if (value >= 80) return AppColors.coralFlare;
+  if (value >= 50) return AppColors.warningSolar;
+  return AppColors.toxicNeon;
 }
 
 class _TierGroup {
@@ -516,34 +492,118 @@ class _FacilityCardData {
 }
 
 const List<_FacilityCardData> _basicFacilities = <_FacilityCardData>[
-  _FacilityCardData(type: 'mining', name: 'Maden Ocağı', icon: '⛏️', unlockLevel: 1, unlockCost: 50000),
-  _FacilityCardData(type: 'quarry', name: 'Taş Ocağı', icon: '🪨', unlockLevel: 2, unlockCost: 80000),
-  _FacilityCardData(type: 'lumber_mill', name: 'Kereste Fabrikası', icon: '🪵', unlockLevel: 3, unlockCost: 100000),
-  _FacilityCardData(type: 'clay_pit', name: 'Kil Ocağı', icon: '🏺', unlockLevel: 4, unlockCost: 120000),
-  _FacilityCardData(type: 'sand_quarry', name: 'Kum Ocağı', icon: '🏖️', unlockLevel: 5, unlockCost: 150000),
+  _FacilityCardData(
+    type: 'mining',
+    name: 'Maden Ocağı',
+    icon: '⛏️',
+    unlockLevel: 1,
+    unlockCost: 50000,
+  ),
+  _FacilityCardData(
+    type: 'quarry',
+    name: 'Taş Ocağı',
+    icon: '🪨',
+    unlockLevel: 2,
+    unlockCost: 80000,
+  ),
+  _FacilityCardData(
+    type: 'lumber_mill',
+    name: 'Kereste Fabrikası',
+    icon: '🪵',
+    unlockLevel: 3,
+    unlockCost: 100000,
+  ),
+  _FacilityCardData(
+    type: 'clay_pit',
+    name: 'Kil Ocağı',
+    icon: '🏺',
+    unlockLevel: 4,
+    unlockCost: 120000,
+  ),
+  _FacilityCardData(
+    type: 'sand_quarry',
+    name: 'Kum Ocağı',
+    icon: '🏖️',
+    unlockLevel: 5,
+    unlockCost: 150000,
+  ),
 ];
 
 const List<_FacilityCardData> _organicFacilities = <_FacilityCardData>[
-  _FacilityCardData(type: 'farming', name: 'Çiftlik', icon: '🌾', unlockLevel: 6, unlockCost: 200000),
-  _FacilityCardData(type: 'herb_garden', name: 'Ot Bahçesi', icon: '🌿', unlockLevel: 7, unlockCost: 250000),
-  _FacilityCardData(type: 'ranch', name: 'Hayvancılık', icon: '🐄', unlockLevel: 8, unlockCost: 300000),
-  _FacilityCardData(type: 'apiary', name: 'Arıcılık', icon: '🐝', unlockLevel: 9, unlockCost: 350000),
-  _FacilityCardData(type: 'mushroom_farm', name: 'Mantar Çiftliği', icon: '🍄', unlockLevel: 10, unlockCost: 400000),
+  _FacilityCardData(
+    type: 'farming',
+    name: 'Çiftlik',
+    icon: '🌾',
+    unlockLevel: 6,
+    unlockCost: 200000,
+  ),
+  _FacilityCardData(
+    type: 'herb_garden',
+    name: 'Ot Bahçesi',
+    icon: '🌿',
+    unlockLevel: 7,
+    unlockCost: 250000,
+  ),
+  _FacilityCardData(
+    type: 'ranch',
+    name: 'Hayvancılık',
+    icon: '🐄',
+    unlockLevel: 8,
+    unlockCost: 300000,
+  ),
+  _FacilityCardData(
+    type: 'apiary',
+    name: 'Arıcılık',
+    icon: '🐝',
+    unlockLevel: 9,
+    unlockCost: 350000,
+  ),
+  _FacilityCardData(
+    type: 'mushroom_farm',
+    name: 'Mantar Çiftliği',
+    icon: '🍄',
+    unlockLevel: 10,
+    unlockCost: 400000,
+  ),
 ];
 
 const List<_FacilityCardData> _mysticalFacilities = <_FacilityCardData>[
-  _FacilityCardData(type: 'rune_mine', name: 'Rune Madeni', icon: '🔮', unlockLevel: 15, unlockCost: 500000),
-  _FacilityCardData(type: 'holy_spring', name: 'Kutsal Kaynak', icon: '⛲', unlockLevel: 20, unlockCost: 600000),
-  _FacilityCardData(type: 'shadow_pit', name: 'Gölge Çukuru', icon: '🕳️', unlockLevel: 25, unlockCost: 700000),
-  _FacilityCardData(type: 'elemental_forge', name: 'Elementel Ocak', icon: '🔥', unlockLevel: 30, unlockCost: 800000),
-  _FacilityCardData(type: 'time_well', name: 'Zaman Kuyusu', icon: '⏳', unlockLevel: 40, unlockCost: 1000000),
+  _FacilityCardData(
+    type: 'rune_mine',
+    name: 'Rune Madeni',
+    icon: '🔮',
+    unlockLevel: 15,
+    unlockCost: 500000,
+  ),
+  _FacilityCardData(
+    type: 'holy_spring',
+    name: 'Kutsal Kaynak',
+    icon: '⛲',
+    unlockLevel: 20,
+    unlockCost: 600000,
+  ),
+  _FacilityCardData(
+    type: 'shadow_pit',
+    name: 'Gölge Çukuru',
+    icon: '🕳️',
+    unlockLevel: 25,
+    unlockCost: 700000,
+  ),
+  _FacilityCardData(
+    type: 'elemental_forge',
+    name: 'Elementel Ocak',
+    icon: '🔥',
+    unlockLevel: 30,
+    unlockCost: 800000,
+  ),
+  _FacilityCardData(
+    type: 'time_well',
+    name: 'Zaman Kuyusu',
+    icon: '⏳',
+    unlockLevel: 40,
+    unlockCost: 1000000,
+  ),
 ];
-
-Color _suspicionColor(int value) {
-  if (value >= 80) return const Color(0xFFFF6B6B);
-  if (value >= 50) return const Color(0xFFFFD166);
-  return const Color(0xFF7CFFB2);
-}
 
 bool _isFuture(String? iso) {
   if (iso == null || iso.isEmpty) return false;
@@ -552,4 +612,5 @@ bool _isFuture(String? iso) {
   return parsed.isAfter(DateTime.now());
 }
 
-String _formatGold(int value) => NumberFormat.decimalPattern('tr_TR').format(value);
+String _formatGold(int value) =>
+    NumberFormat.decimalPattern('tr_TR').format(value);

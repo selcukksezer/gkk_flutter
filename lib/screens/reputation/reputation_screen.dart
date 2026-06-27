@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 // ─── Data models ─────────────────────────────────────────────────────────────
 
@@ -496,7 +497,7 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: GameTopBar(
-        title: 'İtibar',
+        title: context.l10n.i_tibar,
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();

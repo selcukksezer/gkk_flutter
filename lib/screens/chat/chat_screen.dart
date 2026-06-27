@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/player_provider.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
+import '../../theme/app_colors.dart';
 
 // ============================================================================
 // DESIGN SYSTEM - Colors, Spacing, Shadows, Gradients
@@ -16,7 +18,7 @@ class _ChatDesignSystem {
   static const Color colorGlobalAccent = Color(0xFF38BDF8); // Sky blue
   static const Color colorGuildAccent = Color(0xFFF97316); // Guild orange
   static const Color colorTradeAccent = Color(0xFFFCCC15); // Trade amber
-  static const Color colorDmAccent = Color(0xFFA855F7); // DM purple
+  static const Color colorDmAccent = AppColors.cyberFuchsia;
 
   // Semantic colors
   static const Color colorSuccess = Color(0xFF10B981);
@@ -85,7 +87,7 @@ class _ChatDesignSystem {
   static const LinearGradient gradientDm = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [Color(0x1FA855F7), Color(0x06A855F7)],
+    colors: [Color(0x1EE01E5A), Color(0x06E01E5A)],
   );
 }
 
@@ -233,6 +235,7 @@ class _ChatDmConversation {
     required this.lastMessageAt,
     required this.unreadCount,
     this.peerDisplayName,
+    this.peerIsOnline = false,
   });
 
   final String peerUserId;
@@ -241,6 +244,7 @@ class _ChatDmConversation {
   final String lastMessageContent;
   final DateTime lastMessageAt;
   final int unreadCount;
+  final bool peerIsOnline;
 
   factory _ChatDmConversation.fromJson(Map<String, dynamic> json) {
     final DateTime ts = DateTime.tryParse(json['last_message_at']?.toString() ?? '')?.toLocal() ?? DateTime.now();
@@ -251,6 +255,7 @@ class _ChatDmConversation {
       lastMessageContent: json['last_message_content']?.toString() ?? '',
       lastMessageAt: ts,
       unreadCount: ((json['unread_count'] as num?) ?? 0).toInt().clamp(0, 99),
+      peerIsOnline: json['peer_is_online'] == true,
     );
   }
 }
@@ -420,6 +425,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   DateTime _lastMessageSentAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   RealtimeChannel? _realtimeChannel;
+  final Map<String, bool> _presenceByUserId = <String, bool>{};
+  Timer? _presenceTimer;
 
   String get _currentAuthUserId => SupabaseService.client.auth.currentUser?.id ?? '';
 
@@ -431,6 +438,77 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isOwnSender(String senderId) {
     if (senderId.isEmpty) return false;
     return senderId == _currentGameUserId || senderId == _currentAuthUserId;
+  }
+
+  bool _isUserOnline(String userId, {bool? fallback}) {
+    if (userId.isEmpty) return false;
+    if (_presenceByUserId.containsKey(userId)) {
+      return _presenceByUserId[userId]!;
+    }
+    return fallback ?? false;
+  }
+
+  void _seedPresence(String userId, bool? online) {
+    if (userId.isEmpty || online == null) return;
+    _presenceByUserId[userId] = online;
+  }
+
+  void _startPresencePolling() {
+    _presenceTimer ??= Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(_refreshPresence());
+    });
+    unawaited(_refreshPresence());
+  }
+
+  void _stopPresencePolling() {
+    _presenceTimer?.cancel();
+    _presenceTimer = null;
+  }
+
+  Future<void> _refreshPresence() async {
+    final Set<String> userIds = <String>{
+      ..._dmConversations.map((c) => c.peerUserId),
+      ..._dmSearchResults.map((u) => u.id),
+      if (_activeDmPeer != null) _activeDmPeer!.id,
+    }.where((String id) => id.isNotEmpty).toSet();
+
+    if (userIds.isEmpty) return;
+
+    try {
+      final dynamic res = await _rpc(
+        'get_chat_presence',
+        params: <String, dynamic>{'p_user_ids': userIds.toList(growable: false)},
+      );
+      if (!mounted) return;
+      if (res is List) {
+        setState(() {
+          for (final dynamic row in res) {
+            if (row is! Map) continue;
+            final String id = row['user_id']?.toString() ?? '';
+            if (id.isEmpty) continue;
+            _presenceByUserId[id] = row['is_online'] == true;
+          }
+        });
+      }
+    } catch (_) {
+      // Non-blocking.
+    }
+  }
+
+  Widget _onlineDot(String userId, {bool? fallback, double size = 8}) {
+    final bool online = _isUserOnline(userId, fallback: fallback);
+    final Color color = online ? AppColors.toxicNeon : AppColors.mutedTitanium;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: online
+            ? <BoxShadow>[BoxShadow(color: color.withValues(alpha: 0.55), blurRadius: 4)]
+            : null,
+      ),
+    );
   }
 
   int get _dmUnreadCount => _dmConversations.fold<int>(0, (int total, _ChatDmConversation item) => total + item.unreadCount);
@@ -452,6 +530,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messageController.addListener(_handleComposerChanged);
     unawaited(_syncBlockedUsers());
     _subscribeRealtime();
+    _startPresencePolling();
     unawaited(_loadForChannel(_activeChannel));
   }
 
@@ -464,6 +543,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _filterReplacementController.dispose();
     _scrollController.dispose();
     _realtimeChannel?.unsubscribe();
+    _stopPresencePolling();
     super.dispose();
   }
 
@@ -531,6 +611,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       if (!mounted) return;
       setState(() => _dmConversations = items);
+      for (final _ChatDmConversation conv in items) {
+        _seedPresence(conv.peerUserId, conv.peerIsOnline);
+      }
+      unawaited(_refreshPresence());
     } finally {
       if (mounted) setState(() => _isDmLoading = false);
     }
@@ -868,6 +952,77 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     }
     return null;
+  }
+
+  Future<void> _hideDmConversation(_ChatDmConversation conv) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1117),
+        title: const Text('Konuşmayı sil', style: TextStyle(color: Colors.white)),
+        content: Text(
+          '@${conv.peerUsername} ile konuşma listenizden kaldırılsın mı?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil', style: TextStyle(color: Colors.redAccent))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final dynamic res = await _rpc(
+        'hide_dm_conversation',
+        params: <String, dynamic>{'p_peer_user_id': conv.peerUserId},
+      );
+      final Map<String, dynamic>? data = res is Map ? Map<String, dynamic>.from(res) : null;
+      if (data?['success'] != true) {
+        _showSnack(data?['error']?.toString() ?? 'Konuşma silinemedi');
+        return;
+      }
+      if (_activeDmPeer?.id == conv.peerUserId) {
+        _leaveDmConversation();
+      }
+      await _loadDmConversations();
+      _showSnack('Konuşma silindi');
+    } catch (_) {
+      _showSnack('Konuşma silinemedi');
+    }
+  }
+
+  void _showDmConversationActions(_ChatDmConversation conv) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0D1117),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              title: const Text('Konuşmayı sil', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                unawaited(_hideDmConversation(conv));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.volume_off_rounded, color: Colors.white70),
+              title: const Text('Oyuncuyu sustur', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                unawaited(_mutePlayer(conv.peerUserId, playerName: conv.peerUsername));
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _mutePlayer(String playerId, {String? playerName}) async {
@@ -1271,7 +1426,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sohbet'),
+        title: Text(context.l10n.sohbet),
         centerTitle: true,
       ),
       body: body,
@@ -1712,7 +1867,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('@${_activeDmPeer!.username}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Row(
+                      children: <Widget>[
+                        _onlineDot(_activeDmPeer!.id, size: 7),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '@${_activeDmPeer!.username}',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                     if (_activeDmPeer!.displayName != null) Text(_activeDmPeer!.displayName!, style: const TextStyle(fontSize: 11, color: _ChatDesignSystem.colorTextTertiary), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
@@ -1745,6 +1913,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildDmConversationCard(_ChatDmConversation conv) {
     return GestureDetector(
       onTap: () => _openDmConversation(_ChatUserSummary(id: conv.peerUserId, username: conv.peerUsername, displayName: conv.peerDisplayName)),
+      onLongPress: () => _showDmConversationActions(conv),
       child: Container(
         padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
         decoration: BoxDecoration(
@@ -1767,6 +1936,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
+                      _onlineDot(conv.peerUserId, fallback: conv.peerIsOnline, size: 7),
+                      const SizedBox(width: 6),
                       Expanded(child: Text('@${conv.peerUsername}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
                       Text(_formatTime(conv.lastMessageAt), style: TextStyle(fontSize: 10, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.5))),
                     ],

@@ -4,14 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../utils/logout_helper.dart';
 
 // ============================================================================
 // DESIGN SYSTEM
@@ -419,17 +420,15 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen> {
         appBar: GameTopBar(
           title: '🔥 Güçlendirme',
           onLogout: () async {
-            await ref.read(authProvider.notifier).logout();
-            ref.read(playerProvider.notifier).clear();
-          },
+            await performLogout(ref);
+},
         ),
         extendBody: true,
         bottomNavigationBar: GameBottomBar(
           currentRoute: AppRoutes.enhancement,
           onLogout: () async {
-            await ref.read(authProvider.notifier).logout();
-            ref.read(playerProvider.notifier).clear();
-          },
+            await performLogout(ref);
+},
         ),
         body: Container(
           decoration: const BoxDecoration(
@@ -444,7 +443,10 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen> {
             ),
           ),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(_EnhancementDesignSystem.spaceLg),
+            padding: GameScrollLayout.withClearance(
+              context,
+              const EdgeInsets.all(_EnhancementDesignSystem.spaceLg),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -660,15 +662,11 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen> {
                       style: TextStyle(fontSize: 10, color: Colors.white54),
                     ),
                     const SizedBox(height: _EnhancementDesignSystem.spaceSm),
-                    GridView.count(
+                    GameFixedGrid(
                       crossAxisCount: 3,
-                      shrinkWrap: true,
-                      mainAxisSpacing: 4,
-                      crossAxisSpacing: 4,
-                      children: List.generate(
-                        _maxScrollSlots,
-                        (int i) => _buildScrollSlot(i),
-                      ),
+                      spacing: 4,
+                      itemCount: _maxScrollSlots,
+                      itemBuilder: (BuildContext context, int i) => _buildScrollSlot(i),
                     ),
                   ],
                 ),
@@ -1377,15 +1375,9 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen> {
             ],
           ),
           const SizedBox(height: _EnhancementDesignSystem.spaceMd),
-          GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: gridColCount,
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 4,
-              childAspectRatio: 1,
-            ),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+          GameFixedGrid(
+            crossAxisCount: gridColCount,
+            spacing: 4,
             itemCount: maxSlots,
             itemBuilder: (_, int idx) {
               InventoryItem? item;
@@ -1397,22 +1389,25 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen> {
               }
 
               if (item == null) {
-                return Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
+                return AspectRatio(
+                  aspectRatio: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        _EnhancementDesignSystem.radiusMd,
+                      ),
+                      color: Colors.white.withValues(alpha: 0.02),
                     ),
-                    borderRadius: BorderRadius.circular(
-                      _EnhancementDesignSystem.radiusMd,
-                    ),
-                    color: Colors.white.withValues(alpha: 0.02),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '📭',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.2),
+                    child: Center(
+                      child: Text(
+                        '📭',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
                       ),
                     ),
                   ),
@@ -1558,18 +1553,21 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen> {
                 ),
               );
 
-              return Draggable<InventoryItem>(
-                data: selectedInventoryItem,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: SizedBox(
-                    width: 72,
-                    height: 72,
-                    child: Opacity(opacity: 0.9, child: itemTile),
+              return AspectRatio(
+                aspectRatio: 1,
+                child: Draggable<InventoryItem>(
+                  data: selectedInventoryItem,
+                  feedback: Material(
+                    color: Colors.transparent,
+                    child: SizedBox(
+                      width: 72,
+                      height: 72,
+                      child: Opacity(opacity: 0.9, child: itemTile),
+                    ),
                   ),
+                  childWhenDragging: Opacity(opacity: 0.35, child: itemTile),
+                  child: itemTile,
                 ),
-                childWhenDragging: Opacity(opacity: 0.35, child: itemTile),
-                child: itemTile,
               );
             },
           ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/guild_war_model.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../l10n/l10n.dart';
 
 class BattleResultScreen extends StatefulWidget {
   const BattleResultScreen({super.key, required this.result});
@@ -138,19 +139,19 @@ class _BattleResultScreenState extends State<BattleResultScreen>
                   child: Column(
                     children: [
                       _StatRow(
-                        label: 'Saldırı Gücü',
+                        label: context.l10n.sald_r_g_c,
                         value: '${widget.result.attackPower}',
                         color: AppColors.danger,
                       ),
                       const Divider(color: AppColors.borderFaint),
                       _StatRow(
-                        label: 'Savunma Gücü',
+                        label: context.l10n.savunma_g_c,
                         value: '${widget.result.defensePower}',
                         color: AppColors.accentBlue,
                       ),
                       const Divider(color: AppColors.borderFaint),
                       _StatRow(
-                        label: 'Kazanılan Puan',
+                        label: context.l10n.kazan_lan_puan,
                         value: '+${widget.result.pointsGained}',
                         color: AppColors.gold,
                       ),
@@ -170,7 +171,7 @@ class _BattleResultScreenState extends State<BattleResultScreen>
                       foregroundColor: AppColors.bgDeep,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: const Text('Devam'),
+                    child: Text(context.l10n.devam),
                   ),
                 ),
               ),

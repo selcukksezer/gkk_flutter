@@ -5,13 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
+import '../../theme/app_colors.dart';
 import '../../models/facility_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/facilities_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import 'widgets/facilities_ui.dart';
+import 'widgets/facility_detail_design.dart';
+import 'widgets/facilities_dialogs.dart';
+import '../../utils/logout_helper.dart';
 
 class FacilityDetailScreen extends ConsumerStatefulWidget {
   const FacilityDetailScreen({
@@ -62,6 +67,7 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen> {
     final facilitiesState = ref.watch(facilitiesProvider);
     final playerState = ref.watch(playerProvider);
     final profile = playerState.profile;
+    final bool isBusy = facilitiesState.isMutating;
 
     final bool inPrison = _isFuture(profile?.prisonUntil);
     final int energy = profile?.energy ?? 0;
@@ -106,560 +112,336 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen> {
     final int upgradeCost = _getUpgradeCost(widget.type, level);
     final bool canUpgrade = !hasProductionRecord && (facility?.level ?? 1) < 10 && gold >= upgradeCost;
 
-    return Scaffold(
-      appBar: GameTopBar(
-        title: 'Tesis Konsolu',
-        onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
-      ),
-      extendBody: true,
-      bottomNavigationBar: GameBottomBar(
+    Future<void> logout() async {
+      await performLogout(ref);
+}
 
-        currentRoute: AppRoutes.facilities,
-
-        onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
-
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF090D14), Color(0xFF101722), Color(0xFF090D14)],
-          ),
-        ),
+    return GameSubScreenScaffold(
+      title: meta?.name ?? widget.type,
+      onLogout: logout,
+      fallbackRoute: AppRoutes.facilities,
+      bottomNavRoute: AppRoutes.facilities,
+      body: facilitiesScreenShell(
         child: ListView(
-          padding: const EdgeInsets.all(12),
+          padding: FacilitiesUi.scrollPadding(context),
           children: <Widget>[
-            if (facility == null)
-              Card(
+            if (facilitiesState.status == FacilitiesStatus.loading && facility == null)
+              const Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const <Widget>[
-                      Text('Tesis bulunamadı', style: TextStyle(fontWeight: FontWeight.w700)),
-                      SizedBox(height: 8),
-                      Text('Bu tesis henüz açılmamış'),
-                    ],
-                  ),
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(color: AppColors.liquidGold, strokeWidth: 2),
                 ),
               )
+            else if (facility == null)
+              FacEmptyState(
+                icon: meta?.icon ?? '🏭',
+                title: meta?.name ?? 'Tesis bulunamadı',
+                subtitle: meta == null
+                    ? '"${widget.type}" tanınmıyor.'
+                    : 'Henüz açılmamış — listeden kilidi aç.',
+              )
             else ...<Widget>[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(meta?.icon ?? '🏭', style: const TextStyle(fontSize: 34)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                const Text(
-                                  'Tesis Konsolu',
-                                  style: TextStyle(fontSize: 11, letterSpacing: 1.2, color: Color(0xFF67E8F9)),
-                                ),
-                                Text(
-                                  meta?.name ?? widget.type,
-                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(meta?.description ?? '', style: const TextStyle(fontSize: 12, color: Colors.white70)),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(999),
-                              color: const Color(0x3322D3EE),
-                              border: Border.all(color: const Color(0x4440E0FF)),
-                            ),
-                            child: Text('Lv.${facility.level}', style: const TextStyle(fontSize: 11)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: <Widget>[
-                          Expanded(child: _tinyStat('Enerji', '$energy')),
-                          const SizedBox(width: 6),
-                          Expanded(child: _tinyStat('Altın', _formatGold(gold))),
-                          const SizedBox(width: 6),
-                          Expanded(child: _tinyStat('Durum', hasProductionRecord ? 'Üretimde' : 'Boşta')),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              FacDetailHero(
+                icon: meta?.icon ?? '🏭',
+                name: meta?.name ?? widget.type,
+                description: meta?.description ?? '',
+                level: facility.level,
+                isProducing: hasProductionRecord,
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => _activeTab = 'overview'),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: _activeTab == 'overview' ? const Color(0x1A22D3EE) : null,
-                      ),
-                      child: const Text('Genel Bakış'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => _activeTab = 'queue'),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: _activeTab == 'queue' ? const Color(0x1A22D3EE) : null,
-                      ),
-                      child: const Text('Üretim Kuyruğu'),
-                    ),
-                  ),
+              facilitiesSegmentTabs(
+                activeId: _activeTab,
+                onChanged: (String tab) => setState(() => _activeTab = tab),
+                tabs: const <FacilitiesTabOption>[
+                  (id: 'overview', label: 'Genel'),
+                  (id: 'queue', label: 'Depo'),
                 ],
               ),
-              const SizedBox(height: 8),
-              if (_activeTab == 'overview') ...<Widget>[
-                if (productionRunning)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: <Widget>[
-                              const Text('🟢 Üretim Devam Ediyor', style: TextStyle(fontWeight: FontWeight.w700)),
-                              Text('⏱️ ${_formatRemaining(targetAt)}'),
-                            ],
-                          ),
-                          if (liveSnapshot.items.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: liveSnapshot.items
-                                  .map(
-                                    (item) => Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.white12),
-                                        color: Colors.black26,
-                                      ),
-                                      child: Text(
-                                        '${_resourceNameByRarity(widget.type, item.rarity)} • ${_rarityLabel(item.rarity)} ×${item.quantity}',
-                                        style: const TextStyle(fontSize: 11),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  FilledButton(
-                    onPressed: (inPrison || energy < 50)
-                        ? null
-                        : () async {
-                            final bool ok = await ref.read(facilitiesProvider.notifier).startProduction(
-                                  facilityId: facility!.id,
-                                );
-                            if (!mounted) return;
-                            AppMessenger.show(
-                              context,
-                              ok
-                                  ? 'Üretim başlatıldı!'
-                                  : (ref.read(facilitiesProvider).errorMessage ??
-                                      'Üretim başlatılamadı'),
-                            );
-                            if (ok) {
-                              ref.read(playerProvider.notifier).loadProfile();
-                            }
-                          },
-                    child: const Text('⚡ Üretimi Başlat'),
-                  ),
-                const SizedBox(height: 8),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        const Text('📦 Üretilebilir Kaynaklar', style: TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: (meta?.resources ?? const <String>[]).asMap().entries.map(
-                                (entry) {
-                                  final int index = entry.key;
-                                  final String name = entry.value;
-                                  final String rarity = index < _resourceRarities.length
-                                      ? _resourceRarities[index]
-                                      : 'common';
-                                  final Map<String, int> weights = _getRarityWeightsAtLevel(facility!.level);
-                                  final int total = weights.values.fold<int>(0, (int sum, int v) => sum + v);
-                                  final int unlockLevel = _rarityUnlockLevels[rarity] ?? 1;
-                                  final bool isUnlocked = facility.level >= unlockLevel;
-                                  final double percent = total > 0 ? ((weights[rarity] ?? 0) / total) * 100 : 0;
-
-                                  return Container(
-                                  width: (MediaQuery.of(context).size.width - 56) / 2,
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: Colors.white12),
-                                    color: Colors.black26,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Text(_rarityEmoji(rarity), style: const TextStyle(fontSize: 16)),
-                                      const SizedBox(height: 2),
-                                      Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${percent.toStringAsFixed(1)}% ${isUnlocked ? '' : '(kilitli)'}',
-                                        style: const TextStyle(fontSize: 11, color: Color(0xFF67E8F9)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                },
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
+              if (_activeTab == 'overview')
+                ..._buildOverviewTab(
+                  meta: meta,
+                  facility: facility,
+                  inPrison: inPrison,
+                  energy: energy,
+                  upgradeCost: upgradeCost,
+                  canUpgrade: canUpgrade,
+                  hasProductionRecord: hasProductionRecord,
+                  productionRunning: productionRunning,
+                  targetAt: targetAt,
+                  liveSnapshot: liveSnapshot,
+                  isBusy: isBusy,
+                )
+              else
+                ..._buildQueueTab(
+                  facility: facility,
+                  inPrison: inPrison,
+                  energy: energy,
+                  productionRunning: productionRunning,
+                  productionReady: productionReady,
+                  targetAt: targetAt,
+                  liveCount: liveCount,
+                  collectRequestCount: collectRequestCount,
+                  useLivePreview: useLivePreview,
+                  liveSnapshot: liveSnapshot,
+                  productionStartedAt: productionStartedAt,
+                  isBusy: isBusy,
                 ),
-                const SizedBox(height: 8),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        const Text('✨ Nadirlik Simülatörü (Lv.1-10)', style: TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
-                        ...List<Widget>.generate(10, (int idx) {
-                          final int rarityLevel = idx + 1;
-                          final Map<String, int> weights = _getRarityWeightsAtLevel(rarityLevel);
-                          final int total = weights.values.fold<int>(0, (int sum, int v) => sum + v);
-                          final bool isCurrent = rarityLevel == facility!.level;
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isCurrent ? const Color(0x6640E0FF) : Colors.white12,
-                              ),
-                              color: isCurrent ? const Color(0x1A22D3EE) : Colors.black26,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: <Widget>[
-                                    Text('Lv.$rarityLevel', style: const TextStyle(fontWeight: FontWeight.w700)),
-                                    if (isCurrent)
-                                      const Text(
-                                        'Mevcut Seviye',
-                                        style: TextStyle(fontSize: 10, color: Color(0xFFA5F3FC)),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: _resourceRarities.map((String rarity) {
-                                    final double pct = total > 0 ? ((weights[rarity] ?? 0) / total) * 100 : 0;
-                                    final int decimals = (rarity == 'common' || rarity == 'uncommon' || rarity == 'rare') ? 0 : 1;
-
-                                    return Container(
-                                      width: (MediaQuery.of(context).size.width - 84) / 2,
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.white12),
-                                        color: Colors.black26,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: <Widget>[
-                                              Text(_rarityTitle(rarity), style: const TextStyle(fontSize: 10, color: Colors.white70)),
-                                              Text(
-                                                '${pct.toStringAsFixed(decimals)}%',
-                                                style: const TextStyle(fontSize: 10, color: Colors.white70),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          LinearProgressIndicator(
-                                            value: (pct.clamp(0, 100)) / 100,
-                                            minHeight: 5,
-                                            backgroundColor: const Color(0x33FFFFFF),
-                                            color: const Color(0xFF22D3EE),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  color: const Color(0xCC38240E),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            '⬆️ Yükseltme Paneli\nHedef: ${facility.level >= 10 ? 'Maksimum Seviye' : 'Lv.${facility.level + 1}'} • Maliyet: ${_formatGold(upgradeCost)} altın',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton(
-                          onPressed: (!canUpgrade || inPrison)
-                              ? null
-                              : () => _showUpgradeDialog(
-                                    facility!.id,
-                                    meta?.name ?? widget.type,
-                                    facility.level,
-                                    upgradeCost,
-                                  ),
-                          child: const Text('Yükselt'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (hasProductionRecord)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text(
-                      'Önce mevcut üretimi tamamlayın.',
-                      style: TextStyle(fontSize: 10, color: Color(0xFFF59E0B)),
-                    ),
-                  ),
-              ],
-              if (_activeTab == 'queue') ...<Widget>[
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        Text(
-                          productionRunning
-                              ? '🟢 Üretim Sürüyor'
-                              : (productionReady ? '🟡 Süre doldu, toplama hazır' : '🔴 Üretim durdu'),
-                        ),
-                        if (productionRunning) Text('⏱️ ${_formatRemaining(targetAt)}'),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text('📦 Depo • Toplam: $liveCount', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
-                        if (liveCount <= 0 && !productionRunning)
-                          const Text('Depo boş. Üretimi başlatın.')
-                        else if (liveCount <= 0)
-                          const Text('🔨 İşçiler üretime devam ediyor...')
-                        else
-                          ...(useLivePreview
-                                  ? liveSnapshot.items
-                                      .map(
-                                        (item) => FacilityQueueItem(
-                                          id: item.rarity,
-                                          quantity: item.quantity,
-                                          rarity: item.rarity,
-                                          startedAt: '',
-                                          completesAt: '',
-                                          isCompleted: productionReady,
-                                        ),
-                                      )
-                                      .toList()
-                                  : facility.facilityQueue)
-                              .map(
-                            (item) => Container(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.white12),
-                                color: Colors.black26,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      '${_resourceNameByRarity(widget.type, item.rarity)} • ${_rarityLabel(item.rarity)}',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text('×${item.quantity}'),
-                                ],
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 8),
-                        if (productionReady && liveCount > 0)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              FilledButton(
-                                onPressed: inPrison
-                                    ? null
-                                    : () async {
-                                        final int seed = _hashString(productionStartedAt ?? '');
-                                        final Map<String, dynamic>? result = await ref
-                                            .read(facilitiesProvider.notifier)
-                                            .collectResourcesV2(
-                                              facilityId: facility!.id,
-                                              seed: seed,
-                                              totalCount: collectRequestCount > 0 ? collectRequestCount : liveCount,
-                                            );
-                                        if (!mounted) return;
-                                        if (result == null) {
-                                          AppMessenger.showError(
-                                            context,
-                                            ref.read(facilitiesProvider).errorMessage ??
-                                                'Toplama başarısız',
-                                          );
-                                          return;
-                                        }
-
-                                        final bool admitted = result['admission_occurred'] == true;
-                                        final int count = (result['count'] as num?)?.toInt() ?? liveCount;
-
-                                        if (admitted) {
-                                          final String prisonReason = (result['prison_reason'] ?? 'Bilinmiyor').toString();
-                                          AppMessenger.show(context, '⚠️ Hapse düştünüz! Gerekçe: $prisonReason');
-                                        } else {
-                                          AppMessenger.show(context, '✅ Toplandı: $count kaynak');
-                                        }
-
-                                        ref.read(playerProvider.notifier).loadProfile();
-                                        ref.read(inventoryProvider.notifier).loadInventory(silent: true);
-                                      },
-                                child: Text('✅ Kaynakları Topla ($liveCount)'),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Toplama sonrası yeni üretim başlatabilirsiniz.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12, color: Colors.white70),
-                              ),
-                            ],
-                          )
-                        else if (productionRunning)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              OutlinedButton(
-                                onPressed: null,
-                                child: Text('⏳ Bekleyin: ${_formatRemaining(targetAt)}'),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Süre dolunca toplama aktif olur.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12, color: Colors.white70),
-                              ),
-                            ],
-                          )
-                        else
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              FilledButton(
-                                onPressed: (inPrison || energy < 50)
-                                    ? null
-                                    : () async {
-                                        final bool ok = await ref.read(facilitiesProvider.notifier).startProduction(
-                                              facilityId: facility!.id,
-                                            );
-                                        if (!mounted) return;
-                                        AppMessenger.show(
-                                          context,
-                                          ok
-                                              ? 'Üretim başlatıldı!'
-                                              : (ref.read(facilitiesProvider).errorMessage ??
-                                                  'Üretim başlatılamadı'),
-                                        );
-                                        if (ok) {
-                                          ref.read(playerProvider.notifier).loadProfile();
-                                        }
-                                      },
-                                child: const Text('⚡ Üretimi Başlat'),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Maliyet: 50 Enerji (Mevcut: $energy)',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 12, color: Colors.white70),
-                              ),
-                              if (energy < 50) ...<Widget>[
-                                const SizedBox(height: 4),
-                                const Text(
-                                  '❌ Yetersiz enerji',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12, color: Colors.redAccent),
-                                ),
-                              ],
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildOverviewTab({
+    required _FacilityMeta? meta,
+    required PlayerFacility facility,
+    required bool inPrison,
+    required int energy,
+    required int upgradeCost,
+    required bool canUpgrade,
+    required bool hasProductionRecord,
+    required bool productionRunning,
+    required DateTime? targetAt,
+    required _LiveProductionSnapshot liveSnapshot,
+    required bool isBusy,
+  }) {
+    final List<String> previewLabels = liveSnapshot.items
+        .map((item) => '${_resourceNameByRarity(widget.type, item.rarity)} ×${item.quantity}')
+        .toList();
+
+    return <Widget>[
+      FacProductionBanner(
+        isRunning: productionRunning,
+        remainingLabel: _formatRemaining(targetAt),
+        previewItems: previewLabels,
+        startEnabled: !inPrison && energy >= 50 && !isBusy,
+        startLabel: energy < 50 ? '50⚡ gerekli' : '⚡ Üretimi Başlat',
+        onStart: () async {
+          final bool ok = await ref.read(facilitiesProvider.notifier).startProduction(
+                facilityId: facility.id,
+              );
+          if (!mounted) return;
+          AppMessenger.show(
+            context,
+            ok ? 'Üretim başlatıldı!' : (ref.read(facilitiesProvider).errorMessage ?? 'Üretim başlatılamadı'),
+          );
+          if (ok) {
+            ref.read(playerProvider.notifier).loadProfile();
+          }
+        },
+      ),
+      const SizedBox(height: FacilitiesUi.gap),
+      DottedPanel(
+        padding: FacilitiesUi.panelPadding,
+        borderRadius: 12,
+        borderColor: AppColors.liquidGold.withValues(alpha: 0.2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            facilitiesSectionTitle('Kaynak Havuzu', trailing: 'Lv.${facility.level}'),
+            const SizedBox(height: FacilitiesUi.gapSm),
+            GameFixedGrid(
+              crossAxisCount: 3,
+              spacing: 4,
+              itemCount: meta?.resources.length ?? 0,
+              itemBuilder: (BuildContext context, int index) {
+                final String name = meta!.resources[index];
+                final String rarity = index < _resourceRarities.length ? _resourceRarities[index] : 'common';
+                final Map<String, int> weights = _getRarityWeightsAtLevel(facility.level);
+                final int total = weights.values.fold<int>(0, (int sum, int v) => sum + v);
+                final int unlockLevel = _rarityUnlockLevels[rarity] ?? 1;
+                final bool isUnlocked = facility.level >= unlockLevel;
+                final double percent = total > 0 ? ((weights[rarity] ?? 0) / total) * 100 : 0;
+
+                return FacResourceCell(
+                  emoji: _rarityEmoji(rarity),
+                  name: name,
+                  percentLabel: isUnlocked ? '${percent.toStringAsFixed(0)}%' : '🔒 Lv.$unlockLevel',
+                  accentColor: facRarityAccent(rarity),
+                  locked: !isUnlocked,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: FacilitiesUi.gap),
+      _RaritySimulatorAccordion(currentLevel: facility.level),
+      const SizedBox(height: FacilitiesUi.gap),
+      FacUpgradeStrip(
+        summary: facility.level >= 10
+            ? 'Maksimum seviye'
+            : 'Lv.${facility.level + 1} • ${_formatGold(upgradeCost)} altın',
+        buttonLabel: 'Yükselt',
+        enabled: canUpgrade && !inPrison && !isBusy,
+        onUpgrade: () => _showUpgradeDialog(
+          facility.id,
+          meta?.name ?? widget.type,
+          facility.level,
+          upgradeCost,
+        ),
+      ),
+      if (hasProductionRecord)
+        const Padding(
+          padding: EdgeInsets.only(top: FacilitiesUi.gapSm),
+          child: Text(
+            'Yükseltme için önce üretimi bitirin.',
+            style: TextStyle(fontSize: 9, color: AppColors.warningSolar),
+          ),
+        ),
+    ];
+  }
+
+  List<Widget> _buildQueueTab({
+    required PlayerFacility facility,
+    required bool inPrison,
+    required int energy,
+    required bool productionRunning,
+    required bool productionReady,
+    required DateTime? targetAt,
+    required int liveCount,
+    required int collectRequestCount,
+    required bool useLivePreview,
+    required _LiveProductionSnapshot liveSnapshot,
+    required String? productionStartedAt,
+    required bool isBusy,
+  }) {
+    final Color statusColor = productionRunning
+        ? AppColors.toxicNeon
+        : (productionReady ? AppColors.warningSolar : AppColors.mutedTitanium);
+    final String statusLabel = productionRunning
+        ? 'Üretim sürüyor'
+        : (productionReady ? 'Toplama hazır' : 'Depo boş');
+
+    final List<FacilityQueueItem> queueItems = useLivePreview
+        ? liveSnapshot.items
+            .map(
+              (item) => FacilityQueueItem(
+                id: item.rarity,
+                quantity: item.quantity,
+                rarity: item.rarity,
+                startedAt: '',
+                completesAt: '',
+                isCompleted: productionReady,
+              ),
+            )
+            .toList()
+        : facility.facilityQueue;
+
+    return <Widget>[
+      FacGridBanner(
+        borderColor: statusColor.withValues(alpha: 0.35),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: statusColor),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    statusLabel,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  ),
+                ),
+                if (productionRunning)
+                  Text(
+                    _formatRemaining(targetAt),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor),
+                  )
+                else
+                  Text(
+                    '$liveCount',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor),
+                  ),
+              ],
+            ),
+            const SizedBox(height: FacilitiesUi.gap),
+            if (liveCount <= 0 && !productionRunning)
+              const Text('Üretim başlatınca depo dolacak.', style: TextStyle(fontSize: 10, color: AppColors.mutedTitanium))
+            else if (liveCount <= 0)
+              const Text('İşçiler üretiyor…', style: TextStyle(fontSize: 10, color: AppColors.mutedTitanium))
+            else
+              ...queueItems.map(
+                (FacilityQueueItem item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: FacDepotRow(
+                    label: '${_resourceNameByRarity(widget.type, item.rarity)} • ${_rarityLabel(item.rarity)}',
+                    quantity: item.quantity,
+                    accentColor: facRarityAccent(item.rarity),
+                  ),
+                ),
+              ),
+            const SizedBox(height: FacilitiesUi.gap),
+            if (productionReady && liveCount > 0)
+              FacGoldButton(
+                label: 'Topla ($liveCount)',
+                accentColor: AppColors.toxicNeon,
+                onPressed: (inPrison || isBusy)
+                    ? null
+                    : () async {
+                        final int seed = _hashString(productionStartedAt ?? '');
+                        final Map<String, dynamic>? result =
+                            await ref.read(facilitiesProvider.notifier).collectResourcesV2(
+                                  facilityId: facility.id,
+                                  seed: seed,
+                                  totalCount: collectRequestCount > 0 ? collectRequestCount : liveCount,
+                                );
+                        if (!mounted) return;
+                        if (result == null) {
+                          AppMessenger.showError(
+                            context,
+                            ref.read(facilitiesProvider).errorMessage ?? 'Toplama başarısız',
+                          );
+                          return;
+                        }
+
+                        final bool admitted = result['admission_occurred'] == true;
+                        final int count = (result['count'] as num?)?.toInt() ?? liveCount;
+
+                        if (admitted) {
+                          final String prisonReason = (result['prison_reason'] ?? 'Bilinmiyor').toString();
+                          AppMessenger.show(context, '⚠️ Hapse düştünüz! Gerekçe: $prisonReason');
+                        } else {
+                          AppMessenger.show(context, '✅ Toplandı: $count kaynak');
+                        }
+
+                        ref.read(playerProvider.notifier).loadProfile();
+                        ref.read(inventoryProvider.notifier).loadInventory(silent: true);
+                      },
+              )
+            else if (productionRunning)
+              FacGoldButton(
+                label: 'Bekleyin: ${_formatRemaining(targetAt)}',
+                onPressed: null,
+              )
+            else
+              FacGoldButton(
+                label: energy < 50 ? '50⚡ gerekli' : '⚡ Üretimi Başlat',
+                onPressed: (inPrison || energy < 50 || isBusy)
+                    ? null
+                    : () async {
+                        final bool ok = await ref.read(facilitiesProvider.notifier).startProduction(
+                              facilityId: facility.id,
+                            );
+                        if (!mounted) return;
+                        AppMessenger.show(
+                          context,
+                          ok ? 'Üretim başlatıldı!' : (ref.read(facilitiesProvider).errorMessage ?? 'Üretim başlatılamadı'),
+                        );
+                        if (ok) {
+                          ref.read(playerProvider.notifier).loadProfile();
+                        }
+                      },
+              ),
+          ],
+        ),
+      ),
+    ];
   }
 
   void _syncProductionPolling(String? productionStartedAt, bool productionRunning) {
@@ -681,20 +463,12 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen> {
   }
 
   Future<void> _showUpgradeDialog(String facilityId, String name, int currentLevel, int upgradeCost) async {
-    final bool confirm = await showDialog<bool>(
-          context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            title: const Text('Yükseltme Onayı'),
-            content: Text(
-              '$name tesisini Lv.${currentLevel + 1}\'e yükseltmek için ${_formatGold(upgradeCost)} altın harcanacak.',
-            ),
-            actions: <Widget>[
-              TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Vazgeç')),
-              FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Onayla')),
-            ],
-          ),
-        ) ??
-        false;
+    final bool confirm = await showFacUpgradeDialog(
+      context,
+      facilityName: name,
+      targetLevel: currentLevel + 1,
+      formattedCost: _formatGold(upgradeCost),
+    );
 
     if (!confirm) return;
 
@@ -708,25 +482,6 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen> {
           : (ref.read(facilitiesProvider).errorMessage ?? 'Yükseltme başarısız'),
     );
     ref.read(playerProvider.notifier).loadProfile();
-  }
-
-  Widget _tinyStat(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: Colors.black26,
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white60)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
   }
 }
 
@@ -935,17 +690,17 @@ int _hashString(String value) {
 String _rarityLabel(String rarity) {
   switch (rarity) {
     case 'common':
-      return '⚪ Common';
+      return '⚪ Yaygın';
     case 'uncommon':
-      return '🟢 Uncommon';
+      return '🟢 Sıradışı';
     case 'rare':
-      return '🔵 Rare';
+      return '🔵 Nadir';
     case 'epic':
-      return '🟣 Epic';
+      return '🟣 Epik';
     case 'legendary':
-      return '🟡 Legendary';
+      return '🟡 Efsanevi';
     case 'mythic':
-      return '🌈 Mythic';
+      return '🌈 Mitik';
     default:
       return rarity;
   }
@@ -954,17 +709,17 @@ String _rarityLabel(String rarity) {
 String _rarityTitle(String rarity) {
   switch (rarity) {
     case 'common':
-      return 'Common';
+      return 'Yaygın';
     case 'uncommon':
-      return 'Uncommon';
+      return 'Sıradışı';
     case 'rare':
-      return 'Rare';
+      return 'Nadir';
     case 'epic':
-      return 'Epic';
+      return 'Epik';
     case 'legendary':
-      return 'Legendary';
+      return 'Efsanevi';
     case 'mythic':
-      return 'Mythic';
+      return 'Mitik';
     default:
       return rarity;
   }
@@ -999,11 +754,11 @@ const List<String> _resourceRarities = <String>['common', 'uncommon', 'rare', 'e
 
 const Map<String, int> _rarityUnlockLevels = <String, int>{
   'common': 1,
-  'uncommon': 2,
-  'rare': 3,
-  'epic': 4,
-  'legendary': 5,
-  'mythic': 6,
+  'uncommon': 3,
+  'rare': 5,
+  'epic': 7,
+  'legendary': 9,
+  'mythic': 10,
 };
 
 const Map<int, Map<String, int>> _dropRatesByLevel = <int, Map<String, int>>{
@@ -1141,3 +896,166 @@ bool _isFuture(String? iso) {
 }
 
 String _formatGold(int value) => NumberFormat.decimalPattern('tr_TR').format(value);
+
+class _RaritySimulatorAccordion extends StatefulWidget {
+  const _RaritySimulatorAccordion({required this.currentLevel});
+
+  final int currentLevel;
+
+  @override
+  State<_RaritySimulatorAccordion> createState() => _RaritySimulatorAccordionState();
+}
+
+class _RaritySimulatorAccordionState extends State<_RaritySimulatorAccordion> {
+  late final Set<int> _expandedLevels;
+
+  @override
+  void initState() {
+    super.initState();
+    _expandedLevels = <int>{widget.currentLevel};
+  }
+
+  void _toggleLevel(int level) {
+    setState(() {
+      if (_expandedLevels.contains(level)) {
+        _expandedLevels.remove(level);
+      } else {
+        _expandedLevels.add(level);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DottedPanel(
+      padding: FacilitiesUi.panelPadding,
+      borderRadius: 12,
+      borderColor: AppColors.cyberFuchsia.withValues(alpha: 0.18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          facilitiesSectionTitle('Drop Simülasyonu', trailing: 'Lv.1–10'),
+          const SizedBox(height: FacilitiesUi.gapSm),
+          ...List<Widget>.generate(10, (int idx) {
+            final int rarityLevel = idx + 1;
+            final bool isCurrent = rarityLevel == widget.currentLevel;
+            final bool isExpanded = _expandedLevels.contains(rarityLevel);
+            final Map<String, int> weights = _getRarityWeightsAtLevel(rarityLevel);
+            final int total = weights.values.fold<int>(0, (int sum, int v) => sum + v);
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isCurrent
+                        ? AppColors.liquidGold.withValues(alpha: 0.45)
+                        : AppColors.mutedTitanium.withValues(alpha: 0.18),
+                  ),
+                  color: isCurrent
+                      ? AppColors.liquidGold.withValues(alpha: 0.08)
+                      : AppColors.darkObsidian.withValues(alpha: 0.45),
+                ),
+                child: Column(
+                  children: <Widget>[
+                    InkWell(
+                      onTap: () => _toggleLevel(rarityLevel),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        child: Row(
+                          children: <Widget>[
+                            Text(
+                              'Lv.$rarityLevel',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            if (isCurrent) ...<Widget>[
+                              const SizedBox(width: 8),
+                              Text(
+                                'Mevcut Seviye',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.liquidGold.withValues(alpha: 0.9),
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Icon(
+                              isExpanded ? Icons.expand_less : Icons.expand_more,
+                              size: 18,
+                              color: AppColors.mutedTitanium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (isExpanded)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _resourceRarities.map((String rarity) {
+                            final double pct = total > 0 ? ((weights[rarity] ?? 0) / total) * 100 : 0;
+                            final int decimals =
+                                (rarity == 'common' || rarity == 'uncommon' || rarity == 'rare') ? 0 : 1;
+
+                            return Container(
+                              width: (MediaQuery.of(context).size.width - 84) / 2,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.mutedTitanium.withValues(alpha: 0.2),
+                                ),
+                                color: AppColors.carbonVoid.withValues(alpha: 0.55),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: <Widget>[
+                                      Text(
+                                        _rarityTitle(rarity),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.mutedTitanium,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${pct.toStringAsFixed(decimals)}%',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  LinearProgressIndicator(
+                                    value: (pct.clamp(0, 100)) / 100,
+                                    minHeight: 4,
+                                    backgroundColor: AppColors.darkObsidian,
+                                    color: facRarityAccent(rarity),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}

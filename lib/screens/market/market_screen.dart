@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/market_provider.dart';
@@ -61,7 +62,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     final int gold = ref.watch(playerProvider).profile?.gold ?? 0;
 
     return Scaffold(
-      appBar: GameTopBar(title: 'Pazar', onLogout: _logout),
+      appBar: GameTopBar(title: context.l10n.routeMarket, onLogout: _logout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.market, onLogout: _logout),
       body: Container(

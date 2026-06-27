@@ -4,16 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/character/character_combat_stats_panel.dart';
 import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
-import '../../theme/app_spacing.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../models/player_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../utils/logout_helper.dart';
 
 // ─── Constants & Helpers ───────────────────────────────────────────────────
 
@@ -100,12 +100,11 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     final profile = playerState.profile;
 
     Future<void> logout() async {
-      await ref.read(authProvider.notifier).logout();
-      ref.read(playerProvider.notifier).clear();
-    }
+      await performLogout(ref);
+}
 
     return Scaffold(
-      appBar: GameTopBar(title: '👤 Karakter', onLogout: logout),
+      appBar: GameTopBar(title: context.l10n.screenTitleCharacter, onLogout: logout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.character,
@@ -147,22 +146,16 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
 
     return GameScreenBackground(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base,
-          AppSpacing.md,
-          AppSpacing.base,
-          AppSpacing.xxl,
-        ),
+        padding: GameScrollLayout.pagePadding(context),
         children: <Widget>[
-          _buildIdentityCard(profile, level, repTier, xpProgress),
-          const SizedBox(height: AppSpacing.sm),
-          _buildQuickResources(profile),
-          const SizedBox(height: AppSpacing.sm),
-          _buildCombatStats(profile, level),
-          const SizedBox(height: AppSpacing.sm),
-          _buildClassDetails(profile),
-          const SizedBox(height: AppSpacing.sm),
-          _buildExtraInfo(profile),
+          GameScrollSection(
+            leadingGap: false,
+            child: _buildIdentityCard(profile, level, repTier, xpProgress),
+          ),
+          GameScrollSection(child: _buildQuickResources(profile)),
+          GameScrollSection(child: _buildCombatStats(profile, level)),
+          GameScrollSection(child: _buildClassDetails(profile)),
+          GameScrollSection(child: _buildExtraInfo(profile)),
         ],
       ),
     );

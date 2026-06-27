@@ -273,6 +273,103 @@ const List<(int level, String title, String effect)> kMonumentBonuses = [
   (100, 'ETERNAL', '+20 Enerji, +%5 Stat, Aura'),
 ];
 
+/// Monument bağışında envanter/RPC ile eşleşen item id'leri.
+abstract final class MonumentResourceIds {
+  static const String structural = 'resource_structural';
+  static const String mystical = 'resource_mystical';
+  static const String critical = 'resource_critical';
+}
+
+/// Günlük bağış limitleri (RPC ile uyumlu).
+abstract final class MonumentDailyLimits {
+  static const int structural = 500;
+  static const int mystical = 200;
+  static const int critical = 50;
+  static const int gold = 10000000;
+}
+
+enum MonumentResourceKind { structural, mystical, critical, gold }
+
+extension MonumentResourceKindX on MonumentResourceKind {
+  String get label => switch (this) {
+        MonumentResourceKind.structural => 'Yapısal Kaynak',
+        MonumentResourceKind.mystical => 'Mistik Kaynak',
+        MonumentResourceKind.critical => 'Kritik Kaynak',
+        MonumentResourceKind.gold => 'Altın',
+      };
+
+  String get shortLabel => switch (this) {
+        MonumentResourceKind.structural => 'Yapısal',
+        MonumentResourceKind.mystical => 'Mistik',
+        MonumentResourceKind.critical => 'Kritik',
+        MonumentResourceKind.gold => 'Altın',
+      };
+
+  int get dailyMax => switch (this) {
+        MonumentResourceKind.structural => MonumentDailyLimits.structural,
+        MonumentResourceKind.mystical => MonumentDailyLimits.mystical,
+        MonumentResourceKind.critical => MonumentDailyLimits.critical,
+        MonumentResourceKind.gold => MonumentDailyLimits.gold,
+      };
+
+  String? get itemId => switch (this) {
+        MonumentResourceKind.structural => MonumentResourceIds.structural,
+        MonumentResourceKind.mystical => MonumentResourceIds.mystical,
+        MonumentResourceKind.critical => MonumentResourceIds.critical,
+        MonumentResourceKind.gold => null,
+      };
+}
+
+/// 4 kaynak için sayısal snapshot (bağış / cüzdan / bugün).
+class MonumentResourceSnapshot {
+  const MonumentResourceSnapshot({
+    required this.structural,
+    required this.mystical,
+    required this.critical,
+    required this.gold,
+  });
+
+  final int structural;
+  final int mystical;
+  final int critical;
+  final int gold;
+
+  factory MonumentResourceSnapshot.zero() => const MonumentResourceSnapshot(
+        structural: 0,
+        mystical: 0,
+        critical: 0,
+        gold: 0,
+      );
+
+  factory MonumentResourceSnapshot.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return MonumentResourceSnapshot.zero();
+    return MonumentResourceSnapshot(
+      structural: (json['structural'] as num?)?.toInt() ?? 0,
+      mystical: (json['mystical'] as num?)?.toInt() ?? 0,
+      critical: (json['critical'] as num?)?.toInt() ?? 0,
+      gold: (json['gold'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  int forKind(MonumentResourceKind kind) => switch (kind) {
+        MonumentResourceKind.structural => structural,
+        MonumentResourceKind.mystical => mystical,
+        MonumentResourceKind.critical => critical,
+        MonumentResourceKind.gold => gold,
+      };
+}
+
+int monumentDonateCap({
+  required int owned,
+  required int donatedToday,
+  required int dailyMax,
+  required int requested,
+}) {
+  final int dailyLeft = (dailyMax - donatedToday).clamp(0, dailyMax);
+  if (dailyLeft <= 0 || owned <= 0 || requested <= 0) return 0;
+  return requested.clamp(0, owned).clamp(0, dailyLeft);
+}
+
 bool canUpgradeMonument(String? guildRole) {
   return guildRole == 'leader' ||
       guildRole == 'officer' ||

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../providers/battle_pass_provider.dart';
 import '../../models/battle_pass.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../theme/app_colors.dart';
 
 class SeasonScreen extends ConsumerStatefulWidget {
   const SeasonScreen({super.key});
@@ -38,7 +40,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     }
 
     return Scaffold(
-      appBar: GameTopBar(title: 'BATTLE PASS', onLogout: logout),
+      appBar: GameTopBar(title: context.l10n.routeSeason, onLogout: logout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.season,
@@ -49,7 +51,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
           : state.error != null
           ? Center(child: Text('Hata: ${state.error}'))
           : state.activeSeason == null
-          ? const Center(child: Text('Aktif sezon bulunamadı.'))
+          ? Center(child: Text(context.l10n.aktif_sezon_bulunamad))
           : Column(
               children: [
                 _buildHeader(state),
@@ -209,8 +211,8 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     return ElevatedButton.icon(
       onPressed: _vipBuying ? null : _buyVip,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.purple,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.liquidGold,
+        foregroundColor: AppColors.bgDeep,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
@@ -521,7 +523,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                     decoration: BoxDecoration(
                       color: template?.questType == 'daily'
                           ? Colors.blue
-                          : Colors.purple,
+                          : AppColors.cyberFuchsia,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(

@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 class PrisonScreen extends ConsumerStatefulWidget {
   const PrisonScreen({super.key});
@@ -190,7 +191,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
 
     return Scaffold(
       appBar: GameTopBar(
-        title: '⛓️ Cezaevi',
+        title: context.l10n.cezaevi,
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();

@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/quest_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../theme/app_colors.dart';
 
 // ── Category tabs ─────────────────────────────────────────────────────────────
 enum _QuestCategory { all, daily, weekly, main }
@@ -20,7 +22,7 @@ class _QColors {
   static const surface = Color(0xFF131826);
   static const border = Color(0x18FFFFFF);
   static const gold = Color(0xFFFBBF24);
-  static const purple = Color(0xFF8B5CF6);
+  static const accent = AppColors.cyberFuchsia;
   static const blue = Color(0xFF3B82F6);
   static const green = Color(0xFF22C55E);
   static const red = Color(0xFFEF4444);
@@ -217,7 +219,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
     final sorted = _sortedFiltered;
 
     return Scaffold(
-      appBar: GameTopBar(title: '📜 Görevler', onLogout: _doLogout),
+      appBar: GameTopBar(title: context.l10n.screenTitleQuests, onLogout: _doLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.quests,
@@ -238,7 +240,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           Expanded(
             child: _loading
                 ? const Center(
-                    child: CircularProgressIndicator(color: _QColors.purple),
+                    child: CircularProgressIndicator(color: _QColors.accent),
                   )
                 : _error != null
                 ? _buildError()
@@ -246,7 +248,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
                 ? _buildEmpty()
                 : RefreshIndicator(
                     onRefresh: _loadQuests,
-                    color: _QColors.purple,
+                    color: _QColors.accent,
                     child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                       itemCount: sorted.length,
@@ -281,10 +283,10 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           colors: [Color(0xFF1E1B4B), Color(0xFF131826)],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _QColors.purple.withValues(alpha: 0.3)),
+        border: Border.all(color: _QColors.accent.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: _QColors.purple.withValues(alpha: 0.12),
+            color: _QColors.accent.withValues(alpha: 0.12),
             blurRadius: 20,
           ),
         ],
@@ -310,7 +312,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
                     value: rate,
                     backgroundColor: Colors.white.withValues(alpha: 0.08),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      rate >= 1.0 ? _QColors.green : _QColors.purple,
+                      rate >= 1.0 ? _QColors.green : _QColors.accent,
                     ),
                     minHeight: 8,
                   ),
@@ -336,13 +338,13 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  rate >= 1.0 ? _QColors.green : _QColors.purple,
-                  _QColors.purple.withValues(alpha: 0.4),
+                  rate >= 1.0 ? _QColors.green : _QColors.accent,
+                  _QColors.accent.withValues(alpha: 0.4),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _QColors.purple.withValues(alpha: 0.4),
+                  color: _QColors.accent.withValues(alpha: 0.4),
                   blurRadius: 16,
                 ),
               ],
@@ -399,7 +401,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: _QColors.purple.withValues(alpha: 0.4),
+              color: _QColors.accent.withValues(alpha: 0.4),
               blurRadius: 8,
             ),
           ],
@@ -448,7 +450,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           onPressed: _loadQuests,
           icon: const Icon(Icons.refresh_rounded, size: 16),
           label: const Text('Tekrar Dene'),
-          style: FilledButton.styleFrom(backgroundColor: _QColors.purple),
+          style: FilledButton.styleFrom(backgroundColor: _QColors.accent),
         ),
       ],
     ),
@@ -463,11 +465,11 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           height: 72,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: _QColors.purple.withValues(alpha: 0.1),
+            color: _QColors.accent.withValues(alpha: 0.1),
           ),
           child: const Icon(
             Icons.task_alt_rounded,
-            color: _QColors.purple,
+            color: _QColors.accent,
             size: 36,
           ),
         ),
@@ -568,7 +570,7 @@ class _QuestCardState extends State<_QuestCard>
     QuestDifficulty.medium => _QColors.blue,
     QuestDifficulty.hard => _QColors.orange,
     QuestDifficulty.elite => _QColors.red,
-    QuestDifficulty.dungeon => _QColors.purple,
+    QuestDifficulty.dungeon => _QColors.accent,
   };
 
   String get _diffLabel => switch (widget.quest.difficulty) {
@@ -753,7 +755,7 @@ class _QuestCardState extends State<_QuestCard>
                         _RewardChip(
                           Icons.diamond_rounded,
                           '${widget.quest.gemReward}',
-                          _QColors.purple,
+                          _QColors.accent,
                         ),
                       if (!_isSeasonQuest)
                         _RewardChip(
@@ -822,7 +824,7 @@ class _QuestCardState extends State<_QuestCard>
       return FilledButton(
         onPressed: null,
         style: FilledButton.styleFrom(
-          backgroundColor: _QColors.purple.withValues(alpha: 0.3),
+          backgroundColor: _QColors.accent.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -953,7 +955,7 @@ class _QuestDetailSheet extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _QColors.purple.withValues(alpha: 0.4),
+                    color: _QColors.accent.withValues(alpha: 0.4),
                     blurRadius: 16,
                   ),
                 ],
@@ -998,7 +1000,7 @@ class _QuestDetailSheet extends StatelessWidget {
                         minHeight: 10,
                         backgroundColor: Colors.white.withValues(alpha: 0.08),
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          progressPct >= 1.0 ? _QColors.green : _QColors.purple,
+                          progressPct >= 1.0 ? _QColors.green : _QColors.accent,
                         ),
                       ),
                     ),
@@ -1060,7 +1062,7 @@ class _QuestDetailSheet extends StatelessWidget {
                   ),
                   side: const BorderSide(color: _QColors.border),
                 ),
-                child: const Text('Kapat'),
+                child: Text(context.l10n.kapat),
               ),
             ),
           ],
@@ -1097,7 +1099,7 @@ class _QuestDetailSheet extends StatelessWidget {
           Icons.diamond_rounded,
           '${quest.gemReward}',
           'Elmas',
-          _QColors.purple,
+          _QColors.accent,
         ),
     ];
 
@@ -1132,7 +1134,7 @@ class _QuestDetailSheet extends StatelessWidget {
       return FilledButton(
         onPressed: null,
         style: FilledButton.styleFrom(
-          backgroundColor: _QColors.purple.withValues(alpha: 0.3),
+          backgroundColor: _QColors.accent.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

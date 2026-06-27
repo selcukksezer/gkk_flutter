@@ -4,13 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../repositories/inventory_repository.dart';
 import '../../routing/app_router.dart';
+import '../../l10n/l10n.dart';
+import '../../utils/logout_helper.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -34,21 +36,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return Scaffold(
       appBar: GameTopBar(
-        title: 'Inventory',
+        title: context.l10n.routeInventory,
         onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-          ref.read(inventoryProvider.notifier).clear();
-        },
+          await performLogout(ref);
+},
       ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.inventory,
         onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-          ref.read(inventoryProvider.notifier).clear();
-        },
+          await performLogout(ref);
+},
       ),
       body: switch (inventoryState.status) {
         InventoryStatus.initial || InventoryStatus.loading => const Center(
@@ -467,7 +465,10 @@ class _InventoryReadyInteractiveState
               ),
             ),
             SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
+              padding: GameScrollLayout.withClearance(
+                context,
+                const EdgeInsets.all(12),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -601,91 +602,87 @@ class _InventoryReadyInteractiveState
             },
           ),
           const SizedBox(height: 10),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+          GameFixedGrid(
+            crossAxisCount: 5,
+            spacing: 8,
             itemCount: inventoryCapacity,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 1,
-            ),
             itemBuilder: (context, index) {
-              final rawItem = _getItemBySlot(state.items, index);
-              final item =
-                  (rawItem != null && _matchesFilter(rawItem, _activeFilter))
-                  ? rawItem
-                  : null;
-              final card = _InventorySlotCard(
-                item: item,
-                slotIndex: index,
-                isSelected: item != null && item.rowId == _selectedRowId,
-                onTap: item == null
-                    ? null
-                    : () async {
-                        setState(() {
-                          _selectedRowId = item.rowId;
-                        });
-                        await _openItemActionsPopup(item);
-                      },
-              );
-
-              final Widget draggable = item == null
-                  ? card
-                  : LongPressDraggable<_DragPayload>(
-                      data: _DragPayload.fromInventory(item),
-                      feedback: Material(
-                        color: Colors.transparent,
-                        child: SizedBox(
-                          width: 64,
-                          height: 64,
-                          child: _InventorySlotCard(
-                            item: item,
-                            slotIndex: index,
-                            isSelected: false,
-                            onTap: null,
-                          ),
-                        ),
-                      ),
-                      childWhenDragging: Opacity(opacity: 0.35, child: card),
-                      child: card,
-                    );
-
-              return DragTarget<_DragPayload>(
-                onWillAcceptWithDetails: (details) {
-                  final data = details.data;
-                  if (!data.item.isEquipped && data.item.slotPosition == index)
-                    return false;
-                  if (data.item.isEquipped && data.item.equippedSlot.isEmpty)
-                    return false;
-                  return true;
-                },
-                onAcceptWithDetails: (details) => _handleDropOnInventorySlot(
-                  payload: details.data,
-                  targetSlot: index,
-                  targetItem: rawItem,
-                ),
-                builder: (context, candidateData, rejectedData) {
-                  final bool highlighted = candidateData.isNotEmpty;
-                  return DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: highlighted
-                          ? Border.all(
-                              color: Theme.of(context).colorScheme.primary,
-                              width: 2,
-                            )
-                          : null,
-                    ),
-                    child: draggable,
-                  );
-                },
+              return AspectRatio(
+                aspectRatio: 1,
+                child: _buildInventorySlot(context, state, index),
               );
             },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInventorySlot(BuildContext context, InventoryState state, int index) {
+    final rawItem = _getItemBySlot(state.items, index);
+    final item = (rawItem != null && _matchesFilter(rawItem, _activeFilter)) ? rawItem : null;
+    final card = _InventorySlotCard(
+      item: item,
+      slotIndex: index,
+      isSelected: item != null && item.rowId == _selectedRowId,
+      onTap: item == null
+          ? null
+          : () async {
+              setState(() {
+                _selectedRowId = item.rowId;
+              });
+              await _openItemActionsPopup(item);
+            },
+    );
+
+    final Widget draggable = item == null
+        ? card
+        : LongPressDraggable<_DragPayload>(
+            data: _DragPayload.fromInventory(item),
+            feedback: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: 64,
+                height: 64,
+                child: _InventorySlotCard(
+                  item: item,
+                  slotIndex: index,
+                  isSelected: false,
+                  onTap: null,
+                ),
+              ),
+            ),
+            childWhenDragging: Opacity(opacity: 0.35, child: card),
+            child: card,
+          );
+
+    return DragTarget<_DragPayload>(
+      onWillAcceptWithDetails: (details) {
+        final data = details.data;
+        if (!data.item.isEquipped && data.item.slotPosition == index) return false;
+        if (data.item.isEquipped && data.item.equippedSlot.isEmpty) return false;
+        return true;
+      },
+      onAcceptWithDetails: (details) => _handleDropOnInventorySlot(
+        payload: details.data,
+        targetSlot: index,
+        targetItem: rawItem,
+      ),
+      builder: (context, candidateData, rejectedData) {
+        final bool highlighted = candidateData.isNotEmpty;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: highlighted
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  )
+                : null,
+          ),
+          child: draggable,
+        );
+      },
     );
   }
 
@@ -854,14 +851,12 @@ class _EquippedPanel extends StatelessWidget {
       ('necklace', 'KOLYE', Icons.diamond_outlined),
     ];
 
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    return GameFixedGrid(
       crossAxisCount: 4,
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.0,
-      children: slots.map((slotMeta) {
+      spacing: 8,
+      itemCount: slots.length,
+      itemBuilder: (BuildContext context, int index) {
+        final (String, String, IconData) slotMeta = slots[index];
         final item = equippedItems[slotMeta.$1];
         final bool hasItem = item != null;
         final Color rarityColor = hasItem
@@ -892,7 +887,6 @@ class _EquippedPanel extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: <Widget>[
-                // 1. Sleek Background Rarity Aura Gradient (if has item)
                 if (hasItem)
                   Positioned.fill(
                     child: ClipRRect(
@@ -910,14 +904,10 @@ class _EquippedPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                // 2. Base Background Icon (soluk, boşken belirgin, doluyken subliminal)
                 Opacity(
                   opacity: hasItem ? 0.04 : 0.22,
                   child: Icon(slotMeta.$3, size: 24, color: Colors.white),
                 ),
-
-                // 3. Item Icon (if has item)
                 if (hasItem)
                   Positioned.fill(
                     child: Container(
@@ -933,8 +923,6 @@ class _EquippedPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                // 4. Slot Name Label (Bottom centered - only when empty)
                 if (!hasItem)
                   Positioned(
                     bottom: 4,
@@ -948,8 +936,6 @@ class _EquippedPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                // 5. Mini Unequip Indicator Overlay (Quick visual cue)
                 if (hasItem)
                   Positioned(
                     top: 4,
@@ -960,8 +946,6 @@ class _EquippedPanel extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.5),
                     ),
                   ),
-
-                // 6. Upgrade/Enhancement Level Badge (+5) - Knight Online Style in Top Left of Equipped Slot
                 if (hasItem && item.enhancementLevel > 0)
                   Positioned(
                     top: 4,
@@ -1007,28 +991,31 @@ class _EquippedPanel extends StatelessWidget {
                 child: slotBody,
               );
 
-        return DragTarget<_DragPayload>(
-          onWillAcceptWithDetails: (details) => true,
-          onAcceptWithDetails: (details) =>
-              onDropToSlot(details.data, slotMeta.$1, item),
-          builder: (context, candidateData, rejectedData) {
-            final bool highlighted = candidateData.isNotEmpty;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: highlighted
-                    ? Border.all(
-                        color: Theme.of(context).colorScheme.primary,
-                        width: 2,
-                      )
-                    : null,
-              ),
-              child: draggable,
-            );
-          },
+        return AspectRatio(
+          aspectRatio: 1,
+          child: DragTarget<_DragPayload>(
+            onWillAcceptWithDetails: (details) => true,
+            onAcceptWithDetails: (details) =>
+                onDropToSlot(details.data, slotMeta.$1, item),
+            builder: (context, candidateData, rejectedData) {
+              final bool highlighted = candidateData.isNotEmpty;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: highlighted
+                      ? Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        )
+                      : null,
+                ),
+                child: draggable,
+              );
+            },
+          ),
         );
-      }).toList(),
+      },
     );
   }
 }

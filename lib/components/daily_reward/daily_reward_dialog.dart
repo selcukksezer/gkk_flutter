@@ -10,6 +10,7 @@ import '../../screens/dungeon/dungeon_result_widgets.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../common/app_messenger.dart';
+import '../layout/game_screen_background.dart';
 
 abstract final class _DailyRewardTheme {
   static const Color gold = Color(0xFFF5C842);
@@ -340,15 +341,9 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
   }
 
   Widget _buildRewardGrid(DailyRewardStatus status) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.78,
-      ),
+    return GameFixedGrid(
+      crossAxisCount: 4,
+      spacing: 8,
       itemCount: status.weekCalendar.length,
       itemBuilder: (BuildContext context, int index) {
         return _buildGridCell(status.weekCalendar[index]);
@@ -588,7 +583,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
             children: <Widget>[
               if (grant.gold > 0) _rewardChip('🪙', '${_fmt(grant.gold)} Altın', AppColors.gold),
               if (grant.gems > 0) _rewardChip('💎', '${grant.gems} Elmas', AppColors.accentBlue),
-              if (grant.xp > 0) _rewardChip('⭐', '${_fmt(grant.xp)} XP', AppColors.accentPurple),
+              if (grant.xp > 0) _rewardChip('⭐', '${_fmt(grant.xp)} XP', AppColors.liquidGold),
               if (grant.energy > 0) _rewardChip('⚡', '${grant.energy} Enerji', AppColors.accentCyan),
               if (grant.hasItem)
                 _rewardChip(

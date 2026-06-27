@@ -6,6 +6,7 @@ import '../../../routing/app_router.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../../l10n/l10n.dart';
 
 class _PantheonEntry {
   const _PantheonEntry({
@@ -178,7 +179,7 @@ class _PantheonBoardState extends State<PantheonBoard>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Text(_error!, style: AppTextStyles.body.copyWith(color: Colors.white54)),
-                  TextButton(onPressed: _loadLeaderboard, child: const Text('Tekrar dene')),
+                  TextButton(onPressed: _loadLeaderboard, child: Text(context.l10n.tekrar_dene_2)),
                 ],
               ),
             ),

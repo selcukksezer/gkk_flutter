@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/mekan_model.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../providers/mekan_provider.dart';
 import '../../routing/app_router.dart';
 import 'widgets/mekan_design.dart';
@@ -114,7 +115,7 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(14, 4, 14, 32),
+                padding: GameScrollLayout.fromLTRB(context, left: 14, top: 4, right: 14),
                 sliver: SliverList.separated(
                   itemCount: _filtered.length,
                   separatorBuilder: (BuildContext context, int index) => const SizedBox(height: 10),

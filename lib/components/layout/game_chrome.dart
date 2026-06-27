@@ -16,6 +16,7 @@ import '../../screens/chat/chat_screen.dart';
 import '../common/profile_avatar.dart';
 import 'game_quick_menu.dart';
 import 'live_ticker.dart';
+import '../../l10n/l10n.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameTopBar
@@ -32,11 +33,12 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final playerState = ref.watch(playerProvider);
     final profile = playerState.profile;
 
     final String displayName = profile == null
-        ? 'Oyuncu'
+        ? l10n.playerDefault
         : ((profile.displayName ?? profile.username).trim().isEmpty
               ? profile.username
               : (profile.displayName ?? profile.username));
@@ -61,7 +63,10 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
     final double bgHeight = compact ? 104 : 112;
     final double cutHeight = 35;
 
-    return SafeArea(
+    return Semantics(
+      header: true,
+      label: title,
+      child: SafeArea(
       bottom: false,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -162,7 +167,7 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Hi, ${displayName.split(' ').first} ⚡',
+                                  displayName,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -207,6 +212,7 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
           const LiveTicker(),
         ],
       ),
+    ),
     );
   }
 
@@ -409,10 +415,9 @@ class StripedProgressBarPainter extends CustomPainter {
     final fillRect = Rect.fromLTWH(0, 0, fillWidth, size.height);
     final fillRRect = RRect.fromRectAndRadius(fillRect, trackRadius);
 
-    // Gradient fill: Purple to Bright Green
     Paint fillPaint = Paint()
       ..shader = const LinearGradient(
-        colors: [Color(0xFF8B5CF6), Color(0xFFADFF2F)],
+        colors: [AppColors.cyberFuchsia, AppColors.toxicNeon],
       ).createShader(fillRect);
 
     canvas.save();
@@ -697,38 +702,44 @@ class _GameBottomBarState extends State<GameBottomBar>
     with SingleTickerProviderStateMixin {
   static const int _menuTabIndex = 4;
 
-  static const List<_BottomItem> _items = <_BottomItem>[
-    _BottomItem(path: AppRoutes.home, label: 'Home', icon: Icons.home_rounded),
-    _BottomItem(
-      path: AppRoutes.inventory,
-      label: 'Envanter',
-      icon: Icons.inventory_2_rounded,
-    ),
-    _BottomItem(
-      path: AppRoutes.dungeon,
-      label: 'Zindan',
-      icon: Icons.sports_martial_arts_rounded,
-    ),
-    _BottomItem(
-      path: AppRoutes.character,
-      label: 'Karakter',
-      icon: Icons.person_rounded,
-    ),
-    _BottomItem(label: 'Menü', icon: Icons.apps_rounded, isMenuTrigger: true),
+  static const List<({String? path, bool isMenuTrigger})> _itemSpecs =
+      <({String? path, bool isMenuTrigger})>[
+    (path: AppRoutes.home, isMenuTrigger: false),
+    (path: AppRoutes.inventory, isMenuTrigger: false),
+    (path: AppRoutes.dungeon, isMenuTrigger: false),
+    (path: AppRoutes.character, isMenuTrigger: false),
+    (path: null, isMenuTrigger: true),
+  ];
+
+  List<_BottomItem> _items(AppLocalizations l10n) => <_BottomItem>[
+    _BottomItem(path: AppRoutes.home, label: l10n.navHome, icon: Icons.home_rounded),
+    _BottomItem(path: AppRoutes.inventory, label: l10n.navInventory, icon: Icons.inventory_2_rounded),
+    _BottomItem(path: AppRoutes.dungeon, label: l10n.navDungeon, icon: Icons.sports_martial_arts_rounded),
+    _BottomItem(path: AppRoutes.character, label: l10n.navCharacter, icon: Icons.person_rounded),
+    _BottomItem(label: l10n.navMenu, icon: Icons.apps_rounded, isMenuTrigger: true),
   ];
 
   late final AnimationController _indicatorCtrl;
   late Animation<double> _indicatorAnim;
   bool _menuOpen = false;
+  /// Last bottom-bar tab the user selected; kept when navigating via quick menu.
+  int _stickyTabIndex = 0;
 
-  int _activeIndex(String route) {
-    if (_menuOpen) return _menuTabIndex;
-    for (int i = 0; i < _items.length; i++) {
-      final String? path = _items[i].path;
+  int? _matchedTabIndex(String route) {
+    for (int i = 0; i < _itemSpecs.length; i++) {
+      final String? path = _itemSpecs[i].path;
       if (path == null) continue;
       if (_matches(route, path)) return i;
     }
-    return 0;
+    return null;
+  }
+
+  int _displayIndex(String route) {
+    if (_menuOpen) return _menuTabIndex;
+    final int? matched = _matchedTabIndex(route);
+    if (matched != null) return matched;
+    if (route.startsWith(AppRoutes.guild)) return _menuTabIndex;
+    return _stickyTabIndex;
   }
 
   void _animateIndicatorTo(int index) {
@@ -754,7 +765,7 @@ class _GameBottomBarState extends State<GameBottomBar>
     );
     if (!mounted) return;
     setState(() => _menuOpen = false);
-    _animateIndicatorTo(_activeIndex(widget.currentRoute));
+    _animateIndicatorTo(_displayIndex(widget.currentRoute));
   }
 
   bool _matches(String current, String route) {
@@ -766,7 +777,8 @@ class _GameBottomBarState extends State<GameBottomBar>
   @override
   void initState() {
     super.initState();
-    final int initial = _activeIndex(widget.currentRoute);
+    _stickyTabIndex = _matchedTabIndex(widget.currentRoute) ?? 0;
+    final int initial = _displayIndex(widget.currentRoute);
     _indicatorCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 280),
@@ -784,8 +796,13 @@ class _GameBottomBarState extends State<GameBottomBar>
   void didUpdateWidget(GameBottomBar old) {
     super.didUpdateWidget(old);
     if (old.currentRoute != widget.currentRoute && !_menuOpen) {
-      final int newIdx = _activeIndex(widget.currentRoute);
-      _animateIndicatorTo(newIdx);
+      final int? matched = _matchedTabIndex(widget.currentRoute);
+      final int nextIndex = matched ??
+          (widget.currentRoute.startsWith(AppRoutes.guild) ? _menuTabIndex : _stickyTabIndex);
+      if (nextIndex != _stickyTabIndex || matched != null) {
+        if (matched != null) _stickyTabIndex = matched;
+        _animateIndicatorTo(_displayIndex(widget.currentRoute));
+      }
     }
   }
 
@@ -797,7 +814,9 @@ class _GameBottomBarState extends State<GameBottomBar>
 
   @override
   Widget build(BuildContext context) {
-    final int activeIdx = _activeIndex(widget.currentRoute);
+    final l10n = context.l10n;
+    final List<_BottomItem> items = _items(l10n);
+    final int activeIdx = _displayIndex(widget.currentRoute);
 
     return Material(
       type: MaterialType.transparency,
@@ -819,16 +838,26 @@ class _GameBottomBarState extends State<GameBottomBar>
                     child: Container(
                       height: 64,
                       decoration: BoxDecoration(
-                        color: AppColors.chromeBg,
+                        color: AppColors.spaceNavy.withValues(alpha: 0.94),
                         borderRadius: BorderRadius.circular(
                           AppSpacing.radiusXxl,
                         ),
-                        border: Border.all(color: AppColors.chromeBorder),
+                        border: Border.all(
+                          color: AppColors.darkObsidian,
+                          width: 1.2,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: AppColors.carbonVoid.withValues(alpha: 0.55),
+                            blurRadius: 18,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final double itemW =
-                              constraints.maxWidth / _items.length;
+                              constraints.maxWidth / items.length;
                           return Stack(
                             children: <Widget>[
                               // Animated active indicator pill
@@ -847,13 +876,23 @@ class _GameBottomBarState extends State<GameBottomBar>
                                         borderRadius: BorderRadius.circular(
                                           AppSpacing.radiusMd,
                                         ),
-                                        color: AppColors.accentBlue.withValues(
-                                          alpha: 0.18,
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: <Color>[
+                                            AppColors.liquidGold.withValues(alpha: 0.22),
+                                            AppColors.warningSolar.withValues(alpha: 0.10),
+                                          ],
                                         ),
                                         border: Border.all(
-                                          color: AppColors.accentBlue
-                                              .withValues(alpha: 0.35),
+                                          color: AppColors.liquidGold.withValues(alpha: 0.42),
                                         ),
+                                        boxShadow: <BoxShadow>[
+                                          BoxShadow(
+                                            color: AppColors.liquidGold.withValues(alpha: 0.12),
+                                            blurRadius: 10,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   );
@@ -861,10 +900,10 @@ class _GameBottomBarState extends State<GameBottomBar>
                               ),
                               // Tap targets + labels
                               Row(
-                                children: List<Widget>.generate(_items.length, (
+                                children: List<Widget>.generate(items.length, (
                                   i,
                                 ) {
-                                  final _BottomItem item = _items[i];
+                                  final _BottomItem item = items[i];
                                   final bool isActive = i == activeIdx;
                                   return Expanded(
                                     child: GestureDetector(
@@ -873,6 +912,8 @@ class _GameBottomBarState extends State<GameBottomBar>
                                           _openMenu();
                                           return;
                                         }
+                                        setState(() => _stickyTabIndex = i);
+                                        _animateIndicatorTo(i);
                                         final String path = item.path!;
                                         if (path == widget.currentRoute) {
                                           return;
@@ -896,8 +937,8 @@ class _GameBottomBarState extends State<GameBottomBar>
                                               item.icon,
                                               size: isActive ? 22 : 20,
                                               color: isActive
-                                                  ? AppColors.accentBlue
-                                                  : AppColors.textTertiary,
+                                                  ? AppColors.liquidGold
+                                                  : AppColors.mutedTitanium,
                                             ),
                                           ),
                                           const SizedBox(height: 3),
@@ -907,8 +948,8 @@ class _GameBottomBarState extends State<GameBottomBar>
                                             ),
                                             style: AppTextStyles.micro.copyWith(
                                               color: isActive
-                                                  ? AppColors.accentBlue
-                                                  : AppColors.textTertiary,
+                                                  ? AppColors.textPrimary
+                                                  : AppColors.mutedTitanium,
                                               fontWeight: isActive
                                                   ? FontWeight.w800
                                                   : FontWeight.w600,
@@ -1017,8 +1058,8 @@ String _compact(int value) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Web FloatingChat'ın Flutter karşılığı — bottom sheet olarak açılır.
-void showChatModal(BuildContext context) {
-  showModalBottomSheet<void>(
+Future<void> showChatModal(BuildContext context) {
+  return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -1101,9 +1142,9 @@ class _GameChatFabState extends State<GameChatFab> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        setState(() => _unreadCount = 0);
-        showChatModal(context);
+      onTap: () async {
+        await showChatModal(context);
+        await _loadUnreadCount();
       },
       child: Stack(
         clipBehavior: Clip.none,
@@ -1113,17 +1154,27 @@ class _GameChatFabState extends State<GameChatFab> {
             height: 64,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: <Color>[Color(0xF0141B26), Color(0xF0090D15)],
+                colors: <Color>[
+                  AppColors.spaceNavy.withValues(alpha: 0.96),
+                  AppColors.carbonVoid.withValues(alpha: 0.96),
+                ],
               ),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              boxShadow: const <BoxShadow>[
+              border: Border.all(
+                color: AppColors.cyberFuchsia.withValues(alpha: 0.35),
+              ),
+              boxShadow: <BoxShadow>[
                 BoxShadow(
-                  color: Color(0x40000000),
-                  blurRadius: 20,
-                  offset: Offset(0, 8),
+                  color: AppColors.cyberFuchsia.withValues(alpha: 0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: AppColors.carbonVoid.withValues(alpha: 0.65),
+                  blurRadius: 10,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
@@ -1132,7 +1183,7 @@ class _GameChatFabState extends State<GameChatFab> {
               children: <Widget>[
                 const Icon(
                   Icons.chat_bubble_rounded,
-                  color: Color(0xFF7DD3FC),
+                  color: AppColors.cyberFuchsia,
                   size: 22,
                 ),
                 const SizedBox(height: 3),
@@ -1141,7 +1192,7 @@ class _GameChatFabState extends State<GameChatFab> {
                   style: TextStyle(
                     fontSize: 8,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: AppColors.mutedTitanium,
                     letterSpacing: 0.6,
                   ),
                 ),

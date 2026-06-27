@@ -17,27 +17,32 @@ class FacilitiesState {
   const FacilitiesState({
     required this.status,
     required this.facilities,
+    required this.isMutating,
     this.errorMessage,
   });
 
   final FacilitiesStatus status;
   final List<PlayerFacility> facilities;
+  final bool isMutating;
   final String? errorMessage;
 
   factory FacilitiesState.initial() => const FacilitiesState(
         status: FacilitiesStatus.initial,
         facilities: <PlayerFacility>[],
+        isMutating: false,
       );
 
   FacilitiesState copyWith({
     FacilitiesStatus? status,
     List<PlayerFacility>? facilities,
+    bool? isMutating,
     String? errorMessage,
     bool clearError = false,
   }) {
     return FacilitiesState(
       status: status ?? this.status,
       facilities: facilities ?? this.facilities,
+      isMutating: isMutating ?? this.isMutating,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -68,26 +73,29 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
   }
 
   Future<bool> unlockFacility({required String facilityType}) async {
+    state = state.copyWith(isMutating: true, clearError: true);
     try {
       final bool ok = await _repository.unlockFacility(facilityType: facilityType);
       if (ok) {
         await loadFacilities();
       }
+      state = state.copyWith(isMutating: false);
       return ok;
     } on AppException catch (e) {
-      state = state.copyWith(errorMessage: e.message);
+      state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Tesis acilamadi');
+      state = state.copyWith(isMutating: false, errorMessage: 'Tesis acilamadi');
       return false;
     }
   }
 
   Future<bool> bribeOfficials({required String facilityType, required int gemAmount}) async {
+    state = state.copyWith(isMutating: true, clearError: true);
     try {
       final int currentSuspicion = ref.read(playerProvider).profile?.globalSuspicionLevel ?? 0;
       if (currentSuspicion <= 0) {
-        state = state.copyWith(errorMessage: 'Genel suphe 0 iken rusvet verilemez');
+        state = state.copyWith(isMutating: false, errorMessage: 'Genel suphe 0 iken rusvet verilemez');
         return false;
       }
 
@@ -99,45 +107,50 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
         await loadFacilities();
         await _syncGlobalSuspicionToServer();
       }
+      state = state.copyWith(isMutating: false);
       return ok;
     } on AppException catch (e) {
-      state = state.copyWith(errorMessage: e.message);
+      state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Rusvet verilemedi');
+      state = state.copyWith(isMutating: false, errorMessage: 'Rusvet verilemedi');
       return false;
     }
   }
 
   Future<bool> upgradeFacility({required String facilityId}) async {
+    state = state.copyWith(isMutating: true, clearError: true);
     try {
       final bool ok = await _repository.upgradeFacility(facilityId: facilityId);
       if (ok) {
         await loadFacilities();
       }
+      state = state.copyWith(isMutating: false);
       return ok;
     } on AppException catch (e) {
-      state = state.copyWith(errorMessage: e.message);
+      state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Yukseltme basarisiz');
+      state = state.copyWith(isMutating: false, errorMessage: 'Yukseltme basarisiz');
       return false;
     }
   }
 
   Future<bool> startProduction({required String facilityId}) async {
+    state = state.copyWith(isMutating: true, clearError: true);
     try {
       final bool ok = await _repository.startProduction(facilityId: facilityId);
       if (ok) {
         await loadFacilities();
         await _syncGlobalSuspicionToServer();
       }
+      state = state.copyWith(isMutating: false);
       return ok;
     } on AppException catch (e) {
-      state = state.copyWith(errorMessage: e.message);
+      state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Uretim baslatilamadi');
+      state = state.copyWith(isMutating: false, errorMessage: 'Uretim baslatilamadi');
       return false;
     }
   }
@@ -147,13 +160,17 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
     required int seed,
     required int totalCount,
   }) async {
+    state = state.copyWith(isMutating: true, clearError: true);
     try {
       final InventoryNotifier inventory = ref.read(inventoryProvider.notifier);
       await inventory.loadInventory(silent: true);
 
       final InventoryAddCheck capacityCheck = inventory.canAddItem(itemId: 'resource_placeholder', quantity: totalCount);
       if (!capacityCheck.canAdd) {
-        state = state.copyWith(errorMessage: capacityCheck.reason ?? 'Envanter dolu! Kapasite yetersiz.');
+        state = state.copyWith(
+          isMutating: false,
+          errorMessage: capacityCheck.reason ?? 'Envanter dolu! Kapasite yetersiz.',
+        );
         return null;
       }
 
@@ -183,7 +200,7 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
 
           lastCapacityError = e;
           if (requestCount <= 1) {
-            state = state.copyWith(errorMessage: e.message);
+            state = state.copyWith(isMutating: false, errorMessage: e.message);
             return null;
           }
 
@@ -193,7 +210,10 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
       }
 
       if (result == null) {
-        state = state.copyWith(errorMessage: lastCapacityError?.message ?? 'Toplama basarisiz');
+        state = state.copyWith(
+          isMutating: false,
+          errorMessage: lastCapacityError?.message ?? 'Toplama basarisiz',
+        );
         return null;
       }
 
@@ -235,14 +255,26 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
         await inventory.loadInventory(silent: true);
       }
 
+      state = state.copyWith(isMutating: false);
       return result;
     } on AppException catch (e) {
-      state = state.copyWith(errorMessage: e.message);
+      state = state.copyWith(isMutating: false, errorMessage: e.message);
       return null;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Toplama basarisiz');
+      state = state.copyWith(isMutating: false, errorMessage: 'Toplama basarisiz');
       return null;
     }
+  }
+
+  /// Rusvet icin acik tesis — en yuksek supheli aktif tesis.
+  PlayerFacility? pickBribeTarget() {
+    final List<PlayerFacility> active = state.facilities
+        .where((PlayerFacility f) => f.isActive)
+        .toList();
+    if (active.isEmpty) return null;
+
+    active.sort((PlayerFacility a, PlayerFacility b) => b.suspicion.compareTo(a.suspicion));
+    return active.first;
   }
 
   Future<void> _syncGlobalSuspicionToServer() async {
@@ -270,6 +302,10 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
     if (risk < 0) return 0;
     if (risk > 100) return 100;
     return risk;
+  }
+
+  void clear() {
+    state = FacilitiesState.initial();
   }
 }
 

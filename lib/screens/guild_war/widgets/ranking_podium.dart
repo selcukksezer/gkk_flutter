@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../components/common/gkk_card.dart';
 import '../../../models/guild_war_model.dart';
 import '../../../theme/app_colors.dart';
-import '../../../theme/app_spacing.dart';
+import 'guild_war_design.dart';
 
 class RankingPodium extends StatelessWidget {
   const RankingPodium({
@@ -18,7 +17,10 @@ class RankingPodium extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (rankings.isEmpty) {
-      return const SizedBox.shrink();
+      return const WarEmptyTab(
+        icon: '🏅',
+        message: 'Henüz sıralama verisi yok. Sezon başladığında loncalar burada listelenecek.',
+      );
     }
 
     final top3 = rankings.take(3).toList();
@@ -26,13 +28,19 @@ class RankingPodium extends StatelessWidget {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        if (top3.isNotEmpty) ...[
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const WarSectionHeader(
+          title: 'Şöhret Sıralaması',
+          subtitle: 'Sezon puanlarına göre en güçlü loncalar',
+          accent: WarPalette.gold,
+        ),
+        if (top3.isNotEmpty)
           SizedBox(
-            height: 188,
+            height: 200,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
+              children: <Widget>[
                 if (top3.length > 1)
                   Expanded(child: _PodiumSlot(entry: top3[1], medal: '🥈', barFlex: 4)),
                 Expanded(child: _PodiumSlot(entry: top3[0], medal: '🥇', barFlex: 5)),
@@ -41,15 +49,10 @@ class RankingPodium extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.base),
-        ],
         ...rest.map(
-          (r) => Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: _RankingRow(
-              entry: r,
-              isHighlighted: highlightGuildName != null && r.guildName == highlightGuildName,
-            ),
+          (GuildWarRanking r) => _RankingRow(
+            entry: r,
+            isHighlighted: highlightGuildName != null && r.guildName == highlightGuildName,
           ),
         ),
       ],
@@ -69,9 +72,9 @@ class _PodiumSlot extends StatelessWidget {
   final int barFlex;
 
   Color get _glowColor {
-    if (medal == '🥇') return AppColors.gold;
-    if (medal == '🥈') return const Color(0xFFC0C0C0);
-    return const Color(0xFFCD7F32);
+    if (medal == '🥇') return WarPalette.gold;
+    if (medal == '🥈') return WarPalette.titanium;
+    return WarPalette.coral;
   }
 
   @override
@@ -80,8 +83,8 @@ class _PodiumSlot extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Text(medal, style: const TextStyle(fontSize: 18)),
+        children: <Widget>[
+          Text(medal, style: const TextStyle(fontSize: 20)),
           const SizedBox(height: 2),
           Text(
             entry.guildName,
@@ -90,28 +93,29 @@ class _PodiumSlot extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 10,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
           ),
           Text(
             '${entry.points} puan',
-            style: TextStyle(fontSize: 9, color: _glowColor),
+            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: _glowColor),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Expanded(
             flex: barFlex,
-            child: GkkCard(
-              borderGlow: true,
-              accentColor: _glowColor,
+            child: WarNeonCard(
+              accent: _glowColor,
+              glow: medal == '🥇',
               padding: EdgeInsets.zero,
+              radius: 12,
               child: Center(
                 child: Text(
                   '#${entry.rank}',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 26,
                     fontWeight: FontWeight.w900,
-                    color: _glowColor.withValues(alpha: 0.8),
+                    color: _glowColor.withValues(alpha: 0.85),
                   ),
                 ),
               ),
@@ -134,27 +138,29 @@ class _RankingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GkkCard(
-      accentColor: isHighlighted ? AppColors.gold : null,
-      borderGlow: isHighlighted,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    return WarNeonCard(
+      accent: isHighlighted ? WarPalette.gold : WarPalette.obsidian,
+      glow: isHighlighted,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       child: Row(
-        children: [
+        children: <Widget>[
           Container(
-            width: 28,
-            height: 28,
+            width: 32,
+            height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.bgSurface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.borderDefault),
+              color: WarPalette.obsidian.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isHighlighted ? WarPalette.gold.withValues(alpha: 0.5) : AppColors.borderDefault,
+              ),
             ),
             child: Text(
               '${entry.rank}',
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: isHighlighted ? WarPalette.gold : WarPalette.titanium,
               ),
             ),
           ),
@@ -162,28 +168,28 @@ class _RankingRow extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 Text(
                   entry.guildName,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     fontSize: 13,
                     color: AppColors.textPrimary,
                   ),
                 ),
                 Text(
-                  '${entry.wins}G / ${entry.losses}M',
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                  '${entry.wins}G · ${entry.losses}M',
+                  style: const TextStyle(color: WarPalette.titanium, fontSize: 10),
                 ),
               ],
             ),
           ),
           Text(
             '${entry.points}',
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              color: AppColors.gold,
-              fontSize: 14,
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: isHighlighted ? WarPalette.gold : AppColors.textSecondary,
+              fontSize: 15,
             ),
           ),
         ],

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/utils/provider_scheduling.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
@@ -98,7 +99,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     final winRate = total > 0 ? (pvpWins / total * 100).toStringAsFixed(1) : '0.0';
 
     return Scaffold(
-      appBar: GameTopBar(title: 'PvP', onLogout: _doLogout),
+      appBar: GameTopBar(title: context.l10n.routePvp, onLogout: _doLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.pvp, onLogout: _doLogout),
       body: Container(
@@ -123,23 +124,23 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                     const SizedBox(height: 14),
                     Row(
                       children: <Widget>[
-                        _StatChip(label: 'Rating', value: '$pvpRating', color: Colors.amber),
+                        _StatChip(label: context.l10n.rating, value: '$pvpRating', color: Colors.amber),
                         const SizedBox(width: 10),
                         _StatChip(
-                            label: 'Kazanma Oranı', value: '$winRate%', color: Colors.greenAccent),
+                            label: context.l10n.kazanma_oran, value: '$winRate%', color: Colors.greenAccent),
                         const SizedBox(width: 10),
                         _StatChip(
-                            label: 'Enerji', value: '$energy', color: const Color(0xFF00D7D7)),
+                            label: context.l10n.enerji_2, value: '$energy', color: const Color(0xFF00D7D7)),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Row(
                       children: <Widget>[
                         _StatChip(
-                            label: 'Galibiyet', value: '$pvpWins', color: Colors.greenAccent),
+                            label: context.l10n.galibiyet, value: '$pvpWins', color: Colors.greenAccent),
                         const SizedBox(width: 10),
                         _StatChip(
-                            label: 'Mağlubiyet', value: '$pvpLosses', color: Colors.redAccent),
+                            label: context.l10n.ma_lubiyet, value: '$pvpLosses', color: Colors.redAccent),
                       ],
                     ),
                   ],
@@ -152,7 +153,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => context.go(AppRoutes.pvpHistory),
                       icon: const Icon(Icons.history_rounded, size: 16),
-                      label: const Text('Geçmişi Aç'),
+                      label: Text(context.l10n.ge_mi_i_a),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.white24),
                         foregroundColor: Colors.white70,
@@ -164,7 +165,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => context.go(AppRoutes.pvpTournament),
                       icon: const Icon(Icons.emoji_events_rounded, size: 16),
-                      label: const Text('Turnuva'),
+                      label: Text(context.l10n.turnuva),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.amber),
                         foregroundColor: Colors.amber,
@@ -392,7 +393,7 @@ class _ArenaCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
-            child: const Text('Arenaya Git'),
+            child: Text(context.l10n.arenaya_git),
           ),
         ],
       ),
@@ -494,14 +495,14 @@ class _MatchCard extends StatelessWidget {
               const SizedBox(width: 16),
               _MatchStat(
                 icon: Icons.paid_rounded,
-                label: 'Altın',
+                label: context.l10n.alt_n,
                 value: '$goldSign$goldStolen',
                 color: goldStolen >= 0 ? Colors.amber : Colors.red,
               ),
               const SizedBox(width: 16),
               _MatchStat(
                 icon: Icons.star_rounded,
-                label: 'İtibar',
+                label: context.l10n.i_tibar,
                 value: '$repSign$repChange',
                 color: repChange >= 0 ? Colors.greenAccent : Colors.redAccent,
               ),

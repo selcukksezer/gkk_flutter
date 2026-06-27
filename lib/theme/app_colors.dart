@@ -96,7 +96,23 @@ abstract final class AppColors {
   /// Blue-tinted border for chrome elements
   static const Color chromeBorder = Color(0x4A5B8FFF);
 
-  // ──────────────────────────── Helpers ────────────────────────────────────
+  // ──────────────────────────── Tasarim semantic (design system) ───────────
+
+  /// Shared across guild-war, trade, facilities, monument screens.
+  static const Color carbonVoid = bgDeep;
+  static const Color spaceNavy = Color(0xFF121826);
+  static const Color darkObsidian = Color(0xFF2A3042);
+  static const Color mutedTitanium = Color(0xFF8E9CAE);
+  static const Color liquidGold = Color(0xFFFFB800);
+  static const Color cyberFuchsia = Color(0xFFE01E5A);
+  static const Color mysticRuby = Color(0xFFE52E2E);
+  static const Color toxicNeon = Color(0xFF00FF66);
+  static const Color coralFlare = Color(0xFFFF6B35);
+  static const Color warningSolar = Color(0xFFFFD700);
+
+  static const LinearGradient liquidGoldGradient = LinearGradient(
+    colors: <Color>[liquidGold, goldLight],
+  );
 
   /// Returns the rarity color for an item rarity string.
   static Color forRarity(String rarity) => switch (rarity.toLowerCase()) {

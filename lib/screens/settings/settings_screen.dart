@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -22,7 +24,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _muteAll = false;
   bool _notifications = true;
   bool _autoBattle = false;
-  String _language = 'tr';
 
   late TextEditingController _nameController;
   bool _savingName = false;
@@ -45,7 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _saveName() async {
     final name = _nameController.text.trim();
     if (name.length < 3) {
-      setState(() => _nameError = 'İsim en az 3 karakter olmalıdır.');
+      setState(() => _nameError = context.l10n.settingsNameMinLength);
       return;
     }
     setState(() {
@@ -56,11 +57,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await SupabaseService.client.rpc('update_user_profile', params: {'p_display_name': name});
       await ref.read(playerProvider.notifier).loadProfile();
       if (mounted) {
-        AppMessenger.show(context, 'İsim başarıyla güncellendi.');
+        AppMessenger.show(context, context.l10n.settingsNameUpdated);
       }
     } catch (e) {
       if (mounted) {
-        AppMessenger.showError(context, 'Hata: $e');
+        AppMessenger.showError(context, context.l10n.errorWithDetail(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _savingName = false);
@@ -71,11 +72,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Çıkış Yap'),
-        content: const Text('Hesabınızdan çıkmak istediğinize emin misiniz?'),
+        title: Text(context.l10n.settingsLogoutTitle),
+        content: Text(context.l10n.settingsLogoutConfirm),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('İptal')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Çıkış Yap')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(context.l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(context.l10n.settingsLogoutTitle)),
         ],
       ),
     );
@@ -89,14 +90,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hesabı Sil', style: TextStyle(color: Colors.redAccent)),
-        content: const Text('Bu işlem geri alınamaz! Hesabınız ve tüm verileriniz kalıcı olarak silinecek. Emin misiniz?'),
+        title: Text(context.l10n.settingsDeleteAccountTitle, style: const TextStyle(color: Colors.redAccent)),
+        content: Text(context.l10n.settingsDeleteAccountConfirm),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(context.l10n.commonCancel)),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Hesabı Sil'),
+            child: Text(context.l10n.settingsDeleteAccountTitle),
           ),
         ],
       ),
@@ -109,16 +110,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) context.go(AppRoutes.login);
     } catch (e) {
       if (mounted) {
-        AppMessenger.showError(context, 'Hata: $e');
+        AppMessenger.showError(context, context.l10n.errorWithDetail(e.toString()));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final String languageCode = ref.watch(localeProvider).languageCode;
+
     return Scaffold(
       appBar: GameTopBar(
-        title: '⚙️ Ayarlar',
+        title: l10n.routeSettings,
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();
@@ -144,7 +148,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             _sectionCard(
-              title: '🔊 Ses Ayarları',
+              title: context.l10n.ses_ayarlar,
               children: <Widget>[
                 _sliderTile(
                   label: '🎵 Müzik ${(_musicVolume * 100).round()}%',
@@ -162,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('🔇 Tüm Sesleri Kapat'),
+                  title: Text(context.l10n.t_m_sesleri_kapat),
                   value: _muteAll,
                   onChanged: (v) => setState(() => _muteAll = v),
                 ),
@@ -170,17 +174,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _sectionCard(
-              title: '📱 Bildirimler & Oyun',
+              title: context.l10n.bildirimler_oyun,
               children: <Widget>[
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Bildirimler'),
+                  title: Text(context.l10n.bildirimler),
                   value: _notifications,
                   onChanged: (v) => setState(() => _notifications = v),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('⚔️ Otomatik Savaş'),
+                  title: Text(context.l10n.otomatik_sava),
                   subtitle: const Text(
                     'PvP ve zindan savaşlarını otomatik yönet',
                     style: TextStyle(color: Colors.white38, fontSize: 12),
@@ -192,24 +196,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _sectionCard(
-              title: '🌍 Dil / Language',
+              title: l10n.dil_language,
               children: <Widget>[
                 const SizedBox(height: 4),
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<String>(
-                    segments: const <ButtonSegment<String>>[
-                      ButtonSegment<String>(value: 'tr', label: Text('🇹🇷 Türkçe')),
-                      ButtonSegment<String>(value: 'en', label: Text('🇬🇧 English')),
+                    segments: <ButtonSegment<String>>[
+                      ButtonSegment<String>(value: 'tr', label: Text(l10n.t_rk_e)),
+                      ButtonSegment<String>(value: 'en', label: Text(l10n.english)),
                     ],
-                    selected: <String>{_language},
+                    selected: <String>{languageCode},
                     onSelectionChanged: (Set<String> selection) {
-                      final selected = selection.first;
-                      if (selected == 'en') {
-                        AppMessenger.show(context, 'English desteği yakında eklenecek');
-                        return;
-                      }
-                      setState(() => _language = selected);
+                      ref.read(localeProvider.notifier).setLocale(Locale(selection.first));
                     },
                   ),
                 ),
@@ -217,13 +216,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _sectionCard(
-              title: '👤 Profil',
+              title: context.l10n.profil,
               children: <Widget>[
                 const SizedBox(height: 4),
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
-                    labelText: 'Görünen İsim',
+                    labelText: l10n.settingsDisplayNameLabel,
                     errorText: _nameError,
                     border: const OutlineInputBorder(),
                     filled: true,
@@ -237,14 +236,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     onPressed: _savingName ? null : _saveName,
                     child: _savingName
                         ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Kaydet'),
+                        : Text(context.l10n.kaydet),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             _sectionCard(
-              title: '🚨 Hesap',
+              title: context.l10n.hesap,
               children: <Widget>[
                 const SizedBox(height: 4),
                 SizedBox(
@@ -252,7 +251,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _logout,
                     icon: const Icon(Icons.logout_rounded),
-                    label: const Text('Çıkış Yap'),
+                    label: Text(context.l10n.k_yap),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -261,7 +260,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: FilledButton.icon(
                     onPressed: _deleteAccount,
                     icon: const Icon(Icons.delete_forever_rounded),
-                    label: const Text('Hesabı Sil'),
+                    label: Text(context.l10n.hesab_sil),
                     style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
                   ),
                 ),

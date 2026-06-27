@@ -10,6 +10,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
+import '../../theme/app_colors.dart';
 
 // ============================================================================
 // DESIGN SYSTEM - Colors, Spacing, Shadows, Gradients
@@ -19,7 +21,7 @@ class _ChatDesignSystem {
   static const Color colorGlobalAccent = Color(0xFF38BDF8); // Sky blue
   static const Color colorGuildAccent = Color(0xFFF97316); // Guild orange
   static const Color colorTradeAccent = Color(0xFFFCCC15); // Trade amber
-  static const Color colorDmAccent = Color(0xFFA855F7); // DM purple
+  static const Color colorDmAccent = AppColors.cyberFuchsia;
 
   // Semantic colors
   static const Color colorSuccess = Color(0xFF10B981);
@@ -88,7 +90,7 @@ class _ChatDesignSystem {
   static const LinearGradient gradientDm = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [Color(0x1FA855F7), Color(0x06A855F7)],
+    colors: [Color(0x1EE01E5A), Color(0x06E01E5A)],
   );
 }
 
@@ -956,7 +958,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sohbet'),
+        title: Text(context.l10n.sohbet),
         centerTitle: true,
       ),
       body: Column(

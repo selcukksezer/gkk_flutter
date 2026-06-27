@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../models/mekan_model.dart';
 import '../../providers/mekan_provider.dart';
@@ -232,7 +233,12 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
       backgroundColor: MekanPalette.navy,
       onRefresh: () => _load(silent: true),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 32),
+        padding: GameScrollLayout.fromLTRB(
+          context,
+          left: 14,
+          top: 14,
+          right: 14,
+        ),
         physics: const AlwaysScrollableScrollPhysics(),
         children: <Widget>[
           NeonPanel(
@@ -353,7 +359,12 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
       backgroundColor: MekanPalette.navy,
       onRefresh: () => _load(silent: true),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 32),
+        padding: GameScrollLayout.fromLTRB(
+          context,
+          left: 14,
+          top: 14,
+          right: 14,
+        ),
         physics: const AlwaysScrollableScrollPhysics(),
         children: <Widget>[
           NeonButton(
@@ -440,24 +451,29 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
       backgroundColor: MekanPalette.navy,
       onRefresh: () => _load(silent: true),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 32),
+        padding: GameScrollLayout.fromLTRB(
+          context,
+          left: 14,
+          top: 14,
+          right: 14,
+        ),
         physics: const AlwaysScrollableScrollPhysics(),
         children: <Widget>[
-          GridView.count(
+          GameFixedGrid(
             crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.4,
-            children: <Widget>[
-              _statBox(Icons.paid_rounded, 'Toplam Gelir', formatMekanGold(s.totalRevenue), MekanPalette.gold),
-              _statBox(Icons.shopping_cart_rounded, 'Toplam Satis', '${s.totalSales}', MekanPalette.aqua),
-              _statBox(Icons.today_rounded, 'Bugun Gelir', formatMekanGold(s.todayRevenue), MekanPalette.neon),
-              _statBox(Icons.people_rounded, 'Haftalik Musteri', '${s.weekCustomers}', MekanPalette.amethyst),
-              _statBox(Icons.sports_mma_rounded, 'PvP Mac', '${s.pvpMatchCount}', MekanPalette.ruby),
-              _statBox(Icons.inventory_rounded, 'Kapasite', '${s.usedCapacity}/${s.capacity}', MekanPalette.coral),
-            ],
+            spacing: 10,
+            itemCount: 6,
+            itemBuilder: (BuildContext context, int index) {
+              final List<Widget> boxes = <Widget>[
+                _statBox(Icons.paid_rounded, 'Toplam Gelir', formatMekanGold(s.totalRevenue), MekanPalette.gold),
+                _statBox(Icons.shopping_cart_rounded, 'Toplam Satis', '${s.totalSales}', MekanPalette.aqua),
+                _statBox(Icons.today_rounded, 'Bugun Gelir', formatMekanGold(s.todayRevenue), MekanPalette.neon),
+                _statBox(Icons.people_rounded, 'Haftalik Musteri', '${s.weekCustomers}', MekanPalette.amethyst),
+                _statBox(Icons.sports_mma_rounded, 'PvP Mac', '${s.pvpMatchCount}', MekanPalette.ruby),
+                _statBox(Icons.inventory_rounded, 'Kapasite', '${s.usedCapacity}/${s.capacity}', MekanPalette.coral),
+              ];
+              return boxes[index];
+            },
           ),
           const SizedBox(height: 16),
           if (s.topItem != null)
@@ -531,7 +547,12 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
     final int? cost = s?.nextUpgradeCost;
     final bool maxed = mekan.level >= 10;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 32),
+      padding: GameScrollLayout.fromLTRB(
+        context,
+        left: 14,
+        top: 14,
+        right: 14,
+      ),
       children: <Widget>[
         NeonPanel(
           accent: accent,

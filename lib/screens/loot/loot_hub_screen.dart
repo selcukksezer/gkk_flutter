@@ -13,6 +13,7 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../l10n/l10n.dart';
 
 class _LootBoxView {
   const _LootBoxView({
@@ -445,7 +446,7 @@ class _LootHubScreenState extends ConsumerState<LootHubScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: GameTopBar(
-        title: 'Kasa Acma',
+        title: context.l10n.kasa_acma,
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();
