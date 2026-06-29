@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
@@ -525,7 +526,12 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: GameScrollLayout.fromLTRB(
+                  context,
+                  left: 16,
+                  top: 12,
+                  right: 16,
+                ),
                 children: <Widget>[
                   // Page title
                   const Text('İtibar & Faksiyonlar', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),

@@ -2,8 +2,8 @@
 
 **Tarih:** 2026-06-27  
 **Kaynak audit:** `reports/audits/audit_2026-06-27/`  
-**İlerleme:** 53 / 455  
-**Son güncelleme:** 2026-06-28 — ham exception/RPC → userFacingErrorMessage + InlineErrorRetry
+**İlerleme:** 55 / 455  
+**Son güncelleme:** 2026-06-29 — alt menü boşluğu bank/market/quests/reputation/settings
 **Üretim:** `python3 scripts/generate_audit_todo.py`
 
 ---
@@ -80,13 +80,13 @@
   - **Çözüm:** User-friendly error string + retry CTA; debug'da only kDebugMode ile detay
   - **Etkilenen raporlar (11):** [bank.md](reports/audits/audit_2026-06-27/bank.md), [character.md](reports/audits/audit_2026-06-27/character.md), [dungeon_battle.md](reports/audits/audit_2026-06-27/dungeon_battle.md), [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md), [loot.md](reports/audits/audit_2026-06-27/loot.md), [mekan_arena.md](reports/audits/audit_2026-06-27/mekan_arena.md), [mekan_create.md](reports/audits/audit_2026-06-27/mekan_create.md), [pvp_history.md](reports/audits/audit_2026-06-27/pvp_history.md), [pvp_tournament.md](reports/audits/audit_2026-06-27/pvp_tournament.md), [settings.md](reports/audits/audit_2026-06-27/settings.md), [trade.md](reports/audits/audit_2026-06-27/trade.md)
 
-- [ ] **[P2] _rarityColor hex map tekrarı**
+- [x] **[P2] _rarityColor hex map tekrarı**
   - **Sorun:** Satır 755-770 shop/trade ile kopya. (+3 ek rapor varyasyonu)
   - **Çözüm:** Merkezi item_rarity.dart veya AppColors.rarityFor() — shop/bank/trade/loot'taki duplicate map kaldır
   - **Hedef dosya:** `lib/theme/item_rarity.dart`
   - **Etkilenen raporlar (4):** [bank.md](reports/audits/audit_2026-06-27/bank.md), [crafting.md](reports/audits/audit_2026-06-27/crafting.md), [shop.md](reports/audits/audit_2026-06-27/shop.md), [trade.md](reports/audits/audit_2026-06-27/trade.md)
 
-- [ ] **[P2] gameBottomBarClearance padding eksik**
+- [x] **[P2] gameBottomBarClearance padding eksik**
   - **Sorun:** `Column` + `SafeArea` — `gameBottomBarClearance(context)` yok. Bank pagination (`1 / 10`) screenshot'ta nav bar üstünde; scroll body yok, alt banka satırı FAB yakını. (+10 ek rapor varyasyonu)
   - **Çözüm:** Scroll body sonuna AppSpacing.gameBottomBarClearance veya GameChrome padding token ekle
   - **Hedef dosya:** `lib/components/layout/game_chrome.dart`

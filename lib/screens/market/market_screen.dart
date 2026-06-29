@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -74,7 +75,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
           ),
         ),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          padding: GameScrollLayout.fromLTRB(context, left: 12, top: 8, right: 12),
           children: <Widget>[
             Row(
               children: <Widget>[

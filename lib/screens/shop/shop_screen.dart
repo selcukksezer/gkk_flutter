@@ -225,17 +225,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     }
   }
 
-  Color _rarityColor(String? rarity) {
-    switch ((rarity ?? '').toLowerCase()) {
-      case 'uncommon': return const Color(0xFF22C55E);
-      case 'rare':     return const Color(0xFF3B82F6);
-      case 'epic':     return AppColors.rarityEpic;
-      case 'legendary':return const Color(0xFFF59E0B);
-      case 'mythic':   return const Color(0xFFEF4444);
-      default:         return const Color(0xFF94A3B8);
-    }
-  }
-
   Future<void> _buyShopItem(Map<String, dynamic> item, int qty) async {
     if (_buyingId != null || _purchaseLoading) return;
 
@@ -553,7 +542,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                     buyingId: _buyingId,
                     onSearchChanged: (q) => setState(() => _itemSearchQuery = q),
                     onBuyTap: _handleBuyClick,
-                    rarityColor: _rarityColor,
+                    rarityColor: (String? rarity) =>
+                        AppColors.forRarity(rarity ?? ''),
                     buildItemIcon: _buildItemIcon,
                   ),
                 ],

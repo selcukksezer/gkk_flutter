@@ -14,6 +14,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
 const int _baseBankSlots = 100;
@@ -776,23 +777,6 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }
   }
 
-  Color _rarityColor(String? rarity) {
-    switch ((rarity ?? '').toLowerCase()) {
-      case 'uncommon':
-        return const Color(0xFF22C55E);
-      case 'rare':
-        return const Color(0xFF3B82F6);
-      case 'epic':
-        return const Color(0xFFA855F7);
-      case 'legendary':
-        return const Color(0xFFF59E0B);
-      case 'mythic':
-        return const Color(0xFFEF4444);
-      default:
-        return const Color(0xFF94A3B8);
-    }
-  }
-
   Widget _buildItemIcon({
     required String icon,
     required Color rarityColor,
@@ -824,7 +808,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     final String id = item?.rowId ?? '';
     final bool selected = hasItem && _selectedInventoryRowIds.contains(id);
     final Color rarityColor = hasItem
-        ? _rarityColor(item.rarity.name)
+        ? AppColors.forRarity(item.rarity.name)
         : Colors.white24;
 
     final Widget slotBody = Container(
@@ -1006,7 +990,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     final String id = hasItem ? item['id']?.toString() ?? '' : '';
     final bool selected = hasItem && _selectedBankIds.contains(id);
     final Color rarityColor = hasItem
-        ? _rarityColor(item['rarity']?.toString())
+        ? AppColors.forRarity(item['rarity']?.toString() ?? '')
         : Colors.white24;
     final int qty = hasItem ? _asInt(item['quantity']) : 0;
     final int upgradeLevel = hasItem
@@ -1637,7 +1621,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
           ),
         ),
         child: SafeArea(
-          child: _loading
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: gameBottomBarClearance(context)),
+            child: _loading
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFFFBBF24)),
                 )
@@ -1661,6 +1648,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                     ),
                   ],
                 ),
+          ),
         ),
       ),
     );

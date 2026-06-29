@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
@@ -152,7 +153,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
           children: <Widget>[
             _sectionCard(
               title: context.l10n.ses_ayarlar,

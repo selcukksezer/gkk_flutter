@@ -14,6 +14,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../l10n/l10n.dart';
 
@@ -119,23 +120,6 @@ String _compactNum(int value) {
   if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
   if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
   return value.toString();
-}
-
-Color _rarityColor(String rarity) {
-  switch (rarity.toLowerCase()) {
-    case 'uncommon':
-      return const Color(0xFF22C55E);
-    case 'rare':
-      return const Color(0xFF3B82F6);
-    case 'epic':
-      return const Color(0xFFA855F7);
-    case 'legendary':
-      return const Color(0xFFF59E0B);
-    case 'mythic':
-      return const Color(0xFFEF4444);
-    default:
-      return const Color(0xFF94A3B8);
-  }
 }
 
 IconData _currencyIcon(String currency) {
@@ -631,7 +615,7 @@ class _LootHubScreenState extends ConsumerState<LootHubScreen> {
                           spacing: 6,
                           runSpacing: 6,
                           children: drops.take(12).map((d) {
-                            final Color rarity = _rarityColor(d.rarity);
+                            final Color rarity = AppColors.forRarity(d.rarity);
                             return Material(
                               color: Colors.transparent,
                               child: InkWell(
@@ -1416,7 +1400,7 @@ class _LootReelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color rarity = _rarityColor(drop.rarity);
+    final Color rarity = AppColors.forRarity(drop.rarity);
 
     return Container(
       width: width,

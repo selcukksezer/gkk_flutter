@@ -87,6 +87,7 @@ abstract final class AppColors {
   static const Color rarityRare = Color(0xFF60A5FA);
   static const Color rarityEpic = Color(0xFFA855F7);
   static const Color rarityLegendary = Color(0xFFF59E0B);
+  static const Color rarityMythic = Color(0xFFEF4444);
 
   // ──────────────────────────── Overlay / Blur ─────────────────────────────
 
@@ -120,6 +121,7 @@ abstract final class AppColors {
         'rare' => rarityRare,
         'epic' => rarityEpic,
         'legendary' => rarityLegendary,
+        'mythic' => rarityMythic,
         _ => rarityCommon,
       };
 }

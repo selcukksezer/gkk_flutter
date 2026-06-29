@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/quest_model.dart';
@@ -250,7 +251,12 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
                     onRefresh: _loadQuests,
                     color: _QColors.accent,
                     child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      padding: GameScrollLayout.fromLTRB(
+                        context,
+                        left: 16,
+                        top: 4,
+                        right: 16,
+                      ),
                       itemCount: sorted.length,
                       itemBuilder: (_, i) => _QuestCard(
                         quest: sorted[i],
