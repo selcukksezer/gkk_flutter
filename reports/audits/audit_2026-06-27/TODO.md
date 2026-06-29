@@ -2,8 +2,8 @@
 
 **Tarih:** 2026-06-27  
 **Kaynak audit:** `reports/audits/audit_2026-06-27/`  
-**İlerleme:** 68 / 455  
-**Son güncelleme:** 2026-06-29 — banka sekme/toggle, karakter UI, migration
+**İlerleme:** 69 / 455  
+**Son güncelleme:** 2026-06-29 — banka widget refaktör (kademeli)
 **Üretim:** `python3 scripts/generate_audit_todo.py`
 
 ---
@@ -137,7 +137,7 @@
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `bank_screen.dart` monolit (~1642 satır)
+- [x] **[P2 · Kod/Refaktör]** `bank_screen.dart` monolit (~1642 satır)
   - **Sorun:** Slot builder, drag logic, RPC, dialog — tek StatefulWidget; hot reload yavaş.
   - **Çözüm:** lib/screens/bank/widgets/bank_slot_grid.dart
 lib/screens/bank/bank_controller.dart  // Riverpod Notifier
