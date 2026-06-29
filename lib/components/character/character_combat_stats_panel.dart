@@ -54,7 +54,7 @@ class CharacterCombatStatsPanel extends StatelessWidget {
       _CombatStatDef(
         label: 'Saldırı',
         value: attack,
-        icon: '${_iconBase}saldırı.png',
+        icon: '${_iconBase}saldira_icon.png',
       ),
       _CombatStatDef(
         label: 'Savunma',

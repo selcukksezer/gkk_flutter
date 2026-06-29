@@ -2,8 +2,8 @@
 
 **Tarih:** 2026-06-27  
 **Kaynak audit:** `reports/audits/audit_2026-06-27/`  
-**İlerleme:** 60 / 455  
-**Son güncelleme:** 2026-06-29 — banka TR yazım, stackable, tipografi, kısmi çekme
+**İlerleme:** 68 / 455  
+**Son güncelleme:** 2026-06-29 — banka sekme/toggle, karakter UI, migration
 **Üretim:** `python3 scripts/generate_audit_todo.py`
 
 ---
@@ -144,19 +144,19 @@ lib/screens/bank/bank_controller.dart  // Riverpod Notifier
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Dikey split — Envanter + Banka eşit `Expanded`
+- [x] **[P2 · UI/UX]** Dikey split — Envanter + Banka eşit `Expanded`
   - **Sorun:** `_buildInventoryArea` + `_buildBankArea` aynı `Column` içinde iki `Expanded` (satır 1624-1633). Her biri 5×2 / 5×1 grid + header — screenshot'ta ~%45 viewport envanter, ~%45 banka; tek elle kullanımda slotlar ~40×45dp.
   - **Çözüm:** Tab veya `DraggableScrollableSheet` tek panel odak; KO tarzı "Envanter | Banka" toggle.
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P2 · UI/UX]** Drag affordance — keşfedilebilirlik sıfır
+- [x] **[P2 · UI/UX]** Drag affordance — keşfedilebilirlik sıfır
   - **Sorun:** `LongPressDraggable` delay 120ms (satır 963) — UI'da "sürükle" ipucu yok; yalnızca boş slot `+` ikonu. Batch butonlar disabled (0 seçili) gri.
   - **Çözüm:** İlk ziyaret coach mark; header altına `'Uzun bas: sürükle · Dokun: seç'`.
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P2 · UI/UX]** `_buildStatsCard` — doluluk %0 ile 100 boş slot
+- [x] **[P2 · UI/UX]** `_buildStatsCard` — doluluk %0 ile 100 boş slot
   - **Sorun:** Screenshot: Toplam 100, Kullanılan 0, Boş 100, Doluluk 0% — doğru ama "Genişlet 50 gem" CTA yeni oyuncuda agresif; maliyet `_expandCost` client-side hardcoded.
   - **Çözüm:** %80+ dolulukta göster; maliyet RPC'den.
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
@@ -165,27 +165,27 @@ lib/screens/bank/bank_controller.dart  // Riverpod Notifier
 ### character — [character.md](reports/audits/audit_2026-06-27/character.md)
 **Kaynak kod:** `lib/screens/character/character_screen.dart`
 
-- [ ] **[P1 · UI/UX]** `_buildQuickResources` — 4 sütun mini kart okunabilirlik
+- [x] **[P1 · UI/UX]** `_buildQuickResources` — 4 sütun mini kart okunabilirlik
   - **Sorun:** `_miniResource` label `fontSize: 9`, value `13` — dört kart yan yana (`Expanded` × 4). Screenshot'ta "50.0K Altın", "100/100 Enerji" sıkışık; `Tolerans` label 9px `white54` — WCAG küçük metin eşiği altında. Emoji + kısa label (`💰 Altın`) yatay truncation `ellipsis`.
   - **Çözüm:** 2×2 grid breakpoint `<360pt`; label min 11px `AppTextStyles.caption`.
   - **Kaynak rapor:** [character.md](reports/audits/audit_2026-06-27/character.md)
   - **Hedef dosya:** `lib/screens/character/character_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** Asset path Unicode — `saldırı.png`
+- [x] **[P2 · Kod/Refaktör]** Asset path Unicode — `saldırı.png`
   - **Sorun:** `character_combat_stats_panel.dart` satır 55 `'${_iconBase}saldırı.png'` — CI/Linux build'de encoding/normalization failure → fallback bolt icon (screenshot'ta gerçek ikonlar yüklü, macOS OK).
   - **Çözüm:** '${_iconBase}saldira_icon.png'
 // pubspec + asset rename
   - **Kaynak rapor:** [character.md](reports/audits/audit_2026-06-27/character.md)
   - **Hedef dosya:** `lib/screens/character/character_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** Hardcoded renk sabitleri — tema duplicate
+- [x] **[P2 · Kod/Refaktör]** Hardcoded renk sabitleri — tema duplicate
   - **Sorun:** `_spaceNavy`, `_liquidGold`, `_coralFlare` vb. (satır 20-26) `AppColors` / `GameScreenBackground.spaceNavy` ile overlap; renk drift.
   - **Çözüm:** import '../../theme/app_colors.dart';
 // AppColors.gold veya theme extension
   - **Kaynak rapor:** [character.md](reports/audits/audit_2026-06-27/character.md)
   - **Hedef dosya:** `lib/screens/character/character_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `_buildExtraInfo` — `Wrap` içinde `_infoRow` without width
+- [x] **[P2 · Kod/Refaktör]** `_buildExtraInfo` — `Wrap` içinde `_infoRow` without width
   - **Sorun:** `_infoRow` `Row(spaceBetween)` — `Wrap` child'ları intrinsic width alır; "Şüphe Seviyesi" ve değer yan yana sıkışır, spaceBetween çalışmaz (screenshot geniş ekranda OK, dar ekranda broken).
   - **Çözüm:** SizedBox(
   width: double.infinity,
@@ -195,7 +195,7 @@ lib/screens/bank/bank_controller.dart  // Riverpod Notifier
   - **Kaynak rapor:** [character.md](reports/audits/audit_2026-06-27/character.md)
   - **Hedef dosya:** `lib/screens/character/character_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `_claimAlchemistDetox` — `if (mounted)` tek satır without braces
+- [x] **[P2 · Kod/Refaktör]** `_claimAlchemistDetox` — `if (mounted)` tek satır without braces
   - **Sorun:** Satır 81-82, 84-88 lint/deviation; `res` cast `as Map` unsafe — wrong type runtime crash.
   - **Çözüm:** final res = await SupabaseService.client.rpc('claim_alchemist_detox');
 if (res is! Map<String, dynamic>) {

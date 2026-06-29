@@ -13,20 +13,15 @@ import '../../models/player_model.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../utils/logout_helper.dart';
 
 // ─── Constants & Helpers ───────────────────────────────────────────────────
 
-const _spaceNavy = Color(0xFF121826);
-const _liquidGold = Color(0xFFFFB800);
-const _warningSolar = Color(0xFFFFD700);
-const _mutedTitanium = Color(0xFF8E9CAE);
-const _coralFlare = Color(0xFFFF6B35);
-const _cyberFuchsia = Color(0xFFE01E5A);
-const _toxicNeon = Color(0xFF00FF66);
-
-const _xpBarGradient = LinearGradient(colors: [_liquidGold, _warningSolar]);
+const _xpBarGradient = LinearGradient(
+  colors: <Color>[AppColors.liquidGold, AppColors.warningSolar],
+);
 
 const _skills = [
   (key: 'combat', icon: '⚔️', label: 'Savaş'),
@@ -39,8 +34,8 @@ const _skills = [
 
 ({String title, Color color}) _getReputationTier(int rep) {
   if (rep >= 100000) return (title: '👑 Efsane', color: Colors.amber);
-  if (rep >= 50000) return (title: '🔱 Usta', color: _liquidGold);
-  if (rep >= 20000) return (title: '⭐ Kahraman', color: _coralFlare);
+  if (rep >= 50000) return (title: '🔱 Usta', color: AppColors.liquidGold);
+  if (rep >= 20000) return (title: '⭐ Kahraman', color: AppColors.coralFlare);
   if (rep >= 5000) return (title: '🥈 Ünlü', color: Colors.blueGrey);
   if (rep >= 1000) return (title: '🌱 Tanınan', color: Colors.greenAccent);
   return (title: '🕵️ Bilinmeyen', color: Colors.white38);
@@ -76,20 +71,31 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   Future<void> _claimAlchemistDetox() async {
     setState(() => _claimingDetox = true);
     try {
-      final res =
-          await SupabaseService.client.rpc('claim_alchemist_detox') as Map;
-      if (res['success'] == true) {
-        if (mounted)
+      final dynamic res =
+          await SupabaseService.client.rpc('claim_alchemist_detox');
+      if (res is! Map) {
+        if (mounted) {
+          AppMessenger.showError(context, 'Beklenmeyen yanıt');
+        }
+        return;
+      }
+      final Map<String, dynamic> data = Map<String, dynamic>.from(res);
+      if (data['success'] == true) {
+        if (mounted) {
           AppMessenger.showSuccess(context, '✅ Minor Detox başarıyla alındı!');
+        }
       } else {
-        if (mounted)
+        if (mounted) {
           AppMessenger.showError(
             context,
-            '❌ ${res['message'] ?? 'Bir hata oluştu.'}',
+            '❌ ${data['message'] ?? 'Bir hata oluştu.'}',
           );
+        }
       }
     } catch (e) {
-      if (mounted) AppMessenger.showError(context, '❌ İşlem başarısız');
+      if (mounted) {
+        AppMessenger.showError(context, '❌ İşlem başarısız');
+      }
     } finally {
       if (mounted) setState(() => _claimingDetox = false);
     }
@@ -169,7 +175,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   Future<void> _showAvatarPicker() async {
     await showModalBottomSheet(
       context: context,
-      backgroundColor: _spaceNavy,
+      backgroundColor: AppColors.spaceNavy,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -246,7 +252,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
 
     await showModalBottomSheet(
       context: context,
-      backgroundColor: _spaceNavy,
+      backgroundColor: AppColors.spaceNavy,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -315,7 +321,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   Future<void> _showCustomizationPicker() async {
     await showModalBottomSheet(
       context: context,
-      backgroundColor: _spaceNavy,
+      backgroundColor: AppColors.spaceNavy,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -337,7 +343,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.person, color: _liquidGold),
+                  leading: const Icon(Icons.person, color: AppColors.liquidGold),
                   title: const Text(
                     'Profil Fotoğrafını Değiştir',
                     style: TextStyle(color: Colors.white),
@@ -412,7 +418,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                   bottom: 0,
                   child: Container(
                     decoration: const BoxDecoration(
-                      color: _spaceNavy,
+                      color: AppColors.spaceNavy,
                       shape: BoxShape.circle,
                     ),
                     padding: const EdgeInsets.all(2),
@@ -502,38 +508,56 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   }
 
   Widget _buildQuickResources(PlayerProfile? profile) {
-    return Row(
-      children: [
-        Expanded(
-          child: _miniResource(
-            '💰 Altın',
-            _fmtCompact(profile?.gold ?? 0),
-            _warningSolar,
-          ),
+    final List<Widget> cards = <Widget>[
+      _miniResource(
+        '💰 Altın',
+        _fmtCompact(profile?.gold ?? 0),
+        AppColors.warningSolar,
+      ),
+      _miniResource(
+        '💎 Elmas',
+        _fmtCompact(profile?.gems ?? 0),
+        AppColors.mutedTitanium,
+      ),
+      _miniResource(
+        '⚡ Enerji',
+        '${profile?.energy ?? 0}/${profile?.maxEnergy ?? 100}',
+        AppColors.cyberFuchsia,
+      ),
+      _miniResource(
+        '⚖️ Tolerans',
+        '${profile?.tolerance ?? 0}%',
+        AppColors.toxicNeon,
+      ),
+    ];
+
+    if (MediaQuery.sizeOf(context).width >= 360) {
+      return Row(
+        children: <Widget>[
+          for (int i = 0; i < cards.length; i++) ...<Widget>[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(child: cards[i]),
+          ],
+        ],
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(child: cards[0]),
+            const SizedBox(width: 8),
+            Expanded(child: cards[1]),
+          ],
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _miniResource(
-            '💎 Elmas',
-            _fmtCompact(profile?.gems ?? 0),
-            _mutedTitanium,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _miniResource(
-            '⚡ Enerji',
-            '${profile?.energy ?? 0}/${profile?.maxEnergy ?? 100}',
-            _cyberFuchsia,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _miniResource(
-            '⚖️ Tolerans',
-            '${profile?.tolerance ?? 0}%',
-            _toxicNeon,
-          ),
+        const SizedBox(height: 8),
+        Row(
+          children: <Widget>[
+            Expanded(child: cards[2]),
+            const SizedBox(width: 8),
+            Expanded(child: cards[3]),
+          ],
         ),
       ],
     );
@@ -567,7 +591,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white54, fontSize: 9),
+              style: TextStyle(color: AppColors.mutedTitanium, fontSize: 11),
             ),
           ],
         ),
@@ -633,8 +657,8 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     final color = charClass == CharacterClass.warrior
         ? Colors.redAccent
         : charClass == CharacterClass.alchemist
-        ? _coralFlare
-        : _mutedTitanium;
+        ? AppColors.coralFlare
+        : AppColors.mutedTitanium;
 
     return _card(
       child: Column(
@@ -662,7 +686,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                         )
                       : const Icon(
                           Icons.clean_hands_rounded,
-                          color: _coralFlare,
+                          color: AppColors.coralFlare,
                           size: 20,
                         ),
                   visualDensity: VisualDensity.compact,
@@ -722,15 +746,22 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
             ),
           ),
           children: [
-            Wrap(
-              children: [
-                _infoRow(
-                  'Şüphe Seviyesi',
-                  '${profile?.globalSuspicionLevel ?? 0}%',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                SizedBox(
+                  width: double.infinity,
+                  child: _infoRow(
+                    'Şüphe Seviyesi',
+                    '${profile?.globalSuspicionLevel ?? 0}%',
+                  ),
                 ),
-                _infoRow(
-                  'Bağımlılık Seviyesi',
-                  'Lvl ${profile?.addictionLevel ?? 0}',
+                SizedBox(
+                  width: double.infinity,
+                  child: _infoRow(
+                    'Bağımlılık Seviyesi',
+                    'Lvl ${profile?.addictionLevel ?? 0}',
+                  ),
                 ),
               ],
             ),

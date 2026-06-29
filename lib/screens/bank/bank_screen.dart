@@ -49,6 +49,8 @@ int _asInt(dynamic value, {int fallback = 0}) {
 
 enum _DragSourceType { inventory, bank }
 
+enum _BankPanel { inventory, bank }
+
 class _DragPayload {
   const _DragPayload({
     required this.sourceType,
@@ -83,6 +85,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
   int _bankPage = 1;
   int _inventoryPage = 1;
+  _BankPanel _activePanel = _BankPanel.inventory;
 
   final Set<String> _selectedBankIds = <String>{};
   final Set<String> _selectedInventoryRowIds = <String>{};
@@ -1629,7 +1632,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                if (_totalSlots < _maxBankSlots)
+                if (_totalSlots < _maxBankSlots && fillPct >= 0.8)
                   FilledButton(
                     onPressed: (_expanding || _actionInProgress)
                         ? null
@@ -1702,6 +1705,63 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     );
   }
 
+  Widget _buildPanelToggle() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      child: SegmentedButton<_BankPanel>(
+        segments: const <ButtonSegment<_BankPanel>>[
+          ButtonSegment<_BankPanel>(
+            value: _BankPanel.inventory,
+            label: Text('Envanter'),
+            icon: Icon(Icons.backpack_outlined, size: 18),
+          ),
+          ButtonSegment<_BankPanel>(
+            value: _BankPanel.bank,
+            label: Text('Banka Kasası'),
+            icon: Icon(Icons.account_balance_outlined, size: 18),
+          ),
+        ],
+        selected: <_BankPanel>{_activePanel},
+        onSelectionChanged: (Set<_BankPanel> selection) {
+          setState(() => _activePanel = selection.first);
+        },
+        style: ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith<Color>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.carbonVoid;
+            }
+            return _BankDesign.muted;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith<Color>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.selected)) {
+              return _BankDesign.gold;
+            }
+            return AppColors.darkObsidian.withValues(alpha: 0.55);
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDragHint() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Text(
+        'Uzun bas: sürükle · Dokun: seç',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: _BankDesign.muted.withValues(alpha: 0.9),
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     logoutHandler() async {
@@ -1730,10 +1790,14 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       _buildStatsCard(),
-                      const SizedBox(height: 12),
-                      _buildInventoryArea(),
-                      const SizedBox(height: 12),
-                      _buildBankArea(),
+                      const SizedBox(height: 10),
+                      _buildPanelToggle(),
+                      _buildDragHint(),
+                      const SizedBox(height: 10),
+                      if (_activePanel == _BankPanel.inventory)
+                        _buildInventoryArea()
+                      else
+                        _buildBankArea(),
                       const SizedBox(height: 8),
                     ],
                   ),
