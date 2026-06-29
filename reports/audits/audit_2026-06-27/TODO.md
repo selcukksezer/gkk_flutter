@@ -2,8 +2,8 @@
 
 **Tarih:** 2026-06-27  
 **Kaynak audit:** `reports/audits/audit_2026-06-27/`  
-**İlerleme:** 56 / 455  
-**Son güncelleme:** 2026-06-29 — ref.listen build → listenManual initState
+**İlerleme:** 60 / 455  
+**Son güncelleme:** 2026-06-29 — banka TR yazım, stackable, tipografi, kısmi çekme
 **Üretim:** `python3 scripts/generate_audit_todo.py`
 
 ---
@@ -104,31 +104,31 @@
 ### bank — [bank.md](reports/audits/audit_2026-06-27/bank.md)
 **Kaynak kod:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P1 · Kod/Refaktör]** `_stackableCache` — stale per session
+- [x] **[P1 · Kod/Refaktör]** `_stackableCache` — stale per session
   - **Sorun:** Item `max_stack` DB'de değişirse cache invalidate yok.
   - **Çözüm:** final bool isStackable = item.isStackable;
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Slot etiket tipografi — WCAG altı
+- [x] **[P1 · UI/UX]** Slot etiket tipografi — WCAG altı
   - **Sorun:** Item adı overlay `fontSize: 8` (satır 859, 1051); slot index `7`; qty badge `9`.
   - **Çözüm:** Tooltip/long-press detail sheet; grid 4 sütun veya daha büyük hücre.
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P1 · UI/UX]** Türkçe karakter / yazım — prod metin kalitesi
+- [x] **[P1 · UI/UX]** Türkçe karakter / yazım — prod metin kalitesi
   - **Sorun:** `'Genislet 50 gem'`, `'Kullanilan'`, `'Iptal'`, `'Tasima basarisiz'`, `'Yatirilacak gecerli item'` — ASCII Türkçe. Dialog `'Iptal'` (satır 345).
   - **Çözüm:** `AppStrings.bank.*` merkezi tablo; `Genişlet`, `Kullanılan`, `İptal`.
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `_buildInventorySlots` — pozisyonsuz item fill cursor
+- [x] **[P2 · Kod/Refaktör]** `_buildInventorySlots` — pozisyonsuz item fill cursor
   - **Sorun:** Satır 189-198: `slotPosition < 0` item'ları sırayla boş slotlara doldurur — sayfa değişince görsel slot kayması.
   - **Çözüm:** items.sort((a, b) => a.slotPosition.compareTo(b.slotPosition));
   - **Kaynak rapor:** [bank.md](reports/audits/audit_2026-06-27/bank.md)
   - **Hedef dosya:** `lib/screens/bank/bank_screen.dart`
 
-- [ ] **[P2 · Kod/Refaktör]** `_withdrawSingle` — miktar diyaloğu sonrası tam çekim RPC
+- [x] **[P2 · Kod/Refaktör]** `_withdrawSingle` — miktar diyaloğu sonrası tam çekim RPC
   - **Sorun:** `_askQuantity` ile `qty` seçilir (satır 589-599) ama RPC `withdraw_from_bank` yalnızca `p_bank_item_ids` — kısmi miktar parametresi yok; UI yanıltıcı.
   - **Çözüm:** await client.rpc('withdraw_from_bank', params: {
   'p_bank_item_ids': [id],

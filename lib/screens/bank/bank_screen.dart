@@ -92,7 +92,11 @@ class _BankScreenState extends ConsumerState<BankScreen> {
   bool _expanding = false;
   bool get _actionInProgress => _depositing || _withdrawing || _expanding;
 
-  final Map<String, bool> _stackableCache = <String, bool>{};
+  bool _bankRowIsStackable(Map<String, dynamic> row) {
+    final int maxStack = _asInt(row['max_stack'], fallback: 1);
+    if (row.containsKey('max_stack')) return maxStack > 1;
+    return _asInt(row['quantity']) > 1;
+  }
 
   @override
   void initState() {
@@ -217,13 +221,20 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     List<InventoryItem> items,
     int page,
   ) {
+    final List<InventoryItem> sorted = List<InventoryItem>.from(items)
+      ..sort((InventoryItem a, InventoryItem b) {
+        final int ap = a.slotPosition < 0 ? 1 << 30 : a.slotPosition;
+        final int bp = b.slotPosition < 0 ? 1 << 30 : b.slotPosition;
+        return ap.compareTo(bp);
+      });
+
     final List<InventoryItem?> slots = List<InventoryItem?>.filled(
       _inventoryPerPage,
       null,
     );
     final int pageStart = (page - 1) * _inventoryPerPage;
 
-    for (final InventoryItem item in items) {
+    for (final InventoryItem item in sorted) {
       final int localIndex = item.slotPosition - pageStart;
       if (localIndex >= 0 && localIndex < _inventoryPerPage) {
         slots[localIndex] = item;
@@ -231,7 +242,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }
 
     int fillCursor = 0;
-    for (final InventoryItem item in items) {
+    for (final InventoryItem item in sorted) {
       if (item.slotPosition >= 0) continue;
       while (fillCursor < _inventoryPerPage && slots[fillCursor] != null) {
         fillCursor++;
@@ -242,35 +253,6 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }
 
     return slots;
-  }
-
-  Future<bool> _isStackableByItemId(String itemId, bool fallback) async {
-    if (itemId.isEmpty) return fallback;
-    if (_stackableCache.containsKey(itemId)) {
-      return _stackableCache[itemId] ?? fallback;
-    }
-
-    try {
-      final List<dynamic> rows = await SupabaseService.client
-          .from('items')
-          .select('max_stack')
-          .eq('id', itemId)
-          .limit(1);
-      if (rows.isNotEmpty) {
-        final dynamic row = rows.first;
-        if (row is Map) {
-          final int maxStack = _asInt(row['max_stack'], fallback: 1);
-          final bool isStackable = maxStack > 1;
-          _stackableCache[itemId] = isStackable;
-          return isStackable;
-        }
-      }
-    } catch (_) {
-      // Fallback to caller data.
-    }
-
-    _stackableCache[itemId] = fallback;
-    return fallback;
   }
 
   Future<int?> _askQuantity({
@@ -386,7 +368,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
                   child: const Text(
-                    'Iptal',
+                    'İptal',
                     style: TextStyle(color: Colors.white54),
                   ),
                 ),
@@ -503,17 +485,14 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       return;
     }
 
-    final bool isStackable = await _isStackableByItemId(
-      payload.itemId,
-      payload.isStackable,
-    );
+    final bool isStackable = payload.isStackable;
 
     int transferQty = payload.quantity;
     if (isStackable && payload.quantity > 1) {
       final int? picked = await _askQuantity(
         title: payload.sourceType == _DragSourceType.inventory
-            ? 'Envanterden Tasima'
-            : 'Bankadan Tasima',
+            ? 'Envanterden Taşıma'
+            : 'Bankadan Taşıma',
         subtitle: 'Maksimum: ${payload.quantity} adet',
         maxQuantity: payload.quantity,
         accent: const Color(0xFFFBBF24),
@@ -535,7 +514,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     if (_actionInProgress) return;
     if (item.quantity <= 0) {
       if (mounted) {
-        AppMessenger.show(context, 'Yatirilacak gecerli miktar yok.');
+        AppMessenger.show(context, 'Yatırılacak geçerli miktar yok.');
       }
       return;
     }
@@ -584,7 +563,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
     if (selectedRows.isEmpty) {
       if (mounted) {
-        AppMessenger.show(context, 'Yatirilacak gecerli item secilmedi.');
+        AppMessenger.show(context, 'Yatırılacak geçerli eşya seçilmedi.');
       }
       return;
     }
@@ -607,7 +586,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       );
 
       if (!mounted) return;
-      AppMessenger.show(context, '${rowIds.length} esya bankaya yatirildi');
+      AppMessenger.show(context, '${rowIds.length} eşya bankaya yatırıldı');
       _selectedInventoryRowIds.clear();
       await _refreshAll();
     } catch (e) {
@@ -625,22 +604,22 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     if (_actionInProgress) return;
 
     final String id = bankItem['id']?.toString() ?? '';
-    final String name = bankItem['name']?.toString() ?? 'Esya';
+    final String name = bankItem['name']?.toString() ?? 'Eşya';
     final String itemId = bankItem['item_id']?.toString() ?? '';
     final int maxQty = _asInt(bankItem['quantity']);
 
     if (id.isEmpty || maxQty <= 0) {
       if (mounted) {
-        AppMessenger.show(context, 'Bankada cekilecek gecerli miktar yok.');
+        AppMessenger.show(context, 'Bankada çekilecek geçerli miktar yok.');
       }
       return;
     }
 
     int qty = maxQty;
-    final bool stackable = await _isStackableByItemId(itemId, maxQty > 1);
+    final bool stackable = _bankRowIsStackable(bankItem);
     if (stackable && maxQty > 1) {
       final int? picked = await _askQuantity(
-        title: 'Bankadan Cek',
+        title: 'Bankadan Çek',
         subtitle: 'Bankada: $maxQty adet',
         maxQuantity: maxQty,
         accent: Colors.greenAccent,
@@ -666,11 +645,12 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         'withdraw_from_bank',
         params: <String, dynamic>{
           'p_bank_item_ids': <String>[id],
+          'p_quantities': <int>[qty],
         },
       );
 
       if (!mounted) return;
-      AppMessenger.show(context, '$name envanterinize tasindi');
+      AppMessenger.show(context, '$name envanterinize taşındı');
       await _refreshAll();
     } catch (e) {
       if (!mounted) return;
@@ -694,6 +674,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }).toList();
 
     final List<String> validIds = <String>[];
+    final List<int> quantities = <int>[];
     final Map<String, int> demandByItem = <String, int>{};
 
     for (final Map<String, dynamic> row in selectedRows) {
@@ -702,6 +683,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       final int qty = _asInt(row['quantity']);
       if (rid.isEmpty || qty <= 0) continue;
       validIds.add(rid);
+      quantities.add(qty);
       if (itemId.isNotEmpty) {
         demandByItem[itemId] = (demandByItem[itemId] ?? 0) + qty;
       }
@@ -709,7 +691,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
     if (validIds.isEmpty) {
       if (mounted) {
-        AppMessenger.show(context, 'Cekilecek gecerli banka itemi yok.');
+        AppMessenger.show(context, 'Çekilecek geçerli banka eşyası yok.');
       }
       return;
     }
@@ -731,11 +713,14 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     try {
       await SupabaseService.client.rpc(
         'withdraw_from_bank',
-        params: <String, dynamic>{'p_bank_item_ids': validIds},
+        params: <String, dynamic>{
+          'p_bank_item_ids': validIds,
+          'p_quantities': quantities,
+        },
       );
 
       if (!mounted) return;
-      AppMessenger.show(context, '${validIds.length} esya envanterinize tasindi');
+      AppMessenger.show(context, '${validIds.length} eşya envanterinize taşındı');
       _selectedBankIds.clear();
       await _refreshAll();
     } catch (e) {
@@ -751,7 +736,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
   Future<void> _expandBank() async {
     if (_totalSlots >= _maxBankSlots) {
-      AppMessenger.show(context, 'Maksimum slot sayisina ulasildi');
+      AppMessenger.show(context, 'Maksimum slot sayısına ulaşıldı');
       return;
     }
     if (_actionInProgress) return;
@@ -762,17 +747,17 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       builder: (BuildContext ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A2030),
         title: const Text(
-          'Banka Genisletme',
+          'Banka Genişletme',
           style: TextStyle(color: Color(0xFFFBBF24)),
         ),
         content: Text(
-          'Banka slotlarini genisletmek icin $gemCost gem harcamak istiyor musunuz?',
+          'Banka slotlarını genişletmek için $gemCost 💎 harcamak istiyor musunuz?',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Iptal', style: TextStyle(color: Colors.white54)),
+            child: const Text('İptal', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -898,7 +883,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
                     ),
                   ),
                 ),
@@ -922,7 +907,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                         '${item.quantity}',
                         style: const TextStyle(
                           color: Color(0xFFFBBF24),
-                          fontSize: 9,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -945,7 +930,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                         '+${item.enhancementLevel}',
                         style: const TextStyle(
                           color: Colors.black,
-                          fontSize: 8,
+                          fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -956,7 +941,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                   top: 3,
                   child: Text(
                     '#${globalSlotIndex + 1}',
-                    style: const TextStyle(color: Colors.white24, fontSize: 7),
+                    style: const TextStyle(color: Colors.white24, fontSize: 9),
                   ),
                 ),
               ],
@@ -968,7 +953,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                   const Icon(Icons.add, color: Colors.white12, size: 14),
                   Text(
                     '#${globalSlotIndex + 1}',
-                    style: const TextStyle(color: Colors.white12, fontSize: 7),
+                    style: const TextStyle(color: Colors.white12, fontSize: 9),
                   ),
                 ],
               ),
@@ -1090,7 +1075,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
                     ),
                   ),
                 ),
@@ -1114,7 +1099,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                         '$qty',
                         style: const TextStyle(
                           color: Color(0xFFFBBF24),
-                          fontSize: 9,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1137,7 +1122,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                         '+$upgradeLevel',
                         style: const TextStyle(
                           color: Colors.black,
-                          fontSize: 8,
+                          fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1148,7 +1133,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                   top: 3,
                   child: Text(
                     '#${globalSlotIndex + 1}',
-                    style: const TextStyle(color: Colors.white24, fontSize: 7),
+                    style: const TextStyle(color: Colors.white24, fontSize: 9),
                   ),
                 ),
               ],
@@ -1160,7 +1145,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                   const Icon(Icons.add, color: Colors.white12, size: 14),
                   Text(
                     '#${globalSlotIndex + 1}',
-                    style: const TextStyle(color: Colors.white12, fontSize: 7),
+                    style: const TextStyle(color: Colors.white12, fontSize: 9),
                   ),
                 ],
               ),
@@ -1186,7 +1171,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     if (!hasItem || isLocked) return interactive;
 
     final String itemId = item['item_id']?.toString() ?? '';
-    final String name = item['name']?.toString() ?? 'Esya';
+    final String name = item['name']?.toString() ?? 'Eşya';
 
     final _DragPayload payload = _DragPayload(
       sourceType: _DragSourceType.bank,
@@ -1194,7 +1179,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       itemId: itemId,
       name: name,
       quantity: qty,
-      isStackable: qty > 1,
+      isStackable: _bankRowIsStackable(item),
     );
 
     return LongPressDraggable<_DragPayload>(
