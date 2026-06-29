@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
@@ -61,7 +62,10 @@ class _MekanCreateScreenState extends ConsumerState<MekanCreateScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppMessenger.showError(context, '$e');
+        AppMessenger.showError(
+          context,
+          userFacingErrorMessage(e, fallback: 'Mekan açılamadı.'),
+        );
         setState(() => _busy = false);
       }
     }

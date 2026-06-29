@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../components/common/inline_error_retry.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/inventory_model.dart';
@@ -62,6 +64,7 @@ class BankScreen extends ConsumerStatefulWidget {
 
 class _BankScreenState extends ConsumerState<BankScreen> {
   bool _loading = true;
+  String? _loadError;
   List<Map<String, dynamic>> _bankItems = <Map<String, dynamic>>[];
   int _totalSlots = _baseBankSlots;
   int _usedSlots = 0;
@@ -90,7 +93,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
   Future<void> _loadData() async {
     if (!mounted) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final dynamic accountRaw = await SupabaseService.client.rpc(
         'get_bank_account',
@@ -145,8 +151,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
-      AppMessenger.show(context, 'Banka yuklenemedi: $e');
+      setState(() {
+        _loading = false;
+        _loadError = userFacingErrorMessage(e, fallback: 'Banka yüklenemedi.');
+      });
     }
   }
 
@@ -422,7 +430,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       await _refreshAll();
     } catch (e) {
       if (!mounted) return;
-      AppMessenger.showError(context, 'Tasima basarisiz: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Taşıma başarısız.'),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -566,7 +577,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       await _refreshAll();
     } catch (e) {
       if (!mounted) return;
-      AppMessenger.showError(context, 'Hata: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Yatırma başarısız.'),
+      );
     } finally {
       if (mounted) setState(() => _depositing = false);
     }
@@ -625,7 +639,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       await _refreshAll();
     } catch (e) {
       if (!mounted) return;
-      AppMessenger.showError(context, 'Hata: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Çekme başarısız.'),
+      );
     } finally {
       if (mounted) setState(() => _withdrawing = false);
     }
@@ -688,7 +705,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       await _refreshAll();
     } catch (e) {
       if (!mounted) return;
-      AppMessenger.showError(context, 'Hata: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Toplu çekme başarısız.'),
+      );
     } finally {
       if (mounted) setState(() => _withdrawing = false);
     }
@@ -747,7 +767,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       AppMessenger.show(context, 'Banka slotlari genisletildi');
     } catch (e) {
       if (!mounted) return;
-      AppMessenger.showError(context, 'Genisletme basarisiz: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Genişletme başarısız.'),
+      );
     } finally {
       if (mounted) setState(() => _expanding = false);
     }
@@ -1618,7 +1641,9 @@ class _BankScreenState extends ConsumerState<BankScreen> {
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFFFBBF24)),
                 )
-              : Column(
+              : _loadError != null
+                  ? InlineErrorRetry(message: _loadError!, onRetry: _loadData)
+                  : Column(
                   children: <Widget>[
                     _buildStatsCard(),
                     const SizedBox(height: 8),

@@ -51,35 +51,38 @@ class _LiveTickerState extends State<LiveTicker> with SingleTickerProviderStateM
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return Stack(
-                children: [
-                  AnimatedBuilder(
-                    animation: _scrollController,
-                    builder: (context, child) {
-                      // Move from right to left
-                      final offset = (1.0 - _scrollController.value) * constraints.maxWidth * 2 - constraints.maxWidth;
-                      return Positioned(
-                        left: offset,
-                        top: 6,
-                        child: Row(
-                          children: _feedItems.map((item) => Padding(
-                            padding: const EdgeInsets.only(right: 40),
-                            child: ShaderMask(
-                              shaderCallback: (bounds) => const LinearGradient(
-                                colors: [Colors.white, Color(0xFFFFD700), Colors.white],
-                                stops: [0.0, 0.5, 1.0],
-                              ).createShader(bounds),
-                              child: Text(
-                                item,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
-                              ),
+              return ExcludeSemantics(
+                child: Stack(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _scrollController,
+                      builder: (context, child) {
+                        // Move from right to left
+                        final offset = (1.0 - _scrollController.value) * constraints.maxWidth * 2 - constraints.maxWidth;
+                        return Positioned(
+                          left: offset,
+                          top: 6,
+                          child: child!,
+                        );
+                      },
+                      child: Row(
+                        children: _feedItems.map((item) => Padding(
+                          padding: const EdgeInsets.only(right: 40),
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [Colors.white, Color(0xFFFFD700), Colors.white],
+                              stops: [0.0, 0.5, 1.0],
+                            ).createShader(bounds),
+                            child: Text(
+                              item,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
                             ),
-                          )).toList(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                          ),
+                        )).toList(),
+                      ),
+                    ),
+                  ],
+                ),
               );
             }
           ),

@@ -31,7 +31,7 @@ class _PvpTournamentScreenState extends ConsumerState<PvpTournamentScreen> {
     if (error == null) {
       AppMessenger.show(context, 'Turnuvaya başarıyla katıldınız!');
     } else {
-      AppMessenger.showError(context, 'Katılım başarısız: $error');
+      AppMessenger.showError(context, error);
     }
   }
 
@@ -93,6 +93,11 @@ class _PvpTournamentScreenState extends ConsumerState<PvpTournamentScreen> {
                       Text(tournamentState.error!,
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => ref.read(pvpTournamentProvider.notifier).load(),
+                        child: Text(context.l10n.yenile),
+                      ),
                     ],
                     const SizedBox(height: 16),
                     if (data.rounds.isEmpty)

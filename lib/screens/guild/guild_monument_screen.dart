@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/guild_model.dart';
 import '../../providers/guild_provider.dart';
@@ -118,7 +119,7 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
       if (mounted) {
         AppMessenger.showError(
           context,
-          e is Exception ? e.toString().replaceFirst('Exception: ', '') : 'Bağış tamamlanamadı',
+          userFacingErrorMessage(e, fallback: 'Bağış tamamlanamadı.'),
         );
       }
     } finally {
@@ -156,7 +157,13 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
         await _load();
       } else {
         if (mounted) {
-          AppMessenger.showError(context, result['error'] as String? ?? 'Yükseltme başarısız');
+          AppMessenger.showError(
+            context,
+            userFacingErrorMessage(
+              result['error'] ?? 'Yükseltme başarısız',
+              fallback: 'Yükseltme başarısız.',
+            ),
+          );
         }
       }
     } catch (e, st) {

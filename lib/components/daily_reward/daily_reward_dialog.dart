@@ -41,16 +41,17 @@ Future<void> showDailyRewardDialog(
     pageBuilder: (BuildContext ctx, _, __) {
       return _DailyRewardPanel(viewOnly: viewOnly);
     },
-    transitionBuilder: (BuildContext ctx, Animation<double> anim, _, Widget child) {
-      final Animation<Offset> slide = Tween<Offset>(
-        begin: const Offset(0, 0.06),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
-      return FadeTransition(
-        opacity: anim,
-        child: SlideTransition(position: slide, child: child),
-      );
-    },
+    transitionBuilder:
+        (BuildContext ctx, Animation<double> anim, _, Widget child) {
+          final Animation<Offset> slide = Tween<Offset>(
+            begin: const Offset(0, 0.06),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+          return FadeTransition(
+            opacity: anim,
+            child: SlideTransition(position: slide, child: child),
+          );
+        },
   );
 }
 
@@ -127,7 +128,10 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 24),
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 440, maxHeight: maxHeight),
+                constraints: BoxConstraints(
+                  maxWidth: 440,
+                  maxHeight: maxHeight,
+                ),
                 child: _buildPanel(context, rewardState, status),
               ),
             ),
@@ -146,7 +150,9 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
       return _glassShell(
         child: const SizedBox(
           height: 240,
-          child: Center(child: CircularProgressIndicator(color: _DailyRewardTheme.gold)),
+          child: Center(
+            child: CircularProgressIndicator(color: _DailyRewardTheme.gold),
+          ),
         ),
       );
     }
@@ -177,7 +183,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
     return _glassShell(
       highlight: today.isMilestone,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           _buildHeader(status),
@@ -191,7 +197,9 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                   _buildRewardGrid(status),
                   const SizedBox(height: 14),
                   _celebrating
-                      ? AnimatedResultCard(child: _buildTodayCard(today, highlight: true))
+                      ? AnimatedResultCard(
+                          child: _buildTodayCard(today, highlight: true),
+                        )
                       : _buildTodayCard(today, highlight: status.canClaim),
                 ],
               ),
@@ -213,11 +221,17 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
                     )
                   : Text(
                       'Gün ${status.cycleDay} Ödülünü Al',
-                      style: GoogleFonts.exo2(fontWeight: FontWeight.w800, fontSize: 15),
+                      style: GoogleFonts.exo2(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
                     ),
             )
           else
@@ -227,7 +241,9 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                   : () => Navigator.of(context).pop(),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textSecondary,
-                side: BorderSide(color: AppColors.borderDefault.withValues(alpha: 0.6)),
+                side: BorderSide(
+                  color: AppColors.borderDefault.withValues(alpha: 0.6),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: Text(
@@ -305,7 +321,10 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
               const SizedBox(height: 4),
               Text(
                 'Gün ${status.cycleDay} / ${status.cycleLength}',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -316,7 +335,9 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
             decoration: BoxDecoration(
               color: const Color(0xFF3D2208).withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _DailyRewardTheme.gold.withValues(alpha: 0.4)),
+              border: Border.all(
+                color: _DailyRewardTheme.gold.withValues(alpha: 0.4),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -346,7 +367,10 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
       spacing: 8,
       itemCount: status.weekCalendar.length,
       itemBuilder: (BuildContext context, int index) {
-        return _buildGridCell(status.weekCalendar[index]);
+        return AspectRatio(
+          aspectRatio: 1,
+          child: _buildGridCell(status.weekCalendar[index]),
+        );
       },
     );
   }
@@ -357,10 +381,14 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
     final bool isLocked = day.status == DailyRewardDayStatus.locked;
     final DailyRewardGrant reward = day.reward;
     final bool isEpic = reward.isMilestone;
-    final Color accent = isEpic ? _DailyRewardTheme.epic : _DailyRewardTheme.gold;
+    final Color accent = isEpic
+        ? _DailyRewardTheme.epic
+        : _DailyRewardTheme.gold;
 
     Color borderColor = AppColors.borderFaint;
-    Color bgColor = AppColors.bgSurface.withValues(alpha: isLocked ? 0.35 : 0.65);
+    Color bgColor = AppColors.bgSurface.withValues(
+      alpha: isLocked ? 0.35 : 0.65,
+    );
 
     if (isCompleted) {
       borderColor = AppColors.success.withValues(alpha: 0.55);
@@ -427,15 +455,26 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                     dayNumber,
                     const Spacer(),
                     if (isCompleted)
-                      Icon(Icons.check_circle_rounded, size: 13, color: AppColors.success)
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 13,
+                        color: AppColors.success,
+                      )
                     else if (isLocked)
-                      Icon(Icons.lock_rounded, size: 11, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.lock_rounded,
+                        size: 11,
+                        color: AppColors.textTertiary,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Expanded(
                   child: Center(
-                    child: _rewardPreviewIcon(reward, dimmed: isLocked && !isEpic),
+                    child: _rewardPreviewIcon(
+                      reward,
+                      dimmed: isLocked && !isEpic,
+                    ),
                   ),
                 ),
                 Text(
@@ -446,7 +485,9 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                   style: TextStyle(
                     color: isLocked
                         ? AppColors.textTertiary
-                        : (isToday ? AppColors.textPrimary : AppColors.textSecondary),
+                        : (isToday
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary),
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     height: 1.1,
@@ -524,18 +565,27 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
   }
 
   Widget _buildTodayCard(DailyRewardGrant grant, {required bool highlight}) {
-    final Color accent = grant.isMilestone ? _DailyRewardTheme.epic : _DailyRewardTheme.gold;
+    final Color accent = grant.isMilestone
+        ? _DailyRewardTheme.epic
+        : _DailyRewardTheme.gold;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.bgCard.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         border: Border.all(
-          color: highlight ? accent.withValues(alpha: 0.55) : AppColors.borderDefault,
+          color: highlight
+              ? accent.withValues(alpha: 0.55)
+              : AppColors.borderDefault,
           width: highlight ? 1.5 : 1,
         ),
         boxShadow: highlight
-            ? <BoxShadow>[BoxShadow(color: accent.withValues(alpha: 0.15), blurRadius: 14)]
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.15),
+                  blurRadius: 14,
+                ),
+              ]
             : null,
       ),
       child: Column(
@@ -554,12 +604,19 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
               const SizedBox(width: 8),
               Text(
                 grant.displayLabel,
-                style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               if (grant.isMilestone) ...<Widget>[
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
@@ -581,10 +638,18 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
             spacing: 8,
             runSpacing: 8,
             children: <Widget>[
-              if (grant.gold > 0) _rewardChip('🪙', '${_fmt(grant.gold)} Altın', AppColors.gold),
-              if (grant.gems > 0) _rewardChip('💎', '${grant.gems} Elmas', AppColors.accentBlue),
-              if (grant.xp > 0) _rewardChip('⭐', '${_fmt(grant.xp)} XP', AppColors.liquidGold),
-              if (grant.energy > 0) _rewardChip('⚡', '${grant.energy} Enerji', AppColors.accentCyan),
+              if (grant.gold > 0)
+                _rewardChip('🪙', '${_fmt(grant.gold)} Altın', AppColors.gold),
+              if (grant.gems > 0)
+                _rewardChip('💎', '${grant.gems} Elmas', AppColors.accentBlue),
+              if (grant.xp > 0)
+                _rewardChip('⭐', '${_fmt(grant.xp)} XP', AppColors.liquidGold),
+              if (grant.energy > 0)
+                _rewardChip(
+                  '⚡',
+                  '${grant.energy} Enerji',
+                  AppColors.accentCyan,
+                ),
               if (grant.hasItem)
                 _rewardChip(
                   '📦',
@@ -613,7 +678,11 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
           const SizedBox(width: 6),
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

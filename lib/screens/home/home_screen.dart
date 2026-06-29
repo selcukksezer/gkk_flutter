@@ -74,8 +74,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final playerState = ref.watch(playerProvider);
     final inventoryState = ref.watch(inventoryProvider);
 
-    ref.listen<PlayerState>(playerProvider, (PlayerState? prev, PlayerState next) {
-      if (next.status == PlayerStatus.ready && prev?.status != PlayerStatus.ready) {
+    ref.listen<PlayerState>(playerProvider, (
+      PlayerState? prev,
+      PlayerState next,
+    ) {
+      if (next.status == PlayerStatus.ready &&
+          prev?.status != PlayerStatus.ready) {
         deferProviderUpdate(_maybeShowDailyReward);
       }
     });
@@ -85,7 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: context.l10n.routeHome,
         onLogout: () async {
           await performLogout(ref);
-},
+        },
       ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
@@ -93,7 +97,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         leadingOverlay: StickyActionBar(),
         onLogout: () async {
           await performLogout(ref);
-},
+        },
       ),
       body: switch (playerState.status) {
         PlayerStatus.initial || PlayerStatus.loading => const Center(
@@ -203,7 +207,6 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
     final List<InventoryItem> potionItems = widget.inventoryState.items
         .where((item) => item.itemType == ItemType.potion && item.quantity > 0)
         .toList();
-
 
     return Stack(
       children: <Widget>[
@@ -370,10 +373,13 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                                 AppMessenger.show(
                                   context,
                                   result.success
-                                      ? (result.message ?? '${item.name} kullanıldı!')
+                                      ? (result.message ??
+                                            '${item.name} kullanıldı!')
                                       : (result.message ??
-                                          ref.read(inventoryProvider).errorMessage ??
-                                          '${item.name} kullanılamadı.'),
+                                            ref
+                                                .read(inventoryProvider)
+                                                .errorMessage ??
+                                            '${item.name} kullanılamadı.'),
                                 );
                                 if (result.success) widget.onRefresh();
                               }

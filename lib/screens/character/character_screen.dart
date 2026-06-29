@@ -6,6 +6,7 @@ import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../models/player_model.dart';
@@ -212,7 +213,10 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                             if (mounted) {
                               AppMessenger.show(
                                 context,
-                                'Profil fotoğrafı güncellenemedi: $e',
+                                userFacingErrorMessage(
+                                  e,
+                                  fallback: 'Profil fotoğrafı güncellenemedi.',
+                                ),
                               );
                             }
                           }
@@ -289,7 +293,10 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                           if (mounted) {
                             AppMessenger.show(
                               context,
-                              'Çerçeve güncellenemedi: $e',
+                              userFacingErrorMessage(
+                                e,
+                                fallback: 'Çerçeve güncellenemedi.',
+                              ),
                             );
                           }
                         }

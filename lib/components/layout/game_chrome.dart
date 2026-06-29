@@ -871,28 +871,30 @@ class _GameBottomBarState extends State<GameBottomBar>
                                         itemW * 0.15,
                                     width: itemW * 0.70,
                                     height: 36,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(
-                                          AppSpacing.radiusMd,
-                                        ),
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: <Color>[
-                                            AppColors.liquidGold.withValues(alpha: 0.22),
-                                            AppColors.warningSolar.withValues(alpha: 0.10),
+                                    child: ExcludeSemantics(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            AppSpacing.radiusMd,
+                                          ),
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: <Color>[
+                                              AppColors.liquidGold.withValues(alpha: 0.22),
+                                              AppColors.warningSolar.withValues(alpha: 0.10),
+                                            ],
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.liquidGold.withValues(alpha: 0.42),
+                                          ),
+                                          boxShadow: <BoxShadow>[
+                                            BoxShadow(
+                                              color: AppColors.liquidGold.withValues(alpha: 0.12),
+                                              blurRadius: 10,
+                                            ),
                                           ],
                                         ),
-                                        border: Border.all(
-                                          color: AppColors.liquidGold.withValues(alpha: 0.42),
-                                        ),
-                                        boxShadow: <BoxShadow>[
-                                          BoxShadow(
-                                            color: AppColors.liquidGold.withValues(alpha: 0.12),
-                                            blurRadius: 10,
-                                          ),
-                                        ],
                                       ),
                                     ),
                                   );

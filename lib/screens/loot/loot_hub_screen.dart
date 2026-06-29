@@ -3,10 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../components/common/inline_error_retry.dart';
 import '../../components/common/item_icon_view.dart';
 import 'loot_chest_theme.dart';
 import 'loot_chest_widgets.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -226,7 +228,7 @@ class _LootHubScreenState extends ConsumerState<LootHubScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = userFacingErrorMessage(e, fallback: 'Kasalar yüklenemedi.');
       });
     }
   }
@@ -321,7 +323,10 @@ class _LootHubScreenState extends ConsumerState<LootHubScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      AppMessenger.showError(context, 'Kasa acilirken hata: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Kasa açılırken hata oluştu.'),
+      );
     } finally {
       if (mounted) setState(() => _openingBoxId = null);
     }
@@ -476,13 +481,7 @@ class _LootHubScreenState extends ConsumerState<LootHubScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-            ? Center(
-                child: Text(
-                  'Yukleme hatasi:\n$_error',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              )
+            ? InlineErrorRetry(message: _error!, onRetry: _loadAll)
             : _buildBoxesTab(),
       ),
     );

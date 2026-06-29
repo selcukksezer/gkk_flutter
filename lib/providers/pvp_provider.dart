@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/errors/user_facing_error.dart';
 import '../core/services/supabase_service.dart';
 
 class PvpArena {
@@ -271,7 +272,10 @@ class PvpDashboardNotifier extends Notifier<PvpDashboardState> {
           .toList();
       state = state.copyWith(isLoading: false, arenas: arenas, recentMatches: matches);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: userFacingErrorMessage(e, fallback: 'PvP verisi yüklenemedi.'),
+      );
     }
   }
 }
@@ -291,7 +295,10 @@ class PvpHistoryNotifier extends Notifier<PvpHistoryState> {
       if (data['success'] == false) {
         state = state.copyWith(
           isLoading: false,
-          error: data['error']?.toString() ?? 'Geçmiş yüklenemedi.',
+          error: userFacingErrorMessage(
+            data['error'] ?? 'Geçmiş yüklenemedi.',
+            fallback: 'Geçmiş yüklenemedi.',
+          ),
         );
         return;
       }
@@ -301,7 +308,10 @@ class PvpHistoryNotifier extends Notifier<PvpHistoryState> {
           .toList();
       state = state.copyWith(isLoading: false, matches: matches);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: userFacingErrorMessage(e, fallback: 'Geçmiş yüklenemedi.'),
+      );
     }
   }
 }
@@ -332,7 +342,10 @@ class PvpTournamentNotifier extends Notifier<PvpTournamentState> {
         ),
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: userFacingErrorMessage(e, fallback: 'Turnuva yüklenemedi.'),
+      );
     }
   }
 
@@ -342,7 +355,10 @@ class PvpTournamentNotifier extends Notifier<PvpTournamentState> {
       final dynamic res = await SupabaseService.client.rpc('join_pvp_tournament');
       final Map<String, dynamic> data = _asMap(res);
       if (data['success'] != true) {
-        final message = data['error']?.toString() ?? 'Katılım başarısız.';
+        final String message = userFacingErrorMessage(
+          data['error'] ?? 'Katılım başarısız.',
+          fallback: 'Katılım başarısız.',
+        );
         state = state.copyWith(isJoining: false, error: message);
         return message;
       }
@@ -350,8 +366,9 @@ class PvpTournamentNotifier extends Notifier<PvpTournamentState> {
       state = state.copyWith(isJoining: false);
       return null;
     } catch (e) {
-      state = state.copyWith(isJoining: false, error: e.toString());
-      return e.toString();
+      final String message = userFacingErrorMessage(e, fallback: 'Katılım başarısız.');
+      state = state.copyWith(isJoining: false, error: message);
+      return message;
     }
   }
 

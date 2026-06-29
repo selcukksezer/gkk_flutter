@@ -2,8 +2,8 @@
 
 **Tarih:** 2026-06-27  
 **Kaynak audit:** `reports/audits/audit_2026-06-27/`  
-**İlerleme:** 52 / 455  
-**Son güncelleme:** 2026-06-27 — gen-l10n (GameTopBar, menüler, dil seçici)
+**İlerleme:** 53 / 455  
+**Son güncelleme:** 2026-06-28 — ham exception/RPC → userFacingErrorMessage + InlineErrorRetry
 **Üretim:** `python3 scripts/generate_audit_todo.py`
 
 ---
@@ -75,7 +75,7 @@
   - **Hedef dosya:** `lib/components/layout/game_chrome.dart`, `lib/l10n/`, `lib/providers/locale_provider.dart`
   - **Etkilenen raporlar (9):** [character.md](reports/audits/audit_2026-06-27/character.md), [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md), [guild_monument_donate.md](reports/audits/audit_2026-06-27/guild_monument_donate.md), [home.md](reports/audits/audit_2026-06-27/home.md), [inventory.md](reports/audits/audit_2026-06-27/inventory.md), [market.md](reports/audits/audit_2026-06-27/market.md), [mekans.md](reports/audits/audit_2026-06-27/mekans.md), [pvp.md](reports/audits/audit_2026-06-27/pvp.md), [season.md](reports/audits/audit_2026-06-27/season.md)
 
-- [ ] **[P2] Ham exception/RPC metni UI'da gösteriliyor**
+- [x] **[P2] Ham exception/RPC metni UI'da gösteriliyor**
   - **Sorun:** `'Banka yuklenemedi: $e'` (satır 148), `'Tasima basarisiz: $e'` — Postgrest/RLS metni kullanıcıya. (+10 ek rapor varyasyonu)
   - **Çözüm:** User-friendly error string + retry CTA; debug'da only kDebugMode ile detay
   - **Etkilenen raporlar (11):** [bank.md](reports/audits/audit_2026-06-27/bank.md), [character.md](reports/audits/audit_2026-06-27/character.md), [dungeon_battle.md](reports/audits/audit_2026-06-27/dungeon_battle.md), [guild_monument.md](reports/audits/audit_2026-06-27/guild_monument.md), [loot.md](reports/audits/audit_2026-06-27/loot.md), [mekan_arena.md](reports/audits/audit_2026-06-27/mekan_arena.md), [mekan_create.md](reports/audits/audit_2026-06-27/mekan_create.md), [pvp_history.md](reports/audits/audit_2026-06-27/pvp_history.md), [pvp_tournament.md](reports/audits/audit_2026-06-27/pvp_tournament.md), [settings.md](reports/audits/audit_2026-06-27/settings.md), [trade.md](reports/audits/audit_2026-06-27/trade.md)

@@ -26,15 +26,19 @@ abstract final class AppMessenger {
     final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
 
-    _entry = OverlayEntry(
-      builder: (ctx) => _ToastOverlay(
-        message: message,
-        type: type,
-        bottomOffset: bottomOffset,
-      ),
-    );
-    overlay.insert(_entry!);
-    _timer = Timer(duration, _dismiss);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!overlay.mounted) return;
+
+      _entry = OverlayEntry(
+        builder: (ctx) => _ToastOverlay(
+          message: message,
+          type: type,
+          bottomOffset: bottomOffset,
+        ),
+      );
+      overlay.insert(_entry!);
+      _timer = Timer(duration, _dismiss);
+    });
   }
 
   static void showError(BuildContext context, String message) {
@@ -97,7 +101,8 @@ class _ToastOverlay extends StatelessWidget {
       bottom: bottom,
       child: IgnorePointer(
         child: Semantics(
-          liveRegion: true,
+          label: message,
+          container: true,
           child: Material(
             color: Colors.transparent,
             child: Container(

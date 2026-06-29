@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -61,7 +62,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppMessenger.showError(context, context.l10n.errorWithDetail(e.toString()));
+        AppMessenger.showError(
+          context,
+          userFacingErrorMessage(e, fallback: 'Profil güncellenemedi.'),
+        );
       }
     } finally {
       if (mounted) setState(() => _savingName = false);
@@ -110,7 +114,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) context.go(AppRoutes.login);
     } catch (e) {
       if (mounted) {
-        AppMessenger.showError(context, context.l10n.errorWithDetail(e.toString()));
+        AppMessenger.showError(
+          context,
+          userFacingErrorMessage(e, fallback: 'Hesap silinemedi.'),
+        );
       }
     }
   }

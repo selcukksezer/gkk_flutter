@@ -8,6 +8,7 @@ import 'package:gkk_flutter/components/common/item_icon_view.dart';
 
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../l10n/l10n.dart';
 import '../../models/inventory_model.dart';
@@ -240,7 +241,10 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      AppMessenger.showError(context, 'Engel kaldırılamadı: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Engel kaldırılamadı.'),
+      );
     }
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../components/common/inline_error_retry.dart';
 import '../../components/common/app_messenger.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
@@ -23,6 +25,7 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
   List<ArenaOpponent> _opponents = <ArenaOpponent>[];
   List<ArenaRankRow> _ranking = <ArenaRankRow>[];
   bool _loading = true;
+  String? _loadError;
   late TabController _tab;
 
   @override
@@ -42,7 +45,10 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final List<ArenaOpponent> opp = await _repo.fetchArenaOpponents();
       List<ArenaRankRow> rank = <ArenaRankRow>[];
@@ -56,8 +62,13 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
           _loading = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = userFacingErrorMessage(e, fallback: 'Arena yüklenemedi.');
+        });
+      }
     }
   }
 
@@ -94,7 +105,12 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
       await _showResult(won: won, net: net, hospital: hospital, opp: opp);
       await _load();
     } catch (e) {
-      if (mounted) AppMessenger.showError(context, '$e');
+      if (mounted) {
+        AppMessenger.showError(
+          context,
+          userFacingErrorMessage(e, fallback: 'Düello başlatılamadı.'),
+        );
+      }
     }
   }
 
@@ -161,7 +177,9 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
       title: 'PvP Arena',
       body: _loading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: MekanPalette.ruby))
-          : Column(
+          : _loadError != null
+              ? InlineErrorRetry(message: _loadError!, onRetry: _load)
+              : Column(
               children: <Widget>[
                 _arenaHeader(energy),
                 Material(

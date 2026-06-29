@@ -89,20 +89,21 @@ class _PantheonBoardState extends State<PantheonBoard>
         return;
       }
 
-      final List<_PantheonEntry> entries = result
-          .whereType<Map>()
-          .map((Map<dynamic, dynamic> raw) {
-            final Map<String, dynamic> row = Map<String, dynamic>.from(raw);
-            return _PantheonEntry(
-              rank: (row['rank'] as num?)?.toInt() ?? 0,
-              username: (row['username'] as String?) ?? '—',
-              value: (row['value'] as num?)?.toInt() ?? 0,
-              guild: row['guild'] as String?,
-            );
-          })
-          .where((_PantheonEntry e) => e.rank > 0 && e.username.isNotEmpty)
-          .toList()
-        ..sort((a, b) => a.rank.compareTo(b.rank));
+      final List<_PantheonEntry> entries =
+          result
+              .whereType<Map>()
+              .map((Map<dynamic, dynamic> raw) {
+                final Map<String, dynamic> row = Map<String, dynamic>.from(raw);
+                return _PantheonEntry(
+                  rank: (row['rank'] as num?)?.toInt() ?? 0,
+                  username: (row['username'] as String?) ?? '—',
+                  value: (row['value'] as num?)?.toInt() ?? 0,
+                  guild: row['guild'] as String?,
+                );
+              })
+              .where((_PantheonEntry e) => e.rank > 0 && e.username.isNotEmpty)
+              .toList()
+            ..sort((a, b) => a.rank.compareTo(b.rank));
 
       if (!mounted) return;
       setState(() {
@@ -138,16 +139,25 @@ class _PantheonBoardState extends State<PantheonBoard>
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
             child: Row(
               children: <Widget>[
-                const Icon(Icons.leaderboard_rounded, color: AppColors.gold, size: 22),
+                const Icon(
+                  Icons.leaderboard_rounded,
+                  color: AppColors.gold,
+                  size: 22,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('Siralama', style: AppTextStyles.h3.copyWith(color: Colors.white)),
+                      Text(
+                        'Siralama',
+                        style: AppTextStyles.h3.copyWith(color: Colors.white),
+                      ),
                       Text(
                         'Guc liderleri • canli',
-                        style: AppTextStyles.caption.copyWith(color: Colors.white54),
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.white54,
+                        ),
                       ),
                     ],
                   ),
@@ -160,7 +170,11 @@ class _PantheonBoardState extends State<PantheonBoard>
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded, color: AppColors.accentCyan, size: 18),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.accentCyan,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -178,8 +192,14 @@ class _PantheonBoardState extends State<PantheonBoard>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Text(_error!, style: AppTextStyles.body.copyWith(color: Colors.white54)),
-                  TextButton(onPressed: _loadLeaderboard, child: Text(context.l10n.tekrar_dene_2)),
+                  Text(
+                    _error!,
+                    style: AppTextStyles.body.copyWith(color: Colors.white54),
+                  ),
+                  TextButton(
+                    onPressed: _loadLeaderboard,
+                    child: Text(context.l10n.tekrar_dene_2),
+                  ),
                 ],
               ),
             ),
@@ -224,7 +244,8 @@ class _PantheonBoardState extends State<PantheonBoard>
                   child: AnimatedBuilder(
                     animation: _pulseController,
                     builder: (context, child) {
-                      final double glowIntensity = 10 + (_pulseController.value * 20);
+                      final double glowIntensity =
+                          10 + (_pulseController.value * 20);
                       return _buildPodiumColumn(
                         entry: _entryForRank(1),
                         rank: 1,
@@ -255,8 +276,8 @@ class _PantheonBoardState extends State<PantheonBoard>
     final String subtitle = entry == null
         ? ''
         : entry.guild != null && entry.guild!.isNotEmpty
-            ? entry.guild!
-            : '⚡ ${_compactPower(entry.value)}';
+        ? entry.guild!
+        : '⚡ ${_compactPower(entry.value)}';
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -272,7 +293,9 @@ class _PantheonBoardState extends State<PantheonBoard>
               color: isGold ? color : Colors.white70,
               fontWeight: FontWeight.bold,
               fontSize: 12,
-              shadows: isGold ? <Shadow>[Shadow(color: color, blurRadius: 10)] : null,
+              shadows: isGold
+                  ? <Shadow>[Shadow(color: color, blurRadius: 10)]
+                  : null,
             ),
           ),
         ),
@@ -320,7 +343,10 @@ class _PantheonBoardState extends State<PantheonBoard>
           height: height,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: <Color>[color.withValues(alpha: 0.8), color.withValues(alpha: 0.1)],
+              colors: <Color>[
+                color.withValues(alpha: 0.8),
+                color.withValues(alpha: 0.1),
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),

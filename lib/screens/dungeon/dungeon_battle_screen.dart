@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/power_formula.dart';
 import '../../models/dungeon_model.dart';
@@ -185,18 +186,16 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen> {
     } catch (e) {
       _logTimer?.cancel();
       if (!mounted) return;
-      AppMessenger.showError(context, 'Hata: $e');
+      AppMessenger.showError(
+        context,
+        userFacingErrorMessage(e, fallback: 'Savaş başlatılamadı.'),
+      );
       context.pop();
     }
   }
 
   String _mapError(String raw) {
-    final String error = raw.toLowerCase();
-    if (error.contains('in_hospital')) return 'Hastanedeyken zindana giriş yapılamaz.';
-    if (error.contains('in_prison')) return 'Hapisteyken zindana giriş yapılamaz.';
-    if (error.contains('insufficient_energy')) return 'Enerji yetersiz.';
-    if (error.contains('boss_daily_limit')) return 'Boss günlük deneme limitine ulaştın.';
-    return raw;
+    return userFacingErrorMessage(raw, fallback: 'Operasyon tamamlanamadı.');
   }
 
   String _formatDuration(int seconds) {
