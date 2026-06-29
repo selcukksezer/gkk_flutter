@@ -2,8 +2,8 @@
 
 **Tarih:** 2026-06-27  
 **Kaynak audit:** `reports/audits/audit_2026-06-27/`  
-**İlerleme:** 55 / 455  
-**Son güncelleme:** 2026-06-29 — alt menü boşluğu bank/market/quests/reputation/settings
+**İlerleme:** 56 / 455  
+**Son güncelleme:** 2026-06-29 — ref.listen build → listenManual initState
 **Üretim:** `python3 scripts/generate_audit_todo.py`
 
 ---
@@ -92,7 +92,7 @@
   - **Hedef dosya:** `lib/components/layout/game_chrome.dart`
   - **Etkilenen raporlar (10):** [bank.md](reports/audits/audit_2026-06-27/bank.md), [character.md](reports/audits/audit_2026-06-27/character.md), [crafting.md](reports/audits/audit_2026-06-27/crafting.md), [enhancement.md](reports/audits/audit_2026-06-27/enhancement.md), [facilities.md](reports/audits/audit_2026-06-27/facilities.md), [inventory.md](reports/audits/audit_2026-06-27/inventory.md), [market.md](reports/audits/audit_2026-06-27/market.md), [quests.md](reports/audits/audit_2026-06-27/quests.md), [reputation.md](reports/audits/audit_2026-06-27/reputation.md), [settings.md](reports/audits/audit_2026-06-27/settings.md)
 
-- [ ] **[P2] ref.listen build() içinde — navigasyon yan etkisi**
+- [x] **[P2] ref.listen build() içinde — navigasyon yan etkisi**
   - **Sorun:** Satır 1256-1258 build içinde `_inventoryPage = totalPages` — setState olmadan side effect. (+10 ek rapor varyasyonu)
   - **Çözüm:** ref.listen → initState/post-frame callback veya ref.listenManual; build saf kalır
   - **Etkilenen raporlar (9):** [bank.md](reports/audits/audit_2026-06-27/bank.md), [home.md](reports/audits/audit_2026-06-27/home.md), [horse_race.md](reports/audits/audit_2026-06-27/horse_race.md), [hospital.md](reports/audits/audit_2026-06-27/hospital.md), [login.md](reports/audits/audit_2026-06-27/login.md), [pvp_history.md](reports/audits/audit_2026-06-27/pvp_history.md), [register.md](reports/audits/audit_2026-06-27/register.md), [settings.md](reports/audits/audit_2026-06-27/settings.md), [splash.md](reports/audits/audit_2026-06-27/splash.md)

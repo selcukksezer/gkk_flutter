@@ -63,6 +63,13 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen> {
   @override
   void initState() {
     super.initState();
+    ref.listenManual<PlayerState>(playerProvider, (
+      PlayerState? previous,
+      PlayerState next,
+    ) {
+      if (!mounted) return;
+      deferProviderUpdate(() => _updateRemaining(isFirst: true));
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startTimer();
     });
@@ -289,16 +296,8 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Ensure widget rebuilds when player profile changes
-    ref.watch(playerProvider);
-
-    // Listen for profile updates so the timer/remaining value refreshes
-    // immediately when the player profile is loaded or changed.
-    ref.listen<PlayerState>(playerProvider, (previous, next) {
-      if (!mounted) return;
-      deferProviderUpdate(() => _updateRemaining(isFirst: true));
-    });
-    final profile = ref.read(playerProvider).profile;
+    final PlayerState playerState = ref.watch(playerProvider);
+    final profile = playerState.profile;
     final inHospital = _inHospital;
 
     return Scaffold(

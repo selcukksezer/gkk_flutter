@@ -97,10 +97,32 @@ class _BankScreenState extends ConsumerState<BankScreen> {
   @override
   void initState() {
     super.initState();
+    ref.listenManual<InventoryState>(inventoryProvider, (
+      InventoryState? previous,
+      InventoryState next,
+    ) {
+      if (!mounted || next.status != InventoryStatus.ready) return;
+      final int itemCount = next.items
+          .where((InventoryItem item) => !item.isEquipped)
+          .where((InventoryItem item) => item.quantity > 0)
+          .length;
+      final int totalPages =
+          (itemCount / _inventoryPerPage).ceil().clamp(1, 9999);
+      if (_inventoryPage > totalPages) {
+        setState(() => _inventoryPage = totalPages);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadData();
       await ref.read(inventoryProvider.notifier).loadInventory();
     });
+  }
+
+  void _clampBankPage() {
+    final int bankTotalPages = (_maxBankSlots / _slotsPerPage).ceil();
+    if (_bankPage > bankTotalPages) {
+      _bankPage = bankTotalPages;
+    }
   }
 
   Future<void> _loadData() async {
@@ -160,6 +182,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         _usedSlots = usedSlots;
         _bankItems = bankItems;
         _loading = false;
+        _clampBankPage();
       });
     } catch (e) {
       if (!mounted) return;

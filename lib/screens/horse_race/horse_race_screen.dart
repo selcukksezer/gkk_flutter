@@ -83,6 +83,12 @@ class _HorseRaceScreenState extends ConsumerState<HorseRaceScreen> {
   @override
   void initState() {
     super.initState();
+    ref.listenManual<HorseRaceState>(horseRaceProvider, (
+      HorseRaceState? prev,
+      HorseRaceState next,
+    ) {
+      _syncPhaseFromState(next);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncPhaseFromState(ref.read(horseRaceProvider));
     });
@@ -91,10 +97,6 @@ class _HorseRaceScreenState extends ConsumerState<HorseRaceScreen> {
   @override
   Widget build(BuildContext context) {
     final HorseRaceState raceState = ref.watch(horseRaceProvider);
-
-    ref.listen<HorseRaceState>(horseRaceProvider, (HorseRaceState? prev, HorseRaceState next) {
-      _syncPhaseFromState(next);
-    });
 
     final bool isBetting =
         raceState.round.phase == HorseRacePhase.betting && raceState.myBet == null;

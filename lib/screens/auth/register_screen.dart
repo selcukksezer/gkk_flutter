@@ -42,11 +42,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final AuthState authState = ref.watch(authProvider);
-    final bool isLoading = authState.status == AuthStatus.loading;
-
-    ref.listen<AuthState>(authProvider, (AuthState? previous, AuthState next) {
+  void initState() {
+    super.initState();
+    ref.listenManual<AuthState>(authProvider, (
+      AuthState? previous,
+      AuthState next,
+    ) {
       if (!mounted) return;
 
       if (next.status == AuthStatus.authenticated) {
@@ -58,6 +59,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         AppMessenger.showError(context, next.errorMessage!);
       }
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AuthState authState = ref.watch(authProvider);
+    final bool isLoading = authState.status == AuthStatus.loading;
 
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.kayit)),

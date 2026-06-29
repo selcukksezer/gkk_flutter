@@ -17,14 +17,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    deferProviderUpdate(() {
-      ref.read(authProvider.notifier).loadSession();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen<AuthState>(authProvider, (AuthState? previous, AuthState next) {
+    ref.listenManual<AuthState>(authProvider, (
+      AuthState? previous,
+      AuthState next,
+    ) {
       if (!mounted) return;
 
       if (next.status == AuthStatus.authenticated) {
@@ -32,11 +28,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         return;
       }
 
-      if (next.status == AuthStatus.unauthenticated || next.status == AuthStatus.error) {
+      if (next.status == AuthStatus.unauthenticated ||
+          next.status == AuthStatus.error) {
         context.go(AppRoutes.login);
       }
     });
+    deferProviderUpdate(() {
+      ref.read(authProvider.notifier).loadSession();
+    });
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
         child: CircularProgressIndicator(),

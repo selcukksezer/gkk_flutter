@@ -41,11 +41,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final AuthState authState = ref.watch(authProvider);
-    final bool isLoading = authState.status == AuthStatus.loading;
-
-    ref.listen<AuthState>(authProvider, (AuthState? previous, AuthState next) {
+  void initState() {
+    super.initState();
+    ref.listenManual<AuthState>(authProvider, (
+      AuthState? previous,
+      AuthState next,
+    ) {
       if (!mounted) return;
 
       if (next.status == AuthStatus.authenticated) {
@@ -57,6 +58,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         AppMessenger.showError(context, next.errorMessage!);
       }
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AuthState authState = ref.watch(authProvider);
+    final bool isLoading = authState.status == AuthStatus.loading;
 
     return Scaffold(
       body: Container(

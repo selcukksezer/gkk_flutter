@@ -46,6 +46,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    ref.listenManual<PlayerState>(playerProvider, (
+      PlayerState? prev,
+      PlayerState next,
+    ) {
+      if (next.status == PlayerStatus.ready &&
+          prev?.status != PlayerStatus.ready) {
+        deferProviderUpdate(_maybeShowDailyReward);
+      }
+    });
     deferProviderUpdate(_loadHomeData);
   }
 
@@ -73,16 +82,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final inventoryState = ref.watch(inventoryProvider);
-
-    ref.listen<PlayerState>(playerProvider, (
-      PlayerState? prev,
-      PlayerState next,
-    ) {
-      if (next.status == PlayerStatus.ready &&
-          prev?.status != PlayerStatus.ready) {
-        deferProviderUpdate(_maybeShowDailyReward);
-      }
-    });
 
     return Scaffold(
       appBar: GameTopBar(
