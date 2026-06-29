@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/common/inline_error_retry.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
@@ -21,6 +22,16 @@ const int _baseBankSlots = 100;
 const int _maxBankSlots = 200;
 const int _slotsPerPage = 20;
 const int _inventoryPerPage = 20;
+
+abstract final class _BankDesign {
+  static const int gridColumns = 5;
+  static const double gridSpacing = 6;
+  static const double slotAspectRatio = 0.88;
+  static const Color gold = AppColors.liquidGold;
+  static const Color deposit = AppColors.toxicNeon;
+  static const Color withdraw = AppColors.mysticRuby;
+  static const Color muted = AppColors.mutedTitanium;
+}
 
 int _expandCost(int total) {
   if (total >= 175) return 500;
@@ -816,21 +827,21 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDragTargetActive
-              ? const Color(0xFF4ECDC4)
+              ? _BankDesign.deposit
               : selected
-              ? const Color(0xFF4ECDC4)
+              ? _BankDesign.deposit
               : hasItem
-              ? rarityColor.withValues(alpha: 0.45)
+              ? rarityColor.withValues(alpha: 0.5)
               : Colors.white.withValues(alpha: 0.08),
           width: isDragTargetActive ? 1.8 : 1,
         ),
         color: isDragTargetActive
-            ? const Color(0xFF17322E)
+            ? _BankDesign.deposit.withValues(alpha: 0.12)
             : selected
-            ? const Color(0xFF1F3530)
+            ? _BankDesign.deposit.withValues(alpha: 0.08)
             : hasItem
-            ? const Color(0xFF151515)
-            : Colors.transparent,
+            ? AppColors.spaceNavy
+            : AppColors.darkObsidian.withValues(alpha: 0.35),
       ),
       child: hasItem
           ? Stack(
@@ -864,7 +875,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 8),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
                     ),
                   ),
                 ),
@@ -1004,23 +1015,23 @@ class _BankScreenState extends ConsumerState<BankScreen> {
           color: isLocked
               ? Colors.white12
               : isDragTargetActive
-              ? const Color(0xFF4ECDC4)
+              ? _BankDesign.deposit
               : selected
-              ? const Color(0xFF4ECDC4)
+              ? _BankDesign.withdraw
               : hasItem
-              ? const Color(0xFFFBBF24).withValues(alpha: 0.55)
+              ? rarityColor.withValues(alpha: 0.5)
               : Colors.white.withValues(alpha: 0.08),
           width: isDragTargetActive ? 1.8 : 1,
         ),
         color: isLocked
-            ? Colors.black.withValues(alpha: 0.28)
+            ? AppColors.carbonVoid.withValues(alpha: 0.65)
             : isDragTargetActive
-            ? const Color(0xFF17322E)
+            ? _BankDesign.deposit.withValues(alpha: 0.12)
             : selected
-            ? const Color(0xFF1F3530)
+            ? _BankDesign.withdraw.withValues(alpha: 0.1)
             : hasItem
-            ? const Color(0xFF151515)
-            : Colors.transparent,
+            ? AppColors.spaceNavy
+            : AppColors.darkObsidian.withValues(alpha: 0.35),
       ),
       child: isLocked
           ? const Center(child: Text('🔒', style: TextStyle(fontSize: 16)))
@@ -1056,7 +1067,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 8),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
                     ),
                   ),
                 ),
@@ -1175,6 +1186,115 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     );
   }
 
+  Widget _buildFixedSlotGrid({
+    required int itemCount,
+    required Widget Function(BuildContext context, int index) itemBuilder,
+  }) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int columns = _BankDesign.gridColumns;
+        final double spacing = _BankDesign.gridSpacing;
+        final double cellWidth =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        final double cellHeight = cellWidth / _BankDesign.slotAspectRatio;
+
+        final List<Widget> cells = List<Widget>.generate(
+          itemCount,
+          (int index) => SizedBox(
+            height: cellHeight,
+            child: itemBuilder(context, index),
+          ),
+        );
+
+        return GameGridColumns(
+          crossAxisCount: columns,
+          spacing: spacing,
+          children: cells,
+        );
+      },
+    );
+  }
+
+  Widget _pageButton({
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: enabled
+                ? _BankDesign.gold.withValues(alpha: 0.12)
+                : Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: enabled
+                  ? _BankDesign.gold.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.06),
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 22,
+            color: enabled ? _BankDesign.gold : Colors.white24,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageControls({
+    required int currentPage,
+    required int totalPages,
+    required ValueChanged<int> onPageChanged,
+  }) {
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          _pageButton(
+            icon: Icons.chevron_left_rounded,
+            enabled: currentPage > 1,
+            onTap: () => onPageChanged(currentPage - 1),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.darkObsidian.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _BankDesign.gold.withValues(alpha: 0.28),
+              ),
+            ),
+            child: Text(
+              'Sayfa $currentPage / $totalPages',
+              style: const TextStyle(
+                color: _BankDesign.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _pageButton(
+            icon: Icons.chevron_right_rounded,
+            enabled: currentPage < totalPages,
+            onTap: () => onPageChanged(currentPage + 1),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _sectionHeader({
     required String title,
     required String actionText,
@@ -1186,29 +1306,36 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     required VoidCallback onClear,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
         ),
       ),
       child: Row(
         children: <Widget>[
           Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
+            title.toUpperCase(),
+            style: TextStyle(
+              color: _BankDesign.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
             ),
           ),
           const SizedBox(width: 8),
           if (selectedCount > 0)
-            Text(
-              '$selectedCount secili',
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: actionColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: actionColor.withValues(alpha: 0.35)),
+              ),
+              child: Text(
+                '$selectedCount seçili',
+                style: TextStyle(color: actionColor, fontSize: 10),
+              ),
             ),
           const Spacer(),
           if (selectedCount > 0)
@@ -1216,15 +1343,15 @@ class _BankScreenState extends ConsumerState<BankScreen> {
               onPressed: onClear,
               child: const Text(
                 'Temizle',
-                style: TextStyle(color: Colors.white38, fontSize: 12),
+                style: TextStyle(color: _BankDesign.muted, fontSize: 12),
               ),
             ),
-          ElevatedButton(
+          FilledButton(
             onPressed: (!enabled || loading) ? null : onAction,
-            style: ElevatedButton.styleFrom(
+            style: FilledButton.styleFrom(
               backgroundColor: actionColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              foregroundColor: AppColors.carbonVoid,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -1234,14 +1361,14 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: AppColors.carbonVoid,
                     ),
                   )
                 : Text(
                     actionText,
                     style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
           ),
@@ -1261,39 +1388,33 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       1,
       9999,
     );
-    if (_inventoryPage > totalPages) {
-      _inventoryPage = totalPages;
-    }
+    final int currentPage = _inventoryPage.clamp(1, totalPages);
 
     final List<InventoryItem?> pageSlots = _buildInventorySlots(
       items,
-      _inventoryPage,
+      currentPage,
     );
-    final int pageStart = (_inventoryPage - 1) * _inventoryPerPage;
+    final int pageStart = (currentPage - 1) * _inventoryPerPage;
 
-    return Expanded(
+    return DottedPanel(
+      padding: EdgeInsets.zero,
+      borderColor: _BankDesign.deposit.withValues(alpha: 0.2),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           _sectionHeader(
             title: 'Envanter',
-            actionText:
-                'Secilenleri Yatir (${_selectedInventoryRowIds.length})',
-            actionColor: const Color(0xFF4ECDC4),
+            actionText: 'Yatır (${_selectedInventoryRowIds.length})',
+            actionColor: _BankDesign.deposit,
             enabled: _selectedInventoryRowIds.isNotEmpty,
             loading: _depositing,
             onAction: _depositBatch,
             selectedCount: _selectedInventoryRowIds.length,
             onClear: () => setState(_selectedInventoryRowIds.clear),
           ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(10),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                childAspectRatio: 0.90,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+            child: _buildFixedSlotGrid(
               itemCount: _inventoryPerPage,
               itemBuilder: (BuildContext context, int index) {
                 final int globalSlotIndex = pageStart + index;
@@ -1339,37 +1460,11 @@ class _BankScreenState extends ConsumerState<BankScreen> {
               },
             ),
           ),
-          if (totalPages > 1)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  IconButton(
-                    onPressed: _inventoryPage > 1
-                        ? () => setState(() => _inventoryPage--)
-                        : null,
-                    icon: const Icon(
-                      Icons.chevron_left,
-                      color: Color(0xFFFBBF24),
-                    ),
-                  ),
-                  Text(
-                    '$_inventoryPage / $totalPages',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
-                  ),
-                  IconButton(
-                    onPressed: _inventoryPage < totalPages
-                        ? () => setState(() => _inventoryPage++)
-                        : null,
-                    icon: const Icon(
-                      Icons.chevron_right,
-                      color: Color(0xFFFBBF24),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _buildPageControls(
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChanged: (int page) => setState(() => _inventoryPage = page),
+          ),
         ],
       ),
     );
@@ -1377,34 +1472,28 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
   Widget _buildBankArea() {
     final int bankTotalPages = (_maxBankSlots / _slotsPerPage).ceil();
-    if (_bankPage > bankTotalPages) {
-      _bankPage = bankTotalPages;
-    }
+    final int currentPage = _bankPage.clamp(1, bankTotalPages);
+    final int bankStartIndex = (currentPage - 1) * _slotsPerPage;
 
-    final int bankStartIndex = (_bankPage - 1) * _slotsPerPage;
-
-    return Expanded(
+    return DottedPanel(
+      padding: EdgeInsets.zero,
+      borderColor: _BankDesign.withdraw.withValues(alpha: 0.2),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           _sectionHeader(
-            title: 'Banka',
-            actionText: 'Secilenleri Cek (${_selectedBankIds.length})',
-            actionColor: Colors.redAccent,
+            title: 'Banka Kasası',
+            actionText: 'Çek (${_selectedBankIds.length})',
+            actionColor: _BankDesign.withdraw,
             enabled: _selectedBankIds.isNotEmpty,
             loading: _withdrawing,
             onAction: _withdrawBatch,
             selectedCount: _selectedBankIds.length,
             onClear: () => setState(_selectedBankIds.clear),
           ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(10),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                childAspectRatio: 0.90,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+            child: _buildFixedSlotGrid(
               itemCount: _slotsPerPage,
               itemBuilder: (BuildContext context, int index) {
                 final int globalSlotIndex = bankStartIndex + index;
@@ -1453,35 +1542,10 @@ class _BankScreenState extends ConsumerState<BankScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                IconButton(
-                  onPressed: _bankPage > 1
-                      ? () => setState(() => _bankPage--)
-                      : null,
-                  icon: const Icon(
-                    Icons.chevron_left,
-                    color: Color(0xFFFBBF24),
-                  ),
-                ),
-                Text(
-                  '$_bankPage / $bankTotalPages',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-                IconButton(
-                  onPressed: _bankPage < bankTotalPages
-                      ? () => setState(() => _bankPage++)
-                      : null,
-                  icon: const Icon(
-                    Icons.chevron_right,
-                    color: Color(0xFFFBBF24),
-                  ),
-                ),
-              ],
-            ),
+          _buildPageControls(
+            currentPage: currentPage,
+            totalPages: bankTotalPages,
+            onPageChanged: (int page) => setState(() => _bankPage = page),
           ),
         ],
       ),
@@ -1495,24 +1559,39 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: DottedPanel(
+        borderColor: _BankDesign.gold.withValues(alpha: 0.22),
         child: Column(
           children: <Widget>[
             Row(
               children: <Widget>[
-                _statCard('Toplam', '$_totalSlots'),
-                _statCard('Kullanilan', '$_usedSlots'),
-                _statCard('Bos', '$freeSlots'),
+                const Icon(
+                  Icons.account_balance_rounded,
+                  color: _BankDesign.gold,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'KASA',
+                  style: TextStyle(
+                    color: _BankDesign.gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
+                _statCard('Toplam', '$_totalSlots'),
+                _statCard('Kullanılan', '$_usedSlots'),
+                _statCard('Boş', '$freeSlots'),
+              ],
+            ),
+            const SizedBox(height: 10),
             Row(
               children: <Widget>[
                 Expanded(
@@ -1520,57 +1599,62 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Doluluk: ${(fillPct * 100).round()}%',
+                        'Doluluk ${(fillPct * 100).round()}%',
                         style: const TextStyle(
-                          color: Colors.white54,
+                          color: _BankDesign.muted,
                           fontSize: 11,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      LinearProgressIndicator(
-                        value: fillPct,
-                        backgroundColor: Colors.white12,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFFFBBF24),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: fillPct,
+                          backgroundColor: AppColors.darkObsidian,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            _BankDesign.gold,
+                          ),
+                          minHeight: 7,
                         ),
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(3),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 if (_totalSlots < _maxBankSlots)
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: (_expanding || _actionInProgress)
                         ? null
                         : _expandBank,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFBBF24),
-                      foregroundColor: Colors.black,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _BankDesign.gold,
+                      foregroundColor: AppColors.carbonVoid,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                        horizontal: 12,
+                        vertical: 8,
                       ),
                     ),
                     child: _expanding
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.carbonVoid,
+                            ),
                           )
                         : Text(
-                            'Genislet ${_expandCost(_totalSlots)} gem',
+                            'Genişlet ${_expandCost(_totalSlots)} 💎',
                             style: const TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                   )
                 else
                   const Text(
-                    'Max Slot',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
+                    'Max slot',
+                    style: TextStyle(color: _BankDesign.muted, fontSize: 11),
                   ),
               ],
             ),
@@ -1582,21 +1666,30 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
   Widget _statCard(String label, String value) {
     return Expanded(
-      child: Column(
-        children: <Widget>[
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Color(0xFFFBBF24),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.darkObsidian.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Column(
+          children: <Widget>[
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                color: _BankDesign.gold,
+              ),
             ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white38, fontSize: 10),
-          ),
-        ],
+            Text(
+              label,
+              style: const TextStyle(color: _BankDesign.muted, fontSize: 10),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1612,43 +1705,31 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       appBar: GameTopBar(title: context.l10n.screenTitleBank, onLogout: logoutHandler),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.bank, onLogout: logoutHandler),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF0D0D0D), Color(0xFF141414)],
-          ),
-        ),
+      body: GameScreenBackground(
         child: SafeArea(
           bottom: false,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: gameBottomBarClearance(context)),
-            child: _loading
+          child: _loading
               ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFFFBBF24)),
+                  child: CircularProgressIndicator(color: _BankDesign.gold),
                 )
               : _loadError != null
-                  ? InlineErrorRetry(message: _loadError!, onRetry: _loadData)
-                  : Column(
-                  children: <Widget>[
-                    _buildStatsCard(),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Column(
-                        children: <Widget>[
-                          _buildInventoryArea(),
-                          Container(
-                            height: 1,
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                          _buildBankArea(),
-                        ],
-                      ),
-                    ),
-                  ],
+              ? InlineErrorRetry(message: _loadError!, onRetry: _loadData)
+              : SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    bottom: gameBottomBarClearance(context),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _buildStatsCard(),
+                      const SizedBox(height: 12),
+                      _buildInventoryArea(),
+                      const SizedBox(height: 12),
+                      _buildBankArea(),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
                 ),
-          ),
         ),
       ),
     );

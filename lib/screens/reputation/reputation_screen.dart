@@ -515,14 +515,7 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
         },
 
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF10131D), Color(0xFF171E2C), Color(0xFF10131D)],
-          ),
-        ),
+      body: GameScreenBackground(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(

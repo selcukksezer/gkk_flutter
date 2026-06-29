@@ -66,14 +66,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       appBar: GameTopBar(title: context.l10n.routeMarket, onLogout: _logout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.market, onLogout: _logout),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[AppColors.bgDeep, AppColors.bgBase],
-          ),
-        ),
+      body: GameScreenBackground(
         child: ListView(
           padding: GameScrollLayout.fromLTRB(context, left: 12, top: 8, right: 12),
           children: <Widget>[

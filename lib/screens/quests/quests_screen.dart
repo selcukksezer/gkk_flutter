@@ -19,7 +19,6 @@ enum _QuestCategory { all, daily, weekly, main }
 
 // ── Premium color palette ─────────────────────────────────────────────────────
 class _QColors {
-  static const bg = Color(0xFF0B0F1A);
   static const surface = Color(0xFF131826);
   static const border = Color(0x18FFFFFF);
   static const gold = Color(0xFFFBBF24);
@@ -226,8 +225,9 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         currentRoute: AppRoutes.quests,
         onLogout: _doLogout,
       ),
-      backgroundColor: _QColors.bg,
-      body: Column(
+      backgroundColor: AppColors.carbonVoid,
+      body: GameScreenBackground(
+        child: Column(
         children: [
           // ── Hero header ─────────────────────────────────────────────────
           _buildHeader(completedCount),
@@ -270,6 +270,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
                   ),
           ),
         ],
+        ),
       ),
     );
   }

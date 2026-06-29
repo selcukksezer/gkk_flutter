@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../l10n/l10n.dart';
 
@@ -144,14 +145,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ref.read(playerProvider.notifier).clear();
         },
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF10131D), Color(0xFF171E2C), Color(0xFF10131D)],
-          ),
-        ),
+      body: GameScreenBackground(
         child: ListView(
           padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
           children: <Widget>[
@@ -282,21 +276,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _sectionCard({required String title, required List<Widget> children}) {
-    return Container(
+    return DottedPanel(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-        color: Colors.black26,
-      ),
+      borderColor: AppColors.liquidGold.withValues(alpha: 0.15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white70, letterSpacing: 0.5),
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.liquidGold,
+              letterSpacing: 0.6,
+            ),
           ),
-          const Divider(color: Colors.white12, height: 16),
+          Divider(
+            color: Colors.white.withValues(alpha: 0.08),
+            height: 18,
+          ),
           ...children,
         ],
       ),
