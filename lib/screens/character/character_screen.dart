@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../components/character/badge_showcase_panel.dart';
 import '../../components/character/character_combat_stats_panel.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../components/character/stat_allocation_panel.dart';
 import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/character_class_abilities.dart';
+import '../../core/utils/reputation_tier.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../models/player_model.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text_styles.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../utils/logout_helper.dart';
 
@@ -22,24 +30,6 @@ import '../../utils/logout_helper.dart';
 const _xpBarGradient = LinearGradient(
   colors: <Color>[AppColors.liquidGold, AppColors.warningSolar],
 );
-
-const _skills = [
-  (key: 'combat', icon: '⚔️', label: 'Savaş'),
-  (key: 'stealth', icon: '🥷', label: 'Gizlilik'),
-  (key: 'magic', icon: '🔮', label: 'Büyü'),
-  (key: 'crafting', icon: '🔨', label: 'Zanaat'),
-  (key: 'trade', icon: '💰', label: 'Ticaret'),
-  (key: 'leadership', icon: '👑', label: 'Liderlik'),
-];
-
-({String title, Color color}) _getReputationTier(int rep) {
-  if (rep >= 100000) return (title: '👑 Efsane', color: Colors.amber);
-  if (rep >= 50000) return (title: '🔱 Usta', color: AppColors.liquidGold);
-  if (rep >= 20000) return (title: '⭐ Kahraman', color: AppColors.coralFlare);
-  if (rep >= 5000) return (title: '🥈 Ünlü', color: Colors.blueGrey);
-  if (rep >= 1000) return (title: '🌱 Tanınan', color: Colors.greenAccent);
-  return (title: '🕵️ Bilinmeyen', color: Colors.white38);
-}
 
 String _fmtCompact(num n) {
   if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
@@ -62,9 +52,10 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(playerProvider.notifier).loadProfile();
       ref.read(inventoryProvider.notifier).loadInventory();
+      await TutorialTriggers.onRouteEnter(ref, AppRoutes.character);
     });
   }
 
@@ -149,7 +140,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     final xpProgress = buildXpProgress(level: profileLevel, totalXp: xp);
     final level = xpProgress.level;
 
-    final repTier = _getReputationTier(profile?.reputation ?? 0);
+    final repTier = reputationTierFor(profile?.reputation ?? 0);
 
     return GameScreenBackground(
       child: ListView(
@@ -159,7 +150,17 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
             leadingGap: false,
             child: _buildIdentityCard(profile, level, repTier, xpProgress),
           ),
+          const GameScrollSection(child: BadgeShowcasePanel()),
           GameScrollSection(child: _buildQuickResources(profile)),
+          if ((profile?.statPoints ?? 0) > 0)
+            GameScrollSection(
+              child: TutorialAnchorScope(
+                id: TutorialAnchorId.characterStatPanel,
+                child: StatAllocationPanel(
+                  availablePoints: profile!.statPoints,
+                ),
+              ),
+            ),
           GameScrollSection(child: _buildCombatStats(profile, level)),
           GameScrollSection(child: _buildClassDetails(profile)),
           GameScrollSection(child: _buildExtraInfo(profile)),
@@ -383,7 +384,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   Widget _buildIdentityCard(
     PlayerProfile? profile,
     int level,
-    ({Color color, String title}) repTier,
+    ReputationTier repTier,
     XpProgress xpProgress,
   ) {
     final name = profile?.displayName ?? profile?.username ?? 'Oyuncu';
@@ -610,13 +611,13 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       child: CharacterCombatStatsPanel(
         power: _fmtCompact(profile?.power ?? 0),
-        intelligence: '${profile?.intelligence ?? 0}',
         maxHealth: '${profile?.maxHealth ?? 0}',
         attack: '${profile?.attack ?? 0}',
         defense: '${profile?.defense ?? 0}',
         luck: '${profile?.luck ?? 0}',
         pvpWinRate: '%$winRate',
         pvpRating: '${profile?.pvpRating ?? 0}',
+        highlightPowerAnchor: true,
       ),
     );
   }
@@ -640,174 +641,226 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
         ? 'Biyolojik toleransları daha iyidir ve her gün ücretsiz Minor Detox Drink (Toksin Atıcı) üretebilir. Craft odaklı karakterdir.'
         : 'Şüpheli faaliyetlerde ustalaşmış, gizlilik ve kaçınma oranları yüksek bir sınıftır. Rüşvet maliyetleri %25 daha düşüktür.';
 
-    final statsList = charClass == CharacterClass.warrior
-        ? ['+20% PvP Hasar', '+15% Boss Hasarı', '+10% PvP Kritik Şansı']
-        : charClass == CharacterClass.alchemist
-        ? [
-            '+30% İksir Etkinliği',
-            '-25% Tolerans Artışı',
-            '+15% Crafting Başarısı',
-          ]
-        : [
-            '-30% Tesis Şüphesi',
-            '+20% Hapishaneden Kaçış',
-            '+40% Zindan Loot Şansı',
-          ];
-
-    final color = charClass == CharacterClass.warrior
-        ? Colors.redAccent
-        : charClass == CharacterClass.alchemist
-        ? AppColors.coralFlare
-        : AppColors.mutedTitanium;
-
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '🎭 Sınıf Özellikleri: $title',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: Colors.white70,
-                ),
-              ),
-              if (isAlchemist)
-                IconButton(
-                  onPressed: _claimingDetox ? null : _claimAlchemistDetox,
-                  icon: _claimingDetox
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(
-                          Icons.clean_hands_rounded,
-                          color: AppColors.coralFlare,
-                          size: 20,
-                        ),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Günlük Detox',
-                ),
-            ],
+          Text(
+            '🎭 Sınıf Özellikleri: $title',
+            style: AppTextStyles.title.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           Text(
             desc,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white54,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textTertiary,
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: statsList.map((st) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: color.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  st,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+          if (isAlchemist) ...<Widget>[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonal(
+                onPressed: _claimingDetox ? null : _claimAlchemistDetox,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.coralFlare.withValues(alpha: 0.14),
+                  foregroundColor: AppColors.coralFlare,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: BorderSide(
+                    color: AppColors.coralFlare.withValues(alpha: 0.35),
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+                child: _claimingDetox
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.coralFlare,
+                        ),
+                      )
+                    : Text(
+                        'Günlük Detox Al',
+                        style: AppTextStyles.captionBold.copyWith(
+                          color: AppColors.coralFlare,
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildExtraInfo(PlayerProfile? profile) {
+    final CharacterClass? charClass = profile?.characterClass;
+    final List<CharacterAbilityDef> abilities = abilitiesForClass(charClass);
+    final Color accent = accentForClass(charClass);
+    final bool bloodlustActive = isWarriorBloodlustActive(profile);
+
     return _card(
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: EdgeInsets.zero,
-          title: const Text(
-            '📚 Yetenekler & Adli Sicil',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white70,
-            ),
+          initiallyExpanded: true,
+          title: Text(
+            'Yetenekler & Adli Sicil',
+            style: AppTextStyles.title.copyWith(color: AppColors.textSecondary),
           ),
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                SizedBox(
-                  width: double.infinity,
-                  child: _infoRow(
-                    'Şüphe Seviyesi',
-                    '${profile?.globalSuspicionLevel ?? 0}%',
+          iconColor: AppColors.liquidGold,
+          collapsedIconColor: AppColors.mutedTitanium,
+          children: <Widget>[
+            if (charClass != null && abilities.isNotEmpty) ...<Widget>[
+              Text(
+                '${_classTitle(charClass)} — Sınıf Yetenekleri',
+                style: AppTextStyles.captionBold.copyWith(color: accent),
+              ),
+              const SizedBox(height: 10),
+              ...abilities.map((CharacterAbilityDef ability) {
+                final bool isSignature =
+                    ability.kind == CharacterAbilityKind.signature;
+                final bool isActive = ability.name == 'Kan Hırsı' &&
+                    bloodlustActive;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _abilityTile(
+                    ability: ability,
+                    accent: accent,
+                    isSignature: isSignature,
+                    isActive: isActive,
                   ),
+                );
+              }),
+              const SizedBox(height: 8),
+              Divider(color: AppColors.mutedTitanium.withValues(alpha: 0.15)),
+              const SizedBox(height: 8),
+            ],
+            Text(
+              'Adli Sicil',
+              style: AppTextStyles.captionBold.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _infoRow(
+              'Şüphe Seviyesi',
+              '${effectiveSuspicionLevel(profile)}%'
+              '${profile?.characterClass == CharacterClass.shadow ? ' (tavan 80)' : ''}',
+            ),
+            _infoRow(
+              'Bağımlılık Seviyesi',
+              'Lvl ${profile?.addictionLevel ?? 0}',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _classTitle(CharacterClass charClass) {
+    return switch (charClass) {
+      CharacterClass.warrior => 'Savaşçı',
+      CharacterClass.alchemist => 'Simyacı',
+      CharacterClass.shadow => 'Gölge',
+    };
+  }
+
+  Widget _abilityTile({
+    required CharacterAbilityDef ability,
+    required Color accent,
+    required bool isSignature,
+    required bool isActive,
+  }) {
+    final Color borderColor = isActive
+        ? AppColors.toxicNeon
+        : isSignature
+        ? AppColors.liquidGold.withValues(alpha: 0.45)
+        : accent.withValues(alpha: 0.28);
+    final Color bgColor = isActive
+        ? AppColors.toxicNeon.withValues(alpha: 0.08)
+        : isSignature
+        ? AppColors.liquidGold.withValues(alpha: 0.06)
+        : AppColors.darkObsidian.withValues(alpha: 0.55);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(ability.icon, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        ability.name,
+                        style: AppTextStyles.captionBold.copyWith(
+                          color: isActive
+                              ? AppColors.toxicNeon
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (isSignature)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.liquidGold.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppColors.liquidGold.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Text(
+                          isActive ? 'AKTİF' : 'ÖZEL',
+                          style: AppTextStyles.micro.copyWith(
+                            color: isActive
+                                ? AppColors.toxicNeon
+                                : AppColors.liquidGold,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    if (ability.system != null && !isSignature) ...<Widget>[
+                      const SizedBox(width: 6),
+                      Text(
+                        ability.system!,
+                        style: AppTextStyles.micro.copyWith(
+                          color: AppColors.mutedTitanium,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                SizedBox(
-                  width: double.infinity,
-                  child: _infoRow(
-                    'Bağımlılık Seviyesi',
-                    'Lvl ${profile?.addictionLevel ?? 0}',
+                const SizedBox(height: 3),
+                Text(
+                  ability.effect,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textTertiary,
+                    height: 1.3,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _skills
-                  .map(
-                    (s) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(s.icon),
-                          const SizedBox(width: 6),
-                          Text(
-                            s.label,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 8),
-            const Opacity(
-              opacity: 0.5,
-              child: Text(
-                'Yetenek sistemi yakında güncellenecek.',
-                style: TextStyle(fontSize: 10),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -820,15 +873,11 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            style: AppTextStyles.caption.copyWith(color: AppColors.textTertiary),
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppTextStyles.captionBold,
           ),
         ],
       ),

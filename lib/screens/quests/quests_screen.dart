@@ -10,6 +10,9 @@ import '../../core/services/supabase_service.dart';
 import '../../models/quest_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../theme/app_colors.dart';
@@ -102,6 +105,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           _snack('🏆 Sezon görevi tamamlandı! Ödülü sezon sayfasından al.');
           context.go(AppRoutes.season);
         }
+        await TutorialTriggers.onRouteEnter(ref, AppRoutes.quests);
       }
     } catch (e) {
       if (mounted)
@@ -217,6 +221,12 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         .where((q) => q.status == QuestStatus.completed)
         .length;
     final sorted = _sortedFiltered;
+    final int? claimTutorialIndex = () {
+      for (int i = 0; i < sorted.length; i++) {
+        if (sorted[i].status == QuestStatus.completed) return i;
+      }
+      return null;
+    }();
 
     return Scaffold(
       appBar: GameTopBar(title: context.l10n.screenTitleQuests, onLogout: _doLogout),
@@ -261,6 +271,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
                       itemBuilder: (_, i) => _QuestCard(
                         quest: sorted[i],
                         actionLoading: _actionLoading,
+                        highlightClaimAnchor: i == claimTutorialIndex,
                         onComplete: () => _completeQuest(sorted[i]),
                         onClaim: () => _claimReward(sorted[i]),
                         onGoToSeason: () => context.go(AppRoutes.season),
@@ -535,6 +546,7 @@ class _QuestCard extends StatefulWidget {
     required this.onClaim,
     required this.onGoToSeason,
     required this.onDetail,
+    this.highlightClaimAnchor = false,
   });
 
   final QuestData quest;
@@ -543,6 +555,7 @@ class _QuestCard extends StatefulWidget {
   final VoidCallback onClaim;
   final VoidCallback onGoToSeason;
   final VoidCallback onDetail;
+  final bool highlightClaimAnchor;
 
   @override
   State<_QuestCard> createState() => _QuestCardState();
@@ -864,7 +877,7 @@ class _QuestCardState extends State<_QuestCard>
     }
 
     if (_canClaim) {
-      return FilledButton.icon(
+      final Widget claimButton = FilledButton.icon(
         onPressed: widget.onClaim,
         icon: const Icon(Icons.redeem_rounded, size: 16),
         label: const Text(
@@ -880,6 +893,12 @@ class _QuestCardState extends State<_QuestCard>
           padding: const EdgeInsets.symmetric(vertical: 12),
         ),
       );
+      return widget.highlightClaimAnchor
+          ? TutorialAnchorScope(
+              id: TutorialAnchorId.questsClaimBtn,
+              child: claimButton,
+            )
+          : claimButton;
     }
 
     if (_isActive &&

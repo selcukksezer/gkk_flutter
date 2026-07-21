@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class GuildWarSeason {
   final int season;
   final int week;
@@ -114,6 +116,74 @@ class GuildWarParticipant {
   }
 }
 
+class GuildWarTournamentMatch {
+  const GuildWarTournamentMatch({
+    required this.id,
+    required this.guild1Id,
+    required this.guild1Name,
+    required this.guild2Id,
+    required this.guild2Name,
+    required this.guild1Score,
+    required this.guild2Score,
+    required this.winnerGuildId,
+    required this.winnerGuildName,
+    required this.status,
+  });
+
+  final int id;
+  final String? guild1Id;
+  final String guild1Name;
+  final String? guild2Id;
+  final String guild2Name;
+  final int guild1Score;
+  final int guild2Score;
+  final String? winnerGuildId;
+  final String winnerGuildName;
+  final String status;
+
+  bool get isCompleted => status == 'completed';
+  bool get isPending => status == 'pending';
+
+  factory GuildWarTournamentMatch.fromJson(Map<String, dynamic> json) {
+    return GuildWarTournamentMatch(
+      id: _asInt(json['id']),
+      guild1Id: json['guild1Id']?.toString(),
+      guild1Name: (json['guild1Name'] ?? '?').toString(),
+      guild2Id: json['guild2Id']?.toString(),
+      guild2Name: (json['guild2Name'] ?? '?').toString(),
+      guild1Score: _asInt(json['guild1Score']),
+      guild2Score: _asInt(json['guild2Score']),
+      winnerGuildId: json['winnerGuildId']?.toString(),
+      winnerGuildName: (json['winnerGuildName'] ?? '').toString(),
+      status: (json['status'] ?? 'pending').toString(),
+    );
+  }
+}
+
+class GuildWarTournamentRound {
+  const GuildWarTournamentRound({
+    required this.title,
+    required this.roundNumber,
+    required this.matches,
+  });
+
+  final String title;
+  final int roundNumber;
+  final List<GuildWarTournamentMatch> matches;
+
+  factory GuildWarTournamentRound.fromJson(Map<String, dynamic> json) {
+    final matchList = (json['matches'] as List<dynamic>? ?? [])
+        .whereType<Map>()
+        .map((e) => GuildWarTournamentMatch.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    return GuildWarTournamentRound(
+      title: (json['title'] ?? '').toString(),
+      roundNumber: _asInt(json['roundNumber']),
+      matches: matchList,
+    );
+  }
+}
+
 class TerritoryData {
   final String id;
   final String name;
@@ -224,6 +294,38 @@ class GuildWarAttackLog {
   }
 }
 
+enum GuildWarAttackLogFilter {
+  all,
+  win,
+  loss,
+}
+
+List<GuildWarAttackLog> filterAttackLogs({
+  required List<GuildWarAttackLog> logs,
+  required GuildWarAttackLogFilter filter,
+  required String? guildId,
+}) {
+  if (filter == GuildWarAttackLogFilter.all || guildId == null) {
+    return logs;
+  }
+  if (filter == GuildWarAttackLogFilter.win) {
+    return logs
+        .where(
+          (GuildWarAttackLog log) =>
+              (log.attackerGuildId == guildId && log.success) ||
+              (log.defenderGuildId == guildId && !log.success),
+        )
+        .toList();
+  }
+  return logs
+      .where(
+        (GuildWarAttackLog log) =>
+            (log.attackerGuildId == guildId && !log.success) ||
+            (log.defenderGuildId == guildId && log.success),
+      )
+      .toList();
+}
+
 class GuildWarAttackResult {
   final bool success;
   final String message;
@@ -299,4 +401,18 @@ int _asInt(dynamic value, {int fallback = 0}) {
   if (value is num) return value.toInt();
   if (value is String) return int.tryParse(value) ?? fallback;
   return fallback;
+}
+
+/// Formats numeric chunks inside backend prize strings (e.g. `250000 Altın`).
+String formatGuildWarPrizePool(String prizePool) {
+  if (prizePool.trim().isEmpty) return '—';
+  final NumberFormat formatter = NumberFormat.decimalPattern('tr_TR');
+  final RegExp pattern = RegExp(r'\d[\d.,]*');
+  return prizePool.replaceAllMapped(pattern, (Match match) {
+    final String raw = match.group(0)!;
+    final String digits = raw.replaceAll(RegExp(r'[^\d]'), '');
+    final int? value = int.tryParse(digits);
+    if (value == null) return raw;
+    return formatter.format(value);
+  });
 }

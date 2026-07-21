@@ -40,6 +40,8 @@ import '../screens/mekans/mekan_detail_screen.dart';
 import '../screens/mekans/mekan_arena_screen.dart';
 import '../screens/mekans/mekan_create_screen.dart';
 import '../screens/mekans/my_mekan_screen.dart';
+import '../screens/friends/friends_screen.dart';
+import '../screens/notifications/notifications_screen.dart';
 import '../screens/prison/prison_screen.dart';
 
 import '../screens/pvp/pvp_screen.dart';
@@ -88,6 +90,10 @@ class AppRoutes {
   static const String mekans = '/mekans';
   static const String mekanCreate = '/mekans/create';
   static const String myMekan = '/my-mekan';
+
+  static String mekanDetail(String id) => '$mekans/$id';
+
+  static String mekanArena(String id) => '$mekans/$id/arena';
   static const String characterSelect = '/onboarding/character-select';
   static const String prison = '/prison';
   static const String pvp = '/pvp';
@@ -99,6 +105,8 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String shop = '/shop';
   static const String trade = '/trade';
+  static const String friends = '/friends';
+  static const String notifications = '/notifications';
 }
 
 /// Deduplicates parallel redirect profile lookups during startup.
@@ -178,9 +186,10 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
             return AppRoutes.home;
           }
         } catch (e) {
-          if (!isOnboardingRoute) {
-            return AppRoutes.characterSelect;
-          }
+          // Profil sorgusu düştü (ör. internet yok / timeout). Sınıf seçimine
+          // ZORLAMA — kullanıcı olduğu ekranda kalsın, bağlantı dönünce
+          // sonraki redirect doğru kararı verir.
+          return null;
         }
       }
 
@@ -351,6 +360,14 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     gameRoute(
       path: AppRoutes.prison,
       build: (BuildContext context, GoRouterState state) => const PrisonScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.friends,
+      build: (BuildContext context, GoRouterState state) => const FriendsScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.notifications,
+      build: (BuildContext context, GoRouterState state) => const NotificationsScreen(),
     ),
     gameRoute(
       path: AppRoutes.pvp,

@@ -49,11 +49,17 @@ class InventoryState {
 }
 
 class InventoryAddCheck {
-  const InventoryAddCheck({required this.canAdd, this.reason, this.available});
+  const InventoryAddCheck({
+    required this.canAdd,
+    this.reason,
+    this.available,
+    this.remainingFreeSlots,
+  });
 
   final bool canAdd;
   final String? reason;
   final int? available;
+  final int? remainingFreeSlots;
 }
 
 final Provider<InventoryRepository> inventoryRepositoryProvider =
@@ -110,6 +116,45 @@ class InventoryNotifier extends Notifier<InventoryState> {
   }
 
   InventoryAddCheck canAddItem({required String itemId, int quantity = 1}) {
+    return _canAddItemWithSlotBudget(
+      itemId: itemId,
+      quantity: quantity,
+      remainingFreeSlots: _countFreeInventorySlots(),
+    );
+  }
+
+  InventoryAddCheck canAddBatch(Map<String, int> demandByItemId) {
+    int remainingFreeSlots = _countFreeInventorySlots();
+
+    for (final MapEntry<String, int> entry in demandByItemId.entries) {
+      final InventoryAddCheck check = _canAddItemWithSlotBudget(
+        itemId: entry.key,
+        quantity: entry.value,
+        remainingFreeSlots: remainingFreeSlots,
+      );
+      if (!check.canAdd) return check;
+      remainingFreeSlots = check.remainingFreeSlots ?? remainingFreeSlots;
+    }
+
+    return InventoryAddCheck(
+      canAdd: true,
+      remainingFreeSlots: remainingFreeSlots,
+    );
+  }
+
+  int _countFreeInventorySlots() {
+    final Set<int> occupied = state.items
+        .map((InventoryItem item) => item.slotPosition)
+        .where((int pos) => pos >= 0)
+        .toSet();
+    return inventoryCapacity - occupied.length;
+  }
+
+  InventoryAddCheck _canAddItemWithSlotBudget({
+    required String itemId,
+    required int quantity,
+    required int remainingFreeSlots,
+  }) {
     InventoryItem? template;
     for (final InventoryItem item in state.items) {
       if (item.itemId == itemId) {
@@ -146,39 +191,45 @@ class InventoryNotifier extends Notifier<InventoryState> {
         totalSpace += space;
         remaining -= space;
         if (remaining <= 0) {
-          return InventoryAddCheck(canAdd: true, available: totalSpace);
+          return InventoryAddCheck(
+            canAdd: true,
+            available: totalSpace,
+            remainingFreeSlots: remainingFreeSlots,
+          );
         }
       }
     }
 
     if (remaining <= 0) {
-      return InventoryAddCheck(canAdd: true, available: totalSpace);
+      return InventoryAddCheck(
+        canAdd: true,
+        available: totalSpace,
+        remainingFreeSlots: remainingFreeSlots,
+      );
     }
 
-    final Set<int> occupied = state.items
-        .map((InventoryItem i) => i.slotPosition)
-        .where((int pos) => pos >= 0)
-        .toSet();
-
-    final int freeSlots = inventoryCapacity - occupied.length;
-    if (freeSlots <= 0) {
+    if (remainingFreeSlots <= 0) {
       return InventoryAddCheck(
         canAdd: false,
-        reason: 'Envanter dolu (${occupied.length}/$inventoryCapacity)',
+        reason: 'Envanter dolu ($inventoryCapacity/$inventoryCapacity)',
         available: totalSpace,
       );
     }
 
     final int slotsNeeded = (remaining / maxStack).ceil();
-    if (slotsNeeded > freeSlots) {
+    if (slotsNeeded > remainingFreeSlots) {
       return InventoryAddCheck(
         canAdd: false,
         reason: '$itemName icin yeterli envanter alani yok ($quantity adet)',
-        available: totalSpace + freeSlots * maxStack,
+        available: totalSpace + remainingFreeSlots * maxStack,
       );
     }
 
-    return InventoryAddCheck(canAdd: true, available: totalSpace + freeSlots * maxStack);
+    return InventoryAddCheck(
+      canAdd: true,
+      available: totalSpace + remainingFreeSlots * maxStack,
+      remainingFreeSlots: remainingFreeSlots - slotsNeeded,
+    );
   }
 
   int getItemQuantity(String itemId) {
@@ -336,6 +387,19 @@ class InventoryNotifier extends Notifier<InventoryState> {
         }
         final String rewardName = result.rewardItemName ?? result.rewardItemId ?? 'Odul';
         successMessage = 'Kasa acildi: $rewardName x${result.rewardQuantity}';
+      } else if (isStatResetScroll(item.itemId)) {
+        final UseItemResult resetResult =
+            await _repository.useStatResetScroll(rowId: item.rowId);
+        if (!resetResult.success) {
+          state = state.copyWith(
+            errorMessage: resetResult.message ?? 'Stat sifirlama basarisiz.',
+          );
+          return UseItemResult(
+            success: false,
+            message: resetResult.message,
+          );
+        }
+        successMessage = resetResult.message ?? 'Stat puanlari geri alindi.';
       } else if (item.subType == SubType.detox) {
         final bool success = await _repository.useDetox(rowId: item.rowId);
         if (!success) {

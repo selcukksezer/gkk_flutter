@@ -127,7 +127,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get k_yap => 'Çıkış Yap';
 
   @override
-  String get at_yarisi => 'At Yarisi';
+  String get at_yarisi => 'At Yarışı';
 
   @override
   String get ticaret_i_ste_i => '🤝 Ticaret İsteği';
@@ -236,20 +236,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maceraya_ba_la => 'Maceraya Başla';
 
   @override
-  String get krallik_kapisi => 'Krallik Kapisi';
+  String get krallik_kapisi => 'Kingdom Gate';
 
   @override
   String get hesabina_giris_yap_ve_lonca_gelismelerini_canli_ta =>
-      'Hesabina giris yap ve lonca gelismelerini canli takip et.';
+      'Sign in and follow guild progress live.';
 
   @override
-  String get hesabin_yok_mu_kayit_ol => 'Hesabin yok mu? Kayit Ol';
+  String get hesabin_yok_mu_kayit_ol => 'No account? Register';
 
   @override
-  String get kayit => 'Kayit';
+  String get kayit => 'Register';
 
   @override
-  String get giris_ekranina_don => 'Giris Ekranina Don';
+  String get giris_ekranina_don => 'Back to Sign In';
+
+  @override
+  String get auth_email => 'Email';
+
+  @override
+  String get auth_email_required => 'Email is required.';
+
+  @override
+  String get auth_email_invalid => 'Enter a valid email address.';
+
+  @override
+  String get auth_password => 'Password';
+
+  @override
+  String get auth_password_required => 'Password is required.';
+
+  @override
+  String get auth_password_min_length =>
+      'Password must be at least 6 characters.';
+
+  @override
+  String get auth_username => 'Username';
+
+  @override
+  String get auth_username_required => 'Username is required.';
+
+  @override
+  String get auth_referral_code => 'Referral code (optional)';
+
+  @override
+  String get auth_login_button => 'Sign In';
+
+  @override
+  String get auth_login_loading => 'Signing in...';
+
+  @override
+  String get auth_register_button => 'Register';
+
+  @override
+  String get auth_register_loading => 'Creating account...';
+
+  @override
+  String get auth_register_subtitle =>
+      'Create a new account and join the kingdom.';
+
+  @override
+  String get auth_toggle_password_show => 'Show password';
+
+  @override
+  String get auth_toggle_password_hide => 'Hide password';
+
+  @override
+  String get auth_form_section => 'Details';
 
   @override
   String get miktar => 'Miktar:';
@@ -1158,8 +1211,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get drop_preview => 'Drop Preview';
 
   @override
-  String get drop_listesini_g_rmek_i_in_goster_a_dokun =>
-      'Drop listesini görmek için Goster\\\'a dokun.';
+  String get drop_listesini_gormek_i_in_gostere_dokun =>
+      'Tap Show to view the drop list.';
+
+  @override
+  String get loot_goster => 'Show';
+
+  @override
+  String get loot_gizle => 'Hide';
+
+  @override
+  String get loot_drop_list_empty => 'Drop list is empty.';
+
+  @override
+  String get loot_yukleniyor => 'Loading...';
+
+  @override
+  String get loot_aciliyor => 'Opening...';
+
+  @override
+  String get loot_kasa_ac => 'Open Chest';
+
+  @override
+  String get loot_open_finished_subtitle =>
+      'Chest opened. Your reward is ready.';
+
+  @override
+  String get loot_open_spinning_subtitle => 'Drop reel is spinning...';
+
+  @override
+  String get loot_kazandin => 'You won';
+
+  @override
+  String get loot_locking => 'Locking on final item';
+
+  @override
+  String get loot_odulu_al => 'Claim Reward';
+
+  @override
+  String get loot_odul => 'Reward';
+
+  @override
+  String get loot_elmas => 'Gems';
+
+  @override
+  String get loot_altin => 'Gold';
 
   @override
   String get oyuncu_pazari => 'Oyuncu Pazari';

@@ -12,6 +12,14 @@ class PresenceService with WidgetsBindingObserver {
 
   Timer? _heartbeat;
   bool _started = false;
+  String? _currentMekanId;
+
+  /// Mekan detayına girince çağır; çıkınca null yolla.
+  void setCurrentMekan(String? mekanId) {
+    if (_currentMekanId == mekanId) return;
+    _currentMekanId = mekanId;
+    if (_started) _setOnline(true);
+  }
 
   void start() {
     if (_started) return;
@@ -49,7 +57,10 @@ class PresenceService with WidgetsBindingObserver {
     try {
       await SupabaseService.client.rpc(
         'set_online_status',
-        params: <String, dynamic>{'p_is_online': online},
+        params: <String, dynamic>{
+          'p_is_online': online,
+          'p_mekan_id': online ? _currentMekanId : null,
+        },
       );
     } catch (_) {
       // Non-blocking — next heartbeat retries.

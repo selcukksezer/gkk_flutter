@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/mekan_model.dart';
+import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../providers/mekan_provider.dart';
 import '../../routing/app_router.dart';
@@ -20,6 +21,8 @@ class MekansScreen extends ConsumerStatefulWidget {
 class _MekansScreenState extends ConsumerState<MekansScreen> {
   List<Mekan> _mekans = <Mekan>[];
   List<MekanLeaderboardRow> _leaderboard = <MekanLeaderboardRow>[];
+  Map<String, List<MekanStockPeek>> _stockPreviews =
+      <String, List<MekanStockPeek>>{};
   bool _loading = true;
   String? _error;
   String _filter = 'all';
@@ -45,10 +48,20 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
       } catch (_) {
         // leaderboard RPC optional; ignore if not yet applied
       }
+      Map<String, List<MekanStockPeek>> previews =
+          <String, List<MekanStockPeek>>{};
+      try {
+        previews = await repo.fetchStockPreviews(
+          mekans.map((Mekan m) => m.id).toList(growable: false),
+        );
+      } catch (_) {
+        // önizleme opsiyonel; hata olursa kartlar ikonsuz kalır
+      }
       if (mounted) {
         setState(() {
           _mekans = mekans;
           _leaderboard = lb;
+          _stockPreviews = previews;
           _loading = false;
         });
       }
@@ -67,6 +80,12 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(mekanHubRefreshProvider, (int? prev, int next) {
+      if (prev != null && next != prev) {
+        _load();
+      }
+    });
+
     final int openCount = _mekans.where((Mekan m) => m.isOpen).length;
 
     return MekanHubScaffold(
@@ -121,7 +140,14 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
                   separatorBuilder: (BuildContext context, int index) => const SizedBox(height: 10),
                   itemBuilder: (BuildContext context, int i) {
                     final Mekan m = _filtered[i];
-                    return _MekanRowCard(mekan: m, onTap: () => context.go('/mekans/${m.id}'));
+                    return _MekanRowCard(
+                      mekan: m,
+                      stockPeek: mekanHubVitrinPeek(
+                        m,
+                        _stockPreviews[m.id] ?? const <MekanStockPeek>[],
+                      ),
+                      onTap: () => context.go(AppRoutes.mekanDetail(m.id)),
+                    );
                   },
                 ),
               ),
@@ -356,8 +382,13 @@ class _LeaderRow extends StatelessWidget {
 }
 
 class _MekanRowCard extends StatelessWidget {
-  const _MekanRowCard({required this.mekan, required this.onTap});
+  const _MekanRowCard({
+    required this.mekan,
+    required this.stockPeek,
+    required this.onTap,
+  });
   final Mekan mekan;
+  final List<MekanStockPeek> stockPeek;
   final VoidCallback onTap;
 
   @override
@@ -395,6 +426,46 @@ class _MekanRowCard extends StatelessWidget {
                       GlowChip(icon: Icons.star_rounded, label: '${mekan.fame}', color: MekanPalette.gold),
                     ],
                   ),
+                  if (stockPeek.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: <Widget>[
+                        const Text(
+                          'VİTRİN',
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w900,
+                            color: MekanPalette.textLow,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ...stockPeek.map((MekanStockPeek s) => Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Container(
+                                width: 26,
+                                height: 26,
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: MekanPalette.void_
+                                      .withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(7),
+                                  border: Border.all(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.12),
+                                  ),
+                                ),
+                                child: ItemIconView(
+                                  iconValue: s.icon,
+                                  itemId: s.itemId,
+                                  size: 20,
+                                  fallback: '🧪',
+                                ),
+                              ),
+                            )),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

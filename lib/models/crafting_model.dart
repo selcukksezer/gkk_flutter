@@ -77,6 +77,12 @@ class CraftRecipe {
   final int goldCost;
   final int? xpReward;
 
+  /// DB may store `0.8` or `80` — UI always uses 0–1 fraction.
+  double get normalizedSuccessRate {
+    if (successRate <= 0) return 0.8;
+    return successRate > 1 ? successRate / 100 : successRate;
+  }
+
   factory CraftRecipe.fromJson(Map<String, dynamic> json) {
     final dynamic ingredientsRaw = json['ingredients'];
     final List<CraftIngredient> ingredients = ingredientsRaw is List

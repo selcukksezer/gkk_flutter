@@ -127,7 +127,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get k_yap => 'Çıkış Yap';
 
   @override
-  String get at_yarisi => 'At Yarisi';
+  String get at_yarisi => 'At Yarışı';
 
   @override
   String get ticaret_i_ste_i => '🤝 Ticaret İsteği';
@@ -236,20 +236,71 @@ class AppLocalizationsTr extends AppLocalizations {
   String get maceraya_ba_la => 'Maceraya Başla';
 
   @override
-  String get krallik_kapisi => 'Krallik Kapisi';
+  String get krallik_kapisi => 'Krallık Kapısı';
 
   @override
   String get hesabina_giris_yap_ve_lonca_gelismelerini_canli_ta =>
-      'Hesabina giris yap ve lonca gelismelerini canli takip et.';
+      'Hesabına giriş yap ve lonca gelişmelerini canlı takip et.';
 
   @override
-  String get hesabin_yok_mu_kayit_ol => 'Hesabin yok mu? Kayit Ol';
+  String get hesabin_yok_mu_kayit_ol => 'Hesabın yok mu? Kayıt Ol';
 
   @override
-  String get kayit => 'Kayit';
+  String get kayit => 'Kayıt';
 
   @override
-  String get giris_ekranina_don => 'Giris Ekranina Don';
+  String get giris_ekranina_don => 'Giriş Ekranına Dön';
+
+  @override
+  String get auth_email => 'E-posta';
+
+  @override
+  String get auth_email_required => 'E-posta zorunludur.';
+
+  @override
+  String get auth_email_invalid => 'Geçerli bir e-posta girin.';
+
+  @override
+  String get auth_password => 'Şifre';
+
+  @override
+  String get auth_password_required => 'Şifre zorunludur.';
+
+  @override
+  String get auth_password_min_length => 'Şifre en az 6 karakter olmalı.';
+
+  @override
+  String get auth_username => 'Kullanıcı Adı';
+
+  @override
+  String get auth_username_required => 'Kullanıcı adı zorunludur.';
+
+  @override
+  String get auth_referral_code => 'Referans Kodu (opsiyonel)';
+
+  @override
+  String get auth_login_button => 'Giriş Yap';
+
+  @override
+  String get auth_login_loading => 'Giriş yapılıyor...';
+
+  @override
+  String get auth_register_button => 'Kayıt Ol';
+
+  @override
+  String get auth_register_loading => 'Kayıt yapılıyor...';
+
+  @override
+  String get auth_register_subtitle => 'Yeni hesap oluştur ve krallığa katıl.';
+
+  @override
+  String get auth_toggle_password_show => 'Şifreyi göster';
+
+  @override
+  String get auth_toggle_password_hide => 'Şifreyi gizle';
+
+  @override
+  String get auth_form_section => 'Bilgiler';
 
   @override
   String get miktar => 'Miktar:';
@@ -1155,11 +1206,53 @@ class AppLocalizationsTr extends AppLocalizations {
       'Supabase tarafinda aktif kasa bulunamadı.';
 
   @override
-  String get drop_preview => 'Drop Preview';
+  String get drop_preview => 'Önizleme';
 
   @override
-  String get drop_listesini_g_rmek_i_in_goster_a_dokun =>
-      'Drop listesini görmek için Goster\\\'a dokun.';
+  String get drop_listesini_gormek_i_in_gostere_dokun =>
+      'Drop listesini görmek için Göster\'e dokun.';
+
+  @override
+  String get loot_goster => 'Göster';
+
+  @override
+  String get loot_gizle => 'Gizle';
+
+  @override
+  String get loot_drop_list_empty => 'Drop listesi boş.';
+
+  @override
+  String get loot_yukleniyor => 'Yükleniyor...';
+
+  @override
+  String get loot_aciliyor => 'Açılıyor...';
+
+  @override
+  String get loot_kasa_ac => 'Kasa Aç';
+
+  @override
+  String get loot_open_finished_subtitle => 'Kasa açıldı. Ödülün hazır.';
+
+  @override
+  String get loot_open_spinning_subtitle => 'Drop bandı dönüyor...';
+
+  @override
+  String get loot_kazandin => 'Kazandın';
+
+  @override
+  String get loot_locking => 'Son iteme kilitleniyor';
+
+  @override
+  String get loot_odulu_al => 'Ödülü Al';
+
+  @override
+  String get loot_odul => 'Ödül';
+
+  @override
+  String get loot_elmas => 'Elmas';
+
+  @override
+  String get loot_altin => 'Altın';
 
   @override
   String get oyuncu_pazari => 'Oyuncu Pazari';

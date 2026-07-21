@@ -1,7 +1,26 @@
 import 'package:dio/dio.dart';
 
+import '../services/connectivity_service.dart';
+
 class ApiClient {
-  ApiClient({Dio? dio}) : _dio = dio ?? Dio(_baseOptions());
+  ApiClient({Dio? dio}) : _dio = dio ?? Dio(_baseOptions()) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (RequestOptions options, RequestInterceptorHandler handler) {
+          ConnectivityService.instance.beginRequest();
+          handler.next(options);
+        },
+        onResponse: (Response<dynamic> response, ResponseInterceptorHandler handler) {
+          ConnectivityService.instance.endRequest();
+          handler.next(response);
+        },
+        onError: (DioException err, ErrorInterceptorHandler handler) {
+          ConnectivityService.instance.endRequest();
+          handler.next(err);
+        },
+      ),
+    );
+  }
 
   final Dio _dio;
 

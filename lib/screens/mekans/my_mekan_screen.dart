@@ -127,7 +127,15 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                         controller: _tab,
                         isScrollable: true,
                         tabAlignment: TabAlignment.start,
-                        indicatorColor: accent,
+                        indicator: BoxDecoration(
+                          color: accent.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
                         labelColor: accent,
                         unselectedLabelColor: MekanPalette.textLow,
                         labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
@@ -430,6 +438,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
             _repo.updateStock(mekanId: mekan.id, itemId: itemId, quantity: qty, sellPrice: price),
         onDone: () async {
           await ref.read(playerProvider.notifier).loadProfile();
+          ref.read(mekanHubRefreshProvider.notifier).touch();
           await _load(silent: true);
         },
       ),

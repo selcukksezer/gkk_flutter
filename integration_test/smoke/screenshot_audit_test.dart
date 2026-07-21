@@ -89,6 +89,23 @@ void main() {
           if (err != null) {
             manifest.addFailure('$path → $err');
           }
+          if (path == '/horse-race') {
+            await prepareHorseRaceBettingScreenshot(tester);
+            await captureRouteScreenshot(
+              binding: binding,
+              tester: tester,
+              routePath: path,
+              manifest: manifest,
+            );
+            await captureRouteScreenshot(
+              binding: binding,
+              tester: tester,
+              routePath: path,
+              slugOverride: 'horse_race_betting',
+              manifest: manifest,
+            );
+            continue;
+          }
           await captureRouteScreenshot(
             binding: binding,
             tester: tester,

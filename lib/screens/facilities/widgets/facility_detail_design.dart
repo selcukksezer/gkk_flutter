@@ -4,33 +4,7 @@ import '../../../components/layout/game_screen_background.dart';
 import '../../../theme/app_colors.dart';
 import 'facilities_ui.dart';
 
-/// Kare grid — home kutu banner stili.
-class FacSquareGridPainter extends CustomPainter {
-  const FacSquareGridPainter({this.cell = 18, this.opacity = 0.06});
-
-  final double cell;
-  final double opacity;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = Colors.white.withValues(alpha: opacity)
-      ..strokeWidth = 1;
-
-    for (double x = 0; x <= size.width; x += cell) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y <= size.height; y += cell) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant FacSquareGridPainter oldDelegate) =>
-      cell != oldDelegate.cell || opacity != oldDelegate.opacity;
-}
-
-/// Gradient + kare grid kabuk — mekan/home banner hissi.
+/// Gradient + dot doku kabuk — /tasarim uyumlu (kare grid yok).
 class FacGridBanner extends StatelessWidget {
   const FacGridBanner({
     super.key,
@@ -79,7 +53,9 @@ class FacGridBanner extends StatelessWidget {
           fit: height == null ? StackFit.passthrough : StackFit.expand,
           children: <Widget>[
             const Positioned.fill(
-              child: CustomPaint(painter: FacSquareGridPainter()),
+              child: CustomPaint(
+                painter: DotGridPainter(spacing: 14, dotOpacity: 0.055),
+              ),
             ),
             Padding(
               padding: padding ?? FacilitiesUi.panelPadding,

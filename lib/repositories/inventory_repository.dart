@@ -51,6 +51,8 @@ class UseItemResult {
 }
 
 bool isInventoryLootBox(String itemId) => itemId.startsWith('box_');
+const String kStatResetScrollItemId = 'scroll_stat_reset';
+bool isStatResetScroll(String itemId) => itemId == kStatResetScrollItemId;
 
 abstract class InventoryRepository {
   Future<InventorySnapshot> fetchInventory();
@@ -64,6 +66,7 @@ abstract class InventoryRepository {
   Future<bool> usePotion({required String rowId});
   Future<OpenLootBoxResult> openLootBox({required String rowId});
   Future<bool> useDetox({required String rowId});
+  Future<UseItemResult> useStatResetScroll({required String rowId});
   Future<bool> splitStack({required String rowId, required int splitQuantity, required int targetSlot});
   Future<SellItemResult> sellItemByRow({required String rowId, required int quantity});
   Future<bool> trashItem({required String rowId});
@@ -73,31 +76,12 @@ abstract class InventoryRepository {
 class SupabaseInventoryRepository implements InventoryRepository {
   @override
   Future<bool> addItemToServer({required String itemId, required int quantity, int? slotPosition}) async {
-    if (quantity <= 0) {
-      // DB check constraint (inventory_quantity_check) requires quantity > 0.
-      // Zero/negative deltas are treated as no-op on client.
-      return true;
-    }
-
-    if (!SupabaseService.isConfigured || !SupabaseService.isInitialized) {
-      throw AppException(
-        'Supabase baglantisi hazir degil. Once app_constants.dart degerlerini guncelleyin.',
-        code: 'SUPABASE_NOT_CONFIGURED',
-      );
-    }
-
-    try {
-      await SupabaseService.client.rpc('add_inventory_item_v2', params: <String, dynamic>{
-        'item_data': <String, dynamic>{
-          'item_id': itemId,
-          'quantity': quantity,
-        },
-        'p_slot_position': slotPosition,
-      });
-      return true;
-    } catch (_) {
-      throw AppException('Oge envantere eklenemedi.', code: 'INVENTORY_ADD_ITEM_FAILED');
-    }
+    // Client must not call mint RPC (add_inventory_item_v2 EXECUTE revoked).
+    // Inventory grants happen only via secure server RPCs (shop, collect, loot…).
+    throw AppException(
+      'Envanter mint istemciden kapalı. Sunucu RPC kullan.',
+      code: 'INVENTORY_CLIENT_MINT_DISABLED',
+    );
   }
 
   @override
@@ -407,6 +391,56 @@ class SupabaseInventoryRepository implements InventoryRepository {
       rethrow;
     } catch (_) {
       throw AppException('Detox kullanimi basarisiz.', code: 'INVENTORY_USE_DETOX_FAILED');
+    }
+  }
+
+  @override
+  Future<UseItemResult> useStatResetScroll({required String rowId}) async {
+    if (!SupabaseService.isConfigured || !SupabaseService.isInitialized) {
+      throw AppException(
+        'Supabase baglantisi hazir degil. Once app_constants.dart degerlerini guncelleyin.',
+        code: 'SUPABASE_NOT_CONFIGURED',
+      );
+    }
+
+    try {
+      final String? userId = SupabaseService.client.auth.currentUser?.id;
+      if (userId == null) {
+        throw AppException('Oturum bulunamadi.', code: 'NOT_AUTHENTICATED');
+      }
+
+      final dynamic result = await SupabaseService.client.rpc(
+        'use_stat_reset_scroll',
+        params: <String, dynamic>{
+          'p_row_id': rowId,
+          'p_user_id': userId,
+        },
+      );
+
+      if (result is! Map) {
+        return const UseItemResult(success: false, message: 'Gecersiz yanit');
+      }
+
+      final Map<String, dynamic> data = Map<String, dynamic>.from(result);
+      if (data['success'] == true) {
+        return UseItemResult(
+          success: true,
+          message: data['message']?.toString() ??
+              '${data['refunded'] ?? ''} stat puani geri alindi.',
+        );
+      }
+
+      return UseItemResult(
+        success: false,
+        message: data['error']?.toString() ?? 'Stat sifirlama basarisiz.',
+      );
+    } on AppException {
+      rethrow;
+    } catch (_) {
+      throw AppException(
+        'Stat sifirlama basarisiz.',
+        code: 'INVENTORY_USE_STAT_RESET_FAILED',
+      );
     }
   }
 

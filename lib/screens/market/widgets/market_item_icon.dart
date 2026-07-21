@@ -109,8 +109,3 @@ class MarketItemIcon extends StatelessWidget {
     );
   }
 }
-
-ItemType? marketItemTypeFromString(String? value) {
-  if (value == null || value.isEmpty) return null;
-  return ItemTypeParsing.fromValue(value);
-}

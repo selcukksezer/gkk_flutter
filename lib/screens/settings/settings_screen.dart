@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
+import '../../core/services/game_notification_scheduler.dart';
+import '../../core/services/local_notification_service.dart';
+import '../../core/services/music_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -23,10 +28,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double _musicVolume = 0.7;
-  double _sfxVolume = 0.8;
   bool _muteAll = false;
   bool _notifications = true;
-  bool _autoBattle = false;
 
   late TextEditingController _nameController;
   bool _savingName = false;
@@ -38,6 +41,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final profile = ref.read(playerProvider).profile;
     final name = profile?.displayName ?? profile?.username ?? '';
     _nameController = TextEditingController(text: name);
+    _musicVolume = MusicService.instance.volume;
+    _muteAll = MusicService.instance.muted;
+    unawaited(_loadNotificationPref());
+  }
+
+  Future<void> _loadNotificationPref() async {
+    await LocalNotificationService.instance.loadEnabledPreference();
+    if (!mounted) return;
+    setState(() => _notifications = LocalNotificationService.instance.isEnabled);
   }
 
   @override
@@ -157,20 +169,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   value: _muteAll ? 0.0 : _musicVolume,
                   onChanged: _muteAll
                       ? null
-                      : (v) => setState(() => _musicVolume = v),
+                      : (v) {
+                          setState(() => _musicVolume = v);
+                          MusicService.instance.setVolume(v);
+                        },
                 ),
                 _sliderTile(
-                  label: '🔔 Efektler ${(_sfxVolume * 100).round()}%',
-                  value: _muteAll ? 0.0 : _sfxVolume,
-                  onChanged: _muteAll
-                      ? null
-                      : (v) => setState(() => _sfxVolume = v),
+                  label: '🔔 Efektler (yakında)',
+                  value: 0.0,
+                  onChanged: null,
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(context.l10n.t_m_sesleri_kapat),
                   value: _muteAll,
-                  onChanged: (v) => setState(() => _muteAll = v),
+                  onChanged: (v) {
+                    setState(() => _muteAll = v);
+                    MusicService.instance.setMuted(v);
+                  },
                 ),
               ],
             ),
@@ -182,17 +198,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: Text(context.l10n.bildirimler),
                   value: _notifications,
-                  onChanged: (v) => setState(() => _notifications = v),
+                  onChanged: (bool v) async {
+                    setState(() => _notifications = v);
+                    await LocalNotificationService.instance.setEnabled(v);
+                    if (v) {
+                      final profile = ref.read(playerProvider).profile;
+                      await GameNotificationScheduler.instance.syncAll(profile: profile);
+                    }
+                  },
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(context.l10n.otomatik_sava),
+                  title: Text('${context.l10n.otomatik_sava} (yakında)'),
                   subtitle: const Text(
-                    'PvP ve zindan savaşlarını otomatik yönet',
+                    'PvP ve zindan otomatik savaş henüz bağlı değil',
                     style: TextStyle(color: Colors.white38, fontSize: 12),
                   ),
-                  value: _autoBattle,
-                  onChanged: (v) => setState(() => _autoBattle = v),
+                  value: false,
+                  onChanged: null,
                 ),
               ],
             ),

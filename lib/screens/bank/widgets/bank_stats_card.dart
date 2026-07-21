@@ -25,9 +25,12 @@ class BankStatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int freeSlots = (totalSlots - usedSlots).clamp(0, maxSlots);
+    final int lockedSlots = (maxSlots - totalSlots).clamp(0, maxSlots);
     final double fillPct = totalSlots > 0
         ? (usedSlots / totalSlots).clamp(0.0, 1.0)
         : 0.0;
+    final bool canExpand = totalSlots < maxSlots;
+    final int nextSlot = bankNextSlotIndex(totalSlots);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -88,11 +91,22 @@ class BankStatsCard extends StatelessWidget {
                           minHeight: 7,
                         ),
                       ),
+                      if (canExpand) ...<Widget>[
+                        const SizedBox(height: 8),
+                        Text(
+                          '$lockedSlots kilitli slot · $bankSlotUnlockCost 💎 / slot',
+                          style: TextStyle(
+                            color: BankDesign.gold.withValues(alpha: 0.85),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 12),
-                if (totalSlots < maxSlots && fillPct >= 0.8)
+                if (canExpand)
                   FilledButton(
                     onPressed: (expanding || actionInProgress) ? null : onExpand,
                     style: FilledButton.styleFrom(
@@ -112,12 +126,27 @@ class BankStatsCard extends StatelessWidget {
                               color: AppColors.carbonVoid,
                             ),
                           )
-                        : Text(
-                            'Genişlet ${bankExpandCost(totalSlots)} 💎',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                'Slot aç',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                '$bankSlotUnlockCost 💎 · Slot $nextSlot',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.carbonVoid.withValues(
+                                    alpha: 0.82,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                   )
                 else

@@ -245,6 +245,7 @@ class SupabaseMarketRepository implements MarketRepository {
 
   String _parseRpcError(Object error) {
     final String raw = error.toString();
+    if (raw.contains('captcha_required')) return 'captcha_required';
     if (raw.contains('Giris yapmalisiniz')) return 'Giris yapmalisiniz';
     if (raw.contains('Yeterli altin yok')) return 'Yeterli altin yok';
     if (raw.contains('Envanter dolu')) return 'Envanter dolu veya esya eklenemiyor';

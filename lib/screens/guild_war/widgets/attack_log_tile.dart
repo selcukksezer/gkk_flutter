@@ -15,17 +15,22 @@ class AttackLogTile extends StatelessWidget {
   final GuildWarAttackLog log;
   final String? myGuildId;
 
-  bool get _weWon => myGuildId != null && log.attackerGuildId == myGuildId && log.success;
+  bool get _weWon =>
+      myGuildId != null &&
+      ((log.attackerGuildId == myGuildId && log.success) ||
+          (log.defenderGuildId == myGuildId && !log.success));
 
   bool get _weLost =>
-      myGuildId != null && log.defenderGuildId == myGuildId && !log.success;
+        myGuildId != null &&
+        ((log.attackerGuildId == myGuildId && !log.success) ||
+          (log.defenderGuildId == myGuildId && log.success));
 
   String _timeAgo(DateTime dt) {
     final Duration diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return 'Az önce';
     if (diff.inHours < 1) return '${diff.inMinutes}dk önce';
     if (diff.inDays < 1) return '${diff.inHours}sa önce';
-    return '${diff.inDays}g önce';
+    return '${diff.inDays} gün önce';
   }
 
   @override

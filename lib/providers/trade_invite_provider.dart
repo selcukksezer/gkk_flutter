@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/services/app_foreground_service.dart';
 import '../core/services/supabase_service.dart';
 import 'auth_provider.dart';
 
@@ -95,9 +96,19 @@ List<TradeInvite> parseTradeInvites(dynamic raw) {
 class TradeInviteNotifier extends Notifier<TradeInviteState> {
   Timer? _pollTimer;
   StreamSubscription<dynamic>? _authSub;
+  static const Duration _pollInterval = Duration(seconds: 5);
+
+  void _onForegroundChanged() {
+    if (AppForegroundService.instance.isForeground) {
+      _syncPolling();
+    } else {
+      stopPolling();
+    }
+  }
 
   @override
   TradeInviteState build() {
+    AppForegroundService.instance.addListener(_onForegroundChanged);
     ref.listen<AuthState>(authProvider, (AuthState? prev, AuthState next) {
       _syncPolling();
     });
@@ -107,6 +118,7 @@ class TradeInviteNotifier extends Notifier<TradeInviteState> {
       _authSub = SupabaseService.client.auth.onAuthStateChange.listen((_) => _syncPolling());
     }
     ref.onDispose(() {
+      AppForegroundService.instance.removeListener(_onForegroundChanged);
       stopPolling();
       _authSub?.cancel();
     });
@@ -128,8 +140,13 @@ class TradeInviteNotifier extends Notifier<TradeInviteState> {
 
   void startPolling() {
     if (_pollTimer != null) return;
+    if (!AppForegroundService.instance.isForeground) return;
     state = state.copyWith(isPolling: true);
-    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) => pollInvites());
+    _pollTimer = Timer.periodic(_pollInterval, (_) {
+      if (AppForegroundService.instance.isForeground) {
+        pollInvites();
+      }
+    });
     pollInvites();
   }
 

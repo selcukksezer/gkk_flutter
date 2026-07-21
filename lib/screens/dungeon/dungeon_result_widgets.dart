@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../components/common/item_icon_view.dart';
 import '../../models/dungeon_model.dart';
 import 'dungeon_item_utils.dart';
 import 'dungeon_victory_effects.dart';
@@ -232,9 +233,15 @@ class _DungeonItemRevealListState extends State<DungeonItemRevealList> {
                 ),
                 child: Row(
                   children: <Widget>[
-                    Text(
-                      epicPlus ? '✦' : '◆',
-                      style: TextStyle(color: color, fontSize: 14),
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: ItemIconView(
+                        iconValue: '',
+                        itemId: item.itemId,
+                        size: 24,
+                        fallback: epicPlus ? '✦' : '◆',
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -247,6 +254,27 @@ class _DungeonItemRevealListState extends State<DungeonItemRevealList> {
                         ),
                       ),
                     ),
+                    if (item.quantity > 1) ...<Widget>[
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(6),
+                          border:
+                              Border.all(color: color.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          'x${item.quantity}',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
                     Text(
                       item.rarity.toUpperCase(),
                       style: TextStyle(

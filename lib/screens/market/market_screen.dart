@@ -9,9 +9,8 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/market_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
-import '../../theme/app_colors.dart';
 import 'widgets/market_browse_tab.dart';
-import 'widgets/market_helpers.dart';
+import 'widgets/market_design.dart';
 import 'widgets/market_my_market_tab.dart';
 import 'widgets/market_sell_tab.dart';
 import 'widgets/market_tab_bar.dart';
@@ -61,6 +60,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   @override
   Widget build(BuildContext context) {
     final int gold = ref.watch(playerProvider).profile?.gold ?? 0;
+    final int listingCount = ref.watch(marketProvider).tickers.length;
 
     return Scaffold(
       appBar: GameTopBar(title: context.l10n.routeMarket, onLogout: _logout),
@@ -70,39 +70,10 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
         child: ListView(
           padding: GameScrollLayout.fromLTRB(context, left: 12, top: 8, right: 12),
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                const Expanded(
-                  child: Text(
-                    'Oyuncu Pazari',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.goldGlow,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.goldDim.withValues(alpha: 0.35)),
-                  ),
-                  child: Text(
-                    formatMarketGold(gold),
-                    style: const TextStyle(
-                      color: AppColors.gold,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+            MarketHeroBanner(listingCount: listingCount, goldBalance: gold),
+            const SizedBox(height: 10),
             MarketTabBar(activeTab: _tab, onTabChanged: _onTabChanged),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             if (_tab == MarketTab.browse) const MarketBrowseTab(),
             if (_tab == MarketTab.sell) const MarketSellTab(),
             if (_tab == MarketTab.myMarket) const MarketMyMarketTab(),

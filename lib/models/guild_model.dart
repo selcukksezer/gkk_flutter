@@ -126,6 +126,27 @@ class GuildMemberData {
   }
 }
 
+GuildMemberData? guildMembershipForPlayer(GuildData guild, String playerId) {
+  if (playerId.isEmpty || guild.members == null) return null;
+  for (final GuildMemberData member in guild.members!) {
+    if (member.playerId == playerId) return member;
+  }
+  return null;
+}
+
+GuildRole guildRoleFromProfile(String? profileGuildRole) => _parseGuildRole(profileGuildRole);
+
+/// Tek kaynak önceliği: üye listesi → profil `guildRole`.
+GuildRole resolveMyGuildRole({
+  required GuildData guild,
+  required String playerId,
+  String? profileGuildRole,
+}) {
+  final GuildMemberData? membership = guildMembershipForPlayer(guild, playerId);
+  if (membership != null) return membership.role;
+  return guildRoleFromProfile(profileGuildRole);
+}
+
 class GuildData {
   const GuildData({
     required this.guildId,
@@ -286,6 +307,20 @@ abstract final class MonumentDailyLimits {
   static const int mystical = 200;
   static const int critical = 50;
   static const int gold = 10000000;
+}
+
+/// Lonca ekonomisi — `create_guild` RPC ile uyumlu.
+abstract final class GuildEconomyConstants {
+  static const int createCostGold = 10000000;
+}
+
+class GuildConfig {
+  const GuildConfig({required this.createCostGold});
+
+  final int createCostGold;
+
+  static const GuildConfig defaults =
+      GuildConfig(createCostGold: GuildEconomyConstants.createCostGold);
 }
 
 enum MonumentResourceKind { structural, mystical, critical, gold }

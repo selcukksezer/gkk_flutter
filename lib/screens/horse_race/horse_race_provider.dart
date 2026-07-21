@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/supabase_service.dart';
+import '../../qa/qa_flags.dart';
 
 int _asInt(dynamic value, {int fallback = 0}) {
   if (value is int) return value;
@@ -19,6 +20,8 @@ double _asDouble(dynamic value, {double fallback = 0}) {
 }
 
 enum HorseRacePhase { betting, locked, racing, finished, unknown }
+
+enum HorseRaceUiPhase { bettingBoard, live, result }
 
 HorseRacePhase _phaseFrom(String? raw) {
   switch (raw) {
@@ -341,7 +344,11 @@ class HorseRaceState {
     this.horses = const <HorseRaceEntry>[],
     this.myBet,
     this.recentWinners = const <HorseRaceRecentWinner>[],
-  });
+    HorseRaceUiPhase uiPhase = HorseRaceUiPhase.bettingBoard,
+    this.activeBettingRoundId,
+    this.lastAutoLiveRoundId,
+    this.dismissedResultRoundId,
+  }) : _uiPhase = uiPhase;
 
   final bool loading;
   final String? error;
@@ -350,6 +357,16 @@ class HorseRaceState {
   final List<HorseRaceEntry> horses;
   final HorseRaceBet? myBet;
   final List<HorseRaceRecentWinner> recentWinners;
+  final HorseRaceUiPhase? _uiPhase;
+  final String? activeBettingRoundId;
+  final String? lastAutoLiveRoundId;
+  final String? dismissedResultRoundId;
+
+  /// Hot-reload safe — stale state may have null [_uiPhase].
+  HorseRaceUiPhase get uiPhase => _uiPhase ?? HorseRaceUiPhase.bettingBoard;
+
+  bool get isImmersiveUi =>
+      uiPhase == HorseRaceUiPhase.live || uiPhase == HorseRaceUiPhase.result;
 
   HorseRaceState copyWith({
     bool? loading,
@@ -359,6 +376,10 @@ class HorseRaceState {
     List<HorseRaceEntry>? horses,
     HorseRaceBet? myBet,
     List<HorseRaceRecentWinner>? recentWinners,
+    HorseRaceUiPhase? uiPhase,
+    String? activeBettingRoundId,
+    String? lastAutoLiveRoundId,
+    String? dismissedResultRoundId,
     bool clearMyBet = false,
   }) {
     return HorseRaceState(
@@ -369,6 +390,10 @@ class HorseRaceState {
       horses: horses ?? this.horses,
       myBet: clearMyBet ? null : (myBet ?? this.myBet),
       recentWinners: recentWinners ?? this.recentWinners,
+      uiPhase: uiPhase ?? this.uiPhase,
+      activeBettingRoundId: activeBettingRoundId ?? this.activeBettingRoundId,
+      lastAutoLiveRoundId: lastAutoLiveRoundId ?? this.lastAutoLiveRoundId,
+      dismissedResultRoundId: dismissedResultRoundId ?? this.dismissedResultRoundId,
     );
   }
 }
@@ -438,8 +463,9 @@ class HorseRaceNotifier extends Notifier<HorseRaceState> {
         myBet = null;
       }
 
-      state = HorseRaceState(
+      state = state.copyWith(
         loading: false,
+        error: null,
         settings: HorseRaceSettings.fromMap(
           data['settings'] is Map ? Map<String, dynamic>.from(data['settings'] as Map) : null,
         ),
@@ -449,10 +475,71 @@ class HorseRaceNotifier extends Notifier<HorseRaceState> {
         horses: horses,
         myBet: myBet,
         recentWinners: recent,
+        clearMyBet: betRaw == null,
       );
+      _syncUiPhaseFromRound();
     } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
     }
+  }
+
+  void _syncUiPhaseFromRound() {
+    if (QaFlags.skipHorseRaceLiveOverlay) {
+      if (state.uiPhase != HorseRaceUiPhase.bettingBoard) {
+        state = state.copyWith(uiPhase: HorseRaceUiPhase.bettingBoard);
+      }
+      return;
+    }
+
+    final HorseRacePhase serverPhase = state.round.phase;
+    final String roundId = state.round.id;
+    if (roundId.isEmpty) return;
+
+    if (serverPhase == HorseRacePhase.racing) {
+      if (state.uiPhase != HorseRaceUiPhase.live &&
+          state.lastAutoLiveRoundId != roundId) {
+        state = state.copyWith(
+          uiPhase: HorseRaceUiPhase.live,
+          lastAutoLiveRoundId: roundId,
+        );
+      }
+      return;
+    }
+
+    if (serverPhase == HorseRacePhase.finished &&
+        state.uiPhase != HorseRaceUiPhase.live &&
+        state.uiPhase != HorseRaceUiPhase.result &&
+        state.dismissedResultRoundId != roundId) {
+      state = state.copyWith(uiPhase: HorseRaceUiPhase.result);
+      return;
+    }
+
+    if (serverPhase == HorseRacePhase.betting) {
+      final bool newRound =
+          state.activeBettingRoundId != null && state.activeBettingRoundId != roundId;
+      state = state.copyWith(
+        uiPhase: HorseRaceUiPhase.bettingBoard,
+        activeBettingRoundId: roundId,
+        lastAutoLiveRoundId: newRound ? null : state.lastAutoLiveRoundId,
+      );
+    }
+  }
+
+  void dismissLiveRace() {
+    if (state.uiPhase == HorseRaceUiPhase.live) {
+      state = state.copyWith(uiPhase: HorseRaceUiPhase.bettingBoard);
+    }
+  }
+
+  void showResultOverlay() {
+    state = state.copyWith(uiPhase: HorseRaceUiPhase.result);
+  }
+
+  void dismissResultOverlay() {
+    state = state.copyWith(
+      uiPhase: HorseRaceUiPhase.bettingBoard,
+      dismissedResultRoundId: state.round.id,
+    );
   }
 
   Future<Map<String, dynamic>> placeBet({

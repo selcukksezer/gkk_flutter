@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../core/services/supabase_service.dart';
 import '../models/guild_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,12 +90,14 @@ class MonumentMyStats {
     required this.totals,
     required this.today,
     required this.wallet,
+    required this.dailyLimits,
     required this.contributionScore,
   });
 
   final MonumentResourceSnapshot totals;
   final MonumentResourceSnapshot today;
   final MonumentResourceSnapshot wallet;
+  final MonumentResourceSnapshot dailyLimits;
   final int contributionScore;
 
   int donatedTotal(MonumentResourceKind kind) => totals.forKind(kind);
@@ -102,8 +106,10 @@ class MonumentMyStats {
 
   int owned(MonumentResourceKind kind) => wallet.forKind(kind);
 
+  int dailyMax(MonumentResourceKind kind) => dailyLimits.forKind(kind);
+
   int dailyLeft(MonumentResourceKind kind) {
-    final int max = kind.dailyMax;
+    final int max = dailyMax(kind);
     return (max - donatedToday(kind)).clamp(0, max);
   }
 
@@ -133,31 +139,33 @@ class MonumentDashboard {
   final Map<String, dynamic>? nextCost;
 
   factory MonumentDashboard.fromRpc(Map<String, dynamic> json) {
-    final Map<String, dynamic> guildJson =
-        Map<String, dynamic>.from(json['guild'] as Map? ?? <String, dynamic>{});
-    final dynamic rawNext = json['next_cost'];
-    final Map<String, dynamic> totalsJson =
-        Map<String, dynamic>.from(json['my_totals'] as Map? ?? <String, dynamic>{});
+    final Map<String, dynamic> guildJson = _asStringKeyMap(json['guild']) ?? <String, dynamic>{};
+    final Map<String, dynamic> totalsJson = _asStringKeyMap(json['my_totals']) ?? <String, dynamic>{};
+    final List<dynamic> contributorRows =
+        json['contributors'] is List ? json['contributors'] as List<dynamic> : <dynamic>[];
+    final List<dynamic> blueprintRows =
+        json['blueprints'] is List ? json['blueprints'] as List<dynamic> : <dynamic>[];
     return MonumentDashboard(
       guild: MonumentGuildSnapshot.fromJson(guildJson),
       memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
-      contributors: (json['contributors'] as List<dynamic>? ?? <dynamic>[])
-          .map((dynamic e) => MonumentContributor.fromJson(Map<String, dynamic>.from(e as Map)))
+      contributors: contributorRows
+          .map(_asStringKeyMap)
+          .whereType<Map<String, dynamic>>()
+          .map(MonumentContributor.fromJson)
           .toList(),
-      blueprints: (json['blueprints'] as List<dynamic>? ?? <dynamic>[])
-          .map((dynamic e) => MonumentBlueprint.fromJson(Map<String, dynamic>.from(e as Map)))
+      blueprints: blueprintRows
+          .map(_asStringKeyMap)
+          .whereType<Map<String, dynamic>>()
+          .map(MonumentBlueprint.fromJson)
           .toList(),
       myStats: MonumentMyStats(
         totals: MonumentResourceSnapshot.fromJson(totalsJson),
-        today: MonumentResourceSnapshot.fromJson(
-          Map<String, dynamic>.from(json['my_today'] as Map? ?? <String, dynamic>{}),
-        ),
-        wallet: MonumentResourceSnapshot.fromJson(
-          Map<String, dynamic>.from(json['my_wallet'] as Map? ?? <String, dynamic>{}),
-        ),
+        today: MonumentResourceSnapshot.fromJson(_asStringKeyMap(json['my_today'])),
+        wallet: MonumentResourceSnapshot.fromJson(_asStringKeyMap(json['my_wallet'])),
+        dailyLimits: _parseDailyLimits(json['daily_limits']),
         contributionScore: (totalsJson['contribution_score'] as num?)?.toInt() ?? 0,
       ),
-      nextCost: rawNext is Map ? Map<String, dynamic>.from(rawNext) : null,
+      nextCost: _asStringKeyMap(json['next_cost']),
     );
   }
 }
@@ -289,6 +297,16 @@ class MonumentDonateResult {
   }
 }
 
+class MonumentUpgradeResult {
+  const MonumentUpgradeResult({required this.newLevel});
+
+  final int newLevel;
+
+  factory MonumentUpgradeResult.fromRpc(Map<String, dynamic> json) {
+    return MonumentUpgradeResult(newLevel: (json['new_level'] as num?)?.toInt() ?? 0);
+  }
+}
+
 abstract class GuildMonumentRepository {
   Future<MonumentDashboard> fetchDashboard(String guildId);
 
@@ -298,6 +316,47 @@ abstract class GuildMonumentRepository {
     required int critical,
     required int gold,
   });
+
+  Future<int> upgradeMonument({required String userId});
+}
+
+Map<String, dynamic>? _asStringKeyMap(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return null;
+}
+
+MonumentResourceSnapshot _parseDailyLimits(dynamic raw) {
+  final MonumentResourceSnapshot parsed =
+      MonumentResourceSnapshot.fromJson(_asStringKeyMap(raw));
+  if (parsed.structural > 0 || parsed.mystical > 0 || parsed.critical > 0 || parsed.gold > 0) {
+    return parsed;
+  }
+  return const MonumentResourceSnapshot(
+    structural: MonumentDailyLimits.structural,
+    mystical: MonumentDailyLimits.mystical,
+    critical: MonumentDailyLimits.critical,
+    gold: MonumentDailyLimits.gold,
+  );
+}
+
+Map<String, dynamic> _rpcPayload(dynamic raw) {
+  dynamic value = raw;
+  if (value is List && value.isNotEmpty) {
+    value = value.first;
+  }
+  if (value is String) {
+    try {
+      value = jsonDecode(value);
+    } catch (_) {
+      throw Exception('Anıt verileri işlenemedi');
+    }
+  }
+  final Map<String, dynamic>? map = _asStringKeyMap(value);
+  if (map == null) {
+    throw Exception('Anıt verileri işlenemedi');
+  }
+  return map;
 }
 
 class SupabaseGuildMonumentRepository implements GuildMonumentRepository {
@@ -307,10 +366,7 @@ class SupabaseGuildMonumentRepository implements GuildMonumentRepository {
       'get_monument_dashboard',
       params: <String, dynamic>{'p_guild_id': guildId},
     );
-    if (raw is! Map) {
-      throw Exception('Anıt verileri işlenemedi');
-    }
-    final Map<String, dynamic> payload = Map<String, dynamic>.from(raw);
+    final Map<String, dynamic> payload = _rpcPayload(raw);
     if (payload['success'] != true) {
       throw Exception((payload['error'] ?? 'Anıt verileri yüklenemedi').toString());
     }
@@ -324,13 +380,13 @@ class SupabaseGuildMonumentRepository implements GuildMonumentRepository {
     required int critical,
     required int gold,
   }) async {
-    final user = SupabaseService.client.auth.currentUser;
-    if (user == null) throw Exception('Oturum yok');
+    if (SupabaseService.client.auth.currentUser == null) {
+      throw Exception('Oturum yok');
+    }
 
     final dynamic raw = await SupabaseService.client.rpc(
       'donate_to_monument',
       params: <String, dynamic>{
-        'p_user_id': user.id,
         'p_structural': structural,
         'p_mystical': mystical,
         'p_critical': critical,
@@ -343,6 +399,22 @@ class SupabaseGuildMonumentRepository implements GuildMonumentRepository {
       throw Exception((result['error'] ?? 'Bağış başarısız').toString());
     }
     return MonumentDonateResult.fromRpc(result);
+  }
+
+  @override
+  Future<int> upgradeMonument({required String userId}) async {
+    final dynamic raw = await SupabaseService.client.rpc(
+      'upgrade_monument',
+      params: <String, dynamic>{'p_user_id': userId},
+    );
+    if (raw is! Map) {
+      throw Exception('Yükseltme yanıtı işlenemedi');
+    }
+    final Map<String, dynamic> result = Map<String, dynamic>.from(raw);
+    if (result['success'] != true) {
+      throw Exception((result['error'] ?? 'Yükseltme başarısız').toString());
+    }
+    return MonumentUpgradeResult.fromRpc(result).newLevel;
   }
 }
 
@@ -364,7 +436,7 @@ Future<MonumentDonateResult> monumentDonateKind({
   final int capped = monumentDonateCap(
     owned: stats.owned(kind),
     donatedToday: stats.donatedToday(kind),
-    dailyMax: kind.dailyMax,
+    dailyMax: stats.dailyMax(kind),
     requested: amount,
   );
   if (capped <= 0) {

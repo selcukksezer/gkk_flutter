@@ -5,16 +5,26 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'components/common/connectivity_gate.dart';
+import 'components/common/level_up_host.dart';
+import 'core/tutorial/tutorial_host.dart';
+import 'components/notifications/notification_inbox_host.dart';
+import 'components/notifications/phone_notification_sync.dart';
+import 'components/pvp/pvp_invite_host.dart';
 import 'components/trade/trade_invite_host.dart';
+import 'core/services/app_foreground_service.dart';
+import 'core/services/music_service.dart';
 import 'core/services/presence_service.dart';
 import 'core/services/supabase_service.dart';
 import 'l10n/l10n.dart';
 import 'providers/locale_provider.dart';
 import 'routing/app_router.dart';
+import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppForegroundService.instance.start();
   await SupabaseService.initialize();
 
   runApp(const ProviderScope(child: GkkMobileApp()));
@@ -46,6 +56,7 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
         SupabaseService.client.auth.currentSession != null) {
       PresenceService.instance.start();
     }
+    unawaited(MusicService.instance.start());
     _presenceAuthSub = authRefreshStream.listen((_) {
       if (!SupabaseService.isInitialized) return;
       if (SupabaseService.client.auth.currentSession != null) {
@@ -68,20 +79,43 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
   Widget build(BuildContext context) {
     final Locale locale = ref.watch(localeProvider);
 
-    return TradeInviteHost(
-      child: MaterialApp.router(
-        title: 'GKK Mobile',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        locale: locale,
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        routerConfig: _router,
+    return PhoneNotificationSync(
+      child: NotificationInboxHost(
+        child: PvpInviteHost(
+          child: TradeInviteHost(
+            child: MaterialApp.router(
+          title: 'GKK Mobile',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.dark,
+          locale: locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          builder: (BuildContext context, Widget? child) {
+            return TutorialHost(
+              child: LevelUpHost(
+                child: ConnectivityGate(
+                  child: child ??
+                      const ColoredBox(
+                        color: AppColors.carbonVoid,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.liquidGold,
+                          ),
+                        ),
+                      ),
+                ),
+              ),
+            );
+          },
+          routerConfig: _router,
+            ),
+          ),
+        ),
       ),
     );
   }

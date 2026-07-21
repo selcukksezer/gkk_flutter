@@ -107,10 +107,12 @@ Widget monumentEmptyState({
   );
 }
 
-Widget monumentErrorState({required VoidCallback onRetry}) {
+Widget monumentErrorState({required VoidCallback onRetry, String? message}) {
   return monumentEmptyState(
     title: 'Anıt yüklenemedi',
-    message: 'Veriler şu an alınamadı. Bağlantını kontrol edip tekrar dene.',
+    message: (message != null && message.trim().isNotEmpty)
+        ? message
+        : 'Veriler şu an alınamadı. Bağlantını kontrol edip tekrar dene.',
     primaryAction: monumentGoldButton(label: 'Tekrar Dene', onPressed: onRetry),
   );
 }
@@ -262,7 +264,7 @@ Widget monumentMemberResourceRow({
   final int today = stats.donatedToday(kind);
   final int owned = stats.owned(kind);
   final int canDonate = stats.maxDonatable(kind);
-  final int dailyMax = kind.dailyMax;
+  final int dailyMax = stats.dailyMax(kind);
 
   return monumentPanel(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

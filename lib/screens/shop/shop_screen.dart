@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
-import '../../l10n/l10n.dart';
+import '../../components/layout/game_screen_background.dart';
+import '../../core/constants/economy_constants.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
+import '../../core/utils/potion_energy.dart';
+import '../../l10n/l10n.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
@@ -17,16 +24,18 @@ import '../../theme/app_colors.dart';
 // ---------------------------------------------------------------------------
 
 class _GemPackage {
-  const _GemPackage({required this.gems, required this.price, this.isBestValue = false});
+  const _GemPackage({
+    required this.id,
+    required this.gems,
+    required this.priceTry,
+    required this.priceUsd,
+    this.isBestValue = false,
+  });
+  final String id;
   final int gems;
-  final String price;
+  final String priceTry;
+  final String priceUsd;
   final bool isBestValue;
-}
-
-class _GoldPackage {
-  const _GoldPackage({required this.gold, required this.gemCost});
-  final int gold;
-  final int gemCost;
 }
 
 // ---------------------------------------------------------------------------
@@ -55,22 +64,19 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   Map<String, dynamic>? _quantityDialogItem;
   int _quantityInput = 1;
   String? _buyingId;
-  String? _buyingGoldId;
   String? _buyingGemId;
 
-  static const List<_GemPackage> _gemPackages = <_GemPackage>[
-    _GemPackage(gems: 100, price: r'$0.99'),
-    _GemPackage(gems: 500, price: r'$4.99'),
-    _GemPackage(gems: 1200, price: r'$9.99', isBestValue: true),
-    _GemPackage(gems: 2600, price: r'$19.99'),
-  ];
-
-  static const List<_GoldPackage> _goldPackages = <_GoldPackage>[
-    _GoldPackage(gold: 5000, gemCost: 10),
-    _GoldPackage(gold: 15000, gemCost: 25),
-    _GoldPackage(gold: 50000, gemCost: 75),
-    _GoldPackage(gold: 150000, gemCost: 200),
-  ];
+  static List<_GemPackage> get _gemPackages => EconomyConstants.gemIapPackages
+      .map(
+        (GemIapPackage pkg) => _GemPackage(
+          id: pkg.id,
+          gems: pkg.gems,
+          priceTry: pkg.priceTry,
+          priceUsd: pkg.priceUsd,
+          isBestValue: pkg.isBestValue,
+        ),
+      )
+      .toList(growable: false);
 
   @override
   void initState() {
@@ -142,6 +148,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
         'icon': row['icon']?.toString() ?? '📦',
         'rarity': row['rarity']?.toString() ?? 'common',
         'item_type': row['type']?.toString(),
+        'potion_type': row['potion_type']?.toString(),
+        'energy_restore': _toInt(row['energy_restore']),
         'is_stackable': row['is_stackable'] == true,
         'max_stack': _toInt(row['max_stack'], fallback: 1),
         'price': unitPrice,
@@ -162,7 +170,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       final filteredItemsRes = await SupabaseService.client
           .from('items')
           .select(
-            'id,name,description,icon,rarity,type,is_stackable,max_stack,base_price,vendor_sell_price,shop_available,shop_currency',
+            'id,name,description,icon,rarity,type,potion_type,energy_restore,is_stackable,max_stack,base_price,vendor_sell_price,shop_available,shop_currency',
           )
           .eq('shop_available', true)
           .order('id', ascending: true);
@@ -177,7 +185,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
         final legacyItemsRes = await SupabaseService.client
             .from('items')
             .select(
-              'id,name,description,icon,rarity,type,is_stackable,max_stack,base_price,vendor_sell_price',
+              'id,name,description,icon,rarity,type,potion_type,energy_restore,is_stackable,max_stack,base_price,vendor_sell_price',
             )
             .order('id', ascending: true);
 
@@ -223,6 +231,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
         type: AppMessageType.warning,
       );
     }
+    await TutorialTriggers.onRouteEnter(ref, AppRoutes.shop);
   }
 
   Future<void> _buyShopItem(Map<String, dynamic> item, int qty) async {
@@ -253,16 +262,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     final num wallet =
         currency == 'gems' ? (profile?.gems ?? 0) : (profile?.gold ?? 0);
     if (wallet < totalPrice) {
-      AppMessenger.showError(
-        context,
-        'Yetersiz ${currency == 'gems' ? 'elmas' : 'altın'}!',
-      );
-      setState(() => _buyingId = null);
+      if (mounted) {
+        AppMessenger.showError(
+          context,
+          'Yetersiz ${currency == 'gems' ? 'elmas' : 'altın'}!',
+        );
+        setState(() => _buyingId = null);
+      }
       return;
     }
 
     try {
-      await SupabaseService.client.rpc(
+      final dynamic res = await SupabaseService.client.rpc(
         'buy_shop_item',
         params: <String, dynamic>{
           'p_item_id': itemId,
@@ -272,6 +283,24 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           'p_quantity': qty,
         },
       );
+
+      final bool ok = res is Map && res['success'] == true;
+      if (!ok) {
+        final String serverError =
+            res is Map ? (res['error']?.toString() ?? '') : '';
+        if (mounted) {
+          AppMessenger.showError(
+            context,
+            switch (serverError) {
+              'Insufficient gold' => 'Yetersiz altın!',
+              'Insufficient gems' => 'Yetersiz elmas!',
+              'Inventory full' => 'Envanter dolu!',
+              _ => 'Satın alma başarısız.',
+            },
+          );
+        }
+        return;
+      }
 
       if (mounted) {
         await ref.read(playerProvider.notifier).loadProfile();
@@ -323,122 +352,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     _buyShopItem(item, 1);
   }
 
-  Future<void> _buyGoldPackage(_GoldPackage pkg) async {
-    if (_purchaseLoading) return;
-
-    final gems = ref.read(playerProvider).profile?.gems ?? 0;
-    if (gems < pkg.gemCost) {
-      AppMessenger.showError(
-        context,
-        'Yetersiz elmas! ${pkg.gemCost} 💎 gerekiyor.',
-      );
-      return;
-    }
-
-    setState(() {
-      _purchaseLoading = true;
-      _buyingGoldId = 'gold_${pkg.gold}';
-    });
-    try {
-      // Web path first tries API route; Flutter falls back to direct users update.
-      final String authId = SupabaseService.client.auth.currentUser?.id ?? '';
-      if (authId.isEmpty) {
-        throw Exception('Oturum bulunamadı');
-      }
-
-      final List<dynamic> users = await SupabaseService.client
-          .from('users')
-          .select('id,gems,gold,auth_id')
-          .eq('auth_id', authId)
-          .limit(1);
-
-      if (users.isEmpty) {
-        throw Exception('Kullanıcı profili bulunamadı');
-      }
-
-      final Map<String, dynamic> user =
-          Map<String, dynamic>.from(users.first as Map);
-      final int currentGems = ((user['gems'] as num?) ?? 0).toInt();
-      final int currentGold = ((user['gold'] as num?) ?? 0).toInt();
-
-      if (currentGems < pkg.gemCost) {
-        throw Exception('Yetersiz gem');
-      }
-
-      await SupabaseService.client
-          .from('users')
-          .update(<String, dynamic>{
-            'gems': currentGems - pkg.gemCost,
-            'gold': currentGold + pkg.gold,
-          })
-          .eq('auth_id', authId);
-
-      if (mounted) {
-        await ref.read(playerProvider.notifier).loadProfile();
-      }
-    } catch (e) {
-      if (mounted) {
-        AppMessenger.showError(context, 'Altın satın alma başarısız.');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _purchaseLoading = false;
-          _buyingGoldId = null;
-        });
-      }
-    }
-  }
-
   Future<void> _buyGemPackage(_GemPackage pkg) async {
     if (_purchaseLoading) return;
-
-    setState(() {
-      _purchaseLoading = true;
-      _buyingGemId = 'gem_${pkg.gems}';
-    });
-    try {
-      final String authId = SupabaseService.client.auth.currentUser?.id ?? '';
-      if (authId.isEmpty) {
-        throw Exception('Oturum bulunamadı');
-      }
-
-      final List<dynamic> users = await SupabaseService.client
-          .from('users')
-          .select('gems,auth_id')
-          .eq('auth_id', authId)
-          .limit(1);
-
-      if (users.isEmpty) {
-        throw Exception('Kullanıcı profili bulunamadı');
-      }
-
-      final Map<String, dynamic> user =
-          Map<String, dynamic>.from(users.first as Map);
-      final int currentGems = ((user['gems'] as num?) ?? 0).toInt();
-
-      await SupabaseService.client
-          .from('users')
-          .update(<String, dynamic>{
-            'gems': currentGems + pkg.gems,
-          })
-          .eq('auth_id', authId);
-
-      if (mounted) {
-        await ref.read(playerProvider.notifier).loadProfile();
-      }
-    } catch (e) {
-      if (mounted) {
-        AppMessenger.showError(context, 'Elmas satın alma başarısız.');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _purchaseLoading = false;
-          _buyingGemId = null;
-        });
-      }
-    }
+    // IAP / StoreKit not wired — never mint gems from client.
+    AppMessenger.show(
+      context,
+      'Elmas satın alma yakında (IAP). Şimdilik kullanılamıyor.',
+    );
   }
 
   static String _fmtGold(int gold) {
@@ -508,10 +428,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
               tabAlignment: TabAlignment.start,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white38,
-              indicatorColor: AppColors.accentCyan,
+              indicator: BoxDecoration(
+                color: AppColors.accentCyan.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.accentCyan.withValues(alpha: 0.5),
+                ),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
               tabs: const <Tab>[
                 Tab(text: '💎 Gem'),
-                Tab(text: '💰 Altın'),
+                Tab(text: '⚖️ Ekonomi'),
                 Tab(text: '🎁 Teklif'),
                 Tab(text: '⚔️ Pass'),
                 Tab(text: '🛍️ Eşya'),
@@ -527,12 +455,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                     buyingGemId: _buyingGemId,
                     onBuyGem: _buyGemPackage,
                   ),
-                  _GoldPackagesTab(
-                    packages: _goldPackages,
-                    loading: _purchaseLoading,
-                    buyingGoldId: _buyingGoldId,
-                    onBuy: _buyGoldPackage,
-                  ),
+                  const _EconomyGuideTab(),
                   _OffersTab(offers: _offers, loading: _offersLoading),
                   _BattlePassTab(items: _battlePassItems, loading: _offersLoading),
                   _ItemsTab(
@@ -540,6 +463,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                     loading: _offersLoading,
                     searchQuery: _itemSearchQuery,
                     buyingId: _buyingId,
+                    playerTolerance:
+                        ref.watch(playerProvider).profile?.tolerance ?? 0,
                     onSearchChanged: (q) => setState(() => _itemSearchQuery = q),
                     onBuyTap: _handleBuyClick,
                     rarityColor: (String? rarity) =>
@@ -662,7 +587,7 @@ class _GemPackagesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12,
@@ -712,7 +637,20 @@ class _GemPackagesTab extends StatelessWidget {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const Text('Elmas',
                   style: TextStyle(color: Colors.white54, fontSize: 11)),
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
+              Text(
+                pkg.priceTry,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                pkg.priceUsd,
+                style: const TextStyle(color: Colors.white54, fontSize: 10),
+              ),
+              const SizedBox(height: 8),
               FilledButton(
                 onPressed: purchaseLoading ? null : () => onBuyGem(pkg),
                 style: FilledButton.styleFrom(
@@ -722,7 +660,7 @@ class _GemPackagesTab extends StatelessWidget {
                   textStyle:
                       const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                 ),
-                child: (buyingGemId == 'gem_${pkg.gems}')
+                child: (buyingGemId == pkg.id)
                     ? const SizedBox(
                         width: 14,
                         height: 14,
@@ -731,7 +669,7 @@ class _GemPackagesTab extends StatelessWidget {
                           color: Colors.white,
                         ),
                       )
-                    : Text(pkg.price),
+                    : const Text('Satın Al'),
               ),
             ],
           ),
@@ -741,88 +679,131 @@ class _GemPackagesTab extends StatelessWidget {
   }
 }
 
-class _GoldPackagesTab extends StatelessWidget {
-  const _GoldPackagesTab({
-    required this.packages,
-    required this.loading,
-    required this.buyingGoldId,
-    required this.onBuy,
-  });
-
-  final List<_GoldPackage> packages;
-  final bool loading;
-  final String? buyingGoldId;
-  final void Function(_GoldPackage) onBuy;
-
-  static String _fmtGold(int gold) {
-    if (gold >= 1000) return '${(gold / 1000).toStringAsFixed(0)}K';
-    return '$gold';
-  }
+class _EconomyGuideTab extends StatelessWidget {
+  const _EconomyGuideTab();
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      itemCount: packages.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final pkg = packages[index];
-        return Container(
+    return ListView(
+      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
+      children: <Widget>[
+        Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            color: Colors.white.withValues(alpha: 0.05),
-            border:
-                Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                AppColors.cyberFuchsia.withValues(alpha: 0.18),
+                AppColors.carbonVoid,
+              ],
+            ),
+            border: Border.all(color: AppColors.cyberFuchsia.withValues(alpha: 0.35)),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Icon(Icons.paid_rounded, color: Colors.amber, size: 36),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('${_fmtGold(pkg.gold)} Altın',
-                        style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.amber)),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: <Widget>[
-                        const Icon(Icons.diamond_rounded,
-                            size: 12, color: AppColors.accentCyan),
-                        const SizedBox(width: 4),
-                        Text('${pkg.gemCost} Elmas',
-                            style: const TextStyle(
-                                color: AppColors.accentCyan, fontSize: 12)),
-                      ],
-                    ),
-                  ],
+              const Text(
+                'Elmas ≠ Altın',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              FilledButton(
-                onPressed: loading ? null : () => onBuy(pkg),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF8F00),
-                  foregroundColor: Colors.black,
+              const SizedBox(height: 6),
+              Text(
+                'Upgrade milyonlarca altın ister. Elmas ile altın alma kaldırıldı — '
+                'elmas premium sink, altın oyun içi grind.',
+                style: TextStyle(
+                  color: AppColors.mutedTitanium.withValues(alpha: 0.95),
+                  fontSize: 12,
+                  height: 1.4,
                 ),
-                child: loading && buyingGoldId == 'gold_${pkg.gold}'
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.black))
-                    : const Text('Satın Al',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          '💎 ELMAS NEREYE?',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: AppColors.mutedTitanium,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...EconomyConstants.gemSinks.map(
+          (GemSinkInfo sink) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withValues(alpha: 0.04),
+                border: Border.all(color: AppColors.accentCyan.withValues(alpha: 0.22)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Text(sink.emoji, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          sink.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          sink.subtitle,
+                          style: const TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          '🪙 ALTIN NEREDEN?',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: AppColors.mutedTitanium,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...EconomyConstants.goldSources.map(
+          (String source) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Icon(Icons.check_circle_outline, size: 14, color: AppColors.toxicNeon),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    source,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.35),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -849,7 +830,7 @@ class _OffersTab extends StatelessWidget {
       );
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
       itemCount: offers.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -890,20 +871,39 @@ class _BattlePassTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator());
     if (items.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(Icons.military_tech_outlined, size: 48, color: Colors.white24),
-            SizedBox(height: 12),
-            Text('Muharebe Geçidi yakında aktif olacak.',
-                style: TextStyle(color: Colors.white54)),
-          ],
+      return Center(
+        child: Padding(
+          padding: GameScrollLayout.withClearance(
+            context,
+            const EdgeInsets.all(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(Icons.military_tech_outlined, size: 48, color: Colors.white24),
+              const SizedBox(height: 12),
+              const Text(
+                'Muharebe Geçidi sezon ekranında.',
+                style: TextStyle(color: Colors.white54),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => context.push(AppRoutes.season),
+                icon: const Icon(Icons.ac_unit_rounded),
+                label: const Text('Sezona Git'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.liquidGold,
+                  foregroundColor: AppColors.carbonVoid,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
       itemCount: items.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -931,6 +931,7 @@ class _ItemsTab extends StatelessWidget {
     required this.loading,
     required this.searchQuery,
     required this.buyingId,
+    required this.playerTolerance,
     required this.onSearchChanged,
     required this.onBuyTap,
     required this.rarityColor,
@@ -941,6 +942,7 @@ class _ItemsTab extends StatelessWidget {
   final bool loading;
   final String searchQuery;
   final String? buyingId;
+  final int playerTolerance;
   final ValueChanged<String> onSearchChanged;
   final void Function(Map<String, dynamic>) onBuyTap;
   final Color Function(String?) rarityColor;
@@ -952,6 +954,10 @@ class _ItemsTab extends StatelessWidget {
 
     final q = searchQuery.trim().toLowerCase();
     final filtered = q.isEmpty ? items : items.where((it) => (it['name']?.toString() ?? '').toLowerCase().contains(q)).toList();
+    final int energyPotionIndex = filtered.indexWhere(
+      (Map<String, dynamic> it) =>
+          shopEnergyPotionSubtitle(it, playerTolerance) != null,
+    );
 
     return Column(
       children: [
@@ -1001,7 +1007,10 @@ class _ItemsTab extends StatelessWidget {
                   ]),
                 )
               : GridView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: GameScrollLayout.withClearance(
+                    context,
+                    const EdgeInsets.all(12),
+                  ),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
                     crossAxisSpacing: 8,
@@ -1018,8 +1027,10 @@ class _ItemsTab extends StatelessWidget {
                     final currency = item['currency']?.toString() ?? 'gold';
                     final price = item['price'] ?? 0;
                     final isGem = currency == 'gems';
+                    final String? energySubtitle =
+                        shopEnergyPotionSubtitle(item, playerTolerance);
 
-                    return GestureDetector(
+                    Widget cell = GestureDetector(
                       onTap: isBuying ? null : () => onBuyTap(item),
                       child: Container(
                         decoration: BoxDecoration(
@@ -1088,6 +1099,26 @@ class _ItemsTab extends StatelessWidget {
                               ),
                             ),
                             Positioned(
+                              top: 22,
+                              left: 6,
+                              right: 6,
+                              child: energySubtitle == null
+                                  ? const SizedBox.shrink()
+                                  : Text(
+                                      energySubtitle,
+                                      style: TextStyle(
+                                        color: Colors.amber.shade200
+                                            .withValues(alpha: 0.9),
+                                        fontSize: 7.5,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.1,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                            ),
+                            Positioned(
                               left: 8,
                               right: 8,
                               bottom: 8,
@@ -1119,6 +1150,13 @@ class _ItemsTab extends StatelessWidget {
                         ),
                       ),
                     );
+                    if (i == energyPotionIndex) {
+                      cell = TutorialAnchorScope(
+                        id: TutorialAnchorId.shopPotionRow,
+                        child: cell,
+                      );
+                    }
+                    return cell;
                   },
                 ),
         ),

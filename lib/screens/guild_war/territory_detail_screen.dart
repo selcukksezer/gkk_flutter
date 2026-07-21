@@ -14,8 +14,8 @@ import 'guild_war_defense_sheet.dart';
 import 'widgets/attack_log_tile.dart';
 import 'widgets/defense_power_bar.dart';
 import 'widgets/guild_war_design.dart';
-import 'widgets/guild_war_empty_state.dart';
 import 'widgets/guild_war_sub_screen_scaffold.dart';
+import 'widgets/territory_detail_ui.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
 class TerritoryDetailScreen extends ConsumerStatefulWidget {
@@ -28,26 +28,20 @@ class TerritoryDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
-  TerritoryDetail? _detail;
-  bool _loading = true;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  @override
+  void dispose() {
+    ref.read(guildWarProvider.notifier).clearTerritoryDetail();
+    super.dispose();
+  }
+
   Future<void> _load() async {
-    if (!mounted) return;
-    setState(() => _loading = true);
-    final detail =
-        await ref.read(guildWarProvider.notifier).loadTerritoryDetail(widget.territoryId);
-    if (mounted) {
-      setState(() {
-        _detail = detail;
-        _loading = false;
-      });
-    }
+    await ref.read(guildWarProvider.notifier).loadTerritoryDetail(widget.territoryId);
   }
 
   Future<void> _attack(TerritoryData territory) async {
@@ -67,7 +61,9 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
       return;
     }
     if (!mounted) return;
-    context.push(AppRoutes.guildWarBattleResult, extra: result).then((_) => _load());
+    await context.push(AppRoutes.guildWarBattleResult, extra: result);
+    if (!mounted) return;
+    await _load();
   }
 
   Future<void> _addDefense(TerritoryData territory) async {
@@ -85,9 +81,18 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final GuildWarState warState = ref.watch(guildWarProvider);
+    final bool isCurrentTerritory = warState.activeTerritoryId == widget.territoryId;
+    final TerritoryDetail? detail =
+        isCurrentTerritory ? warState.territoryDetail : null;
+    final bool loading = isCurrentTerritory && warState.isTerritoryDetailLoading;
     final guildId = ref.watch(playerProvider).profile?.guildId;
-    final t = _detail?.territory;
-    final isOwner = t != null && t.ownerGuildId == guildId;
+    final t = detail?.territory;
+    final isOwner = t != null && !t.isUnclaimed && t.ownerGuildId == guildId;
+    final String ownerLabel = t == null ? '' : _territoryOwnerLabel(t);
+    final List<TerritoryData> territories = warState.territories;
+    final Color heroAccent =
+        t == null ? WarPalette.coral : (t.isUnclaimed ? WarPalette.coral : WarPalette.fuchsia);
 
     Future<void> logout() async => performLogout(ref);
 
@@ -95,98 +100,136 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
       title: '🗺 Bölge Detay',
       onLogout: logout,
       currentRoute: AppRoutes.guildWar,
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: WarPalette.gold))
-          : t == null
-              ? GuildWarEmptyState(
-                  icon: '🗺',
-                  title: 'Bölge bulunamadı',
-                  subtitle:
-                      'Bu bölge haritada artık yok veya veri yüklenemedi. Lonca Savaşı merkezinden haritaya dönebilirsin.',
-                  actionLabel: 'Lonca Savaşı\'na Dön',
-                  onAction: () => context.go(AppRoutes.guildWar),
-                )
-              : Column(
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        padding: GameScrollLayout.pagePadding(context),
+      body: Stack(
+        children: <Widget>[
+          if (loading && t == null)
+            const Center(child: CircularProgressIndicator(color: WarPalette.gold))
+          else if (t == null)
+            TerritoryNotFoundPanel(
+              territoryId: widget.territoryId,
+              onBack: () => context.go(AppRoutes.guildWar),
+            )
+          else
+            Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: GameScrollLayout.pagePadding(context),
+                    children: [
+                      TerritoryDetailHero(
+                        territory: t,
+                        ownerLabel: ownerLabel,
+                        mapIcon: territoryMapIconFor(t.id, territories),
+                        mapCoordinate: territoryMapCoordinateFor(t.id, territories),
+                        accent: heroAccent,
+                        isOwner: isOwner,
+                      ),
+                      const SizedBox(height: AppSpacing.base),
+                      TerritoryAttackSummaryHeader(
+                        attacks: detail!.recentAttacks,
+                        myGuildId: guildId,
+                      ),
+                      if (detail.recentAttacks.isNotEmpty) const SizedBox(height: AppSpacing.base),
+                      GameGridColumns(
+                        crossAxisCount: 2,
                         children: [
-                          WarHeroBanner(
-                            accent: t.isUnclaimed ? WarPalette.coral : WarPalette.fuchsia,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  t.name,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  t.isUnclaimed ? '🏰 Sahipsiz bölge' : '🏰 ${t.ownerGuildName}',
-                                  style: const TextStyle(color: WarPalette.titanium),
-                                ),
-                              ],
-                            ),
+                          _StatTile(label: 'Savunma', value: '${t.defensePower}', icon: '🛡'),
+                          _StatTile(label: 'Trade Geliri', value: '${t.tradeIncome}/gün', icon: '💰'),
+                          _StatTile(label: 'Ödül', value: t.reward.isEmpty ? '—' : t.reward, icon: '🎁'),
+                          _StatTile(
+                            label: 'Savunma Hattı',
+                            value: 'Sv.${t.defenseLineLevel}',
+                            icon: '🏗',
                           ),
-                          GameGridColumns(
-                            crossAxisCount: 2,
-                            children: [
-                              _StatTile(label: 'Savunma', value: '${t.defensePower}', icon: '🛡'),
-                              _StatTile(label: 'Trade Geliri', value: '${t.tradeIncome}/gün', icon: '💰'),
-                              _StatTile(label: 'Ödül', value: t.reward, icon: '🎁'),
-                              _StatTile(label: 'Savunma Hattı', value: 'Sv.${t.defenseLineLevel}', icon: '🏗'),
-                            ],
-                          ),
-                          WarNeonCard(
-                            accent: WarPalette.neon,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '🏰 ${t.isUnclaimed ? 'Sahipsiz' : t.ownerGuildName}',
-                                  style: const TextStyle(color: WarPalette.titanium),
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                DefensePowerBar(
-                                  current: t.defensePower,
-                                  max: t.baseDefensePower,
-                                  height: 10,
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (_detail!.recentAttacks.isNotEmpty) ...[
-                            const WarSectionHeader(title: 'Son Saldırılar', accent: WarPalette.ruby),
-                            for (int i = 0; i < _detail!.recentAttacks.length; i++)
-                              WarFadeSlide(
-                                index: i,
-                                child: AttackLogTile(
-                                  log: _detail!.recentAttacks[i],
-                                  myGuildId: guildId,
-                                ),
-                              ),
-                          ],
                         ],
                       ),
-                    ),
-                    if (guildId != null)
-                      SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.base),
-                          child: isOwner
-                              ? WarDefenseButton(onPressed: () => _addDefense(t))
-                              : WarAttackButton(onPressed: () => _attack(t)),
+                      WarNeonCard(
+                        accent: WarPalette.neon,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Savunma gücü',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            DefensePowerBar(
+                              current: t.defensePower,
+                              max: t.defensePower > t.baseDefensePower
+                                  ? t.defensePower
+                                  : t.baseDefensePower,
+                              height: 10,
+                            ),
+                          ],
                         ),
                       ),
-                  ],
+                      if (detail.recentAttacks.isNotEmpty) ...[
+                        const WarSectionHeader(title: 'Saldırı Geçmişi', accent: WarPalette.ruby),
+                        for (int i = 0; i < detail.recentAttacks.length; i++)
+                          WarFadeSlide(
+                            index: i,
+                            child: AttackLogTile(
+                              log: detail.recentAttacks[i],
+                              myGuildId: guildId,
+                            ),
+                          ),
+                      ],
+                    ],
+                  ),
                 ),
+                if (guildId == null)
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.base),
+                      child: WarOutlineButton(
+                        label: 'Lonca üyeliği gerekli',
+                        icon: Icons.groups_rounded,
+                        onPressed: () => context.go(AppRoutes.guild),
+                      ),
+                    ),
+                  )
+                else
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.base),
+                      child: isOwner
+                          ? WarDefenseButton(onPressed: () => _addDefense(t))
+                          : WarAttackButton(onPressed: () => _attack(t)),
+                    ),
+                  ),
+              ],
+            ),
+          if (loading && t != null)
+            const Positioned(
+              top: AppSpacing.sm,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    color: WarPalette.gold,
+                    strokeWidth: 2.5,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
+}
+
+String _territoryOwnerLabel(TerritoryData territory) {
+  if (territory.isUnclaimed) return 'Sahipsiz bölge';
+  final String? name = territory.ownerGuildName?.trim();
+  if (name == null || name.isEmpty) return 'Sahipsiz bölge';
+  return name;
 }
 
 class _StatTile extends StatelessWidget {
@@ -207,7 +250,14 @@ class _StatTile extends StatelessWidget {
         children: [
           Text(icon, style: const TextStyle(fontSize: 20)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: WarPalette.titanium, fontSize: 10)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           Text(
             value,
             maxLines: 2,

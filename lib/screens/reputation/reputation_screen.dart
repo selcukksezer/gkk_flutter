@@ -150,6 +150,7 @@ class ReputationScreen extends ConsumerStatefulWidget {
 class _ReputationScreenState extends ConsumerState<ReputationScreen> {
   List<_Faction> _factions = <_Faction>[];
   bool _loading = true;
+  String? _loadError;
   String? _expandedId;
 
   @override
@@ -159,44 +160,78 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
   }
 
   Future<void> _load() async {
-    final defaults = _defaultFactions();
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final dynamic result = await SupabaseService.client.rpc('get_reputation');
-      if (result is List && result.isNotEmpty) {
-        final serverMap = <String, Map<String, dynamic>>{};
-        for (final dynamic item in result) {
-          if (item is Map<String, dynamic>) {
-            final id = (item['faction_id'] ?? item['id'] ?? '').toString();
-            if (id.isNotEmpty) serverMap[id] = item;
-          }
+      if (result is! List || result.isEmpty) {
+        setState(() {
+          _factions = <_Faction>[];
+          _loadError = 'İtibar verisi bulunamadı.';
+          _loading = false;
+        });
+        return;
+      }
+
+      final defaults = _defaultFactions();
+      final serverMap = <String, Map<String, dynamic>>{};
+      for (final dynamic item in result) {
+        if (item is Map) {
+          final Map<String, dynamic> row = Map<String, dynamic>.from(item);
+          final id = (row['faction_id'] ?? row['id'] ?? '').toString();
+          if (id.isNotEmpty) serverMap[id] = row;
         }
-        for (final faction in defaults) {
-          final server = serverMap[faction.id];
-          if (server != null) {
-            faction.rep = ((server['reputation'] ?? server['rep'] ?? faction.rep) as num).toInt().clamp(0, 100);
-            final dynamic serverTasks = server['tasks'];
-            if (serverTasks is List) {
-              for (final dynamic st in serverTasks) {
-                if (st is Map<String, dynamic>) {
-                  final taskName = (st['name'] ?? '').toString();
-                  for (final ft in faction.tasks) {
-                    if (ft.name == taskName) {
-                      ft.current = ((st['current'] ?? ft.current) as num).toInt();
-                    }
-                  }
+      }
+
+      if (serverMap.isEmpty) {
+        setState(() {
+          _factions = <_Faction>[];
+          _loadError = 'İtibar verisi bulunamadı.';
+          _loading = false;
+        });
+        return;
+      }
+
+      for (final faction in defaults) {
+        final server = serverMap[faction.id];
+        if (server == null) continue;
+        faction.rep = ((server['reputation'] ?? server['rep'] ?? 0) as num)
+            .toInt()
+            .clamp(0, 100);
+        final dynamic serverTasks = server['tasks'];
+        if (serverTasks is List) {
+          for (final dynamic st in serverTasks) {
+            if (st is Map) {
+              final Map<String, dynamic> taskRow = Map<String, dynamic>.from(st);
+              final taskName = (taskRow['name'] ?? '').toString();
+              for (final ft in faction.tasks) {
+                if (ft.name == taskName) {
+                  ft.current = ((taskRow['current'] ?? ft.current) as num).toInt();
                 }
               }
             }
           }
         }
       }
+
+      final List<_Faction> hydrated = defaults
+          .where((faction) => serverMap.containsKey(faction.id))
+          .toList();
+
+      setState(() {
+        _factions = hydrated;
+        _loadError = hydrated.isEmpty ? 'İtibar verisi bulunamadı.' : null;
+        _loading = false;
+      });
     } catch (_) {
-      // RPC unavailable — keep default values
+      setState(() {
+        _factions = <_Faction>[];
+        _loadError = 'İtibar servisi şu an kullanılamıyor.';
+        _loading = false;
+      });
     }
-    setState(() {
-      _factions = defaults;
-      _loading = false;
-    });
   }
 
   void _toggleExpand(String id) {
@@ -518,7 +553,30 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
       body: GameScreenBackground(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : ListView(
+            : _loadError != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.white38),
+                          const SizedBox(height: 12),
+                          Text(
+                            _loadError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _load,
+                            child: const Text('Tekrar Dene'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView(
                 padding: GameScrollLayout.fromLTRB(
                   context,
                   left: 16,

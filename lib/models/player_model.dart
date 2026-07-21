@@ -39,6 +39,7 @@ class PlayerProfile {
     required this.lastPotionUsedAt,
     required this.warriorBloodlustUntil,
     required this.hospitalUntil,
+    this.hospitalReason,
     this.hospitalLifetimeCount = 0,
     required this.prisonUntil,
     required this.prisonReason,
@@ -57,6 +58,7 @@ class PlayerProfile {
     this.luck,
     this.characterClass,
     this.hp,
+    this.statPoints = 0,
   });
 
   final String id;
@@ -92,6 +94,7 @@ class PlayerProfile {
   final String? lastPotionUsedAt;
   final String? warriorBloodlustUntil;
   final String? hospitalUntil;
+  final String? hospitalReason;
   final int hospitalLifetimeCount;
   final String? prisonUntil;
   final String? prisonReason;
@@ -111,6 +114,9 @@ class PlayerProfile {
   final int? luck;
   final CharacterClass? characterClass;
   final int? hp;
+
+  /// Level atlayarak kazanılan, henüz dağıtılmamış stat puanları.
+  final int statPoints;
 
   PlayerProfile copyWith({
     String? id,
@@ -147,6 +153,7 @@ class PlayerProfile {
     String? lastPotionUsedAt,
     String? warriorBloodlustUntil,
     String? hospitalUntil,
+    String? hospitalReason,
     int? hospitalLifetimeCount,
     String? prisonUntil,
     String? prisonReason,
@@ -165,6 +172,7 @@ class PlayerProfile {
     int? luck,
     CharacterClass? characterClass,
     int? hp,
+    int? statPoints,
     bool clearDisplayName = false,
     bool clearAvatarUrl = false,
     bool clearGuildId = false,
@@ -174,6 +182,7 @@ class PlayerProfile {
     bool clearLastPotionUsedAt = false,
     bool clearWarriorBloodlustUntil = false,
     bool clearHospitalUntil = false,
+    bool clearHospitalReason = false,
     bool clearPrisonUntil = false,
     bool clearPrisonReason = false,
     bool clearLastBribeAt = false,
@@ -220,6 +229,8 @@ class PlayerProfile {
           ? null
           : (warriorBloodlustUntil ?? this.warriorBloodlustUntil),
       hospitalUntil: clearHospitalUntil ? null : (hospitalUntil ?? this.hospitalUntil),
+      hospitalReason:
+          clearHospitalReason ? null : (hospitalReason ?? this.hospitalReason),
       hospitalLifetimeCount: hospitalLifetimeCount ?? this.hospitalLifetimeCount,
       prisonUntil: clearPrisonUntil ? null : (prisonUntil ?? this.prisonUntil),
       prisonReason: clearPrisonReason ? null : (prisonReason ?? this.prisonReason),
@@ -239,6 +250,7 @@ class PlayerProfile {
       characterClass:
           clearCharacterClass ? null : (characterClass ?? this.characterClass),
       hp: hp ?? this.hp,
+      statPoints: statPoints ?? this.statPoints,
     );
   }
 
@@ -278,6 +290,7 @@ class PlayerProfile {
       lastPotionUsedAt: json['last_potion_used_at'] as String?,
       warriorBloodlustUntil: json['warrior_bloodlust_until'] as String?,
       hospitalUntil: json['hospital_until'] as String?,
+      hospitalReason: json['hospital_reason'] as String?,
       hospitalLifetimeCount: (json['hospital_lifetime_count'] as num?)?.toInt() ?? 0,
       prisonUntil: json['prison_until'] as String?,
       prisonReason: json['prison_reason'] as String?,
@@ -296,6 +309,7 @@ class PlayerProfile {
       luck: (json['luck'] as num?)?.toInt(),
       characterClass: CharacterClassParsing.fromNullable(rawCharacterClass),
       hp: (json['hp'] as num?)?.toInt(),
+      statPoints: (json['stat_points'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -334,6 +348,7 @@ class PlayerProfile {
       'last_potion_used_at': lastPotionUsedAt,
       'warrior_bloodlust_until': warriorBloodlustUntil,
       'hospital_until': hospitalUntil,
+      'hospital_reason': hospitalReason,
       'hospital_lifetime_count': hospitalLifetimeCount,
       'prison_until': prisonUntil,
       'prison_reason': prisonReason,
@@ -352,6 +367,7 @@ class PlayerProfile {
       'luck': luck,
       'character_class': characterClass?.name,
       'hp': hp,
+      'stat_points': statPoints,
     };
   }
 }

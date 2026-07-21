@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/inventory_model.dart';
 import '../../../providers/inventory_provider.dart';
 import '../../../providers/market_provider.dart';
-import '../../../theme/app_colors.dart';
+import 'market_design.dart';
 import 'market_helpers.dart';
 import 'market_listing_card.dart';
 import 'market_quantity_sheet.dart';
@@ -21,45 +21,43 @@ class MarketSellTab extends ConsumerWidget {
         .toList();
 
     if (tradeableItems.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(
-          child: Text('Satilabilir esya yok', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        ),
+      return const MarketEmptyState(
+        message: 'Satilabilir esya yok',
+        icon: Icons.block_rounded,
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: tradeableItems.map((InventoryItem item) {
-        final bool locked = item.isMarketTradeable == false || item.isHanOnly == true;
-        return MarketListingCard(
-          itemName: item.name,
-          rarity: item.rarity.name,
-          itemId: item.itemId,
-          iconValue: item.icon,
-          itemType: item.itemType,
-          quantity: item.quantity,
-          showQuantity: item.isStackable && item.quantity > 1,
-          metaLine: locked ? 'Pazarda satilamaz' : marketRarityLabel(item.rarity.name),
-          priceText: locked ? '—' : 'Listele',
-          onTap: locked ? null : () => _openSellSheet(context, ref, item),
-          trailing: SizedBox(
-            height: 30,
-            child: FilledButton(
+      children: <Widget>[
+        const MarketSectionHeader(
+          title: 'SATILACAK ESYALAR',
+          subtitle: 'Envanterinden ilana koy',
+        ),
+        ...List<Widget>.generate(tradeableItems.length, (int index) {
+          final InventoryItem item = tradeableItems[index];
+          final bool locked = item.isMarketTradeable == false || item.isHanOnly == true;
+          return MarketListingCard(
+            index: index,
+            itemName: item.name,
+            rarity: item.rarity.name,
+            itemId: item.itemId,
+            iconValue: item.icon,
+            itemType: item.itemType,
+            quantity: item.quantity,
+            showQuantity: item.isStackable && item.quantity > 1,
+            metaLine: locked ? 'Pazarda satilamaz' : marketRarityLabel(item.rarity.name),
+            priceText: locked ? '—' : 'Listele',
+            onTap: locked ? null : () => _openSellSheet(context, ref, item),
+            trailing: MarketPrimaryButton(
+              label: 'Sat',
+              icon: Icons.sell_rounded,
+              compact: true,
               onPressed: locked ? null : () => _openSellSheet(context, ref, item),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.goldDim,
-                foregroundColor: AppColors.bgDeep,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('Sat', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }),
+      ],
     );
   }
 

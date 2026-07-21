@@ -33,6 +33,7 @@ DEFINE_ARGS=(
   --dart-define=AUDIT_SCREENSHOT_DIR="$OUTPUT_DIR"
   --dart-define=QA_SKIP_DAILY_REWARD=1
   --dart-define=QA_FORCE_CHARACTER_SELECT=1
+  --dart-define=QA_SKIP_HORSE_RACE_LIVE=1
 )
 
 if [[ -n "${AUDIT_ROUTES:-}" ]]; then

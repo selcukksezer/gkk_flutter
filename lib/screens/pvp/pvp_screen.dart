@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/provider_scheduling.dart';
+import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/auth_provider.dart';
@@ -11,6 +13,41 @@ import '../../providers/player_provider.dart';
 import '../../providers/pvp_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+
+class OnlinePlayer {
+  const OnlinePlayer({
+    required this.authId,
+    required this.username,
+    required this.displayName,
+    required this.avatarUrl,
+    required this.level,
+    required this.power,
+    required this.pvpRating,
+  });
+
+  final String authId;
+  final String username;
+  final String displayName;
+  final String avatarUrl;
+  final int level;
+  final int power;
+  final int pvpRating;
+
+  factory OnlinePlayer.fromJson(Map<String, dynamic> json) {
+    final String username = (json['username'] ?? '').toString();
+    return OnlinePlayer(
+      authId: (json['auth_id'] ?? '').toString(),
+      username: username,
+      displayName: (json['display_name'] ?? '').toString().isNotEmpty
+          ? (json['display_name'] ?? '').toString()
+          : username,
+      avatarUrl: (json['avatar_url'] ?? '').toString(),
+      level: (json['level'] as num?)?.toInt() ?? 1,
+      power: (json['power'] as num?)?.toInt() ?? 0,
+      pvpRating: (json['pvp_rating'] as num?)?.toInt() ?? 1000,
+    );
+  }
+}
 
 class PvpScreen extends ConsumerStatefulWidget {
   const PvpScreen({super.key});
@@ -20,6 +57,10 @@ class PvpScreen extends ConsumerStatefulWidget {
 }
 
 class _PvpScreenState extends ConsumerState<PvpScreen> {
+  List<OnlinePlayer> _onlinePlayers = const <OnlinePlayer>[];
+  bool _loadingOnline = false;
+  String? _invitingId;
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +68,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       ref.read(playerProvider.notifier).loadProfile();
       ref.read(pvpDashboardProvider.notifier).load();
     });
+    _loadOnlinePlayers();
   }
 
   @override
@@ -36,6 +78,120 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       ref.read(playerProvider.notifier).loadProfile();
       ref.read(pvpDashboardProvider.notifier).load();
     });
+  }
+
+  Future<void> _loadOnlinePlayers() async {
+    if (_loadingOnline) return;
+    setState(() => _loadingOnline = true);
+    try {
+      final dynamic res = await SupabaseService.client
+          .rpc('get_online_players', params: <String, dynamic>{'p_limit': 30});
+      if (!mounted) return;
+      setState(() {
+        _loadingOnline = false;
+        if (res is List) {
+          _onlinePlayers = res
+              .whereType<Map>()
+              .map((Map e) => OnlinePlayer.fromJson(Map<String, dynamic>.from(e)))
+              .toList(growable: false);
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingOnline = false);
+    }
+  }
+
+  Future<void> _sendDuelInvite(OnlinePlayer player) async {
+    final int? wager = await _askWager(player);
+    if (wager == null || !mounted) return;
+
+    setState(() => _invitingId = player.authId);
+    try {
+      final dynamic res = await SupabaseService.client.rpc(
+        'send_pvp_invite',
+        params: <String, dynamic>{
+          'p_target': player.authId,
+          'p_wager': wager,
+        },
+      );
+      if (!mounted) return;
+      if (res is Map && res['success'] == true) {
+        AppMessenger.show(
+          context,
+          '⚔️ ${player.displayName} oyuncusuna düello daveti gönderildi!',
+        );
+      } else {
+        AppMessenger.showError(
+          context,
+          (res is Map ? res['error']?.toString() : null) ??
+              'Davet gönderilemedi.',
+        );
+      }
+    } catch (_) {
+      if (mounted) AppMessenger.showError(context, 'Davet gönderilemedi.');
+    } finally {
+      if (mounted) setState(() => _invitingId = null);
+    }
+  }
+
+  Future<int?> _askWager(OnlinePlayer player) async {
+    final TextEditingController ctrl = TextEditingController(text: '0');
+    final int? result = await showDialog<int>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141B2A),
+        title: Text(
+          '⚔️ ${player.displayName} ile Düello',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Bahis miktarı (0 = bahissiz dostluk maçı):',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.amber),
+              decoration: InputDecoration(
+                prefixText: '🪙 ',
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Kazanan havuzu alır (%5 arena vergisi düşülür).',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              final int wager = int.tryParse(ctrl.text.trim()) ?? 0;
+              Navigator.of(ctx).pop(wager < 0 ? 0 : wager);
+            },
+            child: const Text('Davet Gönder'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    return result;
   }
 
   bool _isRestricted(String? until) {
@@ -72,6 +228,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     await Future.wait<void>([
       ref.read(playerProvider.notifier).loadProfile(),
       ref.read(pvpDashboardProvider.notifier).load(),
+      _loadOnlinePlayers(),
     ]);
   }
 
@@ -113,7 +270,10 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            padding: GameScrollLayout.withClearance(
+              context,
+              const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            ),
             children: <Widget>[
               _card(
                 child: Column(
@@ -192,6 +352,42 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   color: Colors.orangeAccent,
                 ),
               ],
+              const SizedBox(height: 20),
+              Row(
+                children: <Widget>[
+                  const Expanded(
+                    child: Text('🟢 Online Oyuncular',
+                        style:
+                            TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  ),
+                  IconButton(
+                    onPressed: _loadingOnline ? null : _loadOnlinePlayers,
+                    icon: const Icon(Icons.refresh_rounded,
+                        color: Colors.white54, size: 20),
+                    tooltip: 'Yenile',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              if (_loadingOnline && _onlinePlayers.isEmpty)
+                const Center(
+                    child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ))
+              else if (_onlinePlayers.isEmpty)
+                _emptyCard('Şu anda online oyuncu yok.')
+              else
+                ..._onlinePlayers.map((OnlinePlayer p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _OnlinePlayerCard(
+                        player: p,
+                        inviting: _invitingId == p.authId,
+                        onInvite: (isHospitalized || isImprisoned)
+                            ? null
+                            : () => _sendDuelInvite(p),
+                      ),
+                    )),
               const SizedBox(height: 20),
               const Text('🏟️ Açık Arenalar',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
@@ -345,6 +541,83 @@ class _StatChip extends StatelessWidget {
                 textAlign: TextAlign.center),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OnlinePlayerCard extends StatelessWidget {
+  const _OnlinePlayerCard({
+    required this.player,
+    required this.inviting,
+    required this.onInvite,
+  });
+
+  final OnlinePlayer player;
+  final bool inviting;
+  final VoidCallback? onInvite;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.04),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: <Widget>[
+          Stack(
+            children: <Widget>[
+              ProfileAvatar(size: 40, avatarUrl: player.avatarUrl),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF10131D), width: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  player.displayName,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Lv ${player.level}  ⚡${player.power}  🏆${player.pvpRating}',
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: inviting ? null : onInvite,
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+            ),
+            child: Text(inviting ? '...' : '⚔️ Düello'),
+          ),
+        ],
       ),
     );
   }

@@ -28,7 +28,7 @@ class GuildWarTabBar extends StatelessWidget {
           controller: controller,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
           indicator: BoxDecoration(
             gradient: LinearGradient(
               colors: <Color>[
@@ -46,17 +46,20 @@ class GuildWarTabBar extends StatelessWidget {
           dividerColor: Colors.transparent,
           labelColor: AppColors.textPrimary,
           unselectedLabelColor: WarPalette.titanium,
-          labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
-          unselectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+          unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           tabs: List<Tab>.generate(tabs.length, (int i) {
             return Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(icons[i], style: const TextStyle(fontSize: 13)),
-                  const SizedBox(width: 4),
-                  Text(tabs[i]),
-                ],
+              child: Tooltip(
+                message: tabs[i],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(icons[i], style: const TextStyle(fontSize: 13)),
+                    const SizedBox(width: 4),
+                    Text(tabs[i]),
+                  ],
+                ),
               ),
             );
           }),

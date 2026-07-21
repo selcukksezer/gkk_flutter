@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,413 +10,15 @@ import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../utils/logout_helper.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
-import '../../theme/app_colors.dart';
-
-// ============================================================================
-// DESIGN SYSTEM - Colors, Spacing, Shadows, Gradients
-// ============================================================================
-class _ChatDesignSystem {
-  // Channel brand colors
-  static const Color colorGlobalAccent = Color(0xFF38BDF8); // Sky blue
-  static const Color colorGuildAccent = Color(0xFFF97316); // Guild orange
-  static const Color colorTradeAccent = Color(0xFFFCCC15); // Trade amber
-  static const Color colorDmAccent = AppColors.cyberFuchsia;
-
-  // Semantic colors
-  static const Color colorSuccess = Color(0xFF10B981);
-  static const Color colorError = Color(0xFFF87171);
-  static const Color colorWarning = Color(0xFFFB923C);
-  static const Color colorInfo = Color(0xFF0EA5E9);
-
-  // Presence (brand palette)
-  static const Color colorOnline = Color(0xFF00FF66);
-  static const Color colorOffline = Color(0xFF8E9CAE);
-
-  // Background & surfaces (dark theme)
-  static const Color colorBgSecondary = Color(0xFF090D15);
-  // unused: static const Color colorBgOverlay = Color(0xFF1E293B);
-
-  // Text colors
-  static const Color colorTextPrimary = Colors.white;
-  static const Color colorTextSecondary = Color(0xFFE2E8F0);
-  static const Color colorTextTertiary = Color(0xFF94A3B8);
-
-  // Spacing scale
-  static const double spaceXs = 4;
-  static const double spaceSm = 8;
-  static const double spaceMd = 12;
-  static const double spaceLg = 16;
-  // unused: static const double spaceXl = 24;
-
-  // Border radius
-  static const double radiusSm = 8;
-  static const double radiusMd = 12;
-  static const double radiusLg = 16;
-  static const double radiusXl = 24;
-  static const double radiusRound = 999;
-
-  // Animation
-  static const Duration durationBase = Duration(milliseconds: 200);
-  // unused: static const Duration durationSlow = Duration(milliseconds: 300);
-  static const Curve curveEaseInOut = Curves.easeInOutCubic;
-
-  // Shadows
-  static const List<BoxShadow> shadowMd = [
-    BoxShadow(color: Color(0x1A000000), blurRadius: 12, offset: Offset(0, 4)),
-  ];
-
-  // Gradients
-  static const LinearGradient gradientBgPanel = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF141B26), Color(0xFF090D15)],
-  );
-
-  static const LinearGradient gradientGlobal = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [Color(0x1F38BDF8), Color(0x0638BDF8)],
-  );
-
-  static const LinearGradient gradientGuild = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [Color(0x1FF97316), Color(0x06F97316)],
-  );
-
-  static const LinearGradient gradientTrade = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [Color(0x1FFCCC15), Color(0x06FCCC15)],
-  );
-
-  static const LinearGradient gradientDm = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [Color(0x1EE01E5A), Color(0x06E01E5A)],
-  );
-}
-
-enum _ChatChannel { global, guild, trade, dm }
-
-extension _ChatChannelX on _ChatChannel {
-  String get key {
-    switch (this) {
-      case _ChatChannel.global:
-        return 'global';
-      case _ChatChannel.guild:
-        return 'guild';
-      case _ChatChannel.trade:
-        return 'trade';
-      case _ChatChannel.dm:
-        return 'dm';
-    }
-  }
-
-  String get label {
-    switch (this) {
-      case _ChatChannel.global:
-        return 'Genel';
-      case _ChatChannel.guild:
-        return 'Lonca';
-      case _ChatChannel.trade:
-        return 'Pazar';
-      case _ChatChannel.dm:
-        return 'Özel';
-    }
-  }
-
-  Color get accentColor {
-    switch (this) {
-      case _ChatChannel.global:
-        return _ChatDesignSystem.colorGlobalAccent;
-      case _ChatChannel.guild:
-        return _ChatDesignSystem.colorGuildAccent;
-      case _ChatChannel.trade:
-        return _ChatDesignSystem.colorTradeAccent;
-      case _ChatChannel.dm:
-        return _ChatDesignSystem.colorDmAccent;
-    }
-  }
-
-  LinearGradient get gradient {
-    switch (this) {
-      case _ChatChannel.global:
-        return _ChatDesignSystem.gradientGlobal;
-      case _ChatChannel.guild:
-        return _ChatDesignSystem.gradientGuild;
-      case _ChatChannel.trade:
-        return _ChatDesignSystem.gradientTrade;
-      case _ChatChannel.dm:
-        return _ChatDesignSystem.gradientDm;
-    }
-  }
-
-  static _ChatChannel fromKey(String value) {
-    switch (value) {
-      case 'guild':
-        return _ChatChannel.guild;
-      case 'trade':
-        return _ChatChannel.trade;
-      case 'dm':
-        return _ChatChannel.dm;
-      case 'global':
-      default:
-        return _ChatChannel.global;
-    }
-  }
-}
-
-class _OnlineStatusDot extends StatelessWidget {
-  const _OnlineStatusDot({required this.online, this.size = 7});
-
-  final bool online;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: online ? _ChatDesignSystem.colorOnline : _ChatDesignSystem.colorOffline.withValues(alpha: 0.55),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.35), width: 1),
-        boxShadow: online
-            ? <BoxShadow>[
-                BoxShadow(
-                  color: _ChatDesignSystem.colorOnline.withValues(alpha: 0.45),
-                  blurRadius: 4,
-                ),
-              ]
-            : null,
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// DATA MODELS
-// ============================================================================
-
-class _ChatMessage {
-  const _ChatMessage({
-    required this.id,
-    required this.channel,
-    required this.senderId,
-    required this.senderName,
-    required this.content,
-    required this.timestamp,
-    required this.isSystem,
-    this.recipientUserId,
-    this.guildId,
-    this.deletedAt,
-    this.senderIsOnline,
-  });
-
-  final String id;
-  final _ChatChannel channel;
-  final String senderId;
-  final String senderName;
-  final String content;
-  final DateTime timestamp;
-  final bool isSystem;
-  final String? recipientUserId;
-  final String? guildId;
-  final String? deletedAt;
-  final bool? senderIsOnline;
-
-  factory _ChatMessage.fromJson(Map<String, dynamic> json) {
-    final String rawChannel = (json['channel']?.toString() ?? 'global').toLowerCase();
-    final String ts = json['created_at']?.toString() ?? json['timestamp']?.toString() ?? DateTime.now().toIso8601String();
-
-    return _ChatMessage(
-      id: json['id']?.toString() ?? '',
-      channel: _ChatChannelX.fromKey(rawChannel),
-      senderId: (json['sender_user_id'] ?? json['sender_id'] ?? json['user_id'] ?? json['author_id'])?.toString() ?? '',
-      senderName: (json['sender_name'] ?? json['sender_username'] ?? json['username'] ?? json['user_name'])?.toString() ?? 'Oyuncu',
-      content: (json['content'] ?? json['message'])?.toString() ?? '',
-      timestamp: DateTime.tryParse(ts)?.toLocal() ?? DateTime.now(),
-      isSystem: (json['is_system'] as bool?) ?? false,
-      recipientUserId: json['recipient_user_id']?.toString(),
-      guildId: json['guild_id']?.toString(),
-      deletedAt: json['deleted_at']?.toString(),
-      senderIsOnline: json['sender_is_online'] as bool?,
-    );
-  }
-}
-
-class _ChatUserSummary {
-  const _ChatUserSummary({
-    required this.id,
-    required this.username,
-    this.displayName,
-    this.isOnline,
-  });
-
-  final String id;
-  final String username;
-  final String? displayName;
-  final bool? isOnline;
-
-  factory _ChatUserSummary.fromJson(Map<String, dynamic> json) => _ChatUserSummary(
-        id: json['id']?.toString() ?? '',
-        username: json['username']?.toString() ?? 'oyuncu',
-        displayName: json['display_name']?.toString(),
-        isOnline: json['is_online'] as bool?,
-      );
-}
-
-class _ChatDmConversation {
-  const _ChatDmConversation({
-    required this.peerUserId,
-    required this.peerUsername,
-    required this.lastMessageContent,
-    required this.lastMessageAt,
-    required this.unreadCount,
-    this.peerDisplayName,
-    this.peerIsOnline,
-  });
-
-  final String peerUserId;
-  final String peerUsername;
-  final String? peerDisplayName;
-  final String lastMessageContent;
-  final DateTime lastMessageAt;
-  final int unreadCount;
-  final bool? peerIsOnline;
-
-  factory _ChatDmConversation.fromJson(Map<String, dynamic> json) {
-    final DateTime ts = DateTime.tryParse(json['last_message_at']?.toString() ?? '')?.toLocal() ?? DateTime.now();
-    return _ChatDmConversation(
-      peerUserId: json['peer_user_id']?.toString() ?? '',
-      peerUsername: json['peer_username']?.toString() ?? 'oyuncu',
-      peerDisplayName: json['peer_display_name']?.toString(),
-      lastMessageContent: json['last_message_content']?.toString() ?? '',
-      lastMessageAt: ts,
-      unreadCount: ((json['unread_count'] as num?) ?? 0).toInt().clamp(0, 99),
-      peerIsOnline: json['peer_is_online'] as bool?,
-    );
-  }
-}
-
-class _BlockedChatUser {
-  const _BlockedChatUser({
-    required this.id,
-    required this.username,
-    this.displayName,
-  });
-
-  final String id;
-  final String username;
-  final String? displayName;
-
-  factory _BlockedChatUser.fromJson(Map<String, dynamic> json) => _BlockedChatUser(
-        id: (json['blocked_user_id'] ?? json['id'] ?? '').toString(),
-        username: (json['username'] ?? '').toString(),
-        displayName: json['display_name']?.toString(),
-      );
-}
-
-class _ChatFilter {
-  const _ChatFilter({
-    required this.id,
-    required this.term,
-    required this.replacement,
-    required this.scope,
-  });
-
-  final String id;
-  final String term;
-  final String replacement;
-  final String scope;
-
-  factory _ChatFilter.fromJson(Map<String, dynamic> json) => _ChatFilter(
-        id: json['id']?.toString() ?? '',
-        term: json['term']?.toString() ?? '',
-        replacement: json['replacement']?.toString() ?? '***',
-        scope: json['scope']?.toString() ?? 'channel',
-      );
-}
-
-class _ChatBan {
-  const _ChatBan({
-    required this.reason,
-    required this.expiresAt,
-    required this.scope,
-    this.channel,
-  });
-
-  final String reason;
-  final DateTime expiresAt;
-  final String scope;
-  final String? channel;
-
-  factory _ChatBan.fromJson(Map<String, dynamic> json) => _ChatBan(
-        reason: json['reason']?.toString() ?? 'Sohbet erişimi kısıtlandı.',
-        expiresAt: DateTime.tryParse(json['expires_at']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
-        scope: json['scope']?.toString() ?? 'channel',
-        channel: json['channel']?.toString(),
-      );
-}
-
-class _ChatPermissions {
-  const _ChatPermissions({
-    required this.canDelete,
-    required this.canBan,
-    required this.canManageFilters,
-    required this.canManageModerators,
-  });
-
-  final bool canDelete;
-  final bool canBan;
-  final bool canManageFilters;
-  final bool canManageModerators;
-
-  factory _ChatPermissions.fromJson(Map<String, dynamic>? json) => _ChatPermissions(
-        canDelete: (json?['can_delete'] as bool?) ?? false,
-        canBan: (json?['can_ban'] as bool?) ?? false,
-        canManageFilters: (json?['can_manage_filters'] as bool?) ?? false,
-        canManageModerators: (json?['can_manage_moderators'] as bool?) ?? false,
-      );
-}
-
-class _ChatModerationState {
-  const _ChatModerationState({
-    required this.channel,
-    required this.filters,
-    required this.activeBans,
-    required this.permissions,
-  });
-
-  final _ChatChannel channel;
-  final List<_ChatFilter> filters;
-  final List<_ChatBan> activeBans;
-  final _ChatPermissions permissions;
-
-  factory _ChatModerationState.empty(_ChatChannel channel) => _ChatModerationState(
-        channel: channel,
-        filters: const <_ChatFilter>[],
-        activeBans: const <_ChatBan>[],
-        permissions: _ChatPermissions.fromJson(null),
-      );
-
-  factory _ChatModerationState.fromJson(_ChatChannel channel, Map<String, dynamic>? json) {
-    final List<dynamic> rawFilters = (json?['filters'] as List<dynamic>?) ?? <dynamic>[];
-    final List<dynamic> rawBans = (json?['active_bans'] as List<dynamic>?) ?? <dynamic>[];
-
-    return _ChatModerationState(
-      channel: channel,
-      filters: rawFilters.whereType<Map>().map((Map f) => _ChatFilter.fromJson(Map<String, dynamic>.from(f))).toList(growable: false),
-      activeBans: rawBans.whereType<Map>().map((Map b) => _ChatBan.fromJson(Map<String, dynamic>.from(b))).toList(growable: false),
-      permissions: _ChatPermissions.fromJson((json?['permissions'] as Map?)?.cast<String, dynamic>()),
-    );
-  }
-}
-
-// ============================================================================
-// MAIN SCREEN
-// ============================================================================
+import 'chat_design_system.dart';
+import 'chat_models.dart';
+import 'chat_repository.dart';
+import 'widgets/chat_ban_banner.dart';
+import 'widgets/chat_channel_bar.dart';
+import 'widgets/chat_composer.dart';
+import 'widgets/chat_dm_panel.dart';
+import 'widgets/chat_message_list.dart';
+import 'widgets/chat_moderation_panel.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, this.asPanel = false});
@@ -438,23 +39,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _filterReplacementController = TextEditingController(text: '***');
   final ScrollController _scrollController = ScrollController();
 
-  final Map<_ChatChannel, List<_ChatMessage>> _messages = <_ChatChannel, List<_ChatMessage>>{
-    _ChatChannel.global: <_ChatMessage>[],
-    _ChatChannel.guild: <_ChatMessage>[],
-    _ChatChannel.trade: <_ChatMessage>[],
-    _ChatChannel.dm: <_ChatMessage>[],
+  final Map<ChatChannel, List<ChatMessage>> _messages = <ChatChannel, List<ChatMessage>>{
+    ChatChannel.global: <ChatMessage>[],
+    ChatChannel.guild: <ChatMessage>[],
+    ChatChannel.trade: <ChatMessage>[],
+    ChatChannel.dm: <ChatMessage>[],
   };
 
   final Set<String> _mutedPlayers = <String>{};
   final Set<String> _blockedPlayers = <String>{};
-  final Map<String, _BlockedChatUser> _blockedUsers = <String, _BlockedChatUser>{};
+  final Map<String, BlockedChatUser> _blockedUsers = <String, BlockedChatUser>{};
 
-  _ChatChannel _activeChannel = _ChatChannel.global;
-  _ChatModerationState _moderationState = _ChatModerationState.empty(_ChatChannel.global);
-  List<_ChatDmConversation> _dmConversations = <_ChatDmConversation>[];
-  List<_ChatUserSummary> _dmSearchResults = <_ChatUserSummary>[];
+  ChatChannel _activeChannel = ChatChannel.global;
+  ChatModerationState _moderationState = ChatModerationState.empty(ChatChannel.global);
+  List<ChatDmConversation> _dmConversations = <ChatDmConversation>[];
+  List<ChatUserSummary> _dmSearchResults = <ChatUserSummary>[];
 
-  _ChatUserSummary? _activeDmPeer;
+  ChatUserSummary? _activeDmPeer;
 
   bool _isLoading = false;
   bool _isSending = false;
@@ -494,24 +95,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _presenceByUserId[userId] = online;
   }
 
-  void _seedPresenceFromMessages(Iterable<_ChatMessage> messages) {
-    for (final _ChatMessage message in messages) {
+  void _seedPresenceFromMessages(Iterable<ChatMessage> messages) {
+    for (final ChatMessage message in messages) {
       _seedPresence(message.senderId, message.senderIsOnline);
     }
   }
 
   List<String> _collectPresenceUserIds() {
     final Set<String> ids = <String>{};
-    for (final _ChatDmConversation conversation in _dmConversations) {
+    for (final ChatDmConversation conversation in _dmConversations) {
       if (conversation.peerUserId.isNotEmpty) ids.add(conversation.peerUserId);
     }
     if (_activeDmPeer != null && _activeDmPeer!.id.isNotEmpty) {
       ids.add(_activeDmPeer!.id);
     }
-    for (final _ChatUserSummary user in _dmSearchResults) {
+    for (final ChatUserSummary user in _dmSearchResults) {
       if (user.id.isNotEmpty) ids.add(user.id);
     }
-    for (final _ChatMessage message in _currentMessages) {
+    for (final ChatMessage message in _currentMessages) {
       if (!message.isSystem && message.senderId.isNotEmpty && !_isOwnSender(message.senderId)) {
         ids.add(message.senderId);
       }
@@ -535,7 +136,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (userIds.isEmpty || !mounted) return;
 
     try {
-      final dynamic res = await _rpc(
+      final dynamic res = await ChatRepository.rpc(
         'get_chat_presence',
         params: <String, dynamic>{'p_user_ids': userIds},
       );
@@ -555,65 +156,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Widget _buildPresenceNameRow({
-    required String label,
-    String? userId,
-    bool? fallbackOnline,
-    required TextStyle style,
-    double dotSize = 7,
-  }) {
-    final bool online = _isUserOnline(userId ?? '', fallback: fallbackOnline);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        if (userId != null && userId.isNotEmpty) ...<Widget>[
-          _OnlineStatusDot(online: online, size: dotSize),
-          const SizedBox(width: 6),
-        ],
-        Flexible(
-          child: Text(label, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
-      ],
-    );
-  }
 
   bool? _peerPresenceFallback(String peerUserId) {
-    for (final _ChatDmConversation conversation in _dmConversations) {
+    for (final ChatDmConversation conversation in _dmConversations) {
       if (conversation.peerUserId == peerUserId) return conversation.peerIsOnline;
     }
     if (_activeDmPeer?.id == peerUserId) return _activeDmPeer?.isOnline;
-    for (final _ChatUserSummary user in _dmSearchResults) {
+    for (final ChatUserSummary user in _dmSearchResults) {
       if (user.id == peerUserId) return user.isOnline;
     }
     return null;
   }
 
-  int get _dmUnreadCount => _dmConversations.fold<int>(0, (int total, _ChatDmConversation item) => total + item.unreadCount);
+  int get _dmUnreadCount => _dmConversations.fold<int>(0, (int total, ChatDmConversation item) => total + item.unreadCount);
 
-  List<_ChatMessage> get _currentMessages => _messages[_activeChannel] ?? const <_ChatMessage>[];
+  List<ChatMessage> get _currentMessages => _messages[_activeChannel] ?? const <ChatMessage>[];
 
   String get _topBarTitle {
-    if (_activeChannel == _ChatChannel.dm) {
+    if (_activeChannel == ChatChannel.dm) {
       if (_activeDmPeer != null) {
         return '@${_activeDmPeer!.username}';
       }
       return 'Özel Mesajlar';
     }
     return switch (_activeChannel) {
-      _ChatChannel.global => 'Genel Sohbet',
-      _ChatChannel.guild => 'Lonca Sohbeti',
-      _ChatChannel.trade => 'Pazar Sohbeti',
-      _ChatChannel.dm => 'Özel Mesajlar',
+      ChatChannel.global => 'Genel Sohbet',
+      ChatChannel.guild => 'Lonca Sohbeti',
+      ChatChannel.trade => 'Pazar Sohbeti',
+      ChatChannel.dm => 'Özel Mesajlar',
     };
   }
 
   Future<void> _logoutHandler() => performLogout(ref);
 
-  _ChatBan? get _activeBan {
-    for (final _ChatBan ban in _moderationState.activeBans) {
+  ChatBan? get _activeBan {
+    for (final ChatBan ban in _moderationState.activeBans) {
       if (ban.scope == 'global') return ban;
       if (ban.channel == _activeChannel.key) return ban;
-      if (_activeChannel == _ChatChannel.guild && ban.scope == 'guild') return ban;
+      if (_activeChannel == ChatChannel.guild && ban.scope == 'guild') return ban;
     }
     return null;
   }
@@ -641,24 +221,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  Future<dynamic> _rpc(String fn, {Map<String, dynamic>? params}) async {
-    return SupabaseService.client.rpc(fn, params: params);
-  }
 
-  Future<void> _loadForChannel(_ChatChannel channel) async {
+  Future<void> _loadForChannel(ChatChannel channel) async {
     setState(() {
       _isLoading = true;
       _activeChannel = channel;
-      if (channel == _ChatChannel.guild) {
+      if (channel == ChatChannel.guild) {
         _guildUnreadCount = 0;
       }
-      if (channel != _ChatChannel.dm) {
+      if (channel != ChatChannel.dm) {
         _activeDmPeer = null;
       }
     });
 
     try {
-      if (channel == _ChatChannel.dm) {
+      if (channel == ChatChannel.dm) {
         await Future.wait(<Future<void>>[
           _loadModerationState(channel),
           _loadDmConversations(),
@@ -676,12 +253,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _loadHistory(_ChatChannel channel, {int limit = 50}) async {
-    final dynamic res = await _rpc('get_chat_history', params: <String, dynamic>{'p_channel': channel.key, 'p_limit': limit});
+  Future<void> _loadHistory(ChatChannel channel, {int limit = 50}) async {
+    final dynamic res = await ChatRepository.rpc('get_chat_history', params: <String, dynamic>{'p_channel': channel.key, 'p_limit': limit});
 
-    final List<_ChatMessage> parsed = ((res as List?) ?? const <dynamic>[])
+    final List<ChatMessage> parsed = ((res as List?) ?? const <dynamic>[])
         .whereType<Map>()
-        .map((Map m) => _ChatMessage.fromJson(Map<String, dynamic>.from(m)))
+        .map((Map m) => ChatMessage.fromJson(Map<String, dynamic>.from(m)))
         .where((m) => !_blockedPlayers.contains(m.senderId) && !_mutedPlayers.contains(m.senderId))
         .toList()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -698,17 +275,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _loadDmConversations() async {
     setState(() => _isDmLoading = true);
     try {
-      final dynamic res = await _rpc('get_dm_conversations');
-      final List<_ChatDmConversation> items = ((res as List?) ?? const <dynamic>[])
+      final dynamic res = await ChatRepository.rpc('get_dm_conversations');
+      final List<ChatDmConversation> items = ((res as List?) ?? const <dynamic>[])
           .whereType<Map>()
-          .map((Map m) => _ChatDmConversation.fromJson(Map<String, dynamic>.from(m)))
+          .map((Map m) => ChatDmConversation.fromJson(Map<String, dynamic>.from(m)))
           .toList()
         ..sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
 
       if (!mounted) return;
       setState(() {
         _dmConversations = items;
-        for (final _ChatDmConversation conversation in items) {
+        for (final ChatDmConversation conversation in items) {
           _seedPresence(conversation.peerUserId, conversation.peerIsOnline);
         }
       });
@@ -719,18 +296,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _loadDmMessages(String peerUserId, {int limit = 50}) async {
-    final dynamic res = await _rpc('get_dm_messages', params: <String, dynamic>{'p_peer_user_id': peerUserId, 'p_limit': limit});
+    final dynamic res = await ChatRepository.rpc('get_dm_messages', params: <String, dynamic>{'p_peer_user_id': peerUserId, 'p_limit': limit});
 
-    final List<_ChatMessage> parsed = ((res as List?) ?? const <dynamic>[])
+    final List<ChatMessage> parsed = ((res as List?) ?? const <dynamic>[])
         .whereType<Map>()
-        .map((Map m) => _ChatMessage.fromJson(Map<String, dynamic>.from(m)))
+        .map((Map m) => ChatMessage.fromJson(Map<String, dynamic>.from(m)))
         .where((m) => !_blockedPlayers.contains(m.senderId) && !_mutedPlayers.contains(m.senderId))
         .toList()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     if (!mounted) return;
     setState(() {
-      _messages[_ChatChannel.dm] = parsed;
+      _messages[ChatChannel.dm] = parsed;
       _seedPresenceFromMessages(parsed);
     });
     unawaited(_refreshPresence());
@@ -738,29 +315,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _markDmRead(String peerUserId) async {
-    await _rpc('mark_dm_conversation_read', params: <String, dynamic>{'p_peer_user_id': peerUserId});
+    await ChatRepository.rpc('mark_dm_conversation_read', params: <String, dynamic>{'p_peer_user_id': peerUserId});
   }
 
   Future<void> _searchDmUsers(String query, {int limit = 8}) async {
     final String trimmed = query.trim();
     if (trimmed.length < 2) {
-      setState(() => _dmSearchResults = <_ChatUserSummary>[]);
+      setState(() => _dmSearchResults = <ChatUserSummary>[]);
       return;
     }
 
     setState(() => _isDmSearchLoading = true);
     try {
-      final dynamic res = await _rpc('search_chat_users', params: <String, dynamic>{'p_query': trimmed, 'p_limit': limit});
+      final dynamic res = await ChatRepository.rpc('search_chat_users', params: <String, dynamic>{'p_query': trimmed, 'p_limit': limit});
 
-      final List<_ChatUserSummary> users = ((res as List?) ?? const <dynamic>[])
+      final List<ChatUserSummary> users = ((res as List?) ?? const <dynamic>[])
           .whereType<Map>()
-          .map((Map m) => _ChatUserSummary.fromJson(Map<String, dynamic>.from(m)))
+          .map((Map m) => ChatUserSummary.fromJson(Map<String, dynamic>.from(m)))
           .toList(growable: false);
 
       if (!mounted) return;
       setState(() {
         _dmSearchResults = users;
-        for (final _ChatUserSummary user in users) {
+        for (final ChatUserSummary user in users) {
           _seedPresence(user.id, user.isOnline);
         }
       });
@@ -770,18 +347,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _loadModerationState(_ChatChannel channel) async {
+  Future<void> _loadModerationState(ChatChannel channel) async {
     setState(() => _isModerationLoading = true);
     try {
-      final dynamic res = await _rpc('get_chat_moderation_state', params: <String, dynamic>{'p_channel': channel.key});
+      final dynamic res = await ChatRepository.rpc('get_chat_moderation_state', params: <String, dynamic>{'p_channel': channel.key});
 
       if (!mounted) return;
       setState(() {
-        _moderationState = _ChatModerationState.fromJson(channel, (res as Map?)?.cast<String, dynamic>());
+        _moderationState = ChatModerationState.fromJson(channel, (res as Map?)?.cast<String, dynamic>());
       });
     } catch (_) {
       if (mounted) {
-        setState(() => _moderationState = _ChatModerationState.empty(channel));
+        setState(() => _moderationState = ChatModerationState.empty(channel));
       }
     } finally {
       if (mounted) setState(() => _isModerationLoading = false);
@@ -790,10 +367,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _syncBlockedUsers() async {
     try {
-      final dynamic res = await _rpc('get_blocked_chat_users');
-      final List<_BlockedChatUser> users = ((res as List?) ?? const <dynamic>[])
+      final dynamic res = await ChatRepository.rpc('get_blocked_chat_users');
+      final List<BlockedChatUser> users = ((res as List?) ?? const <dynamic>[])
           .whereType<Map>()
-          .map((Map m) => _BlockedChatUser.fromJson(Map<String, dynamic>.from(m)))
+          .map((Map m) => BlockedChatUser.fromJson(Map<String, dynamic>.from(m)))
           .where((u) => u.id.isNotEmpty)
           .toList(growable: false);
 
@@ -801,7 +378,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() {
         _blockedUsers
           ..clear()
-          ..addEntries(users.map((u) => MapEntry<String, _BlockedChatUser>(u.id, u)));
+          ..addEntries(users.map((u) => MapEntry<String, BlockedChatUser>(u.id, u)));
         _blockedPlayers
           ..clear()
           ..addAll(_blockedUsers.keys);
@@ -824,7 +401,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     bool serverUnblocked = false;
 
     try {
-      final dynamic res = await _rpc('unblock_chat_user', params: <String, dynamic>{'p_blocked_user_id': playerId});
+      final dynamic res = await ChatRepository.rpc('unblock_chat_user', params: <String, dynamic>{'p_blocked_user_id': playerId});
       final Map<String, dynamic>? data = res is Map ? Map<String, dynamic>.from(res) : null;
       serverUnblocked = data?['success'] == true;
     } catch (_) {
@@ -861,7 +438,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext ctx) {
-        final List<_BlockedChatUser> users = _blockedUsers.values.toList(growable: false);
+        final List<BlockedChatUser> users = _blockedUsers.values.toList(growable: false);
         if (users.isEmpty) {
           return const SafeArea(
             child: SizedBox(
@@ -887,7 +464,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     itemCount: users.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (BuildContext context, int index) {
-                      final _BlockedChatUser u = users[index];
+                      final BlockedChatUser u = users[index];
                       final String label = u.displayName?.isNotEmpty == true ? u.displayName! : u.username;
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -922,9 +499,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Future<void> _openDmConversation(_ChatUserSummary peer) async {
+  Future<void> _openDmConversation(ChatUserSummary peer) async {
     setState(() {
-      _activeChannel = _ChatChannel.dm;
+      _activeChannel = ChatChannel.dm;
       _activeDmPeer = peer;
       _isLoading = true;
     });
@@ -933,7 +510,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await _loadDmMessages(peer.id);
       await _markDmRead(peer.id);
       await _loadDmConversations();
-      await _loadModerationState(_ChatChannel.dm);
+      await _loadModerationState(ChatChannel.dm);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -942,7 +519,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _leaveDmConversation() {
     setState(() {
       _activeDmPeer = null;
-      _messages[_ChatChannel.dm] = <_ChatMessage>[];
+      _messages[ChatChannel.dm] = <ChatMessage>[];
     });
   }
 
@@ -962,11 +539,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
-    _ChatChannel targetChannel = _activeChannel;
+    ChatChannel targetChannel = _activeChannel;
     String targetContent = trimmed;
     String? recipientId = _activeDmPeer?.id;
 
-    if (_activeChannel != _ChatChannel.dm) {
+    if (_activeChannel != ChatChannel.dm) {
       final RegExpMatch? mention = RegExp(r'^@([a-zA-Z0-9_.-]+)\s+([\s\S]+)$').firstMatch(trimmed);
       if (mention != null) {
         final String username = mention.group(1) ?? '';
@@ -975,18 +552,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _showSnack('Özel mesaj içeriği boş olamaz.');
           return;
         }
-        final _ChatUserSummary? peer = await _resolveDmUserByUsername(username);
+        final ChatUserSummary? peer = await _resolveDmUserByUsername(username);
         if (peer == null) {
           _showSnack('Bu kullanıcı adına ait oyuncu bulunamadı.');
           return;
         }
-        targetChannel = _ChatChannel.dm;
+        targetChannel = ChatChannel.dm;
         recipientId = peer.id;
         targetContent = rest;
       }
     }
 
-    if (targetChannel == _ChatChannel.dm && (recipientId == null || recipientId.isEmpty)) {
+    if (targetChannel == ChatChannel.dm && (recipientId == null || recipientId.isEmpty)) {
       _showSnack('Özel mesaj için önce bir oyuncu seçin.');
       return;
     }
@@ -998,7 +575,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     setState(() => _isSending = true);
     try {
-      final dynamic result = await _rpc('send_chat_message', params: <String, dynamic>{
+      final dynamic result = await ChatRepository.rpc('send_chat_message', params: <String, dynamic>{
         'p_channel': targetChannel.key,
         'p_content': targetContent,
         'p_recipient_user_id': recipientId,
@@ -1009,7 +586,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _lastMessageSentAt = DateTime.now();
         final dynamic messagePayload = response?['message'];
         if (messagePayload is Map) {
-          final _ChatMessage serverMessage = _ChatMessage.fromJson(Map<String, dynamic>.from(messagePayload));
+          final ChatMessage serverMessage = ChatMessage.fromJson(Map<String, dynamic>.from(messagePayload));
           _appendIfAbsent(targetChannel, serverMessage);
         } else {
           _appendLocalMessage(
@@ -1022,14 +599,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _scheduleScrollToBottom(immediate: true);
 
         // Server state ile hizalamak için hızlı bir yenileme yap.
-        if (targetChannel == _ChatChannel.dm && recipientId != null && recipientId.isNotEmpty) {
+        if (targetChannel == ChatChannel.dm && recipientId != null && recipientId.isNotEmpty) {
           await _loadDmMessages(recipientId);
           await _loadDmConversations();
         } else {
           await _loadHistory(targetChannel);
         }
 
-        if (targetChannel == _ChatChannel.dm) {
+        if (targetChannel == ChatChannel.dm) {
           await _loadDmConversations();
         }
       } else {
@@ -1042,17 +619,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<_ChatUserSummary?> _resolveDmUserByUsername(String username) async {
+  Future<ChatUserSummary?> _resolveDmUserByUsername(String username) async {
     final String normalized = username.replaceFirst('@', '').trim().toLowerCase();
     if (normalized.isEmpty) return null;
-    final dynamic res = await _rpc('search_chat_users', params: <String, dynamic>{'p_query': normalized, 'p_limit': 10});
+    final dynamic res = await ChatRepository.rpc('search_chat_users', params: <String, dynamic>{'p_query': normalized, 'p_limit': 10});
 
-    final List<_ChatUserSummary> users = ((res as List?) ?? const <dynamic>[])
+    final List<ChatUserSummary> users = ((res as List?) ?? const <dynamic>[])
         .whereType<Map>()
-        .map((Map m) => _ChatUserSummary.fromJson(Map<String, dynamic>.from(m)))
+        .map((Map m) => ChatUserSummary.fromJson(Map<String, dynamic>.from(m)))
         .toList(growable: false);
 
-    for (final _ChatUserSummary u in users) {
+    for (final ChatUserSummary u in users) {
       if (u.username.toLowerCase() == normalized) {
         return u;
       }
@@ -1060,7 +637,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return null;
   }
 
-  Future<void> _hideDmConversation(_ChatDmConversation conv) async {
+  Future<void> _hideDmConversation(ChatDmConversation conv) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
@@ -1079,7 +656,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (confirmed != true) return;
 
     try {
-      final dynamic res = await _rpc(
+      final dynamic res = await ChatRepository.rpc(
         'hide_dm_conversation',
         params: <String, dynamic>{'p_peer_user_id': conv.peerUserId},
       );
@@ -1098,7 +675,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  void _showDmConversationActions(_ChatDmConversation conv) {
+  void _showDmConversationActions(ChatDmConversation conv) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF0D1117),
@@ -1140,13 +717,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _mutedPlayers.add(playerId);
       _blockedPlayers.add(playerId);
-      _blockedUsers[playerId] = _BlockedChatUser(
+      _blockedUsers[playerId] = BlockedChatUser(
         id: playerId,
         username: playerName ?? 'oyuncu',
         displayName: playerName,
       );
       _messages.updateAll(
-        (_, List<_ChatMessage> list) =>
+        (_, List<ChatMessage> list) =>
             list.where((m) => m.senderId != playerId).toList(growable: false),
       );
       if (_activeDmPeer?.id == playerId) {
@@ -1155,7 +732,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     try {
-      await _rpc('block_chat_user', params: <String, dynamic>{'p_blocked_user_id': playerId});
+      await ChatRepository.rpc('block_chat_user', params: <String, dynamic>{'p_blocked_user_id': playerId});
       if (mounted) {
         final String label = playerName ?? _blockedUsers[playerId]?.username ?? 'oyuncu';
         AppMessenger.show(context, '@$label susturuldu.');
@@ -1168,7 +745,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _reportMessage(String messageId, String reason) async {
     try {
-      final dynamic res = await _rpc('report_chat_message', params: <String, dynamic>{'p_message_id': messageId, 'p_reason': reason, 'p_details': null});
+      final dynamic res = await ChatRepository.rpc('report_chat_message', params: <String, dynamic>{'p_message_id': messageId, 'p_reason': reason, 'p_details': null});
       final Map<String, dynamic>? response = res is Map ? Map<String, dynamic>.from(res) : null;
       if (response?['success'] == true) {
         _showSnack('Rapor gönderildi.');
@@ -1182,11 +759,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _deleteMessage(String messageId) async {
     try {
-      final dynamic res = await _rpc('delete_chat_message', params: <String, dynamic>{'p_message_id': messageId, 'p_reason': 'moderator_delete'});
+      final dynamic res = await ChatRepository.rpc('delete_chat_message', params: <String, dynamic>{'p_message_id': messageId, 'p_reason': 'moderator_delete'});
       final Map<String, dynamic>? response = res is Map ? Map<String, dynamic>.from(res) : null;
       if (response?['success'] == true) {
         setState(() {
-          _messages[_activeChannel] = (_messages[_activeChannel] ?? <_ChatMessage>[]).where((m) => m.id != messageId).toList(growable: false);
+          _messages[_activeChannel] = (_messages[_activeChannel] ?? <ChatMessage>[]).where((m) => m.id != messageId).toList(growable: false);
         });
         _showSnack('Mesaj silindi.');
       } else {
@@ -1197,7 +774,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _banPlayer(_ChatMessage msg) async {
+  Future<void> _banPlayer(ChatMessage msg) async {
     final TextEditingController minuteCtrl = TextEditingController(text: '30');
     final TextEditingController reasonCtrl = TextEditingController(text: 'kural ihlali');
 
@@ -1214,7 +791,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Süre (dakika)'),
               ),
-              const SizedBox(height: _ChatDesignSystem.spaceMd),
+              const SizedBox(height: ChatDesignSystem.spaceMd),
               TextField(
                 controller: reasonCtrl,
                 decoration: const InputDecoration(labelText: 'Sebep'),
@@ -1239,7 +816,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     try {
-      final dynamic res = await _rpc('ban_chat_user', params: <String, dynamic>{
+      final dynamic res = await ChatRepository.rpc('ban_chat_user', params: <String, dynamic>{
         'p_target_user_id': msg.senderId,
         'p_channel': _activeChannel.key,
         'p_duration_minutes': duration,
@@ -1256,7 +833,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _assignModerator(_ChatMessage msg) async {
+  Future<void> _assignModerator(ChatMessage msg) async {
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
@@ -1272,7 +849,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (ok != true) return;
 
     try {
-      final dynamic res = await _rpc('assign_chat_moderator', params: <String, dynamic>{'p_target_user_id': msg.senderId, 'p_channel': _activeChannel.key});
+      final dynamic res = await ChatRepository.rpc('assign_chat_moderator', params: <String, dynamic>{'p_target_user_id': msg.senderId, 'p_channel': _activeChannel.key});
       final Map<String, dynamic>? response = res is Map ? Map<String, dynamic>.from(res) : null;
       if (response?['success'] == true) {
         _showSnack('Moderator atandı.');
@@ -1295,7 +872,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     try {
-      final dynamic res = await _rpc('create_chat_filter', params: <String, dynamic>{
+      final dynamic res = await ChatRepository.rpc('create_chat_filter', params: <String, dynamic>{
         'p_term': term,
         'p_replacement': replacement,
         'p_channel': _activeChannel.key,
@@ -1316,7 +893,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _deleteFilter(String filterId) async {
     try {
-      final dynamic res = await _rpc('delete_chat_filter', params: <String, dynamic>{'p_filter_id': filterId});
+      final dynamic res = await ChatRepository.rpc('delete_chat_filter', params: <String, dynamic>{'p_filter_id': filterId});
       final Map<String, dynamic>? response = res is Map ? Map<String, dynamic>.from(res) : null;
       if (response?['success'] == true) {
         _showSnack('Filtre silindi.');
@@ -1354,17 +931,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
             if (newRow.isEmpty) return;
 
-            final _ChatMessage msg = _ChatMessage.fromJson(newRow);
+            final ChatMessage msg = ChatMessage.fromJson(newRow);
             if (_blockedPlayers.contains(msg.senderId) || _mutedPlayers.contains(msg.senderId)) {
               return;
             }
 
-            if (msg.channel == _ChatChannel.dm) {
+            if (msg.channel == ChatChannel.dm) {
               _handleIncomingDm(msg);
               return;
             }
 
-            if (msg.channel == _ChatChannel.guild && msg.senderId != _currentUserId && _activeChannel != _ChatChannel.guild) {
+            if (msg.channel == ChatChannel.guild && msg.senderId != _currentUserId && _activeChannel != ChatChannel.guild) {
               setState(() => _guildUnreadCount = (_guildUnreadCount + 1).clamp(0, 99));
             }
 
@@ -1374,16 +951,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         .subscribe();
   }
 
-  void _handleIncomingDm(_ChatMessage msg) {
+  void _handleIncomingDm(ChatMessage msg) {
     if (_currentUserId.isEmpty) return;
 
     final bool isOwn = _isOwnSender(msg.senderId);
     final String peerId = isOwn ? (msg.recipientUserId ?? '') : msg.senderId;
     if (peerId.isEmpty) return;
 
-    final bool isActiveThread = _activeChannel == _ChatChannel.dm && _activeDmPeer?.id == peerId;
+    final bool isActiveThread = _activeChannel == ChatChannel.dm && _activeDmPeer?.id == peerId;
     if (isActiveThread) {
-      _appendIfAbsent(_ChatChannel.dm, msg);
+      _appendIfAbsent(ChatChannel.dm, msg);
       if (!isOwn) {
         unawaited(_markDmRead(peerId));
       }
@@ -1392,10 +969,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     unawaited(_loadDmConversations());
   }
 
-  void _appendIfAbsent(_ChatChannel channel, _ChatMessage message) {
+  void _appendIfAbsent(ChatChannel channel, ChatMessage message) {
     if (!mounted) return;
     setState(() {
-      final List<_ChatMessage> prev = List<_ChatMessage>.from(_messages[channel] ?? const <_ChatMessage>[]);
+      final List<ChatMessage> prev = List<ChatMessage>.from(_messages[channel] ?? const <ChatMessage>[]);
       if (prev.any((m) => m.id == message.id)) return;
       prev.add(message);
       prev.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -1408,7 +985,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _appendLocalMessage({
-    required _ChatChannel channel,
+    required ChatChannel channel,
     required String content,
     required String? recipientUserId,
   }) {
@@ -1424,7 +1001,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'is_system': false,
       'recipient_user_id': recipientUserId,
     };
-    _appendIfAbsent(channel, _ChatMessage.fromJson(payload));
+    _appendIfAbsent(channel, ChatMessage.fromJson(payload));
   }
 
   void _handleComposerChanged() {
@@ -1471,9 +1048,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _removeMessage(String id, String? channelKey) {
     if (!mounted || id.isEmpty) return;
-    final _ChatChannel channel = _ChatChannelX.fromKey(channelKey ?? 'global');
+    final ChatChannel channel = ChatChannelX.fromKey(channelKey ?? 'global');
     setState(() {
-      _messages[channel] = (_messages[channel] ?? const <_ChatMessage>[]).where((m) => m.id != id).toList(growable: false);
+      _messages[channel] = (_messages[channel] ?? const <ChatMessage>[]).where((m) => m.id != id).toList(growable: false);
     });
   }
 
@@ -1482,16 +1059,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     AppMessenger.show(context, message);
   }
 
-  String _formatTime(DateTime dt) {
-    final String hh = dt.hour.toString().padLeft(2, '0');
-    final String mm = dt.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
-  }
 
   @override
   Widget build(BuildContext context) {
-    final bool showDmPanel = _activeChannel == _ChatChannel.dm;
-    final bool showComposer = _activeChannel != _ChatChannel.dm || _activeDmPeer != null;
+    final bool showDmPanel = _activeChannel == ChatChannel.dm;
+    final bool showComposer = _activeChannel != ChatChannel.dm || _activeDmPeer != null;
 
     final Widget body = Column(
       children: <Widget>[
@@ -1507,22 +1079,74 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-        _buildChannelBar(),
+        ChatChannelBar(
+          activeChannel: _activeChannel,
+          guildUnreadCount: _guildUnreadCount,
+          dmUnreadCount: _dmUnreadCount,
+          onChannelSelected: _loadForChannel,
+        ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
+            padding: const EdgeInsets.all(ChatDesignSystem.spaceMd),
             child: Column(
               children: <Widget>[
-                _buildBanBanner(),
-                _buildModerationPanel(),
+                if (_activeBan != null) ChatBanBanner(ban: _activeBan!),
+                ChatModerationPanel(
+                  moderationState: _moderationState,
+                  isLoading: _isModerationLoading,
+                  filterTermController: _filterTermController,
+                  filterReplacementController: _filterReplacementController,
+                  onCreateFilter: _createFilter,
+                  onDeleteFilter: _deleteFilter,
+                ),
                 Expanded(
-                  child: showDmPanel ? _buildDmPanel() : _buildMessageList(),
+                  child: showDmPanel
+                      ? ChatDmPanel(
+                          activePeer: _activeDmPeer,
+                          dmSearchController: _dmSearchController,
+                          isDmSearchLoading: _isDmSearchLoading,
+                          isDmLoading: _isDmLoading,
+                          dmSearchResults: _dmSearchResults,
+                          dmConversations: _dmConversations,
+                          isLoadingMessages: _isLoading,
+                          messages: _currentMessages,
+                          scrollController: _scrollController,
+                          isOwnSender: _isOwnSender,
+                          isUserOnline: _isUserOnline,
+                          peerPresenceFallback: _peerPresenceFallback,
+                          onSearchChanged: (String value) => unawaited(_searchDmUsers(value)),
+                          onOpenConversation: _openDmConversation,
+                          onConversationLongPress: _showDmConversationActions,
+                          onMutePeer: () => _mutePlayer(_activeDmPeer!.id, playerName: _activeDmPeer!.username),
+                          onLeaveConversation: _leaveDmConversation,
+                          onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
+                        )
+                      : ChatMessageList(
+                          isLoading: _isLoading,
+                          messages: _currentMessages,
+                          activeChannel: _activeChannel,
+                          scrollController: _scrollController,
+                          isOwnSender: _isOwnSender,
+                          isUserOnline: _isUserOnline,
+                          onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
+                        ),
                 ),
               ],
             ),
           ),
         ),
-        if (showComposer) _buildComposer(),
+        if (showComposer)
+          ChatComposer(
+            asPanel: widget.asPanel,
+            activeChannel: _activeChannel,
+            activeBan: _activeBan,
+            messageController: _messageController,
+            isSending: _isSending,
+            maxMessageLength: _maxMessageLength,
+            blockedUserCount: _blockedUsers.length,
+            onSend: _sendMessage,
+            onOpenBlockedUsers: _openBlockedUsersSheet,
+          ),
       ],
     );
 
@@ -1539,779 +1163,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         onLogout: _logoutHandler,
       ),
       body: body,
-    );
-  }
-
-  Widget _buildChannelBar() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceMd),
-      child: Row(
-        children: <Widget>[
-          ..._ChatChannel.values.map((c) {
-          final bool active = c == _activeChannel;
-          final int badge = c == _ChatChannel.guild ? _guildUnreadCount : c == _ChatChannel.dm ? _dmUnreadCount : 0;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: _ChatDesignSystem.spaceMd),
-            child: GestureDetector(
-              onTap: () => _loadForChannel(c),
-              child: AnimatedContainer(
-                duration: _ChatDesignSystem.durationBase,
-                curve: _ChatDesignSystem.curveEaseInOut,
-                padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceLg, vertical: _ChatDesignSystem.spaceSm),
-                decoration: BoxDecoration(
-                  gradient: active ? c.gradient : LinearGradient(colors: [Colors.transparent, Colors.transparent]),
-                  border: Border.all(
-                    color: active ? c.accentColor.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
-                    width: active ? 1.5 : 1,
-                  ),
-                  borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusXl),
-                  boxShadow: active ? _ChatDesignSystem.shadowMd : [],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? c.accentColor : _ChatDesignSystem.colorTextTertiary)),
-                    if (badge > 0) ...<Widget>[
-                      const SizedBox(width: _ChatDesignSystem.spaceSm),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceSm, vertical: _ChatDesignSystem.spaceXs),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [c.accentColor.withValues(alpha: 0.3), c.accentColor.withValues(alpha: 0.15)]),
-                          border: Border.all(color: c.accentColor.withValues(alpha: 0.4), width: 0.8),
-                          borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusRound),
-                        ),
-                        child: Text(badge > 99 ? '99+' : '$badge', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: c.accentColor)),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          );
-        }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBanBanner() {
-    final _ChatBan? ban = _activeBan;
-    if (ban == null) return const SizedBox.shrink();
-
-    return AnimatedContainer(
-      duration: _ChatDesignSystem.durationBase,
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [_ChatDesignSystem.colorError.withValues(alpha: 0.15), _ChatDesignSystem.colorError.withValues(alpha: 0.05)]),
-        border: Border.all(color: _ChatDesignSystem.colorError.withValues(alpha: 0.3), width: 1.5),
-        borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusXl),
-        boxShadow: [BoxShadow(color: _ChatDesignSystem.colorError.withValues(alpha: 0.1), blurRadius: 12)],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(_ChatDesignSystem.spaceSm),
-                  decoration: BoxDecoration(color: _ChatDesignSystem.colorError.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd)),
-                  child: Icon(Icons.block_rounded, size: 14, color: _ChatDesignSystem.colorError),
-                ),
-                const SizedBox(width: _ChatDesignSystem.spaceSm),
-                const Text('Sohbet Erişimi Kısıtlandı', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorError)),
-              ],
-            ),
-            const SizedBox(height: _ChatDesignSystem.spaceSm),
-            Padding(
-              padding: const EdgeInsets.only(left: _ChatDesignSystem.spaceLg + _ChatDesignSystem.spaceSm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(ban.reason, style: const TextStyle(fontSize: 12, color: _ChatDesignSystem.colorTextSecondary)),
-                  const SizedBox(height: _ChatDesignSystem.spaceXs),
-                  Text('Bitiş: ${ban.expiresAt.toString().split('.')[0]}', style: TextStyle(fontSize: 10, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.7))),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModerationPanel() {
-    if (!_moderationState.permissions.canManageFilters) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
-      decoration: BoxDecoration(
-        gradient: _ChatDesignSystem.gradientBgPanel,
-        border: Border.all(color: _ChatDesignSystem.colorWarning.withValues(alpha: 0.25), width: 1),
-        borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusXl),
-        boxShadow: _ChatDesignSystem.shadowMd,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [_ChatDesignSystem.colorWarning.withValues(alpha: 0.08), _ChatDesignSystem.colorWarning.withValues(alpha: 0.02)]),
-              border: Border(bottom: BorderSide(color: _ChatDesignSystem.colorWarning.withValues(alpha: 0.1))),
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(Icons.filter_list_rounded, size: 18, color: _ChatDesignSystem.colorWarning),
-                const SizedBox(width: _ChatDesignSystem.spaceSm),
-                const Text('Filtre Yönetimi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary)),
-                const Spacer(),
-                if (_isModerationLoading)
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(_ChatDesignSystem.colorWarning.withValues(alpha: 0.6))),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(flex: 2, child: _buildFilterTextField(controller: _filterTermController, label: 'Filtrelenecek kelime')),
-                    const SizedBox(width: _ChatDesignSystem.spaceMd),
-                    Expanded(flex: 1, child: _buildFilterTextField(controller: _filterReplacementController, label: 'Yerine konan')),
-                    const SizedBox(width: _ChatDesignSystem.spaceMd),
-                    _buildModButton(onPressed: _createFilter, label: 'Ekle'),
-                  ],
-                ),
-                if (_moderationState.filters.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: _ChatDesignSystem.spaceMd),
-                  Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
-                  const SizedBox(height: _ChatDesignSystem.spaceMd),
-                  Text('Aktif Filtreler (${_moderationState.filters.length})', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorTextTertiary)),
-                  const SizedBox(height: _ChatDesignSystem.spaceSm),
-                  ...List.generate(_moderationState.filters.length, (int idx) {
-                    final _ChatFilter f = _moderationState.filters[idx];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceSm),
-                      child: Container(
-                        padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.03), border: Border.all(color: Colors.white.withValues(alpha: 0.06)), borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd)),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text('"${f.term}" → "${f.replacement}"', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorTextPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  Text(f.scope, style: const TextStyle(fontSize: 10, color: _ChatDesignSystem.colorTextTertiary)),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: _ChatDesignSystem.spaceSm),
-                            GestureDetector(
-                              onTap: () => _deleteFilter(f.id),
-                              child: Container(
-                                padding: const EdgeInsets.all(_ChatDesignSystem.spaceXs),
-                                decoration: BoxDecoration(color: _ChatDesignSystem.colorError.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusSm)),
-                                child: Icon(Icons.close_rounded, size: 16, color: _ChatDesignSystem.colorError),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterTextField({required TextEditingController controller, required String label}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _ChatDesignSystem.colorBgSecondary.withValues(alpha: 0.5),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-      ),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(fontSize: 12, color: _ChatDesignSystem.colorTextPrimary),
-        decoration: InputDecoration(
-          hintText: label,
-          hintStyle: TextStyle(fontSize: 12, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.6)),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceMd, vertical: _ChatDesignSystem.spaceSm),
-          isDense: true,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModButton({required VoidCallback onPressed, required String label}) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceLg, vertical: _ChatDesignSystem.spaceSm),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [_ChatDesignSystem.colorSuccess.withValues(alpha: 0.3), _ChatDesignSystem.colorSuccess.withValues(alpha: 0.15)]),
-          border: Border.all(color: _ChatDesignSystem.colorSuccess.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(Icons.check_circle_outline_rounded, size: 14, color: _ChatDesignSystem.colorSuccess),
-            const SizedBox(width: _ChatDesignSystem.spaceXs),
-            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorSuccess)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDmPanel() {
-    if (_activeDmPeer == null) {
-      return Column(
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [_ChatDesignSystem.colorDmAccent.withValues(alpha: 0.08), _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.02)]),
-              border: Border(bottom: BorderSide(color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.1))),
-            ),
-            child: const Text('Sohbet & Mesajlaşma', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white70)),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-              child: Column(
-                children: <Widget>[
-                  Container(
-                    decoration: BoxDecoration(
-                      color: _ChatDesignSystem.colorBgSecondary.withValues(alpha: 0.5),
-                      border: Border.all(color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.2)),
-                      borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-                    ),
-                    child: TextField(
-                      controller: _dmSearchController,
-                      onChanged: (String value) => unawaited(_searchDmUsers(value)),
-                      style: const TextStyle(fontSize: 13, color: _ChatDesignSystem.colorTextPrimary),
-                      decoration: InputDecoration(
-                        hintText: 'Oyuncu adı ile ara...',
-                        hintStyle: TextStyle(fontSize: 13, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.5)),
-                        prefixIcon: Icon(Icons.search_rounded, size: 18, color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.4)),
-                        suffixIcon: _isDmSearchLoading
-                            ? SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(_ChatDesignSystem.spaceSm),
-                                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(_ChatDesignSystem.colorDmAccent.withValues(alpha: 0.6))),
-                                ),
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceMd, vertical: _ChatDesignSystem.spaceSm),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  if (_dmSearchResults.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: _ChatDesignSystem.spaceMd),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 220),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: _ChatDesignSystem.gradientBgPanel,
-                          border: Border.all(color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.15)),
-                          borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusLg),
-                        ),
-                        child: ListView(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          children: <Widget>[
-                            Padding(
-                              padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-                              child: Row(
-                                children: <Widget>[
-                                  Icon(Icons.search_rounded, size: 14, color: _ChatDesignSystem.colorDmAccent),
-                                  const SizedBox(width: _ChatDesignSystem.spaceSm),
-                                  Text('Arama Sonuçları (${_dmSearchResults.length})', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorDmAccent)),
-                                ],
-                              ),
-                            ),
-                            ..._dmSearchResults.map((user) {
-                              return GestureDetector(
-                                onTap: () => _openDmConversation(user),
-                                child: Container(
-                                  color: Colors.transparent,
-                                  padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceMd, vertical: _ChatDesignSystem.spaceSm),
-                                  child: Row(
-                                    children: <Widget>[
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(gradient: _ChatDesignSystem.gradientDm, borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd)),
-                                        child: Center(child: Text(user.username.isNotEmpty ? user.username[0].toUpperCase() : '?', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary))),
-                                      ),
-                                      const SizedBox(width: _ChatDesignSystem.spaceMd),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: <Widget>[
-                                            _buildPresenceNameRow(
-                                              label: '@${user.username}',
-                                              userId: user.id,
-                                              fallbackOnline: user.isOnline,
-                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorTextPrimary),
-                                            ),
-                                            if (user.displayName != null) Text(user.displayName!, style: const TextStyle(fontSize: 10, color: _ChatDesignSystem.colorTextTertiary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceMd, vertical: _ChatDesignSystem.spaceXs),
-                                        decoration: BoxDecoration(color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd)),
-                                        child: Text('Yaz', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorDmAccent)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: _ChatDesignSystem.spaceMd),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: _ChatDesignSystem.gradientBgPanel,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                        borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusXl),
-                        boxShadow: _ChatDesignSystem.shadowMd,
-                      ),
-                      child: _isDmLoading
-                          ? const Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2)))
-                          : _dmConversations.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: <Widget>[
-                                      Icon(Icons.mail_outline_rounded, size: 48, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.3)),
-                                      const SizedBox(height: _ChatDesignSystem.spaceMd),
-                                      Text('Henüz sohbet yok', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorTextTertiary)),
-                                      const SizedBox(height: _ChatDesignSystem.spaceXs),
-                                      Text('Oyuncu arayarak mesaj başlat', style: TextStyle(fontSize: 11, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.6))),
-                                    ],
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-                                  itemCount: _dmConversations.length,
-                                  separatorBuilder: (BuildContext context, int index) => const SizedBox(height: _ChatDesignSystem.spaceSm),
-                                  itemBuilder: (BuildContext context, int idx) => _buildDmConversationCard(_dmConversations[idx]),
-                                ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: <Widget>[
-        Container(
-          padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [_ChatDesignSystem.colorDmAccent.withValues(alpha: 0.12), _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.04)]),
-            border: Border(bottom: BorderSide(color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.15))),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(gradient: _ChatDesignSystem.gradientDm, borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd)),
-                child: Center(child: Text(_activeDmPeer!.username.isNotEmpty ? _activeDmPeer!.username[0].toUpperCase() : '?', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary))),
-              ),
-              const SizedBox(width: _ChatDesignSystem.spaceMd),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: _buildPresenceNameRow(
-                            label: '@${_activeDmPeer!.username}',
-                            userId: _activeDmPeer!.id,
-                            fallbackOnline: _peerPresenceFallback(_activeDmPeer!.id),
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary),
-                            dotSize: 8,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_activeDmPeer!.displayName != null) Text(_activeDmPeer!.displayName!, style: const TextStyle(fontSize: 11, color: _ChatDesignSystem.colorTextTertiary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => _mutePlayer(_activeDmPeer!.id, playerName: _activeDmPeer!.username),
-                child: Container(
-                  padding: const EdgeInsets.all(_ChatDesignSystem.spaceSm),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd), border: Border.all(color: Colors.white.withValues(alpha: 0.08))),
-                  child: Icon(Icons.volume_off_rounded, size: 16, color: _ChatDesignSystem.colorTextTertiary),
-                ),
-              ),
-              const SizedBox(width: _ChatDesignSystem.spaceSm),
-              GestureDetector(
-                onTap: _leaveDmConversation,
-                child: Container(
-                  padding: const EdgeInsets.all(_ChatDesignSystem.spaceSm),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd), border: Border.all(color: Colors.white.withValues(alpha: 0.08))),
-                  child: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: _ChatDesignSystem.colorTextTertiary),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(child: _buildMessageList()),
-      ],
-    );
-  }
-
-  Widget _buildDmConversationCard(_ChatDmConversation conv) {
-    return GestureDetector(
-      onTap: () => _openDmConversation(_ChatUserSummary(id: conv.peerUserId, username: conv.peerUsername, displayName: conv.peerDisplayName)),
-      onLongPress: () => _showDmConversationActions(conv),
-      child: Container(
-        padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.02)]),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-        ),
-        child: Row(
-          children: <Widget>[
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(gradient: _ChatDesignSystem.gradientDm, borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd), border: Border.all(color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.2))),
-              child: Center(child: Text(conv.peerUsername.isNotEmpty ? conv.peerUsername[0].toUpperCase() : '?', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorTextPrimary))),
-            ),
-            const SizedBox(width: _ChatDesignSystem.spaceMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: _buildPresenceNameRow(
-                          label: '@${conv.peerUsername}',
-                          userId: conv.peerUserId,
-                          fallbackOnline: conv.peerIsOnline,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: conv.unreadCount > 0 ? FontWeight.w800 : FontWeight.w700,
-                            color: _ChatDesignSystem.colorTextPrimary,
-                          ),
-                        ),
-                      ),
-                      Text(_formatTime(conv.lastMessageAt), style: TextStyle(fontSize: 10, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.5))),
-                    ],
-                  ),
-                  const SizedBox(height: _ChatDesignSystem.spaceXs),
-                  Text(conv.lastMessageContent, style: TextStyle(fontSize: 11, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.7)), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            ),
-            if (conv.unreadCount > 0) ...<Widget>[
-              const SizedBox(width: _ChatDesignSystem.spaceMd),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 28),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceSm, vertical: _ChatDesignSystem.spaceXs),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [_ChatDesignSystem.colorDmAccent.withValues(alpha: 0.3), _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.15)]),
-                    border: Border.all(color: _ChatDesignSystem.colorDmAccent.withValues(alpha: 0.3)),
-                    borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusRound),
-                  ),
-                  child: Text(conv.unreadCount > 99 ? '99+' : '${conv.unreadCount}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _ChatDesignSystem.colorDmAccent), textAlign: TextAlign.center),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageList() {
-    if (_isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const SizedBox(width: 40, height: 40, child: CircularProgressIndicator(strokeWidth: 2)),
-            const SizedBox(height: _ChatDesignSystem.spaceMd),
-            Text('Mesajlar yükleniyor...', style: TextStyle(fontSize: 12, color: _ChatDesignSystem.colorTextTertiary)),
-          ],
-        ),
-      );
-    }
-
-    final List<_ChatMessage> msgs = _currentMessages;
-    if (msgs.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Icon(Icons.chat_bubble_outline_rounded, size: 56, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.2)),
-            const SizedBox(height: _ChatDesignSystem.spaceLg),
-            Text('Henüz mesaj yok', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _ChatDesignSystem.colorTextTertiary)),
-            const SizedBox(height: _ChatDesignSystem.spaceXs),
-            Text('Konuşmayı başlatmak için bir mesaj yaz', style: TextStyle(fontSize: 11, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.5))),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: _ChatDesignSystem.gradientBgPanel,
-        borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusXl),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: ListView.builder(
-        controller: _scrollController,
-        itemCount: msgs.length,
-        padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-        itemBuilder: (BuildContext context, int i) {
-          final _ChatMessage m = msgs[i];
-          final bool isOwn = _isOwnSender(m.senderId);
-
-          if (m.isSystem) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
-              child: Container(
-                padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_ChatDesignSystem.colorInfo.withValues(alpha: 0.12), _ChatDesignSystem.colorInfo.withValues(alpha: 0.04)]),
-                  border: Border.all(color: _ChatDesignSystem.colorInfo.withValues(alpha: 0.2)),
-                  borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Icon(Icons.info_outline_rounded, size: 16, color: _ChatDesignSystem.colorInfo.withValues(alpha: 0.6)),
-                    const SizedBox(width: _ChatDesignSystem.spaceSm),
-                    Expanded(child: Text(m.content, style: TextStyle(fontSize: 12, color: _ChatDesignSystem.colorTextSecondary, fontStyle: FontStyle.italic))),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final double maxBubbleWidth = math.min(
-            520,
-            MediaQuery.sizeOf(context).width * 0.78,
-          );
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
-            child: Align(
-              alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-                child: GestureDetector(
-                  onLongPress: isOwn ? null : () => _mutePlayer(m.senderId, playerName: m.senderName),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: isOwn
-                          ? LinearGradient(colors: [_ChatDesignSystem.colorGlobalAccent.withValues(alpha: 0.15), _ChatDesignSystem.colorGlobalAccent.withValues(alpha: 0.06)], begin: Alignment.topLeft, end: Alignment.bottomRight)
-                          : LinearGradient(colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.03)]),
-                      border: Border.all(color: isOwn ? _ChatDesignSystem.colorGlobalAccent.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1)),
-                      borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-                      boxShadow: [BoxShadow(color: isOwn ? _ChatDesignSystem.colorGlobalAccent.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
-                    ),
-                    padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            if (isOwn)
-                              Flexible(
-                                child: Text(
-                                  'Sen',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: _ChatDesignSystem.colorGlobalAccent,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              )
-                            else
-                              Flexible(
-                                child: _buildPresenceNameRow(
-                                  label: m.senderName,
-                                  userId: m.senderId,
-                                  fallbackOnline: m.senderIsOnline,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: _activeChannel.accentColor,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(width: _ChatDesignSystem.spaceSm),
-                            Text(_formatTime(m.timestamp), style: TextStyle(fontSize: 9, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.6))),
-                          ],
-                        ),
-                        const SizedBox(height: _ChatDesignSystem.spaceSm),
-                        Text(m.content, style: const TextStyle(fontSize: 12, color: _ChatDesignSystem.colorTextPrimary, height: 1.4)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildComposer() {
-    final bool canSend = !_isSending && _activeBan == null && _messageController.text.trim().isNotEmpty;
-    final int charCount = _messageController.text.length;
-    final double bottomBarPadding = widget.asPanel
-        ? 0
-        : gameBottomBarClearance(context) - MediaQuery.paddingOf(context).bottom;
-
-    return SafeArea(
-      top: false,
-      bottom: widget.asPanel,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomBarPadding),
-        child: Container(
-          padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-          decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08)))),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (charCount > _maxMessageLength * 0.8)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: _ChatDesignSystem.spaceMd),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: <Widget>[
-                      Text('$charCount/$_maxMessageLength', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: charCount >= _maxMessageLength ? _ChatDesignSystem.colorError : _ChatDesignSystem.colorWarning)),
-                    ],
-                  ),
-                ),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _ChatDesignSystem.colorBgSecondary.withValues(alpha: 0.5),
-                    border: Border.all(
-                      color: _activeBan != null ? _ChatDesignSystem.colorError.withValues(alpha: 0.3) : _activeChannel.accentColor.withValues(alpha: 0.2),
-                    ),
-                    borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-                  ),
-                  child: TextField(
-                    controller: _messageController,
-                    enabled: _activeBan == null,
-                    maxLength: _maxMessageLength,
-                    maxLines: 1,
-                    onSubmitted: (_) => _sendMessage(),
-                    style: const TextStyle(fontSize: 13, color: _ChatDesignSystem.colorTextPrimary),
-                    decoration: InputDecoration(
-                      hintText: _activeBan != null ? 'Sohbete erişiminiz kısıtlı' : _activeChannel == _ChatChannel.dm ? 'Mesaj yaz...' : '${_activeChannel.label} kanalında yaz...',
-                      hintStyle: TextStyle(fontSize: 13, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.4)),
-                      counter: const Offstage(),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: _ChatDesignSystem.spaceMd, vertical: _ChatDesignSystem.spaceMd),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                  ),
-                  const SizedBox(width: _ChatDesignSystem.spaceSm),
-                  PopupMenuButton<String>(
-                    tooltip: 'Sohbet seçenekleri',
-                    icon: Icon(Icons.more_vert_rounded, size: 20, color: _ChatDesignSystem.colorTextTertiary.withValues(alpha: 0.8)),
-                    color: _ChatDesignSystem.colorBgSecondary,
-                    onSelected: (String value) {
-                      if (value == 'blocked') {
-                        _openBlockedUsersSheet();
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                      PopupMenuItem<String>(
-                        value: 'blocked',
-                        child: Row(
-                          children: <Widget>[
-                            const Icon(Icons.volume_off_rounded, size: 16, color: Colors.white70),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Susturulanlar${_blockedUsers.isEmpty ? '' : ' (${_blockedUsers.length})'}',
-                              style: const TextStyle(fontSize: 13, color: Colors.white70),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: _ChatDesignSystem.spaceSm),
-                  GestureDetector(
-                    onTap: canSend ? _sendMessage : null,
-                    child: Container(
-                      padding: const EdgeInsets.all(_ChatDesignSystem.spaceMd),
-                      decoration: BoxDecoration(
-                        gradient: canSend ? LinearGradient(colors: [_activeChannel.accentColor.withValues(alpha: 0.4), _activeChannel.accentColor.withValues(alpha: 0.2)]) : LinearGradient(colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.04)]),
-                        border: Border.all(color: canSend ? _activeChannel.accentColor.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1)),
-                        borderRadius: BorderRadius.circular(_ChatDesignSystem.radiusMd),
-                      ),
-                      child: _isSending
-                          ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(_activeChannel.accentColor)))
-                          : Icon(Icons.send_rounded, size: 16, color: canSend ? _activeChannel.accentColor : Colors.white.withValues(alpha: 0.3)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

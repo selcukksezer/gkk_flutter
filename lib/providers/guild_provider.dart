@@ -255,6 +255,46 @@ class GuildNotifier extends Notifier<GuildState> {
     }
   }
 
+  Future<bool> updateMember({
+    required String memberId,
+    required String action,
+  }) async {
+    const Set<String> allowedActions = <String>{
+      'promote_guild_member',
+      'demote_guild_member',
+      'kick_guild_member',
+    };
+    if (memberId.isEmpty || !allowedActions.contains(action)) {
+      state = state.copyWith(error: 'Geçersiz lonca üyesi işlemi.');
+      return false;
+    }
+
+    state = state.copyWith(isMutating: true, clearError: true);
+    try {
+      final dynamic response = await SupabaseService.client.rpc(
+        action,
+        params: <String, dynamic>{'p_member_id': memberId},
+      );
+      final GuildRpcResult result = GuildRpcResult.fromResponse(response);
+      if (!result.success) {
+        state = state.copyWith(
+          isMutating: false,
+          error: result.error ?? 'Üye işlemi başarısız.',
+        );
+        return false;
+      }
+      await loadGuild();
+      state = state.copyWith(isMutating: false);
+      return true;
+    } catch (_) {
+      state = state.copyWith(
+        isMutating: false,
+        error: 'Üye işlemi tamamlanamadı. Lütfen tekrar dene.',
+      );
+      return false;
+    }
+  }
+
   Future<bool> leaveGuild() async {
     state = state.copyWith(isMutating: true, clearError: true);
     try {
@@ -322,6 +362,21 @@ class GuildNotifier extends Notifier<GuildState> {
 
 final NotifierProvider<GuildNotifier, GuildState> guildProvider =
     NotifierProvider<GuildNotifier, GuildState>(GuildNotifier.new);
+
+final Provider<GuildConfig> guildConfigProvider =
+    Provider<GuildConfig>((Ref ref) => GuildConfig.defaults);
+
+/// Mevcut oyuncunun lonca rolü — üye listesi öncelikli.
+final Provider<GuildRole> myGuildRoleProvider = Provider<GuildRole>((Ref ref) {
+  final GuildState guildState = ref.watch(guildProvider);
+  final profile = ref.watch(playerProvider).profile;
+  if (!guildState.hasValidGuild || profile == null) return GuildRole.member;
+  return resolveMyGuildRole(
+    guild: guildState.guild!,
+    playerId: profile.id,
+    profileGuildRole: profile.guildRole,
+  );
+});
 
 /// Lonca üyeliği için tek kaynak: guildProvider + playerProfile fallback.
 final Provider<bool> hasGuildMembershipProvider = Provider<bool>((ref) {

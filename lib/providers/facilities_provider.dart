@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
+import '../core/utils/character_class_abilities.dart';
 import '../models/facility_model.dart';
+import '../models/facility_production_preview_model.dart';
+import '../models/player_model.dart';
 import 'inventory_provider.dart';
 import 'player_provider.dart';
 import '../repositories/facilities_repository.dart';
@@ -17,24 +20,28 @@ class FacilitiesState {
   const FacilitiesState({
     required this.status,
     required this.facilities,
+    required this.productionPreviews,
     required this.isMutating,
     this.errorMessage,
   });
 
   final FacilitiesStatus status;
   final List<PlayerFacility> facilities;
+  final Map<String, FacilityProductionPreview> productionPreviews;
   final bool isMutating;
   final String? errorMessage;
 
   factory FacilitiesState.initial() => const FacilitiesState(
         status: FacilitiesStatus.initial,
         facilities: <PlayerFacility>[],
+        productionPreviews: <String, FacilityProductionPreview>{},
         isMutating: false,
       );
 
   FacilitiesState copyWith({
     FacilitiesStatus? status,
     List<PlayerFacility>? facilities,
+    Map<String, FacilityProductionPreview>? productionPreviews,
     bool? isMutating,
     String? errorMessage,
     bool clearError = false,
@@ -42,6 +49,7 @@ class FacilitiesState {
     return FacilitiesState(
       status: status ?? this.status,
       facilities: facilities ?? this.facilities,
+      productionPreviews: productionPreviews ?? this.productionPreviews,
       isMutating: isMutating ?? this.isMutating,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
@@ -68,7 +76,7 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
     } on AppException catch (e) {
       state = state.copyWith(status: FacilitiesStatus.error, errorMessage: e.message);
     } catch (_) {
-      state = state.copyWith(status: FacilitiesStatus.error, errorMessage: 'Tesisler yuklenemedi');
+      state = state.copyWith(status: FacilitiesStatus.error, errorMessage: 'Tesisler yüklenemedi');
     }
   }
 
@@ -85,7 +93,7 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
       state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(isMutating: false, errorMessage: 'Tesis acilamadi');
+      state = state.copyWith(isMutating: false, errorMessage: 'Tesis açılamadı');
       return false;
     }
   }
@@ -93,9 +101,10 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
   Future<bool> bribeOfficials({required String facilityType, required int gemAmount}) async {
     state = state.copyWith(isMutating: true, clearError: true);
     try {
-      final int currentSuspicion = ref.read(playerProvider).profile?.globalSuspicionLevel ?? 0;
+      final profile = ref.read(playerProvider).profile;
+      final int currentSuspicion = effectiveSuspicionLevel(profile);
       if (currentSuspicion <= 0) {
-        state = state.copyWith(isMutating: false, errorMessage: 'Genel suphe 0 iken rusvet verilemez');
+        state = state.copyWith(isMutating: false, errorMessage: 'Genel şüphe 0 iken rüşvet verilemez');
         return false;
       }
 
@@ -113,7 +122,7 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
       state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(isMutating: false, errorMessage: 'Rusvet verilemedi');
+      state = state.copyWith(isMutating: false, errorMessage: 'Rüşvet verilemedi');
       return false;
     }
   }
@@ -131,17 +140,32 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
       state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(isMutating: false, errorMessage: 'Yukseltme basarisiz');
+      state = state.copyWith(isMutating: false, errorMessage: 'Yükseltme başarısız');
       return false;
     }
   }
 
   Future<bool> startProduction({required String facilityId}) async {
+    PlayerFacility? existing;
+    for (final PlayerFacility row in state.facilities) {
+      if (row.id == facilityId) {
+        existing = row;
+        break;
+      }
+    }
+    if (existing != null &&
+        existing.productionStartedAt != null &&
+        existing.productionStartedAt!.isNotEmpty) {
+      state = state.copyWith(errorMessage: 'Üretim zaten devam ediyor');
+      return false;
+    }
+
     state = state.copyWith(isMutating: true, clearError: true);
     try {
       final bool ok = await _repository.startProduction(facilityId: facilityId);
       if (ok) {
         await loadFacilities();
+        await loadProductionPreview(facilityId);
         await _syncGlobalSuspicionToServer();
       }
       state = state.copyWith(isMutating: false);
@@ -150,23 +174,40 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
       state = state.copyWith(isMutating: false, errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(isMutating: false, errorMessage: 'Uretim baslatilamadi');
+      state = state.copyWith(isMutating: false, errorMessage: 'Üretim başlatılamadı');
       return false;
+    }
+  }
+
+  Future<void> loadProductionPreview(String facilityId) async {
+    if (facilityId.isEmpty) return;
+
+    try {
+      final FacilityProductionPreview preview =
+          await _repository.fetchProductionPreview(facilityId: facilityId);
+      final Map<String, FacilityProductionPreview> next =
+          Map<String, FacilityProductionPreview>.from(state.productionPreviews);
+      next[facilityId] = preview;
+      state = state.copyWith(productionPreviews: next);
+    } on AppException catch (e) {
+      state = state.copyWith(errorMessage: e.message);
+    } catch (_) {
+      state = state.copyWith(errorMessage: 'Üretim önizlemesi alınamadı');
     }
   }
 
   Future<Map<String, dynamic>?> collectResourcesV2({
     required String facilityId,
-    required int seed,
-    required int totalCount,
+    required int expectedCount,
   }) async {
     state = state.copyWith(isMutating: true, clearError: true);
     try {
       final InventoryNotifier inventory = ref.read(inventoryProvider.notifier);
       await inventory.loadInventory(silent: true);
 
-      final InventoryAddCheck capacityCheck = inventory.canAddItem(itemId: 'resource_placeholder', quantity: totalCount);
-      if (!capacityCheck.canAdd) {
+      final InventoryAddCheck capacityCheck =
+          inventory.canAddItem(itemId: 'resource_placeholder', quantity: expectedCount);
+      if (expectedCount > 0 && !capacityCheck.canAdd) {
         state = state.copyWith(
           isMutating: false,
           errorMessage: capacityCheck.reason ?? 'Envanter dolu! Kapasite yetersiz.',
@@ -179,45 +220,16 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
         inventoryBefore[item.itemId] = inventory.getItemQuantity(item.itemId);
       }
 
-      Map<String, dynamic>? result;
-      int requestCount = totalCount;
-      AppException? lastCapacityError;
-
-      while (requestCount > 0) {
-        try {
-          result = await _repository.collectResourcesV2(
-            facilityId: facilityId,
-            seed: seed,
-            totalCount: requestCount,
-          );
-          break;
-        } on AppException catch (e) {
-          final String lower = e.message.toLowerCase();
-          final bool isInventoryFull = lower.contains('envanter dolu') || lower.contains('inventory full');
-          if (!isInventoryFull) {
-            rethrow;
-          }
-
-          lastCapacityError = e;
-          if (requestCount <= 1) {
-            state = state.copyWith(isMutating: false, errorMessage: e.message);
-            return null;
-          }
-
-          final int next = requestCount > 10 ? requestCount - (requestCount ~/ 4) : requestCount - 1;
-          requestCount = next < 1 ? 1 : next;
-        }
-      }
-
+      final Map<String, dynamic>? result = await _repository.collectResourcesV2(
+        facilityId: facilityId,
+      );
       if (result == null) {
-        state = state.copyWith(
-          isMutating: false,
-          errorMessage: lastCapacityError?.message ?? 'Toplama basarisiz',
-        );
+        state = state.copyWith(isMutating: false, errorMessage: 'Toplama başarısız');
         return null;
       }
 
       await loadFacilities();
+      await loadProductionPreview(facilityId);
       await _syncGlobalSuspicionToServer();
 
       await inventory.loadInventory(silent: true);
@@ -243,13 +255,16 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
           afterCounts[item.itemId] = inventory.getItemQuantity(item.itemId);
         }
 
-        for (final MapEntry<String, int> generated in generatedAgg.entries) {
-          final int before = inventoryBefore[generated.key] ?? 0;
-          final int after = afterCounts[generated.key] ?? 0;
-          final int delta = generated.value - (after - before);
-          if (delta > 0) {
-            await inventory.addItemToServer(itemId: generated.key, quantity: delta);
-          }
+        // Server collect RPC must grant items; client mint fallback removed (P0-4).
+        final bool missingItems = generatedAgg.entries.any((MapEntry<String, int> e) {
+          final int before = inventoryBefore[e.key] ?? 0;
+          final int after = afterCounts[e.key] ?? 0;
+          return e.value - (after - before) > 0;
+        });
+        if (missingItems) {
+          state = state.copyWith(
+            errorMessage: 'Toplama tamamlandı ama bazı eşyalar envantere düşmedi. Yenile.',
+          );
         }
 
         await inventory.loadInventory(silent: true);
@@ -261,12 +276,12 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
       state = state.copyWith(isMutating: false, errorMessage: e.message);
       return null;
     } catch (_) {
-      state = state.copyWith(isMutating: false, errorMessage: 'Toplama basarisiz');
+      state = state.copyWith(isMutating: false, errorMessage: 'Toplama başarısız');
       return null;
     }
   }
 
-  /// Rusvet icin acik tesis — en yuksek supheli aktif tesis.
+  /// Rüşvet için açık tesis — en yüksek şüpheli aktif tesis.
   PlayerFacility? pickBribeTarget() {
     final List<PlayerFacility> active = state.facilities
         .where((PlayerFacility f) => f.isActive)
@@ -298,7 +313,12 @@ class FacilitiesNotifier extends Notifier<FacilitiesState> {
       }
     }
 
-    final int risk = (activeCount * 5) + (levelSum ~/ 2);
+    int risk = (activeCount * 5) + (levelSum ~/ 2);
+    final CharacterClass? charClass =
+        ref.read(playerProvider).profile?.characterClass;
+    if (charClass == CharacterClass.shadow) {
+      risk = (risk * 0.70).floor();
+    }
     if (risk < 0) return 0;
     if (risk > 100) return 100;
     return risk;

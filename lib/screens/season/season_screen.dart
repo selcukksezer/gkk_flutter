@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
 import '../../providers/battle_pass_provider.dart';
 import '../../models/battle_pass.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../theme/app_colors.dart';
@@ -21,6 +25,7 @@ class SeasonScreen extends ConsumerStatefulWidget {
 class _SeasonScreenState extends ConsumerState<SeasonScreen> {
   int _tabIndex = 0; // 0: Rewards, 1: Quests
   bool _vipBuying = false;
+  bool _tutorialHooked = false;
 
   @override
   void initState() {
@@ -30,9 +35,22 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     });
   }
 
+  Future<void> _runSeasonTutorialHooks() async {
+    if (_tutorialHooked || !mounted) return;
+    final state = ref.read(battlePassProvider);
+    if (state.isLoading || state.activeSeason == null) return;
+    _tutorialHooked = true;
+    final int level = state.status?.currentLevel ?? 0;
+    TutorialTriggers.setPlayerLevelHint(ref, level);
+    await TutorialTriggers.onRouteEnter(ref, AppRoutes.season);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(battlePassProvider);
+    if (!state.isLoading && state.activeSeason != null && !_tutorialHooked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _runSeasonTutorialHooks());
+    }
 
     logout() async {
       await ref.read(authProvider.notifier).logout();
@@ -74,135 +92,163 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     final xpInCurrentLevel = currentBpp % 1000;
     final progress = xpInCurrentLevel / 1000.0;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
-        border: const Border(bottom: BorderSide(color: Colors.amber, width: 1)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return TutorialAnchorScope(
+      id: TutorialAnchorId.seasonHeader,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => TutorialTriggers.onAnchorTap(
+          ref,
+          TutorialAnchorId.seasonHeader,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.5),
+            border: const Border(
+              bottom: BorderSide(color: Colors.amber, width: 1),
+            ),
+          ),
+          child: Column(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'SEZON ${season?.seasonNumber ?? 1}',
-                    style: const TextStyle(
-                      color: Colors.amber,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SEZON ${season?.seasonNumber ?? 1}',
+                        style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Bitiş: ${season?.endAt.day}/${season?.endAt.month}/${season?.endAt.year}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Bitiş: ${season?.endAt.day}/${season?.endAt.month}/${season?.endAt.year}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  const SizedBox(width: 12),
+                  if (status?.hasVip ?? false)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.amber,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'VIP ACTIVE',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else
+                    _buildVipBuyButton(),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TutorialAnchorScope(
+                id: TutorialAnchorId.seasonBppBar,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => TutorialTriggers.onAnchorTap(
+                    ref,
+                    TutorialAnchorId.seasonBppBar,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.amber,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '$level',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'BPP İlerlemesi',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  '$xpInCurrentLevel / 1000',
+                                  style: const TextStyle(
+                                    color: Colors.amber,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: Colors.white12,
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Colors.amber,
+                                ),
+                                minHeight: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildDailyCapItem(
+                    'Dungeon Limit',
+                    status?.dailyGrindBppPool ?? 0,
+                    300,
+                  ),
+                  _buildDailyCapItem(
+                    'PvP Limit',
+                    status?.dailyPvpBppPool ?? 0,
+                    200,
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
-              if (status?.hasVip ?? false)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'VIP ACTIVE',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                )
-              else
-                _buildVipBuyButton(),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.amber,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    '$level',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'BPP İlerlemesi',
-                          style: TextStyle(color: Colors.white, fontSize: 13),
-                        ),
-                        Text(
-                          '$xpInCurrentLevel / 1000',
-                          style: const TextStyle(
-                            color: Colors.amber,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: Colors.white12,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.amber,
-                        ),
-                        minHeight: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildDailyCapItem(
-                'Dungeon Limit',
-                status?.dailyGrindBppPool ?? 0,
-                300,
-              ),
-              _buildDailyCapItem(
-                'PvP Limit',
-                status?.dailyPvpBppPool ?? 0,
-                200,
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -285,30 +331,43 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
   Widget _buildTabItem(int index, String label) {
     final active = _tabIndex == index;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _tabIndex = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: active ? Colors.amber : Colors.transparent,
-                width: 2,
-              ),
+    Widget tab = InkWell(
+      onTap: () async {
+        setState(() => _tabIndex = index);
+        if (index == 1) {
+          await TutorialTriggers.onAnchorTap(
+            ref,
+            TutorialAnchorId.seasonQuestsTab,
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? Colors.amber : Colors.transparent,
+              width: 2,
             ),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: active ? Colors.amber : Colors.white60,
-              fontWeight: active ? FontWeight.bold : FontWeight.normal,
-            ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? Colors.amber : Colors.white60,
+            fontWeight: active ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),
     );
+    if (index == 1) {
+      tab = TutorialAnchorScope(
+        id: TutorialAnchorId.seasonQuestsTab,
+        child: tab,
+      );
+    }
+    return Expanded(child: tab);
   }
 
   Widget _buildRewardsList(BattlePassState state) {
@@ -317,7 +376,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
     return ListView.builder(
       itemCount: rewards.length,
-      padding: const EdgeInsets.all(12),
+      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(12)),
       itemBuilder: (context, index) {
         final reward = rewards[index];
         final level = reward.level;
@@ -327,13 +386,17 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         final claimedVip = status?.claimedVip.contains(level) ?? false;
         final hasVip = status?.hasVip ?? false;
 
-        return Container(
+        Widget row = Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: reached ? Colors.white.withOpacity(0.05) : Colors.black26,
+            color: reached
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black26,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: reached ? Colors.amber.withOpacity(0.3) : Colors.white10,
+              color: reached
+                  ? Colors.amber.withValues(alpha: 0.3)
+                  : Colors.white10,
             ),
           ),
           child: Column(
@@ -345,7 +408,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: reached
-                      ? Colors.amber.withOpacity(0.1)
+                      ? Colors.amber.withValues(alpha: 0.1)
                       : Colors.black38,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(8),
@@ -371,7 +434,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
               ),
               Row(
                 children: [
-                  // Normal Reward
                   Expanded(
                     child: _buildRewardCell(
                       title: 'ÜCRETSİZ',
@@ -383,7 +445,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                     ),
                   ),
                   Container(width: 1, height: 80, color: Colors.white10),
-                  // VIP Reward
                   Expanded(
                     child: _buildRewardCell(
                       title: 'VIP',
@@ -399,6 +460,20 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
             ],
           ),
         );
+        if (level == 20) {
+          row = TutorialAnchorScope(
+            id: TutorialAnchorId.seasonL20Reward,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => TutorialTriggers.onAnchorTap(
+                ref,
+                TutorialAnchorId.seasonL20Reward,
+              ),
+              child: row,
+            ),
+          );
+        }
+        return row;
       },
     );
   }
@@ -489,7 +564,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
     return ListView.builder(
       itemCount: sorted.length,
-      padding: const EdgeInsets.all(12),
+      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(12)),
       itemBuilder: (context, index) {
         final quest = sorted[index];
         final template = quest.template;
@@ -634,6 +709,12 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
     if (success) {
       AppMessenger.showSuccess(context, 'Ödül alındı!');
+      if (level == 20 && !isVip) {
+        AppMessenger.show(
+          context,
+          'Rozet envanterinde — Karakter ekranındaki Rozet Vitrini\'nde görünür.',
+        );
+      }
     } else {
       AppMessenger.showError(context, 'Hata oluştu.');
     }

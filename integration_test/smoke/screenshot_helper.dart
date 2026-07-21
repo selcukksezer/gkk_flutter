@@ -194,13 +194,28 @@ Future<void> dismissBlockingOverlays(WidgetTester tester) async {
   }
 }
 
+Future<void> prepareHorseRaceBettingScreenshot(WidgetTester tester) async {
+  const int maxAttempts = 45;
+  for (int attempt = 0; attempt < maxAttempts; attempt++) {
+    await smokePump(tester, duration: const Duration(milliseconds: 400));
+    if (find.byKey(const Key('horse_race_betting_panel')).evaluate().isNotEmpty &&
+        find.byKey(const Key('horse_race_bet_controls')).evaluate().isNotEmpty) {
+      return;
+    }
+    if (find.text('Bahis açık').evaluate().isNotEmpty) {
+      return;
+    }
+  }
+}
+
 Future<void> captureRouteScreenshot({
   required IntegrationTestWidgetsFlutterBinding binding,
   required WidgetTester tester,
   required String routePath,
   required ScreenshotAuditManifest manifest,
+  String? slugOverride,
 }) async {
-  final String slug = screenshotSlug(routePath);
+  final String slug = slugOverride ?? screenshotSlug(routePath);
 
   try {
     if (!kIsWeb && Platform.isAndroid) {

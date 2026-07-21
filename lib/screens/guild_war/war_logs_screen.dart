@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/guild_war_model.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
@@ -18,29 +19,32 @@ class WarLogsScreen extends ConsumerStatefulWidget {
 }
 
 class _WarLogsScreenState extends ConsumerState<WarLogsScreen> {
-  String _filter = 'all';
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bool hasCachedLogs = ref.read(guildWarProvider).attackLogs.isNotEmpty;
+      _load(showLoading: !hasCachedLogs);
+    });
   }
 
-  Future<void> _load() async {
-    await ref.read(guildWarProvider.notifier).loadAll();
+  Future<void> _load({bool showLoading = true}) async {
+    await ref.read(guildWarProvider.notifier).loadAttackLogs(showLoading: showLoading);
   }
 
   @override
   Widget build(BuildContext context) {
-    final logs = ref.watch(guildWarProvider).attackLogs;
-    final guildId = ref.watch(playerProvider).profile?.guildId;
-    final isLoading = ref.watch(guildWarProvider).isLoading;
+    final GuildWarState warState = ref.watch(guildWarProvider);
+    final String? guildId = ref.watch(playerProvider).profile?.guildId;
+    final bool hasGuild = guildId != null;
+    final List<GuildWarAttackLog> filtered = warState.filteredAttackLogs(guildId);
+    final GuildWarAttackLogFilter filter = warState.attackLogFilter;
+    final bool isLoading = warState.isLoading;
 
-    var filtered = logs;
-    if (_filter == 'win') {
-      filtered = logs.where((l) => l.attackerGuildId == guildId && l.success).toList();
-    } else if (_filter == 'loss') {
-      filtered = logs.where((l) => l.defenderGuildId == guildId && !l.success).toList();
+    if (!hasGuild && filter != GuildWarAttackLogFilter.all) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(guildWarProvider.notifier).setAttackLogFilter(GuildWarAttackLogFilter.all);
+      });
     }
 
     Future<void> logout() async => performLogout(ref);
@@ -64,19 +68,21 @@ class _WarLogsScreenState extends ConsumerState<WarLogsScreen> {
             padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
             child: Row(
               children: <Widget>[
-                for (final (String key, String label, Color accent) in <(String, String, Color)>[
-                  ('all', 'Tümü', WarPalette.gold),
-                  ('win', 'Kazandık', WarPalette.neon),
-                  ('loss', 'Kaybettik', WarPalette.ruby),
+                for (final (GuildWarAttackLogFilter value, String label, Color accent)
+                    in <(GuildWarAttackLogFilter, String, Color)>[
+                  (GuildWarAttackLogFilter.all, 'Tümü', WarPalette.gold),
+                  (GuildWarAttackLogFilter.win, 'Kazandık', WarPalette.neon),
+                  (GuildWarAttackLogFilter.loss, 'Kaybettik', WarPalette.ruby),
                 ])
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 3),
                       child: WarFilterChip(
                         label: label,
-                        selected: _filter == key,
+                        selected: filter == value,
                         accent: accent,
-                        onTap: () => setState(() => _filter = key),
+                        enabled: value == GuildWarAttackLogFilter.all || hasGuild,
+                        onTap: () => ref.read(guildWarProvider.notifier).setAttackLogFilter(value),
                       ),
                     ),
                   ),
@@ -84,33 +90,70 @@ class _WarLogsScreenState extends ConsumerState<WarLogsScreen> {
             ),
           ),
           Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator(color: WarPalette.gold))
-                : filtered.isEmpty
-                    ? const Center(
-                        child: WarEmptyTab(
-                          icon: '📜',
-                          message: 'Bu filtrede savaş kaydı yok.',
-                        ),
-                      )
-                    : RefreshIndicator(
+            child: Stack(
+              children: <Widget>[
+                if (isLoading && filtered.isEmpty)
+                  const Center(child: CircularProgressIndicator(color: WarPalette.gold))
+                else if (filtered.isEmpty)
+                  const Center(
+                    child: WarEmptyTab(
+                      icon: '📜',
+                      message: 'Bu filtrede savaş kaydı yok.',
+                    ),
+                  )
+                else
+                  LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints constraints) {
+                      return RefreshIndicator(
                         color: WarPalette.gold,
                         backgroundColor: WarPalette.navy,
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          padding: EdgeInsets.fromLTRB(
-                            AppSpacing.base,
-                            AppSpacing.base,
-                            AppSpacing.base,
-                            warBottomInset(context),
-                          ),
-                          itemCount: filtered.length,
-                          itemBuilder: (_, int i) => AttackLogTile(
-                            log: filtered[i],
-                            myGuildId: guildId,
+                            onRefresh: () => _load(showLoading: true),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                AppSpacing.base,
+                                AppSpacing.base,
+                                AppSpacing.base,
+                                warBottomInset(context),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  for (final GuildWarAttackLog log in filtered)
+                                    AttackLogTile(
+                                      log: log,
+                                      myGuildId: guildId,
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
+                      );
+                    },
+                  ),
+                if (isLoading && filtered.isNotEmpty)
+                  const Positioned(
+                    top: AppSpacing.sm,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: WarPalette.gold,
+                          strokeWidth: 2.5,
+                        ),
                       ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,16 +1,15 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
-import '../../core/errors/user_facing_error.dart';
+import '../../core/utils/provider_scheduling.dart';
 import '../../models/guild_model.dart';
+import '../../providers/guild_monument_provider.dart';
 import '../../providers/guild_provider.dart';
-import '../../providers/inventory_provider.dart';
-import '../../providers/player_provider.dart';
 import '../../repositories/guild_monument_repository.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
@@ -28,20 +27,15 @@ class GuildMonumentDonateScreen extends ConsumerStatefulWidget {
 }
 
 class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateScreen> {
-  MonumentDashboard? _dashboard;
-  bool _loadingDashboard = true;
-  MonumentResourceKind? _donatingKind;
   final Map<MonumentResourceKind, TextEditingController> _controllers =
       <MonumentResourceKind, TextEditingController>{
     for (final MonumentResourceKind kind in MonumentResourceKind.values) kind: TextEditingController(),
   };
 
-  GuildMonumentRepository get _repository => ref.read(guildMonumentRepositoryProvider);
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDashboard());
+    deferProviderUpdate(() => ref.read(guildMonumentProvider.notifier).bootstrap());
   }
 
   @override
@@ -52,39 +46,17 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
     super.dispose();
   }
 
-  Future<void> _loadDashboard() async {
-    final String? guildId = ref.read(playerProvider).profile?.guildId;
-    if (guildId == null || guildId.isEmpty) {
-      if (mounted) setState(() => _loadingDashboard = false);
-      return;
-    }
-    setState(() => _loadingDashboard = true);
-    try {
-      final MonumentDashboard dashboard = await _repository.fetchDashboard(guildId);
-      if (mounted) {
-        setState(() {
-          _dashboard = dashboard;
-          _loadingDashboard = false;
-        });
-      }
-    } catch (e, st) {
-      if (kDebugMode) debugPrint('GuildMonumentDonateScreen._loadDashboard: $e\n$st');
-      if (mounted) setState(() => _loadingDashboard = false);
-    }
-  }
-
   Future<void> _donateKind(MonumentResourceKind kind, {int? amount}) async {
-    final MonumentDashboard? dashboard = _dashboard;
+    final MonumentDashboard? dashboard = ref.read(guildMonumentProvider).dashboard;
     if (dashboard == null) return;
 
     final int requested = amount ??
-        (int.tryParse(_controllers[kind]!.text.trim()) ??
-            (amount == null ? dashboard.myStats.maxDonatable(kind) : 0));
+        (int.tryParse(_controllers[kind]!.text.trim()) ?? dashboard.myStats.maxDonatable(kind));
 
     final int capped = monumentDonateCap(
       owned: dashboard.myStats.owned(kind),
       donatedToday: dashboard.myStats.donatedToday(kind),
-      dailyMax: kind.dailyMax,
+      dailyMax: dashboard.myStats.dailyMax(kind),
       requested: requested,
     );
 
@@ -93,35 +65,25 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
       return;
     }
 
-    setState(() => _donatingKind = kind);
-    try {
-      final MonumentDonateResult result = await monumentDonateKind(
-        repository: _repository,
-        kind: kind,
-        amount: capped,
-        stats: dashboard.myStats,
-      );
-      await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
-      await ref.read(playerProvider.notifier).loadProfile();
-      if (!mounted) return;
+    final MonumentDonateResult? result = await ref
+        .read(guildMonumentProvider.notifier)
+        .donateKind(kind: kind, amount: capped);
+    if (!mounted) return;
+
+    if (result != null) {
       _controllers[kind]!.clear();
       AppMessenger.show(context, '${kind.shortLabel}: $capped bağışlandı · +${result.scoreAdded} puan');
-      await _loadDashboard();
-    } catch (e, st) {
-      if (kDebugMode) debugPrint('GuildMonumentDonateScreen._donateKind: $e\n$st');
-      if (mounted) {
-        AppMessenger.showError(
-          context,
-          userFacingErrorMessage(e, fallback: 'Bağış tamamlanamadı.'),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _donatingKind = null);
+      return;
+    }
+
+    final String? error = ref.read(guildMonumentProvider).errorMessage;
+    if (error != null) {
+      AppMessenger.showError(context, error);
     }
   }
 
   void _fillMax(MonumentResourceKind kind) {
-    final MonumentDashboard? dashboard = _dashboard;
+    final MonumentDashboard? dashboard = ref.read(guildMonumentProvider).dashboard;
     if (dashboard == null) return;
     final int max = dashboard.myStats.maxDonatable(kind);
     _controllers[kind]!.text = max > 0 ? '$max' : '';
@@ -134,8 +96,8 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
         MonumentResourceKind.gold => AppColors.warningSolar,
       };
 
-  Widget _donateCard(MonumentResourceKind kind) {
-    final MonumentDashboard? dashboard = _dashboard;
+  Widget _donateCard(MonumentResourceKind kind, GuildMonumentState monumentState) {
+    final MonumentDashboard? dashboard = monumentState.dashboard;
     if (dashboard == null) return const SizedBox.shrink();
 
     final MonumentMyStats stats = dashboard.myStats;
@@ -143,7 +105,7 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
     final int today = stats.donatedToday(kind);
     final int total = stats.donatedTotal(kind);
     final int maxDonate = stats.maxDonatable(kind);
-    final bool busy = _donatingKind == kind;
+    final bool busy = monumentState.donatingKind == kind;
     final TextEditingController ctrl = _controllers[kind]!;
 
     return monumentPanel(
@@ -154,7 +116,7 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
           Text(kind.label, style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(
-            'Toplam bağışın: $total · Bugün: $today/${kind.dailyMax}',
+            'Toplam bağışın: $total · Bugün: $today/${stats.dailyMax(kind)}',
             style: AppTextStyles.caption.copyWith(color: AppColors.mutedTitanium),
           ),
           Text(
@@ -170,7 +132,11 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
             TextField(
               controller: ctrl,
               keyboardType: TextInputType.number,
-              enabled: !busy && _donatingKind == null,
+              enabled: !busy && monumentState.donatingKind == null,
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly,
+                _MonumentDonateMaxFormatter(maxDonate),
+              ],
               decoration: InputDecoration(
                 hintText: 'Miktar (en fazla $maxDonate)',
                 filled: true,
@@ -185,22 +151,13 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
-              onChanged: (String v) {
-                final int? n = int.tryParse(v);
-                if (n != null && n > maxDonate) {
-                  ctrl.value = TextEditingValue(
-                    text: '$maxDonate',
-                    selection: TextSelection.collapsed(offset: '$maxDonate'.length),
-                  );
-                }
-              },
             ),
             const SizedBox(height: 8),
             Row(
               children: <Widget>[
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: busy || _donatingKind != null ? null : () => _fillMax(kind),
+                    onPressed: busy || monumentState.donatingKind != null ? null : () => _fillMax(kind),
                     child: const Text('Elindekini yaz', style: TextStyle(fontSize: 11)),
                   ),
                 ),
@@ -208,7 +165,7 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
                 Expanded(
                   child: monumentGoldButton(
                     label: busy ? '...' : 'Bağışla',
-                    onPressed: busy || _donatingKind != null ? null : () => _donateKind(kind),
+                    onPressed: busy || monumentState.donatingKind != null ? null : () => _donateKind(kind),
                   ),
                 ),
               ],
@@ -229,6 +186,7 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
   @override
   Widget build(BuildContext context) {
     final bool hasGuild = ref.watch(hasGuildMembershipProvider);
+    final GuildMonumentState monumentState = ref.watch(guildMonumentProvider);
 
     Future<void> logout() async => performLogout(ref);
 
@@ -251,10 +209,13 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
                   child: const Text('Geri Dön', style: TextStyle(color: AppColors.mutedTitanium)),
                 ),
               )
-            : _loadingDashboard
+            : monumentState.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.liquidGold))
-                : _dashboard == null
-                    ? monumentErrorState(onRetry: _loadDashboard)
+                : monumentState.dashboard == null
+                    ? monumentErrorState(
+                        onRetry: () => ref.read(guildMonumentProvider.notifier).loadDashboard(),
+                        message: monumentState.loadError,
+                      )
                     : ListView(
                         padding: MonumentUi.pagePadding(context),
                         children: <Widget>[
@@ -279,11 +240,28 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
                           ),
                           for (int i = 0; i < MonumentResourceKind.values.length; i++)
                             GameScrollSection(
-                              child: _donateCard(MonumentResourceKind.values[i]),
+                              child: _donateCard(MonumentResourceKind.values[i], monumentState),
                             ),
                         ],
                       ),
       ),
     );
+  }
+}
+
+class _MonumentDonateMaxFormatter extends TextInputFormatter {
+  const _MonumentDonateMaxFormatter(this.maxValue);
+
+  final int maxValue;
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final String text = newValue.text;
+    if (text.isEmpty) return newValue;
+
+    final int? value = int.tryParse(text);
+    if (value == null) return oldValue;
+    if (value <= maxValue) return newValue;
+    return oldValue;
   }
 }

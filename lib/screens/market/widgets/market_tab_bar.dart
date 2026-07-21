@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../theme/app_colors.dart';
+import 'market_design.dart';
 
 enum MarketTab { browse, sell, myMarket }
 
+/// Legacy wrapper — delegates to [MarketTabStrip] design system.
 class MarketTabBar extends StatelessWidget {
   const MarketTabBar({
     super.key,
@@ -14,48 +15,24 @@ class MarketTabBar extends StatelessWidget {
   final MarketTab activeTab;
   final ValueChanged<MarketTab> onTabChanged;
 
+  int _index(MarketTab tab) => switch (tab) {
+        MarketTab.browse => 0,
+        MarketTab.sell => 1,
+        MarketTab.myMarket => 2,
+      };
+
+  MarketTab _tab(int index) => switch (index) {
+        0 => MarketTab.browse,
+        1 => MarketTab.sell,
+        _ => MarketTab.myMarket,
+      };
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderDefault),
-      ),
-      child: Row(
-        children: <Widget>[
-          _tab(MarketTab.browse, 'Gozat'),
-          _tab(MarketTab.sell, 'Sat'),
-          _tab(MarketTab.myMarket, 'Pazarim'),
-        ],
-      ),
-    );
-  }
-
-  Expanded _tab(MarketTab tab, String label) {
-    final bool active = activeTab == tab;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onTabChanged(tab),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(7),
-            color: active ? AppColors.accentBlue : Colors.transparent,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: active ? AppColors.textPrimary : AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
+    return MarketTabStrip(
+      labels: const <String>['Gozat', 'Sat', 'Pazarim'],
+      activeIndex: _index(activeTab),
+      onChanged: (int index) => onTabChanged(_tab(index)),
     );
   }
 }

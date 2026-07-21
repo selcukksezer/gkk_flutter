@@ -266,13 +266,17 @@ Future<bool> showFacUnlockDialog(
 }
 
 /// Rüşvet onayı.
-Future<bool> showFacBribeDialog(BuildContext context, {required String facilityType}) async {
+Future<bool> showFacBribeDialog(
+  BuildContext context, {
+  required String facilityType,
+  required int gemAmount,
+}) async {
   final bool? result = await showFacConfirmDialog(
     context,
     title: context.l10n.r_vet_2,
     icon: '💎',
-    message: '5 Gem ile şüphe indirimi uygulanacak ($facilityType). Devam?',
-    highlight: '5 Gem',
+    message: '$gemAmount Gem ile şüphe indirimi uygulanacak ($facilityType). Devam?',
+    highlight: '$gemAmount Gem',
     accentColor: AppColors.cyberFuchsia,
     confirmLabel: 'Ver',
   );

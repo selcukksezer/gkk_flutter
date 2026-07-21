@@ -355,20 +355,27 @@ class DungeonItemDrop {
     required this.name,
     required this.rarity,
     required this.type,
+    this.quantity = 1,
   });
 
   final String itemId;
   final String name;
   final String rarity;
   final String type;
+  final int quantity;
 
   factory DungeonItemDrop.fromJson(Map<String, dynamic> json) {
     final String itemId = (json['item_id'] ?? json['itemId'] ?? '').toString();
+    final dynamic rawQty = json['quantity'];
+    final int quantity = rawQty is num
+        ? rawQty.toInt()
+        : int.tryParse(rawQty?.toString() ?? '') ?? 1;
     return DungeonItemDrop(
       itemId: itemId,
       name: (json['name'] ?? json['item_name'] ?? itemId).toString(),
       rarity: (json['rarity'] ?? 'common').toString(),
       type: (json['type'] ?? '').toString(),
+      quantity: quantity < 1 ? 1 : quantity,
     );
   }
 }

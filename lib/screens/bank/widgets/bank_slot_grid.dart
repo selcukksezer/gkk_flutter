@@ -47,6 +47,9 @@ class BankInventorySlot extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onLongPress,
+    this.onDragStarted,
+    this.onDragUpdate,
+    this.onDragEnd,
   });
 
   final InventoryItem? item;
@@ -55,6 +58,9 @@ class BankInventorySlot extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onDragStarted;
+  final DragUpdateCallback? onDragUpdate;
+  final DragEndCallback? onDragEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +104,9 @@ class BankInventorySlot extends StatelessWidget {
     return LongPressDraggable<BankDragPayload>(
       data: payload,
       delay: const Duration(milliseconds: 120),
+      onDragStarted: onDragStarted,
+      onDragUpdate: onDragUpdate,
+      onDragEnd: onDragEnd,
       feedback: Material(
         color: Colors.transparent,
         child: SizedBox(width: 74, height: 86, child: slotBody),
@@ -118,6 +127,10 @@ class BankStorageSlot extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onLongPress,
+    this.unlockGemCost,
+    this.onDragStarted,
+    this.onDragUpdate,
+    this.onDragEnd,
   });
 
   final Map<String, dynamic>? item;
@@ -127,6 +140,10 @@ class BankStorageSlot extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final int? unlockGemCost;
+  final VoidCallback? onDragStarted;
+  final DragUpdateCallback? onDragUpdate;
+  final DragEndCallback? onDragEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +172,7 @@ class BankStorageSlot extends StatelessWidget {
       upgradeLevel: upgradeLevel,
       icon: hasItem ? item!['icon']?.toString() ?? '' : '',
       itemId: hasItem ? item!['item_id']?.toString() : null,
+      lockedUnlockCost: isLocked ? unlockGemCost : null,
     );
 
     final Widget interactive = GestureDetector(
@@ -181,6 +199,9 @@ class BankStorageSlot extends StatelessWidget {
     return LongPressDraggable<BankDragPayload>(
       data: payload,
       delay: const Duration(milliseconds: 120),
+      onDragStarted: onDragStarted,
+      onDragUpdate: onDragUpdate,
+      onDragEnd: onDragEnd,
       feedback: Material(
         color: Colors.transparent,
         child: SizedBox(width: 74, height: 86, child: slotBody),
@@ -205,6 +226,7 @@ class _BankSlotBody extends StatelessWidget {
     required this.upgradeLevel,
     required this.icon,
     this.itemId,
+    this.lockedUnlockCost,
   });
 
   final bool hasItem;
@@ -219,6 +241,7 @@ class _BankSlotBody extends StatelessWidget {
   final int upgradeLevel;
   final String icon;
   final String? itemId;
+  final int? lockedUnlockCost;
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +271,42 @@ class _BankSlotBody extends StatelessWidget {
             : AppColors.darkObsidian.withValues(alpha: 0.35),
       ),
       child: isLocked
-          ? const Center(child: Text('🔒', style: TextStyle(fontSize: 16)))
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 18,
+                    color: BankDesign.gold.withValues(alpha: 0.75),
+                  ),
+                  if (lockedUnlockCost != null) ...<Widget>[
+                    const SizedBox(height: 4),
+                    Text(
+                      '$lockedUnlockCost 💎',
+                      style: const TextStyle(
+                        color: BankDesign.gold,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '+1 slot',
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 2),
+                  Text(
+                    '#${globalSlotIndex + 1}',
+                    style: const TextStyle(color: Colors.white24, fontSize: 9),
+                  ),
+                ],
+              ),
+            )
           : hasItem
           ? Stack(
               fit: StackFit.expand,

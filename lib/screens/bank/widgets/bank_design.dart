@@ -6,6 +6,7 @@ const int bankBaseSlots = 100;
 const int bankMaxSlots = 200;
 const int bankSlotsPerPage = 20;
 const int bankInventoryPerPage = 20;
+const int bankSlotUnlockCost = 5;
 
 abstract final class BankDesign {
   static const int gridColumns = 5;
@@ -17,12 +18,7 @@ abstract final class BankDesign {
   static const Color muted = AppColors.mutedTitanium;
 }
 
-int bankExpandCost(int total) {
-  if (total >= 175) return 500;
-  if (total >= 150) return 200;
-  if (total >= 125) return 100;
-  return 50;
-}
+int bankNextSlotIndex(int totalSlots) => totalSlots + 1;
 
 int bankAsInt(dynamic value, {int fallback = 0}) {
   if (value is int) return value;

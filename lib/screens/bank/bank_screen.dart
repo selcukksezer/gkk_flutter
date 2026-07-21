@@ -7,16 +7,22 @@ import '../../components/common/inline_error_retry.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
+import '../../core/utils/bank_tutorial.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/inventory_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'widgets/bank_design.dart';
+import 'widgets/bank_quantity_dialog.dart';
 import 'widgets/bank_drag_hint.dart';
+import 'widgets/bank_drag_scroll.dart';
 import 'widgets/bank_section_header.dart';
 import 'widgets/bank_slot_grid.dart';
 import 'widgets/bank_stats_card.dart';
@@ -46,9 +52,16 @@ class _BankScreenState extends ConsumerState<BankScreen> {
   bool _expanding = false;
   bool get _actionInProgress => _depositing || _withdrawing || _expanding;
 
+  final ScrollController _scrollController = ScrollController();
+  late final BankDragScrollCoordinator _dragScrollCoordinator;
+
   @override
   void initState() {
     super.initState();
+    _dragScrollCoordinator = BankDragScrollCoordinator(
+      scrollController: _scrollController,
+      contextProvider: () => context,
+    );
     ref.listenManual<InventoryState>(inventoryProvider, (
       InventoryState? previous,
       InventoryState next,
@@ -67,7 +80,16 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadData();
       await ref.read(inventoryProvider.notifier).loadInventory();
+      if (!mounted) return;
+      await TutorialTriggers.onRouteEnter(ref, AppRoutes.bank);
     });
+  }
+
+  @override
+  void dispose() {
+    _dragScrollCoordinator.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _clampBankPage() {
@@ -77,12 +99,27 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }
   }
 
-  Future<void> _loadData() async {
+  Map<String, dynamic>? _readBankRpcResult(dynamic raw) {
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    if (raw is List && raw.isNotEmpty) {
+      final dynamic first = raw.first;
+      if (first is Map) {
+        return Map<String, dynamic>.from(first);
+      }
+    }
+    return null;
+  }
+
+  Future<void> _loadData({bool silent = false}) async {
     if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _loadError = null;
-    });
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
     try {
       final dynamic accountRaw = await SupabaseService.client.rpc(
         'get_bank_account',
@@ -138,16 +175,22 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final String message =
+          userFacingErrorMessage(e, fallback: 'Banka yüklenemedi.');
+      if (silent) {
+        AppMessenger.showError(context, message);
+        return;
+      }
       setState(() {
         _loading = false;
-        _loadError = userFacingErrorMessage(e, fallback: 'Banka yüklenemedi.');
+        _loadError = message;
       });
     }
   }
 
   Future<void> _refreshAll({bool silentInventory = true}) async {
     await Future.wait(<Future<void>>[
-      _loadData(),
+      _loadData(silent: true),
       ref
           .read(inventoryProvider.notifier)
           .loadInventory(silent: silentInventory),
@@ -208,137 +251,15 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     required String subtitle,
     required int maxQuantity,
     required Color accent,
-  }) async {
-    if (maxQuantity <= 0) return null;
-
-    int quantity = maxQuantity;
-    final TextEditingController qtyCtrl = TextEditingController(
-      text: '$maxQuantity',
+  }) {
+    if (maxQuantity <= 0) return Future<int?>.value(null);
+    return BankQuantityDialog.show(
+      context,
+      title: title,
+      subtitle: subtitle,
+      maxQuantity: maxQuantity,
+      accent: accent,
     );
-
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return StatefulBuilder(
-          builder: (BuildContext ctx, StateSetter setModalState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1A2030),
-              title: Text(
-                title,
-                style: TextStyle(color: accent, fontWeight: FontWeight.bold),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: <Widget>[
-                      const Text(
-                        'Miktar:',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: qtyCtrl,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            filled: true,
-                            fillColor: Color(0xFF0F0F0F),
-                            border: OutlineInputBorder(),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.white24),
-                            ),
-                          ),
-                          onChanged: (String value) {
-                            final int parsed = bankAsInt(
-                              value,
-                              fallback: 1,
-                            ).clamp(1, maxQuantity);
-                            quantity = parsed;
-                            setModalState(() {
-                              qtyCtrl.value = TextEditingValue(
-                                text: '$parsed',
-                                selection: TextSelection.collapsed(
-                                  offset: '$parsed'.length,
-                                ),
-                              );
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Column(
-                        children: <Widget>[
-                          SizedBox(
-                            height: 30,
-                            child: IconButton(
-                              splashRadius: 16,
-                              onPressed: () {
-                                quantity = (quantity + 1).clamp(1, maxQuantity);
-                                setModalState(() => qtyCtrl.text = '$quantity');
-                              },
-                              icon: const Icon(
-                                Icons.add,
-                                size: 16,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                            height: 30,
-                            child: IconButton(
-                              splashRadius: 16,
-                              onPressed: () {
-                                quantity = (quantity - 1).clamp(1, maxQuantity);
-                                setModalState(() => qtyCtrl.text = '$quantity');
-                              },
-                              icon: const Icon(
-                                Icons.remove,
-                                size: 16,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text(
-                    'İptal',
-                    style: TextStyle(color: Colors.white54),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: Colors.black,
-                  ),
-                  child: const Text('Onayla'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    qtyCtrl.dispose();
-
-    if (confirmed != true) return null;
-    return quantity.clamp(1, maxQuantity);
   }
 
   Future<void> _performSwap({
@@ -536,7 +457,9 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       if (!mounted) return;
       AppMessenger.show(context, '${rowIds.length} eşya bankaya yatırıldı');
       _selectedInventoryRowIds.clear();
+      await BankTutorial.markDepositCoachShown();
       await _refreshAll();
+      await TutorialTriggers.onBankDeposit(ref);
     } catch (e) {
       if (!mounted) return;
       AppMessenger.showError(
@@ -576,20 +499,20 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       qty = picked;
     }
 
-    await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
-    final InventoryAddCheck addCheck = ref
-        .read(inventoryProvider.notifier)
-        .canAddItem(itemId: itemId, quantity: qty);
-    if (!addCheck.canAdd) {
-      if (mounted) {
-        AppMessenger.show(context, addCheck.reason ?? 'Envanter dolu!');
-      }
-      return;
-    }
-
     setState(() => _withdrawing = true);
     try {
-      await SupabaseService.client.rpc(
+      await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
+      final InventoryAddCheck addCheck = ref
+          .read(inventoryProvider.notifier)
+          .canAddItem(itemId: itemId, quantity: qty);
+      if (!addCheck.canAdd) {
+        if (mounted) {
+          AppMessenger.show(context, addCheck.reason ?? 'Envanter dolu!');
+        }
+        return;
+      }
+
+      final dynamic raw = await SupabaseService.client.rpc(
         'withdraw_from_bank',
         params: <String, dynamic>{
           'p_bank_item_ids': <String>[id],
@@ -597,7 +520,21 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         },
       );
 
+      final Map<String, dynamic>? result = _readBankRpcResult(raw);
+      final bool success = result?['success'] != false;
+      final int withdrawnCount = bankAsInt(
+        result?['items_withdrawn'],
+        fallback: 0,
+      );
       if (!mounted) return;
+      if (!success || withdrawnCount <= 0) {
+        AppMessenger.showError(
+          context,
+          result?['message']?.toString() ?? 'Çekme başarısız.',
+        );
+        return;
+      }
+
       AppMessenger.show(context, '$name envanterinize taşındı');
       await _refreshAll();
     } catch (e) {
@@ -644,22 +581,20 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       return;
     }
 
-    await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
-    for (final MapEntry<String, int> entry in demandByItem.entries) {
-      final InventoryAddCheck addCheck = ref
+    setState(() => _withdrawing = true);
+    try {
+      await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
+      final InventoryAddCheck batchCheck = ref
           .read(inventoryProvider.notifier)
-          .canAddItem(itemId: entry.key, quantity: entry.value);
-      if (!addCheck.canAdd) {
+          .canAddBatch(demandByItem);
+      if (!batchCheck.canAdd) {
         if (mounted) {
-          AppMessenger.show(context, addCheck.reason ?? 'Envanter dolu!');
+          AppMessenger.show(context, batchCheck.reason ?? 'Envanter dolu!');
         }
         return;
       }
-    }
 
-    setState(() => _withdrawing = true);
-    try {
-      await SupabaseService.client.rpc(
+      final dynamic raw = await SupabaseService.client.rpc(
         'withdraw_from_bank',
         params: <String, dynamic>{
           'p_bank_item_ids': validIds,
@@ -667,8 +602,34 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         },
       );
 
+      final Map<String, dynamic>? result = _readBankRpcResult(raw);
+      final bool success = result?['success'] != false;
+      final int withdrawnCount = bankAsInt(
+        result?['items_withdrawn'],
+        fallback: 0,
+      );
+      final String? message = result?['message']?.toString();
+
       if (!mounted) return;
-      AppMessenger.show(context, '${validIds.length} eşya envanterinize taşındı');
+      if (!success || withdrawnCount <= 0) {
+        AppMessenger.showError(
+          context,
+          message ?? 'Toplu çekme başarısız.',
+        );
+        return;
+      }
+
+      if (withdrawnCount < validIds.length) {
+        AppMessenger.show(
+          context,
+          '$withdrawnCount / ${validIds.length} eşya envanterinize taşındı',
+        );
+      } else {
+        AppMessenger.show(
+          context,
+          '$withdrawnCount eşya envanterinize taşındı',
+        );
+      }
       _selectedBankIds.clear();
       await _refreshAll();
     } catch (e) {
@@ -682,25 +643,28 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }
   }
 
-  Future<void> _expandBank() async {
+  Future<void> _unlockNextBankSlot() async {
     if (_totalSlots >= bankMaxSlots) {
       AppMessenger.show(context, 'Maksimum slot sayısına ulaşıldı');
       return;
     }
     if (_actionInProgress) return;
 
-    final int gemCost = bankExpandCost(_totalSlots);
+    final int nextSlot = bankNextSlotIndex(_totalSlots);
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A2030),
         title: const Text(
-          'Banka Genişletme',
+          'Banka Slotu Aç',
           style: TextStyle(color: Color(0xFFFBBF24)),
         ),
         content: Text(
-          'Banka slotlarını genişletmek için $gemCost 💎 harcamak istiyor musunuz?',
-          style: const TextStyle(color: Colors.white70),
+          'Slot $nextSlot açılacak.\n\n'
+          '$bankSlotUnlockCost 💎 harcanır '
+          '($_totalSlots → $nextSlot).\n\n'
+          'Kilitli slota dokunarak da açabilirsin.',
+          style: const TextStyle(color: Colors.white70, height: 1.45),
         ),
         actions: <Widget>[
           TextButton(
@@ -714,7 +678,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
               foregroundColor: Colors.black,
             ),
             child: Text(
-              '$gemCost gem harca',
+              '$bankSlotUnlockCost 💎 · Slot $nextSlot',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
@@ -726,18 +690,40 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
     setState(() => _expanding = true);
     try {
-      await SupabaseService.client.rpc(
-        'expand_bank_slots',
-        params: <String, dynamic>{'p_num_expansions': 1},
-      );
-      await _loadData();
+      final dynamic raw = await SupabaseService.client.rpc('expand_bank_slots');
+
+      final Map<String, dynamic>? result = _readBankRpcResult(raw);
+      final bool success = result?['success'] != false;
+      final String? message = result?['message']?.toString();
+
+      if (!success) {
+        if (!mounted) return;
+        AppMessenger.showError(
+          context,
+          message ?? 'Slot açılamadı.',
+        );
+        return;
+      }
+
+      await Future.wait(<Future<void>>[
+        _loadData(silent: true),
+        ref.read(playerProvider.notifier).loadProfile(),
+      ]);
+
       if (!mounted) return;
-      AppMessenger.show(context, 'Banka slotlari genisletildi');
+      final int newTotal = bankAsInt(
+        result?['new_total_slots'],
+        fallback: nextSlot,
+      );
+      AppMessenger.show(
+        context,
+        'Slot açıldı: $newTotal / $bankMaxSlots',
+      );
     } catch (e) {
       if (!mounted) return;
       AppMessenger.showError(
         context,
-        userFacingErrorMessage(e, fallback: 'Genişletme başarısız.'),
+        userFacingErrorMessage(e, fallback: 'Slot açılamadı.'),
       );
     } finally {
       if (mounted) setState(() => _expanding = false);
@@ -769,15 +755,24 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          BankSectionHeader(
-            title: 'Envanter',
-            actionText: 'Yatır (${_selectedInventoryRowIds.length})',
-            actionColor: BankDesign.deposit,
-            enabled: _selectedInventoryRowIds.isNotEmpty,
-            loading: _depositing,
-            onAction: _depositBatch,
-            selectedCount: _selectedInventoryRowIds.length,
-            onClear: () => setState(_selectedInventoryRowIds.clear),
+          TutorialAnchorScope(
+            id: TutorialAnchorId.bankDepositBtn,
+            child: BankSectionHeader(
+              title: 'Envanter',
+              actionText: 'Yatır (${_selectedInventoryRowIds.length})',
+              actionColor: BankDesign.deposit,
+              enabled: _selectedInventoryRowIds.isNotEmpty,
+              loading: _depositing,
+              onAction: () async {
+                await TutorialTriggers.onAnchorTap(
+                  ref,
+                  TutorialAnchorId.bankDepositBtn,
+                );
+                await _depositBatch();
+              },
+              selectedCount: _selectedInventoryRowIds.length,
+              onClear: () => setState(_selectedInventoryRowIds.clear),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
@@ -824,6 +819,9 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                           globalSlotIndex: globalSlotIndex,
                           isDragTargetActive: candidateData.isNotEmpty,
                           isSelected: selected,
+                          onDragStarted: _dragScrollCoordinator.handleDragStarted,
+                          onDragUpdate: _dragScrollCoordinator.handleDragUpdate,
+                          onDragEnd: _dragScrollCoordinator.handleDragEnd,
                           onTap: item == null
                               ? null
                               : () {
@@ -887,6 +885,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                 final String? targetId = item?['id']?.toString();
                 final bool selected = item != null &&
                     _selectedBankIds.contains(item['id']?.toString() ?? '');
+                final int unlockCost = bankSlotUnlockCost;
 
                 return DragTarget<BankDragPayload>(
                   onWillAcceptWithDetails:
@@ -922,7 +921,15 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                           isLocked: isLocked,
                           isDragTargetActive: candidateData.isNotEmpty,
                           isSelected: selected,
-                          onTap: (item == null || isLocked)
+                          unlockGemCost: isLocked ? unlockCost : null,
+                          onDragStarted: _dragScrollCoordinator.handleDragStarted,
+                          onDragUpdate: _dragScrollCoordinator.handleDragUpdate,
+                          onDragEnd: _dragScrollCoordinator.handleDragEnd,
+                          onTap: isLocked
+                              ? (_expanding || _actionInProgress
+                                    ? null
+                                    : _unlockNextBankSlot)
+                              : item == null
                               ? null
                               : () {
                                   final String id = item['id']?.toString() ?? '';
@@ -974,6 +981,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
               : _loadError != null
               ? InlineErrorRetry(message: _loadError!, onRetry: _loadData)
               : SingleChildScrollView(
+                  controller: _scrollController,
                   padding: EdgeInsets.only(
                     bottom: gameBottomBarClearance(context),
                   ),
@@ -986,7 +994,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                         maxSlots: bankMaxSlots,
                         expanding: _expanding,
                         actionInProgress: _actionInProgress,
-                        onExpand: _expandBank,
+                        onExpand: _unlockNextBankSlot,
                       ),
                       const BankDragHint(),
                       const SizedBox(height: 10),

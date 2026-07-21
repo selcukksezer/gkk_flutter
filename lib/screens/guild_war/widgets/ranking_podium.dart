@@ -84,7 +84,7 @@ class _PodiumSlot extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: <Widget>[
-          Text(medal, style: const TextStyle(fontSize: 20)),
+          Text(medal, style: const TextStyle(fontSize: 22)),
           const SizedBox(height: 2),
           Text(
             entry.guildName,
@@ -92,14 +92,14 @@ class _PodiumSlot extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
           ),
           Text(
             '${entry.points} puan',
-            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: _glowColor),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _glowColor),
           ),
           const SizedBox(height: 6),
           Expanded(
@@ -113,7 +113,7 @@ class _PodiumSlot extends StatelessWidget {
                 child: Text(
                   '#${entry.rank}',
                   style: TextStyle(
-                    fontSize: 26,
+                    fontSize: 20,
                     fontWeight: FontWeight.w900,
                     color: _glowColor.withValues(alpha: 0.85),
                   ),

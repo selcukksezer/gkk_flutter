@@ -48,6 +48,14 @@ String userFacingErrorMessage(
   if (lower.contains('timeout') || lower.contains('timed out')) {
     return 'İstek zaman aşımına uğradı.';
   }
+  if (lower.contains('envanter dolu') ||
+      lower.contains('inventory full') ||
+      lower.contains('inventory_quantity_check')) {
+    return 'Envanter dolu veya geçersiz miktar.';
+  }
+  if (lower.contains('insufficient gems') || lower.contains('yeterli gem')) {
+    return 'Yeterli elmas yok.';
+  }
 
   if (_looksUserFriendly(raw)) return raw.trim();
 

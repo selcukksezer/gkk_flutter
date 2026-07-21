@@ -1,17 +1,24 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/utils/provider_scheduling.dart';
+import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/restriction/restriction_screen_ui.dart';
+import '../../core/services/ad_service.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/restriction_reason_labels.dart';
+import '../../core/utils/restriction_time.dart';
+import '../../l10n/l10n.dart';
+import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
-import 'package:gkk_flutter/components/common/app_messenger.dart';
-import '../../l10n/l10n.dart';
+import '../../theme/app_colors.dart';
+import '../restriction/restriction_timer_mixin.dart';
 
 class PrisonScreen extends ConsumerStatefulWidget {
   const PrisonScreen({super.key});
@@ -20,79 +27,62 @@ class PrisonScreen extends ConsumerStatefulWidget {
   ConsumerState<PrisonScreen> createState() => _PrisonScreenState();
 }
 
-class _PrisonScreenState extends ConsumerState<PrisonScreen> {
-  Timer? _timer;
-  Duration _remaining = Duration.zero;
-  int _initialSeconds = 0;
-  bool _freed = false;
+class _PrisonScreenState extends ConsumerState<PrisonScreen>
+    with RestrictionTimerMixin<PrisonScreen> {
   bool _paying = false;
+
+  @override
+  String? readRestrictionUntil() =>
+      ref.read(playerProvider).profile?.prisonUntil;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      startRestrictionTimer();
+      await TutorialTriggers.onRouteEnter(ref, AppRoutes.prison);
     });
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    _updateRemaining(isFirst: true);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateRemaining();
-    });
-  }
-
-  void _updateRemaining({bool isFirst = false}) {
-    final profile = ref.read(playerProvider).profile;
-    final prisonUntil = profile?.prisonUntil;
-    if (prisonUntil == null || prisonUntil.isEmpty) {
-      setState(() => _remaining = Duration.zero);
-      return;
-    }
-    final releaseTime = DateTime.tryParse(prisonUntil);
-    if (releaseTime == null) {
-      setState(() => _remaining = Duration.zero);
-      return;
-    }
-    final now = DateTime.now();
-    if (releaseTime.isAfter(now)) {
-      final remaining = releaseTime.difference(now);
-      setState(() {
-        _remaining = remaining;
-        if (isFirst) _initialSeconds = remaining.inSeconds;
-      });
-    } else {
-      setState(() => _remaining = Duration.zero);
-      deferProviderUpdate(() {
-        ref.read(playerProvider.notifier).loadProfile();
-      });
-    }
-  }
-
-  bool get _inPrison {
-    final profile = ref.read(playerProvider).profile;
-    final prisonUntil = profile?.prisonUntil;
-    if (prisonUntil == null || prisonUntil.isEmpty) return false;
-    final releaseTime = DateTime.tryParse(prisonUntil);
-    if (releaseTime == null) return false;
-    return releaseTime.isAfter(DateTime.now());
-  }
+  int _bailCost() => max(1, (restrictionRemainingDuration.inSeconds / 60).ceil());
 
   Future<void> _payBail() async {
-    final profile = ref.read(playerProvider).profile;
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
     if (profile == null) return;
 
-    final bailCost = max(1, (_remaining.inSeconds / 60).ceil());
+    final int bailCost = _bailCost();
+    if (profile.gems < bailCost) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (BuildContext ctx) => AlertDialog(
+          backgroundColor: AppColors.spaceNavy,
+          title: const Text('Yetersiz Elmas'),
+          content: Text(
+            'Kefalet için $bailCost 💎 gerekiyor. Mevcut: ${profile.gems} 💎',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('İptal'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                context.go(AppRoutes.shop);
+              },
+              child: const Text('Dükkana Git'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: AppColors.spaceNavy,
         title: const Text('Kefalet Öde'),
         content: Text(
           '$bailCost 💎 harcayarak serbest kalmak istiyor musunuz?',
@@ -115,79 +105,113 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     try {
       await SupabaseService.client.rpc(
         'release_from_prison',
-        params: {'p_use_bail': true},
+        params: <String, dynamic>{'p_use_bail': true},
       );
       await ref.read(playerProvider.notifier).loadProfile();
+      restrictionTimer?.cancel();
       setState(() {
-        _freed = true;
         _paying = false;
-        _remaining = Duration.zero;
+        restrictionRemainingDuration = Duration.zero;
       });
-      _timer?.cancel();
+      if (mounted) {
+        AppMessenger.showSuccess(context, 'Serbest kaldın.');
+      }
     } catch (e) {
       setState(() => _paying = false);
       if (mounted) {
-        AppMessenger.showError(context, 'Hata: $e');
+        AppMessenger.showError(context, 'Kefalet ödenemedi. Tekrar dene.');
       }
+    }
+  }
+
+  Future<void> _watchAdToReduce() async {
+    if (_paying) return;
+
+    final AdResult adResult = await AdService.instance
+        .showRewardedAd(context, placement: 'prison_timer');
+    if (adResult != AdResult.rewarded) {
+      if (mounted) AppMessenger.show(context, 'Reklam tamamlanmadı.');
+      return;
+    }
+
+    setState(() => _paying = true);
+    try {
+      final dynamic res = await SupabaseService.client.rpc(
+        'reduce_timer_with_ad',
+        params: <String, dynamic>{'p_timer': 'prison'},
+      );
+      final bool ok = res is Map && res['success'] == true;
+      if (!mounted) return;
+      if (!ok) {
+        final String msg = res is Map
+            ? (res['message'] ?? res['error'] ?? 'İşlem başarısız').toString()
+            : 'İşlem başarısız';
+        AppMessenger.showError(context, msg);
+      } else {
+        final bool released = res['released'] == true;
+        final int usesLeft = (res['uses_left'] as num?)?.toInt() ?? 0;
+        AppMessenger.showSuccess(
+          context,
+          released
+              ? '🎉 Süre bitti — özgürsün!'
+              : '⏳ Süre 30 dakika kısaldı! (Kalan hak: $usesLeft)',
+        );
+      }
+      await ref.read(playerProvider.notifier).loadProfile();
+      startRestrictionTimer();
+    } catch (_) {
+      if (mounted) AppMessenger.showError(context, 'İşlem başarısız.');
+    } finally {
+      if (mounted) setState(() => _paying = false);
     }
   }
 
   Future<void> _attemptEscape() async {
     setState(() => _paying = true);
     try {
-      final rawResponse = await SupabaseService.client.rpc(
-        'attempt_prison_escape',
-      );
-      debugPrint(
-        '[RPC][attempt_prison_escape] type=${rawResponse.runtimeType} value=$rawResponse',
-      );
-
-      final response = rawResponse as Map<String, dynamic>? ?? {};
+      final dynamic rawResponse =
+          await SupabaseService.client.rpc('attempt_prison_escape');
+      final Map<String, dynamic> response = rawResponse is Map
+          ? Map<String, dynamic>.from(rawResponse)
+          : <String, dynamic>{};
       await ref.read(playerProvider.notifier).loadProfile();
 
       final bool success = response['success'] == true;
       final bool escaped = response['escaped'] == true;
       final String message =
-          response['error'] ??
-          response['message'] ??
-          'Raw Response is: $rawResponse';
+          (response['message'] ?? response['error'] ?? 'İşlem tamamlandı')
+              .toString();
 
       if (mounted) {
-        AppMessenger.showError(context, message);
+        if (success) {
+          AppMessenger.showSuccess(context, message);
+        } else {
+          AppMessenger.showError(context, message);
+        }
       }
 
       setState(() {
         _paying = false;
         if (escaped) {
-          _freed = true;
-          _remaining = Duration.zero;
-          _timer?.cancel();
+          restrictionRemainingDuration = Duration.zero;
+          restrictionTimer?.cancel();
         } else {
-          // It failed, recalculate remain
-          _updateRemaining(isFirst: true);
+          updateRestrictionRemaining(isFirst: true);
         }
       });
-    } catch (e, stack) {
-      debugPrint('[RPC][attempt_prison_escape][exception] $e');
-      debugPrint('$stack');
+    } catch (e) {
       setState(() => _paying = false);
       if (mounted) {
-        AppMessenger.showError(context, 'Sistem Hatasi: ${e.toString()}');
+        AppMessenger.showError(context, 'Kaçış denemesi başarısız.');
       }
     }
-  }
-
-  String _formatCountdown(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
   }
 
   @override
   Widget build(BuildContext context) {
     ref.watch(playerProvider);
-    final profile = ref.read(playerProvider).profile;
-    final inPrison = _inPrison && !_freed;
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    final bool inPrison = restrictionActive;
 
     return Scaffold(
       appBar: GameTopBar(
@@ -200,219 +224,98 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.prison,
-
         onLogout: () async {
           await ref.read(authProvider.notifier).logout();
           ref.read(playerProvider.notifier).clear();
         },
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              Color(0xFF10131D),
-              Color(0xFF171E2C),
-              Color(0xFF10131D),
-            ],
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: inPrison ? _buildInPrison(profile) : _buildFree(),
-            ),
-          ),
-        ),
+      body: RestrictionScreenScaffold(
+        child: inPrison && profile != null
+            ? _buildInPrison(profile)
+            : _buildFree(),
       ),
     );
   }
 
   Widget _buildFree() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-        color: Colors.black26,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: const <Widget>[
-          Text('👍', style: TextStyle(fontSize: 48)),
-          SizedBox(height: 12),
-          Text(
-            'Cezaevi',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '✅ Şu anda özgürsünüz!',
-            style: TextStyle(
-              color: Colors.greenAccent,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'Gölge Ekonomi\'de hukuk ve düzen sağlanıyor. Yasalara uyduğunuz sürece özgürsünüz!',
-            style: TextStyle(color: Colors.white54, fontSize: 13),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return RestrictionFreeCard(
+      emoji: '🕊️',
+      title: 'Özgürsün',
+      message: 'Şu an cezaevinde değilsin.',
+      accent: RestrictionScreenUi.healAccent,
+      detail: 'Yasalara uyduğun sürece özgür kalırsın.',
     );
   }
 
-  Widget _buildInPrison(dynamic profile) {
-    final prisonReason = profile?.prisonReason as String?;
-    final gems = profile?.gems as int? ?? 0;
-    final remainingSecs = _remaining.inSeconds;
-    final bailCost = max(1, (remainingSecs / 60).ceil());
-    final canAfford = gems >= bailCost;
-    final progress = _initialSeconds > 0
-        ? 1.0 - (remainingSecs / _initialSeconds)
-        : 0.0;
+  Widget _buildInPrison(PlayerProfile profile) {
+    final DateTime? releaseTime = parseRestrictionUntil(profile.prisonUntil);
+    final int bailCost = _bailCost();
+    final bool canAfford = profile.gems >= bailCost;
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
-        color: Colors.black26,
+    return RestrictionActivePanel(
+      accent: RestrictionScreenUi.prisonAccent,
+      emoji: '⛓️',
+      title: 'Hapishanedesin',
+      reasonLabel: 'Gerekçe:',
+      reasonValue: labelPrisonReason(profile.prisonReason),
+      releaseLabel: formatRestrictionRelease(releaseTime),
+      countdown: formatRestrictionCountdown(restrictionRemainingDuration),
+      progress: restrictionProgress(),
+      extraInfo: Text(
+        '💎 Mevcut: ${profile.gems} elmas',
+        style: const TextStyle(
+          color: RestrictionScreenUi.gemAccent,
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: const <Widget>[
-              Text('👮', style: TextStyle(fontSize: 32)),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '⛓️ HAPİSHANEDESİNİZ!',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.redAccent,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
+      actions: <Widget>[
+        RestrictionFilledButton(
+          label: 'Kefalet Öde ($bailCost Elmas)',
+          color: canAfford
+              ? RestrictionScreenUi.prisonAccent
+              : AppColors.darkObsidian,
+          icon: Icons.paid_rounded,
+          loading: _paying,
+          onPressed: (!_paying && canAfford) ? _payBail : null,
+        ),
+        if (!canAfford) ...<Widget>[
+          const SizedBox(height: 6),
           Text(
-            '📄 Gerekçe: ${prisonReason ?? 'Bilinmiyor'}',
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Yasalara aykırı davranışlar nedeniyle hapishanedesiniz. Kefalet ödeyerek erken çıkabilir veya sürenizi tamamlayabilirsiniz.',
-            style: TextStyle(color: Colors.white54, fontSize: 12),
-          ),
-          const SizedBox(height: 20),
-          Center(
-            child: Text(
-              _formatCountdown(_remaining),
-              style: const TextStyle(
-                fontSize: 44,
-                fontWeight: FontWeight.w900,
-                color: Colors.orangeAccent,
-                letterSpacing: 3,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: max(0.0, min(1.0, progress)),
-            backgroundColor: Colors.white12,
-            color: Colors.orangeAccent,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '💎 Mevcut: $gems Elmas',
+            'Yeterli elmasın yok (${profile.gems} / $bailCost)',
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Color(0xFFC34BFF),
-              fontWeight: FontWeight.w600,
+              color: RestrictionScreenUi.hospitalAccent,
+              fontSize: 12,
             ),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: (canAfford && !_paying) ? _payBail : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: canAfford ? Colors.orangeAccent : Colors.grey,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: _paying
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      '💰 Kefalet Öde ($bailCost Elmas)',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-            ),
-          ),
-          if (!canAfford) ...<Widget>[
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                'Yeterli elmasınız yok! ($gems / $bailCost)',
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          const Divider(color: Colors.white12),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: _paying ? null : _attemptEscape,
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.redAccent, width: 2),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                foregroundColor: Colors.redAccent,
-              ),
-              child: _paying
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      '🏃‍♂️ Hapishaneden Kaçmayı Dene',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 8),
           const Center(
-            child: Text(
-              'Başarırsan özgürsün, yakalanırsan +15 DK ceza alırsın!',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
-              textAlign: TextAlign.center,
+            child: RestrictionShopLink(
+              message: 'Elmas satın al → Dükkan',
             ),
           ),
         ],
+        const SizedBox(height: 10),
+        RestrictionOutlineButton(
+          label: 'Reklam İzle — Süreni 30 DK Kısalt',
+          borderColor: AppColors.liquidGold,
+          foregroundColor: AppColors.liquidGold,
+          icon: Icons.play_circle_rounded,
+          loading: _paying,
+          onPressed: _paying ? null : _watchAdToReduce,
+        ),
+        const RestrictionSectionDivider(),
+        RestrictionOutlineButton(
+          label: 'Hapishaneden Kaçmayı Dene',
+          borderColor: RestrictionScreenUi.hospitalAccent,
+          icon: Icons.directions_run_rounded,
+          loading: _paying,
+          onPressed: _paying ? null : _attemptEscape,
+        ),
+      ],
+      footer: const Text(
+        'Başarırsan özgürsün, yakalanırsan +15 DK ceza alırsın!',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
       ),
     );
   }

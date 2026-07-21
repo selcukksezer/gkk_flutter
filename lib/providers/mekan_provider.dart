@@ -52,13 +52,51 @@ class MekanRepository {
         .select('*, items(name, name_tr, type, sub_type, rarity, is_han_only, icon)')
         .eq('mekan_id', mekanId);
     if (onlyAvailable) {
-      query = query.gt('quantity', 0);
+      query = query.gt('quantity', 0).gt('sell_price', 0);
     }
     final dynamic res = await query;
     return (res as List)
         .map((dynamic e) => MekanStockEntry.fromJson(Map<String, dynamic>.from(e as Map)))
-        .where((MekanStockEntry s) => s.eligible)
+        .where((MekanStockEntry s) => s.eligible && (!onlyAvailable || s.isListedForSale))
         .toList();
+  }
+
+  /// First few listed-for-sale item icons per mekan for the hub list card.
+  Future<Map<String, List<MekanStockPeek>>> fetchStockPreviews(
+    List<String> mekanIds, {
+    int perMekan = 4,
+  }) async {
+    if (mekanIds.isEmpty) return <String, List<MekanStockPeek>>{};
+    final dynamic res = await SupabaseService.client
+        .from('mekan_stock')
+        .select('mekan_id, item_id, sell_price, quantity, items(icon, rarity, is_han_only, type)')
+        .inFilter('mekan_id', mekanIds)
+        .gt('quantity', 0)
+        .gt('sell_price', 0);
+    final Map<String, List<MekanStockPeek>> byMekan =
+        <String, List<MekanStockPeek>>{};
+    for (final dynamic raw in res as List) {
+      final Map<String, dynamic> row =
+          Map<String, dynamic>.from(raw as Map);
+      final Map<String, dynamic> item = row['items'] is Map
+          ? Map<String, dynamic>.from(row['items'] as Map)
+          : const <String, dynamic>{};
+      final bool han = item['is_han_only'] == true;
+      final String? type = item['type']?.toString();
+      if (!mekanItemEligible(isHanOnly: han, type: type)) continue;
+      if (_toInt(row['quantity']) <= 0 || _toInt(row['sell_price']) <= 0) continue;
+
+      final String mekanId = (row['mekan_id'] ?? '').toString();
+      final List<MekanStockPeek> list =
+          byMekan.putIfAbsent(mekanId, () => <MekanStockPeek>[]);
+      if (list.length >= perMekan) continue;
+      list.add(MekanStockPeek(
+        itemId: (row['item_id'] ?? '').toString(),
+        icon: (item['icon'] ?? '').toString(),
+        rarity: (item['rarity'] ?? 'common').toString(),
+      ));
+    }
+    return byMekan;
   }
 
   /// Inventory items that may be stocked, aggregated by item_id (fixes the
@@ -134,6 +172,15 @@ class MekanRepository {
         .toList();
   }
 
+  /// Server-side unlock costs — same values as [open_mekan].
+  Future<List<MekanTypeCatalogRow>> fetchTypeCatalog() async {
+    final Map<String, dynamic> res = await _rpc('get_mekan_type_catalog');
+    final List<dynamic> rows = (res['types'] as List?) ?? <dynamic>[];
+    return rows
+        .map((dynamic e) => MekanTypeCatalogRow.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
   // ── Writes ───────────────────────────────────────────────────────────────
 
   Future<void> createMekan({required String type, required String name}) =>
@@ -187,8 +234,49 @@ class MekanRepository {
       });
 }
 
+class MekanStockPeek {
+  const MekanStockPeek({
+    required this.itemId,
+    required this.icon,
+    required this.rarity,
+  });
+
+  final String itemId;
+  final String icon;
+  final String rarity;
+}
+
 final Provider<MekanRepository> mekanRepositoryProvider =
     Provider<MekanRepository>((Ref ref) => const MekanRepository());
+
+/// Increment after create/toggle so hub list screens reload.
+class MekanHubRefreshNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void touch() => state = state + 1;
+}
+
+final NotifierProvider<MekanHubRefreshNotifier, int> mekanHubRefreshProvider =
+    NotifierProvider<MekanHubRefreshNotifier, int>(MekanHubRefreshNotifier.new);
+
+class MekanTypeCatalogRow {
+  const MekanTypeCatalogRow({
+    required this.type,
+    required this.cost,
+    required this.reqLevel,
+  });
+
+  final String type;
+  final int cost;
+  final int reqLevel;
+
+  factory MekanTypeCatalogRow.fromJson(Map<String, dynamic> json) => MekanTypeCatalogRow(
+        type: (json['type'] ?? '').toString(),
+        cost: _toInt(json['cost']),
+        reqLevel: _toInt(json['req_level']),
+      );
+}
 
 class MekanException implements Exception {
   const MekanException(this.message);
@@ -253,6 +341,22 @@ class MekanStockEntry {
       eligible: mekanItemEligible(isHanOnly: han, type: type),
     );
   }
+}
+
+extension MekanStockEntrySale on MekanStockEntry {
+  bool get isListedForSale => quantity > 0 && sellPrice > 0;
+}
+
+/// Hub list card — hide vitrin peek when mekan is not actively selling.
+List<MekanStockPeek> mekanHubVitrinPeek(Mekan mekan, List<MekanStockPeek> peek) {
+  if (!mekan.isOpen || mekan.raidClosed) return const <MekanStockPeek>[];
+  return peek;
+}
+
+/// Visitor vitrin — only open mekans with priced, in-stock listings.
+List<MekanStockEntry> mekanVitrinStock(Mekan mekan, List<MekanStockEntry> stock) {
+  if (!mekan.isOpen || mekan.raidClosed) return const <MekanStockEntry>[];
+  return stock.where((MekanStockEntry s) => s.isListedForSale).toList(growable: false);
 }
 
 class MekanInventoryEntry {

@@ -167,6 +167,23 @@ class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.base),
       ),
 
+      // ── TabBar ──────────────────────────────────────────────────────────
+      // Alt çizgi indicator YASAK — tüm sekmeler dolgulu pill stili kullanır.
+      // Ekran kendi `indicator:` verirse o kazanır; vermeyen her TabBar
+      // otomatik bu stile düşer.
+      tabBarTheme: TabBarThemeData(
+        indicator: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white24),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        labelColor: AppColors.textPrimary,
+        unselectedLabelColor: AppColors.textTertiary,
+        overlayColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
+      ),
+
       // ── Chip ────────────────────────────────────────────────────────────
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.bgCardElevated,

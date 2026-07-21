@@ -36,6 +36,7 @@ void main() {
       'last_potion_used_at': null,
       'warrior_bloodlust_until': null,
       'hospital_until': null,
+      'hospital_reason': null,
       'hospital_lifetime_count': 0,
       'prison_until': null,
       'prison_reason': null,

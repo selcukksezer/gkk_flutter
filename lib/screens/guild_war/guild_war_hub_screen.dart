@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -43,9 +45,11 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await ref.read(guildProvider.notifier).loadGuild();
-      ref.read(guildWarProvider.notifier).loadAll();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(Future.wait<void>(<Future<void>>[
+        ref.read(guildProvider.notifier).loadGuild(),
+        ref.read(guildWarProvider.notifier).loadAll(),
+      ]));
     });
   }
 
@@ -59,18 +63,10 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     await ref.read(guildWarProvider.notifier).loadAll();
   }
 
-  int? _myRank(List<GuildWarRanking> rankings, String? guildName) {
+  GuildWarRanking? _findMyRanking(List<GuildWarRanking> rankings, String? guildName) {
     if (guildName == null) return null;
-    for (final GuildWarRanking r in rankings) {
-      if (r.guildName == guildName) return r.rank;
-    }
-    return null;
-  }
-
-  int? _myPoints(List<GuildWarRanking> rankings, String? guildName) {
-    if (guildName == null) return null;
-    for (final GuildWarRanking r in rankings) {
-      if (r.guildName == guildName) return r.points;
+    for (final GuildWarRanking entry in rankings) {
+      if (entry.guildName == guildName) return entry;
     }
     return null;
   }
@@ -104,7 +100,9 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
       return;
     }
 
-    context.push(AppRoutes.guildWarBattleResult, extra: result).then((_) => _refresh());
+    await context.push(AppRoutes.guildWarBattleResult, extra: result);
+    if (!mounted) return;
+    await _refresh();
   }
 
   Future<void> _addDefense(TerritoryData territory) async {
@@ -127,93 +125,87 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     final guildState = ref.watch(guildProvider);
     final String? guildId = guildState.guild?.guildId ?? profile?.guildId;
     final String? guildName = guildState.guild?.name ?? profile?.guildName;
+    final GuildWarRanking? myRanking = _findMyRanking(warState.rankings, guildName);
 
     Future<void> logout() async => performLogout(ref);
 
     return Scaffold(
-      appBar: GameTopBar(title: context.l10n.screenTitleGuildWar, onLogout: logout),
+      appBar: GameTopBar(
+        title: context.l10n.screenTitleGuildWar,
+        onLogout: logout,
+        trailingActions: <Widget>[
+          IconButton(
+            tooltip: 'Savaş Kayıtları',
+            onPressed: () => context.push(AppRoutes.guildWarLogs),
+            icon: const Icon(Icons.history_rounded, color: AppColors.liquidGold, size: 22),
+          ),
+        ],
+      ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.guildWar, onLogout: logout),
       body: WarBackdrop(
         child: warState.isLoading
             ? const GuildWarSkeleton()
-            : NestedScrollView(
-                headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) => <Widget>[
-                  SliverOverlapAbsorber(
-                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          GuildWarSeasonHeader(
-                            season: warState.season,
-                            myRank: _myRank(warState.rankings, guildName),
-                            myPoints: _myPoints(warState.rankings, guildName),
-                            guildName: guildName,
-                          ),
-                          if (guildId == null) _NoGuildBanner(onFindGuild: () => context.go(AppRoutes.guild)),
-                          if (warState.error != null) _ErrorBanner(message: warState.error!),
-                          GuildWarTabBar(
-                            controller: _tabController,
-                            tabs: _tabLabels,
-                            icons: _tabIcons,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.base,
-                              AppSpacing.sm,
-                              AppSpacing.base,
-                              AppSpacing.xs,
-                            ),
-                            child: WarOutlineButton(
-                              label: 'Savaş Kayıtları',
-                              icon: Icons.history_rounded,
-                              onPressed: () => context.push(AppRoutes.guildWarLogs),
-                            ),
-                          ),
-                        ],
-                      ),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  GuildWarSeasonHeader(
+                    season: warState.season,
+                    myRank: myRanking?.rank,
+                    myPoints: myRanking?.points,
+                    guildName: guildName,
+                  ),
+                  if (guildId == null) _NoGuildBanner(onFindGuild: () => context.go(AppRoutes.guild)),
+                  if (warState.error != null) _ErrorBanner(message: warState.error!),
+                  GuildWarTabBar(
+                    controller: _tabController,
+                    tabs: _tabLabels,
+                    icons: _tabIcons,
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: <Widget>[
+                        _scrollTab(
+                          index: 0,
+                          child: RankingPodium(rankings: warState.rankings, highlightGuildName: guildName),
+                        ),
+                        _scrollTab(
+                          index: 1,
+                          child: _buildTournamentsList(warState.tournaments, guildId),
+                        ),
+                        _scrollTab(
+                          index: 2,
+                          child: _buildTerritoriesContent(warState.territories, guildId),
+                        ),
+                        _scrollTab(
+                          index: 3,
+                          child: const KingdomElectionPanel(),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-                body: TabBarView(
-                  controller: _tabController,
-                  children: <Widget>[
-                    _scrollTab(child: RankingPodium(rankings: warState.rankings, highlightGuildName: guildName)),
-                    _scrollTab(child: _buildTournamentsList(warState.tournaments, guildId)),
-                    _scrollTab(child: _buildTerritoriesContent(warState.territories, guildId)),
-                    _scrollTab(child: const KingdomElectionPanel()),
-                  ],
-                ),
               ),
       ),
     );
   }
 
-  Widget _scrollTab({required Widget child}) {
-    return Builder(
-      builder: (BuildContext context) => RefreshIndicator(
-        color: WarPalette.gold,
-        backgroundColor: WarPalette.navy,
-        onRefresh: _refresh,
-        child: CustomScrollView(
-          key: PageStorageKey<Object>(child.runtimeType),
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: <Widget>[
-            SliverOverlapInjector(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            ),
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.base,
-                AppSpacing.sm,
-                AppSpacing.base,
-                warBottomInset(context),
-              ),
-              sliver: SliverToBoxAdapter(child: child),
-            ),
-          ],
+  Widget _scrollTab({required int index, required Widget child}) {
+    return RefreshIndicator(
+      color: WarPalette.gold,
+      backgroundColor: WarPalette.navy,
+      onRefresh: _refresh,
+      child: ListView(
+        key: PageStorageKey<String>('guild_war_tab_$index'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.base,
+          AppSpacing.sm,
+          AppSpacing.base,
+          warBottomInset(context),
         ),
+        children: <Widget>[child],
       ),
     );
   }

@@ -21,12 +21,16 @@ class MarketState {
     required this.tickers,
     required this.myOrders,
     this.errorMessage,
+    this.tickersLoaded = false,
+    this.myOrdersLoaded = false,
   });
 
   final MarketStatus status;
   final List<MarketTicker> tickers;
   final List<MarketOrder> myOrders;
   final String? errorMessage;
+  final bool tickersLoaded;
+  final bool myOrdersLoaded;
 
   factory MarketState.initial() => const MarketState(
         status: MarketStatus.initial,
@@ -40,12 +44,16 @@ class MarketState {
     List<MarketOrder>? myOrders,
     String? errorMessage,
     bool clearError = false,
+    bool? tickersLoaded,
+    bool? myOrdersLoaded,
   }) {
     return MarketState(
       status: status ?? this.status,
       tickers: tickers ?? this.tickers,
       myOrders: myOrders ?? this.myOrders,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      tickersLoaded: tickersLoaded ?? this.tickersLoaded,
+      myOrdersLoaded: myOrdersLoaded ?? this.myOrdersLoaded,
     );
   }
 }
@@ -73,18 +81,24 @@ class MarketNotifier extends Notifier<MarketState> {
 
   Future<void> _refreshAll() async {
     await Future.wait(<Future<void>>[
-      loadTickers(),
-      loadMyOrders(),
+      loadTickers(force: true),
+      loadMyOrders(force: true),
       ref.read(inventoryProvider.notifier).loadInventory(silent: true),
       ref.read(playerProvider.notifier).loadProfile(),
     ]);
   }
 
-  Future<void> loadTickers() async {
+  Future<void> loadTickers({bool force = false}) async {
+    if (!force && state.tickersLoaded) return;
+
     state = state.copyWith(status: MarketStatus.loading, clearError: true);
     try {
       final List<MarketTicker> tickers = await _repository.fetchTickers();
-      state = state.copyWith(status: MarketStatus.ready, tickers: tickers);
+      state = state.copyWith(
+        status: MarketStatus.ready,
+        tickers: tickers,
+        tickersLoaded: true,
+      );
     } on AppException catch (e) {
       state = state.copyWith(status: MarketStatus.error, errorMessage: e.message);
     } catch (_) {
@@ -92,17 +106,23 @@ class MarketNotifier extends Notifier<MarketState> {
     }
   }
 
-  Future<void> loadMyOrders() async {
+  Future<void> loadMyOrders({bool force = false}) async {
     final String? userId = _currentUserId;
     if (userId == null) {
-      state = state.copyWith(myOrders: <MarketOrder>[]);
+      state = state.copyWith(myOrders: <MarketOrder>[], myOrdersLoaded: true);
       return;
     }
+
+    if (!force && state.myOrdersLoaded) return;
 
     state = state.copyWith(clearError: true);
     try {
       final List<MarketOrder> orders = await _repository.fetchMyOrders(sellerId: userId);
-      state = state.copyWith(status: MarketStatus.ready, myOrders: orders);
+      state = state.copyWith(
+        status: MarketStatus.ready,
+        myOrders: orders,
+        myOrdersLoaded: true,
+      );
     } on AppException catch (e) {
       state = state.copyWith(status: MarketStatus.error, errorMessage: e.message);
     } catch (_) {

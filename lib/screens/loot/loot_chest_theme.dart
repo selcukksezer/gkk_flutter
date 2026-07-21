@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'loot_models.dart';
+
 class LootChestTheme {
   const LootChestTheme({
     required this.id,
@@ -174,7 +176,37 @@ const List<LootChestTheme> kLootChestThemes = <LootChestTheme>[
   ),
 ];
 
-LootChestTheme resolveLootChestTheme(int boxIndex, {String? artAsset}) {
+/// Server `theme_id` → chest art / copy theme.
+const Map<String, String> kLootThemeIdToChestArt = <String, String>{
+  'weapon': 'kasakorsan',
+  'armor': 'kasabuzdevri',
+  'jewelry': 'kasacevher',
+  'material': 'kasasekerleme',
+  'dungeon': 'kasadeniz',
+  'epic_weapon': 'kasauzay',
+  'epic_armor': 'kasaamazon',
+  'prestige': 'kasawitch',
+  'starter': 'kasamarshmallow',
+  'craft': 'kasalav',
+  'consumable': 'kasaokyanus',
+  'mid_gear': 'kasakorsan',
+};
+
+LootChestTheme resolveLootChestTheme({
+  String? boxId,
+  String? artAsset,
+  int? themeIndex,
+  String? themeId,
+}) {
+  if (themeId != null && themeId.isNotEmpty) {
+    final String? artKey = kLootThemeIdToChestArt[themeId];
+    if (artKey != null) {
+      for (final LootChestTheme theme in kLootChestThemes) {
+        if (theme.id == artKey) return theme;
+      }
+    }
+  }
+
   if (artAsset != null && artAsset.isNotEmpty) {
     final String normalized = artAsset.toLowerCase();
     for (final LootChestTheme theme in kLootChestThemes) {
@@ -184,11 +216,58 @@ LootChestTheme resolveLootChestTheme(int boxIndex, {String? artAsset}) {
     }
   }
 
-  if (boxIndex >= 0 && boxIndex < kLootChestThemes.length) {
-    return kLootChestThemes[boxIndex];
+  if (boxId != null && boxId.isNotEmpty) {
+    final String normalized = boxId.toLowerCase();
+    for (final LootChestTheme theme in kLootChestThemes) {
+      if (normalized.contains(theme.id)) {
+        return theme;
+      }
+    }
+  }
+
+  // DB seed uses generic box_XX ids + placeholder art; map by display slot.
+  if (themeIndex != null &&
+      themeIndex >= 0 &&
+      themeIndex < kLootChestThemes.length) {
+    return kLootChestThemes[themeIndex];
   }
 
   return kDefaultLootChestTheme;
+}
+
+int lootThemeIndexForBox(LootBoxView box) {
+  return box.displayOrder > 0 ? box.displayOrder - 1 : 0;
+}
+
+String lootBoxDisplayName({
+  required LootBoxView box,
+  required LootChestTheme theme,
+  required int themeIndex,
+}) {
+  if (themeIndex >= 0 && themeIndex < kLootChestThemes.length) {
+    return theme.displayName;
+  }
+  if (theme.id != kDefaultLootChestTheme.id) {
+    return theme.displayName;
+  }
+  return box.name;
+}
+
+String lootBoxSubtitle({
+  required LootBoxView box,
+  required LootChestTheme theme,
+  required int themeIndex,
+}) {
+  if (themeIndex >= 0 &&
+      themeIndex < kLootChestThemes.length &&
+      theme.shortDescription.isNotEmpty) {
+    return theme.shortDescription;
+  }
+  if (theme.id != kDefaultLootChestTheme.id &&
+      theme.shortDescription.isNotEmpty) {
+    return theme.shortDescription;
+  }
+  return box.description;
 }
 
 String lootDropCategoryLabel(String itemId) {

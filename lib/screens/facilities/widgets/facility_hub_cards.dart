@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:motor/motor.dart';
 
+import '../../../components/layout/game_screen_background.dart';
 import '../../../theme/app_colors.dart';
-import 'facility_detail_design.dart';
+import 'facilities_ui.dart';
 
 /// Tier bölümü — kare grid kabuk, tesisler arası net boşluk.
 class FacTierSection extends StatelessWidget {
@@ -32,21 +33,18 @@ class FacTierSection extends StatelessWidget {
             _FacTierDivider(accentColor: accentColor),
             const SizedBox(height: 12),
           ],
-          FacGridBanner(
+          DottedPanel(
             borderColor: accentColor.withValues(alpha: 0.32),
-            gradientColors: <Color>[
-              AppColors.carbonVoid,
-              AppColors.spaceNavy.withValues(alpha: 0.88),
-              AppColors.carbonVoid,
-            ],
+            borderRadius: 14,
+            padding: FacilitiesUi.panelPadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Row(
                   children: <Widget>[
                     Container(
-                      width: 3,
-                      height: 28,
+                      width: 4,
+                      height: 32,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(2),
                         gradient: LinearGradient(
@@ -64,10 +62,10 @@ class FacTierSection extends StatelessWidget {
                       child: Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w900,
                           color: AppColors.textPrimary,
-                          letterSpacing: -0.2,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ),
@@ -151,6 +149,7 @@ class FacHubFacilityCard extends StatefulWidget {
     required this.icon,
     required this.name,
     required this.isUnlocked,
+    this.canUnlock = false,
     required this.footer,
     required this.accentColor,
     required this.onTap,
@@ -160,6 +159,7 @@ class FacHubFacilityCard extends StatefulWidget {
   final String icon;
   final String name;
   final bool isUnlocked;
+  final bool canUnlock;
   final String footer;
   final Color accentColor;
   final VoidCallback onTap;
@@ -185,6 +185,8 @@ class _FacHubFacilityCardState extends State<FacHubFacilityCard> {
   Widget build(BuildContext context) {
     final Color borderColor = widget.isUnlocked
         ? widget.accentColor.withValues(alpha: 0.5)
+        : widget.canUnlock
+        ? AppColors.toxicNeon.withValues(alpha: 0.45)
         : AppColors.mutedTitanium.withValues(alpha: 0.22);
 
     return SingleMotionBuilder(
@@ -216,21 +218,23 @@ class _FacHubFacilityCardState extends State<FacHubFacilityCard> {
             onTapCancel: () => setState(() => _pressed = false),
             borderRadius: BorderRadius.circular(12),
             child: Ink(
-              height: 108,
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+              height: 118,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: borderColor,
-                  width: widget.isUnlocked ? 1.2 : 1,
+                  width: widget.isUnlocked ? 1.4 : 1,
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: <Color>[
                     widget.isUnlocked
-                        ? AppColors.spaceNavy.withValues(alpha: 0.95)
-                        : AppColors.darkObsidian.withValues(alpha: 0.85),
+                        ? AppColors.spaceNavy.withValues(alpha: 0.98)
+                        : widget.canUnlock
+                        ? AppColors.spaceNavy.withValues(alpha: 0.9)
+                        : AppColors.darkObsidian.withValues(alpha: 0.88),
                     AppColors.carbonVoid,
                   ],
                 ),
@@ -273,12 +277,18 @@ class _FacHubFacilityCardState extends State<FacHubFacilityCard> {
                           children: <Widget>[
                             Text(
                               widget.icon,
-                              style: const TextStyle(fontSize: 22),
+                              style: const TextStyle(fontSize: 26),
                             ),
                             const Spacer(),
                             _FacStatusPill(
-                              label: widget.isUnlocked ? 'Aktif' : 'Kilit',
+                              label: widget.isUnlocked
+                                  ? 'Aktif'
+                                  : widget.canUnlock
+                                  ? 'Açılabilir'
+                                  : 'Kilit',
                               color: widget.isUnlocked
+                                  ? AppColors.toxicNeon
+                                  : widget.canUnlock
                                   ? AppColors.toxicNeon
                                   : AppColors.mutedTitanium,
                             ),

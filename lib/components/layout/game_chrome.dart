@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/services/app_foreground_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/xp_formula.dart';
+import '../../l10n/l10n.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
@@ -16,17 +21,23 @@ import '../../screens/chat/chat_screen.dart';
 import '../common/profile_avatar.dart';
 import 'game_quick_menu.dart';
 import 'live_ticker.dart';
-import '../../l10n/l10n.dart';
+import '../notifications/notification_inbox_ui.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameTopBar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
-  const GameTopBar({super.key, required this.title, this.onLogout});
+  const GameTopBar({
+    super.key,
+    required this.title,
+    this.onLogout,
+    this.trailingActions,
+  });
 
   final String title;
   final Future<void> Function()? onLogout;
+  final List<Widget>? trailingActions;
 
   @override
   Size get preferredSize => const Size.fromHeight(196);
@@ -67,152 +78,175 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
       header: true,
       label: title,
       child: SafeArea(
-      bottom: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Center(
-            child: Container(
-              width: width,
-              height: compact ? 126 : 134,
-              margin: const EdgeInsets.only(top: 4),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: bgHeight,
-                    child: CustomPaint(
-                      size: Size(width, bgHeight),
-                      painter: TopBarShapePainter(),
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: width,
+                height: compact ? 126 : 134,
+                margin: const EdgeInsets.only(top: 4),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: bgHeight,
+                      child: CustomPaint(
+                        size: Size(width, bgHeight),
+                        painter: TopBarShapePainter(),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: 15,
-                    width: width * (compact ? 0.31 : 0.28),
-                    height: bgHeight,
-                    child: ClipRect(
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          top: 10,
-                          left: 8,
-                          right: 4,
+                    Positioned(
+                      top: 0,
+                      left: 15,
+                      width: width * (compact ? 0.31 : 0.28),
+                      height: bgHeight,
+                      child: ClipRect(
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            top: 10,
+                            left: 8,
+                            right: 4,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _tutorialHudChip(
+                                ref: ref,
+                                anchorId: TutorialAnchorId.hudGold,
+                                child: _buildStatLikeRightLeft(
+                                  _compact(gold),
+                                  Icons.paid_rounded,
+                                  Colors.orange,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              _buildToleranceStat(tolerance),
+                            ],
+                          ),
                         ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 15,
+                      width: width * (compact ? 0.31 : 0.28),
+                      height: bgHeight,
+                      child: Align(
+                        alignment: Alignment.centerRight,
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            _buildStatLikeRightLeft(
-                              _compact(gold),
-                              Icons.paid_rounded,
-                              Colors.orange,
+                            _tutorialHudChip(
+                              ref: ref,
+                              anchorId: TutorialAnchorId.hudGems,
+                              child: _buildStatRight(
+                                _formatGems(gems),
+                                Icons.diamond_rounded,
+                                Colors.blue,
+                              ),
                             ),
                             const SizedBox(height: 4),
-                            _buildToleranceStat(tolerance),
+                            _tutorialHudChip(
+                              ref: ref,
+                              anchorId: TutorialAnchorId.hudEnergy,
+                              child: _buildStatRight(
+                                _compact(energy),
+                                Icons.bolt,
+                                Colors.yellow,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 15,
-                    width: width * (compact ? 0.31 : 0.28),
-                    height: bgHeight,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _buildStatRight(
-                            _formatGems(gems),
-                            Icons.diamond_rounded,
-                            Colors.blue,
-                          ),
-                          const SizedBox(height: 4),
-                          _buildStatRight(
-                            _compact(energy),
-                            Icons.bolt,
-                            Colors.yellow,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: width * (compact ? 0.28 : 0.24),
-                    right: width * (compact ? 0.28 : 0.24),
-                    height: bgHeight - cutHeight + 5,
-                    child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ProfileAvatar(
-                            size: 40,
-                            avatarUrl: profile?.avatarUrl,
-                            backgroundColor: Colors.red.withValues(alpha: 0.3),
-                            glowFrame: profile?.avatarFrame == 'glow',
-                          ),
-                          const SizedBox(width: 8),
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: width * (compact ? 0.30 : 0.34),
+                    Positioned(
+                      top: 0,
+                      left: width * (compact ? 0.28 : 0.24),
+                      right: width * (compact ? 0.28 : 0.24),
+                      height: bgHeight - cutHeight + 5,
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ProfileAvatar(
+                              size: 40,
+                              avatarUrl: profile?.avatarUrl,
+                              backgroundColor: Colors.red.withValues(
+                                alpha: 0.3,
+                              ),
+                              glowFrame: profile?.avatarFrame == 'glow',
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  displayName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (usernameStr.isNotEmpty)
+                            const SizedBox(width: 8),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: width * (compact ? 0.30 : 0.34),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    '@$usernameStr',
+                                    displayName,
                                     style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                              ],
+                                  if (usernameStr.isNotEmpty)
+                                    Text(
+                                      '@$usernameStr',
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 10,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: bgHeight - cutHeight + 8,
-                    left: width * (compact ? 0.16 : 0.20),
-                    right: width * (compact ? 0.16 : 0.20),
-                    child: _buildStripedExpBar(
-                      level,
-                      xpPercent,
-                      xpProgress.xpInLevel,
-                      xpProgress.xpNeededInLevel,
+                    Positioned(
+                      top: bgHeight - cutHeight + 8,
+                      left: width * (compact ? 0.16 : 0.20),
+                      right: width * (compact ? 0.16 : 0.20),
+                      child: _buildStripedExpBar(
+                        level,
+                        xpPercent,
+                        xpProgress.xpInLevel,
+                        xpProgress.xpNeededInLevel,
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                children: <Widget>[
+                  const Expanded(child: LiveTicker()),
+                  const NotificationBellButton(),
+                  if (trailingActions != null) ...trailingActions!,
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          const LiveTicker(),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -615,6 +649,7 @@ class GameSubScreenScaffold extends ConsumerWidget {
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         extendBody: bottomNavRoute != null,
         appBar: GameTopBar(title: title, onLogout: onLogout),
         bottomNavigationBar: bottomNavRoute != null
@@ -682,46 +717,69 @@ double gameBottomBarClearance(BuildContext context) {
   return gameBottomSafeInset(context) + kGameBottomBarOverlayHeight;
 }
 
-class GameBottomBar extends StatefulWidget {
+class GameBottomBar extends ConsumerStatefulWidget {
   const GameBottomBar({
     super.key,
     required this.currentRoute,
     this.leadingOverlay,
     this.onLogout,
+    this.navigationLocked = false,
   });
 
   final String currentRoute;
   final Widget? leadingOverlay;
   final Future<void> Function()? onLogout;
+  final bool navigationLocked;
 
   @override
-  State<GameBottomBar> createState() => _GameBottomBarState();
+  ConsumerState<GameBottomBar> createState() => _GameBottomBarState();
 }
 
-class _GameBottomBarState extends State<GameBottomBar>
+class _GameBottomBarState extends ConsumerState<GameBottomBar>
     with SingleTickerProviderStateMixin {
   static const int _menuTabIndex = 4;
 
   static const List<({String? path, bool isMenuTrigger})> _itemSpecs =
       <({String? path, bool isMenuTrigger})>[
-    (path: AppRoutes.home, isMenuTrigger: false),
-    (path: AppRoutes.inventory, isMenuTrigger: false),
-    (path: AppRoutes.dungeon, isMenuTrigger: false),
-    (path: AppRoutes.character, isMenuTrigger: false),
-    (path: null, isMenuTrigger: true),
-  ];
+        (path: AppRoutes.home, isMenuTrigger: false),
+        (path: AppRoutes.inventory, isMenuTrigger: false),
+        (path: AppRoutes.dungeon, isMenuTrigger: false),
+        (path: AppRoutes.character, isMenuTrigger: false),
+        (path: null, isMenuTrigger: true),
+      ];
 
   List<_BottomItem> _items(AppLocalizations l10n) => <_BottomItem>[
-    _BottomItem(path: AppRoutes.home, label: l10n.navHome, icon: Icons.home_rounded),
-    _BottomItem(path: AppRoutes.inventory, label: l10n.navInventory, icon: Icons.inventory_2_rounded),
-    _BottomItem(path: AppRoutes.dungeon, label: l10n.navDungeon, icon: Icons.sports_martial_arts_rounded),
-    _BottomItem(path: AppRoutes.character, label: l10n.navCharacter, icon: Icons.person_rounded),
-    _BottomItem(label: l10n.navMenu, icon: Icons.apps_rounded, isMenuTrigger: true),
+    _BottomItem(
+      path: AppRoutes.home,
+      label: l10n.navHome,
+      icon: Icons.home_rounded,
+    ),
+    _BottomItem(
+      path: AppRoutes.inventory,
+      label: l10n.navInventory,
+      icon: Icons.inventory_2_rounded,
+    ),
+    _BottomItem(
+      path: AppRoutes.dungeon,
+      label: l10n.navDungeon,
+      icon: Icons.sports_martial_arts_rounded,
+    ),
+    _BottomItem(
+      path: AppRoutes.character,
+      label: l10n.navCharacter,
+      icon: Icons.person_rounded,
+    ),
+    _BottomItem(
+      label: l10n.navMenu,
+      icon: Icons.apps_rounded,
+      isMenuTrigger: true,
+    ),
   ];
 
   late final AnimationController _indicatorCtrl;
   late Animation<double> _indicatorAnim;
   bool _menuOpen = false;
+
   /// Last bottom-bar tab the user selected; kept when navigating via quick menu.
   int _stickyTabIndex = 0;
 
@@ -797,8 +855,11 @@ class _GameBottomBarState extends State<GameBottomBar>
     super.didUpdateWidget(old);
     if (old.currentRoute != widget.currentRoute && !_menuOpen) {
       final int? matched = _matchedTabIndex(widget.currentRoute);
-      final int nextIndex = matched ??
-          (widget.currentRoute.startsWith(AppRoutes.guild) ? _menuTabIndex : _stickyTabIndex);
+      final int nextIndex =
+          matched ??
+          (widget.currentRoute.startsWith(AppRoutes.guild)
+              ? _menuTabIndex
+              : _stickyTabIndex);
       if (nextIndex != _stickyTabIndex || matched != null) {
         if (matched != null) _stickyTabIndex = matched;
         _animateIndicatorTo(_displayIndex(widget.currentRoute));
@@ -881,16 +942,22 @@ class _GameBottomBarState extends State<GameBottomBar>
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                             colors: <Color>[
-                                              AppColors.liquidGold.withValues(alpha: 0.22),
-                                              AppColors.warningSolar.withValues(alpha: 0.10),
+                                              AppColors.liquidGold.withValues(
+                                                alpha: 0.22,
+                                              ),
+                                              AppColors.warningSolar.withValues(
+                                                alpha: 0.10,
+                                              ),
                                             ],
                                           ),
                                           border: Border.all(
-                                            color: AppColors.liquidGold.withValues(alpha: 0.42),
+                                            color: AppColors.liquidGold
+                                                .withValues(alpha: 0.42),
                                           ),
                                           boxShadow: <BoxShadow>[
                                             BoxShadow(
-                                              color: AppColors.liquidGold.withValues(alpha: 0.12),
+                                              color: AppColors.liquidGold
+                                                  .withValues(alpha: 0.12),
                                               blurRadius: 10,
                                             ),
                                           ],
@@ -907,9 +974,61 @@ class _GameBottomBarState extends State<GameBottomBar>
                                 ) {
                                   final _BottomItem item = items[i];
                                   final bool isActive = i == activeIdx;
+                                  final String? navAnchor =
+                                      ref.read(tutorialProvider.notifier).anchorForNavIndex(i);
+                                  Widget tabCell = Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: <Widget>[
+                                      AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        child: Icon(
+                                          item.icon,
+                                          size: isActive ? 22 : 20,
+                                          color: isActive
+                                              ? AppColors.liquidGold
+                                              : AppColors.mutedTitanium,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      AnimatedDefaultTextStyle(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        style: AppTextStyles.micro.copyWith(
+                                          color: isActive
+                                              ? AppColors.textPrimary
+                                              : AppColors.mutedTitanium,
+                                          fontWeight: isActive
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
+                                          fontSize: 9,
+                                        ),
+                                        child: Text(item.label),
+                                      ),
+                                    ],
+                                  );
+                                  if (navAnchor != null) {
+                                    tabCell = TutorialAnchorScope(
+                                      id: navAnchor,
+                                      child: tabCell,
+                                    );
+                                  }
                                   return Expanded(
                                     child: GestureDetector(
-                                      onTap: () {
+                                      onTap: () async {
+                                        if (widget.navigationLocked) return;
+                                        final TutorialController tutorialCtrl =
+                                            ref.read(tutorialProvider.notifier);
+                                        if (!tutorialCtrl.allowsNavTab(i)) {
+                                          tutorialCtrl.registerWrongTap();
+                                          return;
+                                        }
+                                        if (navAnchor != null) {
+                                          await tutorialCtrl.onAnchorTap(navAnchor);
+                                        }
+                                        if (!context.mounted) return;
                                         if (item.isMenuTrigger) {
                                           _openMenu();
                                           return;
@@ -927,40 +1046,7 @@ class _GameBottomBarState extends State<GameBottomBar>
                                         }
                                       },
                                       behavior: HitTestBehavior.opaque,
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: <Widget>[
-                                          AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            child: Icon(
-                                              item.icon,
-                                              size: isActive ? 22 : 20,
-                                              color: isActive
-                                                  ? AppColors.liquidGold
-                                                  : AppColors.mutedTitanium,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          AnimatedDefaultTextStyle(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            style: AppTextStyles.micro.copyWith(
-                                              color: isActive
-                                                  ? AppColors.textPrimary
-                                                  : AppColors.mutedTitanium,
-                                              fontWeight: isActive
-                                                  ? FontWeight.w800
-                                                  : FontWeight.w600,
-                                              fontSize: 9,
-                                            ),
-                                            child: Text(item.label),
-                                          ),
-                                        ],
-                                      ),
+                                      child: tabCell,
                                     ),
                                   );
                                 }),
@@ -995,6 +1081,21 @@ class _GameBottomBarState extends State<GameBottomBar>
 // ─────────────────────────────────────────────────────────────────────────────
 // Private helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+Widget _tutorialHudChip({
+  required WidgetRef ref,
+  required String anchorId,
+  required Widget child,
+}) {
+  return TutorialAnchorScope(
+    id: anchorId,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => ref.read(tutorialProvider.notifier).onAnchorTap(anchorId),
+      child: child,
+    ),
+  );
+}
 
 class _BottomItem {
   const _BottomItem({
@@ -1096,24 +1197,44 @@ class GameChatFab extends StatefulWidget {
   State<GameChatFab> createState() => _GameChatFabState();
 }
 
-class _GameChatFabState extends State<GameChatFab> {
+class _GameChatFabState extends State<GameChatFab> with WidgetsBindingObserver {
   int _unreadCount = 0;
   Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUnreadCount();
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 20),
-      (_) => _loadUnreadCount(),
-    );
+    _startPollTimer();
+  }
+
+  void _startPollTimer() {
+    _pollTimer?.cancel();
+    if (!AppForegroundService.instance.isForeground) return;
+    _pollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (AppForegroundService.instance.isForeground) {
+        _loadUnreadCount();
+      }
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pollTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startPollTimer();
+      _loadUnreadCount();
+    } else {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    }
   }
 
   Future<void> _loadUnreadCount() async {

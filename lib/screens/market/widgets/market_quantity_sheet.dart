@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/market_model.dart';
 import '../../../theme/app_colors.dart';
-import '../../../theme/app_spacing.dart';
+import 'market_design.dart';
 import 'market_helpers.dart';
 import '../../../l10n/l10n.dart';
 
@@ -117,181 +117,211 @@ class _MarketQuantitySheetState extends State<MarketQuantitySheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        margin: const EdgeInsets.all(AppSpacing.base),
-        padding: const EdgeInsets.all(AppSpacing.base),
-        decoration: BoxDecoration(
-          color: AppColors.bgSurface,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(color: AppColors.borderBright),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              widget.title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+    return MarketSheetShell(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppColors.mutedTitanium.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(999),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(widget.subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-            const SizedBox(height: AppSpacing.base),
-            if (widget.allowPriceEdit) ...<Widget>[
-              TextField(
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Birim fiyat (altin)',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
-                  filled: true,
-                  fillColor: AppColors.bgCard,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    borderSide: const BorderSide(color: AppColors.borderDefault),
+          ),
+          Text(
+            widget.title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.subtitle,
+            style: const TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          if (widget.allowPriceEdit) ...<Widget>[
+            _field(
+              controller: _priceController,
+              label: 'Birim fiyat (altin)',
+              style: const TextStyle(
+                color: AppColors.liquidGold,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 14),
+          ],
+          if (widget.isStackable) ...<Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                _stepButton(Icons.remove_rounded, _quantity > 1 ? () => setState(() => _quantity--) : null),
+                Container(
+                  width: 72,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.darkObsidian.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.25)),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    borderSide: const BorderSide(color: AppColors.borderDefault),
+                  child: Text(
+                    '$_quantity',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.liquidGold,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.base),
-            ],
-            if (widget.isStackable) ...<Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  _stepButton(Icons.remove, _quantity > 1 ? () => setState(() => _quantity--) : null),
-                  Container(
-                    width: 72,
-                    margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgCard,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      border: Border.all(color: AppColors.borderDefault),
-                    ),
-                    child: Text(
-                      '$_quantity',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.gold,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  _stepButton(Icons.add, _quantity < _effectiveMax ? () => setState(() => _quantity++) : null),
-                ],
-              ),
-              if (_effectiveMax > 1) ...<Widget>[
-                const SizedBox(height: AppSpacing.sm),
-                Slider(
+                _stepButton(Icons.add_rounded, _quantity < _effectiveMax ? () => setState(() => _quantity++) : null),
+              ],
+            ),
+            if (_effectiveMax > 1) ...<Widget>[
+              const SizedBox(height: 10),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: AppColors.liquidGold,
+                  inactiveTrackColor: AppColors.darkObsidian,
+                  thumbColor: AppColors.liquidGold,
+                  overlayColor: AppColors.liquidGold.withValues(alpha: 0.12),
+                ),
+                child: Slider(
                   value: _quantity.toDouble(),
                   min: 1,
                   max: _effectiveMax.toDouble(),
                   divisions: _effectiveMax > 1 ? _effectiveMax - 1 : 1,
-                  activeColor: AppColors.accentBlue,
                   onChanged: (double value) => setState(() => _quantity = value.round()),
                 ),
-                Text(
-                  'Maksimum: $_effectiveMax adet',
+              ),
+              Text(
+                'Maksimum: $_effectiveMax adet',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.mutedTitanium, fontSize: 11),
+              ),
+            ],
+          ] else
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.darkObsidian.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.darkObsidian),
+              ),
+              child: const Text(
+                'Bu esya stackable degil — 1 adet',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
+              ),
+            ),
+          const SizedBox(height: 16),
+          _summaryRow('Birim fiyat', '${formatMarketGold(_unitPrice)} altin'),
+          _summaryRow('Toplam', '${formatMarketGold(_total)} altin'),
+          if (widget.mode == MarketQuantityMode.sell) ...<Widget>[
+            _summaryRow('Pazar vergisi (%5)', '-${formatMarketGold(_fee)} altin'),
+            _summaryRow('Alacagin', '${formatMarketGold(_sellerReceives)} altin', highlight: true),
+          ],
+          if (widget.mode == MarketQuantityMode.buy && widget.playerGold != null) ...<Widget>[
+            _summaryRow('Altinin', '${formatMarketGold(widget.playerGold!)} altin'),
+            if (!_canConfirm)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Yeterli altin yok',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
-                ),
-              ],
-            ] else
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                  border: Border.all(color: AppColors.borderDefault),
-                ),
-                child: const Text(
-                  'Bu esya stackable degil — 1 adet',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(color: AppColors.mysticRuby, fontWeight: FontWeight.w700),
                 ),
               ),
-            const SizedBox(height: AppSpacing.base),
-            _summaryRow('Birim fiyat', '${formatMarketGold(_unitPrice)} altin'),
-            _summaryRow('Toplam', '${formatMarketGold(_total)} altin'),
-            if (widget.mode == MarketQuantityMode.sell) ...<Widget>[
-              _summaryRow('Pazar vergisi (%5)', '-${formatMarketGold(_fee)} altin'),
-              _summaryRow('Alacagin', '${formatMarketGold(_sellerReceives)} altin', highlight: true),
-            ],
-            if (widget.mode == MarketQuantityMode.buy && widget.playerGold != null) ...<Widget>[
-              _summaryRow('Altinin', '${formatMarketGold(widget.playerGold!)} altin'),
-              if (!_canConfirm)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Yeterli altin yok',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600),
-                  ),
-                ),
-            ],
-            const SizedBox(height: AppSpacing.base),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: AppColors.borderDefault),
-                    ),
-                    child: Text(context.l10n.vazgec),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _canConfirm
-                        ? () => Navigator.of(context).pop(
-                              MarketQuantityResult(quantity: _quantity, unitPrice: _unitPrice),
-                            )
-                        : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accentBlue,
-                      foregroundColor: AppColors.textPrimary,
-                    ),
-                    child: Text(widget.confirmLabel),
-                  ),
-                ),
-              ],
-            ),
           ],
+          const SizedBox(height: 16),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: MarketSecondaryButton(
+                  label: context.l10n.vazgec,
+                  accent: AppColors.mutedTitanium,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: MarketPrimaryButton(
+                  label: widget.confirmLabel,
+                  onPressed: _canConfirm
+                      ? () => Navigator.of(context).pop(
+                            MarketQuantityResult(quantity: _quantity, unitPrice: _unitPrice),
+                          )
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required TextStyle style,
+    TextInputType? keyboardType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: style,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppColors.mutedTitanium),
+        filled: true,
+        fillColor: AppColors.darkObsidian.withValues(alpha: 0.75),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppColors.liquidGold.withValues(alpha: 0.2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppColors.darkObsidian),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.liquidGold),
         ),
       ),
     );
   }
 
   Widget _stepButton(IconData icon, VoidCallback? onPressed) {
-    return Material(
-      color: AppColors.bgCard,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-        child: Container(
-          width: 44,
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-            border: Border.all(color: AppColors.borderDefault),
+    return MarketPressable(
+      enabled: onPressed != null,
+      onTap: onPressed,
+      child: Container(
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: AppColors.darkObsidian.withValues(alpha: 0.85),
+          border: Border.all(
+            color: onPressed != null
+                ? AppColors.liquidGold.withValues(alpha: 0.35)
+                : AppColors.darkObsidian,
           ),
-          child: Icon(icon, color: onPressed != null ? AppColors.gold : AppColors.textDisabled),
+        ),
+        child: Icon(
+          icon,
+          color: onPressed != null ? AppColors.liquidGold : AppColors.mutedTitanium,
         ),
       ),
     );
@@ -303,12 +333,12 @@ class _MarketQuantitySheetState extends State<MarketQuantitySheet> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          Text(label, style: const TextStyle(color: AppColors.mutedTitanium, fontSize: 12)),
           Text(
             value,
             style: TextStyle(
-              color: highlight ? AppColors.success : AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
+              color: highlight ? AppColors.toxicNeon : AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
               fontSize: 13,
             ),
           ),

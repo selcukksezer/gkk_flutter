@@ -26,12 +26,6 @@ abstract final class WarPalette {
     colors: <Color>[AppColors.mysticRuby, AppColors.coralFlare],
   );
 
-  static const LinearGradient backdropGrad = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: <Color>[AppColors.carbonVoid, AppColors.spaceNavy, AppColors.carbonVoid],
-  );
-
   static LinearGradient heroGrad(Color accent) => LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -77,7 +71,7 @@ class WarDotPainter extends CustomPainter {
       spacing != oldDelegate.spacing || opacity != oldDelegate.opacity;
 }
 
-/// Full-bleed war backdrop: gradient + titanium dots + glow orbs.
+/// Full-bleed war backdrop — shared [GameScreenBackground] gradient + dots.
 class WarBackdrop extends StatelessWidget {
   const WarBackdrop({super.key, required this.child});
 
@@ -85,54 +79,7 @@ class WarBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(gradient: WarPalette.backdropGrad),
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          const CustomPaint(painter: WarDotPainter(spacing: 20, opacity: 0.06)),
-          Positioned(
-            top: -120,
-            right: -80,
-            child: IgnorePointer(
-              child: Container(
-                width: 360,
-                height: 360,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: <Color>[
-                      WarPalette.fuchsia.withValues(alpha: 0.14),
-                      WarPalette.fuchsia.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -100,
-            left: -60,
-            child: IgnorePointer(
-              child: Container(
-                width: 320,
-                height: 320,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: <Color>[
-                      WarPalette.gold.withValues(alpha: 0.10),
-                      WarPalette.gold.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          child,
-        ],
-      ),
-    );
+    return GameScreenBackground(child: child);
   }
 }
 
@@ -574,17 +521,26 @@ class WarFilterChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.accent = WarPalette.gold,
+    this.enabled = true,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final Color accent;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
+    final Color textColor = !enabled
+        ? WarPalette.titanium.withValues(alpha: 0.35)
+        : selected
+            ? accent
+            : WarPalette.titanium;
+
     return WarPressable(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
+      enabled: enabled,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
@@ -613,7 +569,7 @@ class WarFilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-            color: selected ? accent : WarPalette.titanium,
+            color: textColor,
           ),
         ),
       ),

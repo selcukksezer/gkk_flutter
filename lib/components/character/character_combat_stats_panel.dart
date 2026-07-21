@@ -1,37 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../theme/app_colors.dart';
+import '../../theme/app_text_styles.dart';
 import '../layout/game_screen_background.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
 
-/// Combat stats — compact unified panel, no icon glow, no inner tiles.
+/// Combat stats — compact grid, AppColors + AppTextStyles (tasarım skill).
 class CharacterCombatStatsPanel extends StatelessWidget {
   const CharacterCombatStatsPanel({
     super.key,
     required this.power,
-    required this.intelligence,
     required this.maxHealth,
     required this.attack,
     required this.defense,
     required this.luck,
     required this.pvpWinRate,
-    required this.pvpRating,
+    required     this.pvpRating,
+    this.initiallyExpanded = true,
+    this.highlightPowerAnchor = false,
   });
 
   final String power;
-  final String intelligence;
   final String maxHealth;
   final String attack;
   final String defense;
   final String luck;
   final String pvpWinRate;
   final String pvpRating;
+  final bool initiallyExpanded;
+  final bool highlightPowerAnchor;
 
   static const _iconBase = 'assets/ui/character_status_bar/';
-  static const double _iconSize = 70;
-
-  static const Color _liquidGold = Color(0xFFFFB800);
-  static const Color _warningSolar = Color(0xFFFFD700);
-  static const Color _mutedTitanium = Color(0xFF8E9CAE);
+  static const double _iconSize = 52;
 
   @override
   Widget build(BuildContext context) {
@@ -40,11 +41,6 @@ class CharacterCombatStatsPanel extends StatelessWidget {
         label: 'Güç',
         value: power,
         icon: '${_iconBase}gucicon.png',
-      ),
-      _CombatStatDef(
-        label: 'Zeka',
-        value: intelligence,
-        icon: '${_iconBase}zekaicon.png',
       ),
       _CombatStatDef(
         label: 'HP',
@@ -78,42 +74,53 @@ class CharacterCombatStatsPanel extends StatelessWidget {
       ),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        initiallyExpanded: initiallyExpanded,
+        title: Text(
           'Gelişim & Savaş İstatistikleri',
-          style: GoogleFonts.urbanist(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+          style: AppTextStyles.titleBold.copyWith(
+            color: AppColors.textPrimary,
             letterSpacing: 0.15,
           ),
         ),
-        const SizedBox(height: 4),
-        Container(
-          height: 1.5,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(2),
-            gradient: LinearGradient(
-              colors: <Color>[
-                _liquidGold,
-                _warningSolar.withValues(alpha: 0.4),
-                Colors.transparent,
-              ],
+        iconColor: AppColors.liquidGold,
+        collapsedIconColor: AppColors.mutedTitanium,
+        children: <Widget>[
+          Container(
+            height: 1.5,
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(2),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  AppColors.liquidGold,
+                  AppColors.warningSolar.withValues(alpha: 0.4),
+                  Colors.transparent,
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 6),
-        GameFixedGrid(
-          crossAxisCount: 4,
-          spacing: 2,
-          itemCount: stats.length,
-          itemBuilder: (BuildContext context, int index) {
-            return _CombatStatTile(stat: stats[index], iconSize: _iconSize);
-          },
-        ),
-      ],
+          GameFixedGrid(
+            crossAxisCount: 4,
+            spacing: 4,
+            itemCount: stats.length,
+            itemBuilder: (BuildContext context, int index) {
+              final Widget tile =
+                  _CombatStatTile(stat: stats[index], iconSize: _iconSize);
+              if (highlightPowerAnchor && index == 0) {
+                return TutorialAnchorScope(
+                  id: TutorialAnchorId.characterPowerStat,
+                  child: tile,
+                );
+              }
+              return tile;
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -155,7 +162,7 @@ class _CombatStatTile extends StatelessWidget {
               errorBuilder: (_, Object error, StackTrace? stack) => Icon(
                 Icons.bolt,
                 size: iconSize * 0.5,
-                color: CharacterCombatStatsPanel._mutedTitanium,
+                color: AppColors.mutedTitanium,
               ),
             ),
             const SizedBox(height: 2),
@@ -166,10 +173,9 @@ class _CombatStatTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.urbanist(
-                  fontSize: 12,
+                style: AppTextStyles.caption.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   height: 1,
                   fontFeatures: const <FontFeature>[
                     FontFeature.tabularFigures(),
@@ -184,10 +190,8 @@ class _CombatStatTile extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.urbanist(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500,
-                  color: CharacterCombatStatsPanel._mutedTitanium,
+                style: AppTextStyles.micro.copyWith(
+                  color: AppColors.mutedTitanium,
                   height: 1.05,
                 ),
               ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,9 +9,12 @@ import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
+import '../../providers/box_opening_provider.dart';
+import 'widgets/inventory_item_detail_flow.dart';
 import '../../providers/inventory_provider.dart';
-import '../../providers/player_provider.dart';
-import '../../repositories/inventory_repository.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../l10n/l10n.dart';
 import '../../utils/logout_helper.dart';
@@ -101,58 +106,27 @@ class _InventoryReadyInteractiveState
   String? _selectedRowId;
   _InventoryFilter _activeFilter = _InventoryFilter.all;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      ref.read(boxOpeningProvider.notifier).load();
+      await TutorialTriggers.onRouteEnter(ref, AppRoutes.inventory);
+    });
+  }
+
   Future<void> _openItemActionsPopup(InventoryItem item) async {
     if (!mounted) return;
-
-    await showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 32,
-          ),
-          backgroundColor: Colors.transparent,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 338),
-            child: _SelectedItemPanel(
-              item: item,
-              onEquip: (it) async {
-                await _handleEquip(it);
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-              onUse: (it) async {
-                await _handleUse(it);
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-              onSell: (it) async {
-                await _handleSell(it);
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-              onSplit: (it) async {
-                await _handleSplit(it);
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-              onDelete: (it) async {
-                await _handleDelete(it);
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-              onToggleFavorite: (it) async {
-                await _handleToggleFavorite(it);
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-              isFavorite: item.isFavorite,
-            ),
-          ),
-        );
-      },
-    );
+    await _itemDetailFlow.open(item);
   }
 
   void _showSnack(String message) {
     if (!mounted) return;
     AppMessenger.show(context, message);
+  }
+
+  Future<void> _openEquippedItemInfo(InventoryItem item) async {
+    await _openItemActionsPopup(item);
   }
 
   Future<void> _handleUnequip(String slot) async {
@@ -169,9 +143,16 @@ class _InventoryReadyInteractiveState
     final String slot = item.equipSlot.name;
     if (slot == 'none') return;
 
-    final ok = await ref
-        .read(inventoryProvider.notifier)
-        .equipItem(rowId: item.rowId, slot: slot);
+    final InventoryItem? occupied =
+        ref.read(inventoryProvider).equippedItems[slot];
+    final bool ok = occupied != null
+        ? await ref.read(inventoryProvider.notifier).swapEquipWithSlot(
+              equipSlot: slot,
+              targetSlot: item.slotPosition,
+            )
+        : await ref
+            .read(inventoryProvider.notifier)
+            .equipItem(rowId: item.rowId, slot: slot);
 
     if (!ok) {
       final error = ref.read(inventoryProvider).errorMessage;
@@ -308,134 +289,23 @@ class _InventoryReadyInteractiveState
     await _handleEquip(payload.item);
   }
 
-  Future<void> _handleUse(InventoryItem item) async {
-    final bool canUse =
-        item.itemType == ItemType.potion ||
-        item.itemType == ItemType.consumable ||
-        item.potionType != PotionType.none ||
-        item.energyRestore > 0 ||
-        item.healthRestore > 0;
-    if (!canUse) {
-      _showSnack('Bu item kullanilamaz.');
-      return;
-    }
+  InventoryItemDetailFlow get _itemDetailFlow => InventoryItemDetailFlow(
+        context: context,
+        ref: ref,
+        source: 'inventory',
+        onEquipSuccess: () {
+          if (mounted) {
+            setState(() => _selectedRowId = null);
+          }
+          unawaited(TutorialTriggers.onEquipSuccess(ref));
+        },
+      );
 
-    final UseItemResult result = await ref
-        .read(inventoryProvider.notifier)
-        .useItem(item: item);
-    if (!result.success) {
-      final error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(result.message ?? error ?? 'Item kullanimi basarisiz.');
-      return;
-    }
-    _showSnack(result.message ?? '${item.name} kullanildi.');
-  }
+  Future<void> _handleBoxClaim(BoxOpening opening) =>
+      _itemDetailFlow.claimOpening(opening);
 
-  Future<void> _handleSell(InventoryItem item) async {
-    if (!item.isTradeable) {
-      _showSnack('Bu item satilamaz.');
-      return;
-    }
-
-    final int? quantity = await showDialog<int>(
-      context: context,
-      builder: (context) => _QuantityActionDialog(
-        title: 'Item Sat',
-        subtitle: '${item.name} satmak istedigin miktari sec.',
-        confirmLabel: 'Sat',
-        unitValue: item.vendorSellPrice,
-        maxQuantity: item.quantity,
-      ),
-    );
-
-    if (quantity == null) return;
-    final result = await ref
-        .read(inventoryProvider.notifier)
-        .sellItemByRow(rowId: item.rowId, quantity: quantity);
-    if (!result.success) {
-      _showSnack(result.error ?? 'Satis basarisiz.');
-      return;
-    }
-    _showSnack(
-      '$quantity adet ${item.name} satildi (+${result.goldEarned} altin).',
-    );
-  }
-
-  Future<void> _handleSplit(InventoryItem item) async {
-    if (!item.isStackable || item.quantity <= 1) {
-      _showSnack('Bu item bolunemez.');
-      return;
-    }
-
-    final int? quantity = await showDialog<int>(
-      context: context,
-      builder: (context) => _QuantityActionDialog(
-        title: 'Stack Bol',
-        subtitle: 'Yeni stack icin miktar sec.',
-        confirmLabel: 'Bol',
-        unitValue: 0,
-        maxQuantity: item.quantity - 1,
-        showTotalValue: false,
-      ),
-    );
-
-    if (quantity == null) return;
-    final bool ok = await ref
-        .read(inventoryProvider.notifier)
-        .splitStack(rowId: item.rowId, splitQuantity: quantity);
-    if (!ok) {
-      final error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Stack bolme basarisiz.');
-      return;
-    }
-    _showSnack('$quantity adet ${item.name} ayrildi.');
-  }
-
-  Future<void> _handleDelete(InventoryItem item) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Item Sil'),
-        content: Text(
-          '${item.name} itemini cop kutusuna gondermek istiyor musun?',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Iptal'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-    final bool ok = await ref
-        .read(inventoryProvider.notifier)
-        .trashItem(rowId: item.rowId);
-    if (!ok) {
-      final error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Silme basarisiz.');
-      return;
-    }
-    _showSnack('${item.name} silindi.');
-  }
-
-  Future<void> _handleToggleFavorite(InventoryItem item) async {
-    final bool target = !item.isFavorite;
-    final bool ok = await ref
-        .read(inventoryProvider.notifier)
-        .toggleFavorite(rowId: item.rowId, isFavorite: target);
-    if (!ok) {
-      final error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Favori guncellenemedi.');
-      return;
-    }
-    _showSnack(target ? 'Favorilere eklendi.' : 'Favorilerden cikarildi.');
-  }
+  Future<void> _handleBoxCancel(BoxOpening opening) =>
+      _itemDetailFlow.cancelOpening(opening);
 
   @override
   Widget build(BuildContext context) {
@@ -490,6 +360,7 @@ class _InventoryReadyInteractiveState
                                 _EquippedPanel(
                                   equippedItems: state.equippedItems,
                                   onUnequip: _handleUnequip,
+                                  onTapEquipped: _openEquippedItemInfo,
                                   onDropToSlot: (payload, slotName, occupied) =>
                                       _handleDropOnEquipSlot(
                                         payload: payload,
@@ -526,6 +397,7 @@ class _InventoryReadyInteractiveState
                             child: _EquippedPanel(
                               equippedItems: state.equippedItems,
                               onUnequip: _handleUnequip,
+                              onTapEquipped: _openEquippedItemInfo,
                               onDropToSlot: (payload, slotName, occupied) =>
                                   _handleDropOnEquipSlot(
                                     payload: payload,
@@ -540,6 +412,11 @@ class _InventoryReadyInteractiveState
                     const SizedBox(height: 12),
                     _inventoryCard(state, occupiedSlots),
                   ],
+                  const SizedBox(height: 12),
+                  _BoxOpeningPanel(
+                    onClaim: _handleBoxClaim,
+                    onCancel: _handleBoxCancel,
+                  ),
                   const SizedBox(height: 16),
                   const SizedBox(height: 0),
                 ],
@@ -618,6 +495,23 @@ class _InventoryReadyInteractiveState
     );
   }
 
+  String? _tutorialFirstWeaponRowId(InventoryState state) {
+    final List<InventoryItem> weapons = state.items
+        .where(
+          (InventoryItem item) =>
+              item.itemType == ItemType.weapon &&
+              !item.isEquipped &&
+              item.quantity > 0,
+        )
+        .toList(growable: false);
+    if (weapons.isEmpty) return null;
+    weapons.sort(
+      (InventoryItem a, InventoryItem b) =>
+          a.slotPosition.compareTo(b.slotPosition),
+    );
+    return weapons.first.rowId;
+  }
+
   Widget _buildInventorySlot(BuildContext context, InventoryState state, int index) {
     final rawItem = _getItemBySlot(state.items, index);
     final item = (rawItem != null && _matchesFilter(rawItem, _activeFilter)) ? rawItem : null;
@@ -628,6 +522,12 @@ class _InventoryReadyInteractiveState
       onTap: item == null
           ? null
           : () async {
+              if (item.rowId == _tutorialFirstWeaponRowId(state)) {
+                await TutorialTriggers.onAnchorTap(
+                  ref,
+                  TutorialAnchorId.inventoryFirstWeapon,
+                );
+              }
               setState(() {
                 _selectedRowId = item.rowId;
               });
@@ -670,7 +570,7 @@ class _InventoryReadyInteractiveState
       ),
       builder: (context, candidateData, rejectedData) {
         final bool highlighted = candidateData.isNotEmpty;
-        return DecoratedBox(
+        final Widget slot = DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: highlighted
@@ -682,6 +582,14 @@ class _InventoryReadyInteractiveState
           ),
           child: draggable,
         );
+        final String? tutorialWeaponRow = _tutorialFirstWeaponRowId(state);
+        if (item != null && item.rowId == tutorialWeaponRow) {
+          return TutorialAnchorScope(
+            id: TutorialAnchorId.inventoryFirstWeapon,
+            child: slot,
+          );
+        }
+        return slot;
       },
     );
   }
@@ -826,11 +734,13 @@ class _EquippedPanel extends StatelessWidget {
   const _EquippedPanel({
     required this.equippedItems,
     required this.onUnequip,
+    required this.onTapEquipped,
     required this.onDropToSlot,
   });
 
   final Map<String, InventoryItem?> equippedItems;
   final Future<void> Function(String slot) onUnequip;
+  final Future<void> Function(InventoryItem item) onTapEquipped;
   final Future<void> Function(
     _DragPayload payload,
     String slotName,
@@ -864,7 +774,8 @@ class _EquippedPanel extends StatelessWidget {
             : Colors.white24;
 
         final Widget slotBody = GestureDetector(
-          onTap: hasItem ? () => onUnequip(slotMeta.$1) : null,
+          onTap: hasItem ? () => onTapEquipped(item!) : null,
+          onLongPress: hasItem ? () => onUnequip(slotMeta.$1) : null,
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF0D1424),
@@ -1233,429 +1144,136 @@ class _InventorySlotCard extends StatelessWidget {
   }
 }
 
-class _SelectedItemPanel extends StatelessWidget {
-  const _SelectedItemPanel({
-    required this.item,
-    required this.onEquip,
-    required this.onUse,
-    required this.onSell,
-    required this.onSplit,
-    required this.onDelete,
-    required this.onToggleFavorite,
-    required this.isFavorite,
-  });
+// ── Kutu açılma paneli ───────────────────────────────────────────────────────
 
-  static const Color _cardBg = Color(0xFFFFFFFF);
-  static const Color _actionYellow = Color(0xFFF2D74C);
-  static const Color _textPrimary = Color(0xFF111111);
-  static const Color _textMuted = Color(0xFF999999);
-  static const Color _textBody = Color(0xFF888888);
-  static const Color _borderLight = Color(0xFFD4D4D4);
+class _BoxOpeningPanel extends ConsumerStatefulWidget {
+  const _BoxOpeningPanel({required this.onClaim, required this.onCancel});
 
-  final InventoryItem? item;
-  final Future<void> Function(InventoryItem item) onEquip;
-  final Future<void> Function(InventoryItem item) onUse;
-  final Future<void> Function(InventoryItem item) onSell;
-  final Future<void> Function(InventoryItem item) onSplit;
-  final Future<void> Function(InventoryItem item) onDelete;
-  final Future<void> Function(InventoryItem item) onToggleFavorite;
-  final bool isFavorite;
-
-  Widget _buildActionButton({
-    required String label,
-    required VoidCallback? onPressed,
-    required bool isPrimary,
-  }) {
-    final bool disabled = onPressed == null;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(7),
-        child: Ink(
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(7),
-            color: isPrimary
-                ? (disabled ? const Color(0xFFE8E8E8) : _actionYellow)
-                : _cardBg,
-            border: isPrimary
-                ? null
-                : Border.all(
-                    color: disabled ? const Color(0xFFEEEEEE) : _borderLight,
-                    width: 1,
-                  ),
-            boxShadow: isPrimary && !disabled
-                ? <BoxShadow>[
-                    BoxShadow(
-                      color: _actionYellow.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: disabled ? const Color(0xFFBDBDBD) : _textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemIconWithShadow(InventoryItem item) {
-    return SizedBox(
-      width: 110,
-      height: 110,
-      child: Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          Positioned(
-            bottom: 18,
-            child: Container(
-              width: 72,
-              height: 14,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(50),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.22),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: ItemIconView(
-              iconValue: item.icon,
-              itemId: item.itemId,
-              itemType: item.itemType,
-              size: 88,
-              expand: true,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsRow(List<(String, String)> stats) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 6,
-      children: stats.map((stat) {
-        return Text(
-          '${stat.$1}: ${stat.$2}',
-          style: const TextStyle(
-            color: _textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
-          ),
-        );
-      }).toList(),
-    );
-  }
+  final Future<void> Function(BoxOpening opening) onClaim;
+  final Future<void> Function(BoxOpening opening) onCancel;
 
   @override
-  Widget build(BuildContext context) {
-    if (item == null) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: _cardBg,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 28,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: const Text(
-          'Bir item secin.',
-          style: TextStyle(color: _textMuted, fontWeight: FontWeight.w600),
-        ),
-      );
-    }
-
-    final bool canEquip = item!.equipSlot != EquipSlot.none;
-    final bool canUse =
-        item!.itemType == ItemType.potion ||
-        item!.itemType == ItemType.consumable ||
-        item!.potionType != PotionType.none ||
-        item!.energyRestore > 0 ||
-        item!.healthRestore > 0;
-    final bool canSell = item!.vendorSellPrice > 0;
-    final bool canSplit = item!.isStackable && item!.quantity > 1;
-
-    final stats = <(String, String)>[
-      ('SALDIRI', '${item!.attack}'),
-      ('SAVUNMA', '${item!.defense}'),
-      ('GUC', '${item!.power}'),
-      ('SEVIYE', 'Lv. ${item!.requiredLevel}'),
-      ('DEGER', '${item!.vendorSellPrice}g'),
-    ];
-
-    final String primaryLabel;
-    final VoidCallback? primaryAction;
-    if (canUse) {
-      primaryLabel = 'KULLAN';
-      primaryAction = () => onUse(item!);
-    } else if (canEquip) {
-      primaryLabel = 'KUSAN (${item!.equipSlot.name.toUpperCase()})';
-      primaryAction = () => onEquip(item!);
-    } else {
-      primaryLabel = 'KULLANILAMAZ';
-      primaryAction = null;
-    }
-
-    final String footerRight = canSell
-        ? '${item!.vendorSellPrice}g'
-        : 'Lv. ${item!.requiredLevel}';
-
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: _cardBg,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.14),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 40,
-              offset: const Offset(0, 16),
-              spreadRadius: -4,
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  _buildItemIconWithShadow(item!),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      children: <Widget>[
-                        _buildActionButton(
-                          label: primaryLabel,
-                          onPressed: primaryAction,
-                          isPrimary: true,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildActionButton(
-                          label: 'BOL',
-                          onPressed: canSplit ? () => onSplit(item!) : null,
-                          isPrimary: false,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildActionButton(
-                          label: 'COP',
-                          onPressed: () => onDelete(item!),
-                          isPrimary: false,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildActionButton(
-                          label: 'SAT',
-                          onPressed: canSell ? () => onSell(item!) : null,
-                          isPrimary: false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => onToggleFavorite(item!),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          isFavorite
-                              ? Icons.star_rounded
-                              : Icons.star_outline_rounded,
-                          color: isFavorite
-                              ? const Color(0xFFE6B800)
-                              : _textMuted,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'ESYA ADI',
-                style: TextStyle(
-                  color: _textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item!.name.toUpperCase(),
-                style: const TextStyle(
-                  color: _textPrimary,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  height: 1.1,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${item!.rarity.name.toUpperCase()} · ${item!.equipSlot != EquipSlot.none ? item!.equipSlot.name.toUpperCase() : item!.itemType.name.toUpperCase()}',
-                style: const TextStyle(
-                  color: _textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (item!.description.isNotEmpty)
-                Text(
-                  item!.description,
-                  style: const TextStyle(
-                    color: _textBody,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    height: 1.55,
-                  ),
-                ),
-              const SizedBox(height: 14),
-              _buildStatsRow(stats),
-              const SizedBox(height: 18),
-              Row(
-                children: <Widget>[
-                  Text(
-                    'x${item!.quantity}',
-                    style: const TextStyle(
-                      color: _textMuted,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    footerRight,
-                    style: const TextStyle(
-                      color: _textMuted,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  ConsumerState<_BoxOpeningPanel> createState() => _BoxOpeningPanelState();
 }
 
-class _QuantityActionDialog extends StatefulWidget {
-  const _QuantityActionDialog({
-    required this.title,
-    required this.subtitle,
-    required this.confirmLabel,
-    required this.unitValue,
-    required this.maxQuantity,
-    this.showTotalValue = true,
-  });
-
-  final String title;
-  final String subtitle;
-  final String confirmLabel;
-  final int unitValue;
-  final int maxQuantity;
-  final bool showTotalValue;
-
-  @override
-  State<_QuantityActionDialog> createState() => _QuantityActionDialogState();
-}
-
-class _QuantityActionDialogState extends State<_QuantityActionDialog> {
-  late int _quantity;
+class _BoxOpeningPanelState extends ConsumerState<_BoxOpeningPanel> {
+  Timer? _ticker;
 
   @override
   void initState() {
     super.initState();
-    _quantity = widget.maxQuantity < 1 ? 1 : 1;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && ref.read(boxOpeningProvider).isNotEmpty) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  String _countdown(BoxOpening opening) {
+    final Duration left = opening.opensAt.difference(DateTime.now().toUtc());
+    if (left.isNegative) return 'HAZIR';
+    final int m = left.inMinutes;
+    final int s = left.inSeconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final int total = widget.unitValue * _quantity;
+    final List<BoxOpening> openings = ref.watch(boxOpeningProvider);
+    if (openings.isEmpty) return const SizedBox.shrink();
 
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+    return _SectionCard(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(widget.subtitle),
-          const SizedBox(height: 12),
-          Text('Miktar: $_quantity / ${widget.maxQuantity}'),
-          Slider(
-            value: _quantity.toDouble(),
-            min: 1,
-            max: widget.maxQuantity.toDouble(),
-            divisions: widget.maxQuantity > 1 ? widget.maxQuantity - 1 : null,
-            onChanged: widget.maxQuantity <= 1
-                ? null
-                : (value) {
-                    setState(() {
-                      _quantity = value.round();
-                    });
-                  },
-          ),
-          if (widget.showTotalValue)
-            Text(
-              'Toplam Deger: $total',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+          const Text(
+            '⏳ AÇILAN KUTULAR',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+              color: Colors.white70,
             ),
+          ),
+          const SizedBox(height: 10),
+          ...openings.map((BoxOpening opening) {
+            final bool ready = opening.isReady;
+            final Color accent =
+                ready ? const Color(0xFF22C55E) : const Color(0xFFF5C842);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: accent.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Text(ready ? '🎁' : '📦',
+                      style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          opening.boxName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          ready ? 'Açıldı — ödülünü al!' : _countdown(opening),
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const <FontFeature>[
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => widget.onCancel(opening),
+                    icon: const Icon(Icons.delete_outline,
+                        size: 18, color: Color(0xFFEF4444)),
+                    tooltip: 'Sil (ödül iptal)',
+                  ),
+                  if (ready)
+                    FilledButton(
+                      onPressed: () => widget.onClaim(opening),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accent,
+                        foregroundColor: Colors.black,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                        minimumSize: const Size(0, 34),
+                      ),
+                      child: const Text(
+                        'Ödülü Al',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Iptal'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_quantity),
-          child: Text(widget.confirmLabel),
-        ),
-      ],
     );
   }
 }

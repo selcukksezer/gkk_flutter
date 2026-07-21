@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/app_foreground_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../routing/app_router.dart';
 import '../../../theme/app_colors.dart';
@@ -36,24 +37,32 @@ class PantheonBoard extends StatefulWidget {
 }
 
 class _PantheonBoardState extends State<PantheonBoard>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, LifecycleAnimationPause {
   late AnimationController _pulseController;
   List<_PantheonEntry> _top3 = <_PantheonEntry>[];
   bool _loading = true;
   String? _error;
 
   @override
+  AnimationController? get lifecycleAnimationController => _pulseController;
+
+  @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+      duration: const Duration(seconds: 3),
+    );
+    if (AppForegroundService.instance.isForeground) {
+      _pulseController.repeat(reverse: true);
+    }
+    attachLifecycleAnimationPause();
     _loadLeaderboard();
   }
 
   @override
   void dispose() {
+    detachLifecycleAnimationPause();
     _pulseController.dispose();
     super.dispose();
   }
@@ -67,7 +76,7 @@ class _PantheonBoardState extends State<PantheonBoard>
 
     try {
       if (!SupabaseService.isConfigured || !SupabaseService.isInitialized) {
-        throw StateError('Supabase hazir degil');
+        throw StateError('Supabase hazır değil');
       }
 
       final dynamic result = await SupabaseService.client.rpc(
@@ -115,7 +124,7 @@ class _PantheonBoardState extends State<PantheonBoard>
       setState(() {
         _top3 = <_PantheonEntry>[];
         _loading = false;
-        _error = 'Siralama yuklenemedi';
+        _error = 'Sıralama yüklenemedi';
       });
     }
   }
@@ -129,7 +138,8 @@ class _PantheonBoardState extends State<PantheonBoard>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return RepaintBoundary(
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         InkWell(
@@ -150,11 +160,11 @@ class _PantheonBoardState extends State<PantheonBoard>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Siralama',
+                        'Sıralama',
                         style: AppTextStyles.h3.copyWith(color: Colors.white),
                       ),
                       Text(
-                        'Guc liderleri • canli',
+                        'Güç liderleri • canlı',
                         style: AppTextStyles.caption.copyWith(
                           color: Colors.white54,
                         ),
@@ -163,7 +173,7 @@ class _PantheonBoardState extends State<PantheonBoard>
                   ),
                 ),
                 Text(
-                  'Tumu',
+                  'Tümü',
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.accentCyan,
                     fontWeight: FontWeight.w700,
@@ -209,7 +219,7 @@ class _PantheonBoardState extends State<PantheonBoard>
             height: 180,
             child: Center(
               child: Text(
-                'Henuz siralama verisi yok.',
+                'Henüz sıralama verisi yok.',
                 style: AppTextStyles.body.copyWith(color: Colors.white54),
               ),
             ),
@@ -245,7 +255,7 @@ class _PantheonBoardState extends State<PantheonBoard>
                     animation: _pulseController,
                     builder: (context, child) {
                       final double glowIntensity =
-                          10 + (_pulseController.value * 20);
+                          10 + (_pulseController.value * 12);
                       return _buildPodiumColumn(
                         entry: _entryForRank(1),
                         rank: 1,
@@ -261,6 +271,7 @@ class _PantheonBoardState extends State<PantheonBoard>
             ),
           ),
       ],
+    ),
     );
   }
 

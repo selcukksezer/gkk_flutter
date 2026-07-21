@@ -36,14 +36,15 @@ class _LootBannerLayout {
   final double? heightOverride;
 
   bool get tight => bannerWidth < 360;
+  bool get veryTight => bannerWidth < 330;
   bool get compact => bannerWidth < 390;
 
-  double get horizontalInset => tight ? 14 : 18;
-  double get verticalInset => tight ? 12 : (compact ? 16 : 20);
-  double get contentRight => tight ? 120 : (compact ? 138 : 168);
-  double get imageWidth => tight ? 200 : (compact ? 220 : 260);
-  double get imageRight => tight ? -24 : (compact ? -28 : -42);
-  double get imageTopBottom => tight ? -28 : (compact ? -32 : -44);
+  double get horizontalInset => veryTight ? 12 : (tight ? 14 : 18);
+  double get verticalInset => veryTight ? 10 : (tight ? 12 : (compact ? 16 : 20));
+  double get contentRight => veryTight ? 108 : (tight ? 120 : (compact ? 138 : 168));
+  double get imageWidth => veryTight ? 160 : (tight ? 180 : (compact ? 220 : 260));
+  double get imageRight => veryTight ? -16 : (tight ? -24 : (compact ? -28 : -42));
+  double get imageTopBottom => veryTight ? -20 : (tight ? -28 : (compact ? -32 : -44));
   double get titleSize => tight ? 18 : (compact ? 20 : 24);
   double get subtitleSize => tight ? 10 : (compact ? 11 : 12);
   double get priceInset => tight ? 12 : (compact ? 14 : 16);

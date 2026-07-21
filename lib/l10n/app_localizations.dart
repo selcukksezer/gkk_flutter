@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @at_yarisi.
   ///
   /// In en, this message translates to:
-  /// **'At Yarisi'**
+  /// **'At Yarışı'**
   String get at_yarisi;
 
   /// No description provided for @ticaret_i_ste_i.
@@ -551,32 +551,134 @@ abstract class AppLocalizations {
   /// No description provided for @krallik_kapisi.
   ///
   /// In en, this message translates to:
-  /// **'Krallik Kapisi'**
+  /// **'Kingdom Gate'**
   String get krallik_kapisi;
 
   /// No description provided for @hesabina_giris_yap_ve_lonca_gelismelerini_canli_ta.
   ///
   /// In en, this message translates to:
-  /// **'Hesabina giris yap ve lonca gelismelerini canli takip et.'**
+  /// **'Sign in and follow guild progress live.'**
   String get hesabina_giris_yap_ve_lonca_gelismelerini_canli_ta;
 
   /// No description provided for @hesabin_yok_mu_kayit_ol.
   ///
   /// In en, this message translates to:
-  /// **'Hesabin yok mu? Kayit Ol'**
+  /// **'No account? Register'**
   String get hesabin_yok_mu_kayit_ol;
 
   /// No description provided for @kayit.
   ///
   /// In en, this message translates to:
-  /// **'Kayit'**
+  /// **'Register'**
   String get kayit;
 
   /// No description provided for @giris_ekranina_don.
   ///
   /// In en, this message translates to:
-  /// **'Giris Ekranina Don'**
+  /// **'Back to Sign In'**
   String get giris_ekranina_don;
+
+  /// No description provided for @auth_email.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get auth_email;
+
+  /// No description provided for @auth_email_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Email is required.'**
+  String get auth_email_required;
+
+  /// No description provided for @auth_email_invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get auth_email_invalid;
+
+  /// No description provided for @auth_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get auth_password;
+
+  /// No description provided for @auth_password_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is required.'**
+  String get auth_password_required;
+
+  /// No description provided for @auth_password_min_length.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters.'**
+  String get auth_password_min_length;
+
+  /// No description provided for @auth_username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get auth_username;
+
+  /// No description provided for @auth_username_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Username is required.'**
+  String get auth_username_required;
+
+  /// No description provided for @auth_referral_code.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral code (optional)'**
+  String get auth_referral_code;
+
+  /// No description provided for @auth_login_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get auth_login_button;
+
+  /// No description provided for @auth_login_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in...'**
+  String get auth_login_loading;
+
+  /// No description provided for @auth_register_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get auth_register_button;
+
+  /// No description provided for @auth_register_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating account...'**
+  String get auth_register_loading;
+
+  /// No description provided for @auth_register_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new account and join the kingdom.'**
+  String get auth_register_subtitle;
+
+  /// No description provided for @auth_toggle_password_show.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get auth_toggle_password_show;
+
+  /// No description provided for @auth_toggle_password_hide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get auth_toggle_password_hide;
+
+  /// No description provided for @auth_form_section.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get auth_form_section;
 
   /// No description provided for @miktar.
   ///
@@ -2330,11 +2432,95 @@ abstract class AppLocalizations {
   /// **'Drop Preview'**
   String get drop_preview;
 
-  /// No description provided for @drop_listesini_g_rmek_i_in_goster_a_dokun.
+  /// No description provided for @drop_listesini_gormek_i_in_gostere_dokun.
   ///
   /// In en, this message translates to:
-  /// **'Drop listesini görmek için Goster\\\'a dokun.'**
-  String get drop_listesini_g_rmek_i_in_goster_a_dokun;
+  /// **'Tap Show to view the drop list.'**
+  String get drop_listesini_gormek_i_in_gostere_dokun;
+
+  /// No description provided for @loot_goster.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get loot_goster;
+
+  /// No description provided for @loot_gizle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get loot_gizle;
+
+  /// No description provided for @loot_drop_list_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop list is empty.'**
+  String get loot_drop_list_empty;
+
+  /// No description provided for @loot_yukleniyor.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loot_yukleniyor;
+
+  /// No description provided for @loot_aciliyor.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening...'**
+  String get loot_aciliyor;
+
+  /// No description provided for @loot_kasa_ac.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Chest'**
+  String get loot_kasa_ac;
+
+  /// No description provided for @loot_open_finished_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chest opened. Your reward is ready.'**
+  String get loot_open_finished_subtitle;
+
+  /// No description provided for @loot_open_spinning_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop reel is spinning...'**
+  String get loot_open_spinning_subtitle;
+
+  /// No description provided for @loot_kazandin.
+  ///
+  /// In en, this message translates to:
+  /// **'You won'**
+  String get loot_kazandin;
+
+  /// No description provided for @loot_locking.
+  ///
+  /// In en, this message translates to:
+  /// **'Locking on final item'**
+  String get loot_locking;
+
+  /// No description provided for @loot_odulu_al.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim Reward'**
+  String get loot_odulu_al;
+
+  /// No description provided for @loot_odul.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward'**
+  String get loot_odul;
+
+  /// No description provided for @loot_elmas.
+  ///
+  /// In en, this message translates to:
+  /// **'Gems'**
+  String get loot_elmas;
+
+  /// No description provided for @loot_altin.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold'**
+  String get loot_altin;
 
   /// No description provided for @oyuncu_pazari.
   ///

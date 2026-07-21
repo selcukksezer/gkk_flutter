@@ -1,6 +1,7 @@
 import '../core/errors/app_exception.dart';
 import '../core/services/supabase_service.dart';
 import '../models/facility_model.dart';
+import '../models/facility_production_preview_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract class FacilitiesRepository {
@@ -8,10 +9,9 @@ abstract class FacilitiesRepository {
   Future<bool> unlockFacility({required String facilityType});
   Future<bool> upgradeFacility({required String facilityId});
   Future<bool> startProduction({required String facilityId});
+  Future<FacilityProductionPreview> fetchProductionPreview({required String facilityId});
   Future<Map<String, dynamic>?> collectResourcesV2({
     required String facilityId,
-    required int seed,
-    required int totalCount,
   });
   Future<bool> bribeOfficials({required String facilityType, required int gemAmount});
   Future<bool> syncGlobalSuspicionLevel({required int globalSuspicion});
@@ -47,7 +47,7 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
 
       return <PlayerFacility>[];
     } catch (e) {
-      throw AppException('Tesisler yuklenemedi: ${_rpcErrorMessage(e)}', code: 'FACILITIES_FETCH_FAILED');
+      throw AppException('Tesisler yüklenemedi: ${_rpcErrorMessage(e)}', code: 'FACILITIES_FETCH_FAILED');
     }
   }
 
@@ -62,7 +62,7 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
       );
       return true;
     } catch (e) {
-      throw AppException('Tesis acilamadi: ${_rpcErrorMessage(e)}', code: 'FACILITY_UNLOCK_FAILED');
+      throw AppException('Tesis açılamadı: ${_rpcErrorMessage(e)}', code: 'FACILITY_UNLOCK_FAILED');
     }
   }
 
@@ -77,7 +77,7 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
       );
       return true;
     } catch (e) {
-      throw AppException('Yukseltme basarisiz: ${_rpcErrorMessage(e)}', code: 'FACILITY_UPGRADE_FAILED');
+      throw AppException('Yükseltme başarısız: ${_rpcErrorMessage(e)}', code: 'FACILITY_UPGRADE_FAILED');
     }
   }
 
@@ -92,34 +92,43 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
       );
       return true;
     } catch (e) {
-      throw AppException('Uretim baslatilamadi: ${_rpcErrorMessage(e)}', code: 'FACILITY_START_FAILED');
+      throw AppException('Üretim başlatılamadı: ${_rpcErrorMessage(e)}', code: 'FACILITY_START_FAILED');
+    }
+  }
+
+  @override
+  Future<FacilityProductionPreview> fetchProductionPreview({required String facilityId}) async {
+    _ensureReady();
+
+    try {
+      final dynamic response = await SupabaseService.client.rpc(
+        'preview_facility_production',
+        params: <String, dynamic>{'p_facility_id': facilityId},
+      );
+
+      if (response is Map) {
+        return FacilityProductionPreview.fromJson(Map<String, dynamic>.from(response));
+      }
+
+      return FacilityProductionPreview.empty;
+    } catch (e) {
+      throw AppException('Üretim önizlemesi alınamadı: ${_rpcErrorMessage(e)}', code: 'FACILITY_PREVIEW_FAILED');
     }
   }
 
   @override
   Future<Map<String, dynamic>?> collectResourcesV2({
     required String facilityId,
-    required int seed,
-    required int totalCount,
   }) async {
     _ensureReady();
-
-    if (totalCount <= 0) {
-      return <String, dynamic>{
-        'count': 0,
-        'total_count': 0,
-        'items_generated': <Map<String, dynamic>>[],
-        'admission_occurred': false,
-      };
-    }
 
     try {
       final dynamic response = await SupabaseService.client.rpc(
         'collect_facility_resources_v2',
         params: <String, dynamic>{
           'p_facility_id': facilityId,
-          'p_seed': seed,
-          'p_total_count': totalCount,
+          'p_seed': 0,
+          'p_total_count': 0,
         },
       );
 
@@ -129,9 +138,6 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
 
       return null;
     } catch (e) {
-      // Some DB states still have a buggy v2 RPC path that attempts to insert
-      // quantity=0 rows and violates inventory_quantity_check. Fallback to
-      // legacy collect RPC used by web compatibility paths.
       if (_isInventoryQuantityConstraintError(e)) {
         try {
           final dynamic legacy = await SupabaseService.client.rpc(
@@ -145,23 +151,23 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
             mapped['items_generated'] = mapped['items_generated'] is List
                 ? mapped['items_generated']
                 : <Map<String, dynamic>>[];
-            mapped['count'] = (mapped['count'] as num?)?.toInt() ?? totalCount;
+            mapped['count'] = (mapped['count'] as num?)?.toInt() ?? 0;
             mapped['total_count'] = (mapped['total_count'] as num?)?.toInt() ?? mapped['count'];
             return mapped;
           }
 
           return <String, dynamic>{
-            'count': totalCount,
-            'total_count': totalCount,
+            'count': 0,
+            'total_count': 0,
             'items_generated': <Map<String, dynamic>>[],
             'admission_occurred': false,
           };
         } catch (_) {
-          // If fallback also fails, continue with original error path below.
+          // fall through
         }
       }
 
-      throw AppException('Toplama basarisiz: ${_rpcErrorMessage(e)}', code: 'FACILITY_COLLECT_FAILED');
+      throw AppException('Toplama başarısız: ${_rpcErrorMessage(e)}', code: 'FACILITY_COLLECT_FAILED');
     }
   }
 
@@ -179,7 +185,7 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
       );
       return true;
     } catch (e) {
-      throw AppException('Rusvet verilemedi: ${_rpcErrorMessage(e)}', code: 'FACILITY_BRIBE_FAILED');
+      throw AppException('Rüşvet verilemedi: ${_rpcErrorMessage(e)}', code: 'FACILITY_BRIBE_FAILED');
     }
   }
 
@@ -194,7 +200,7 @@ class SupabaseFacilitiesRepository implements FacilitiesRepository {
       );
       return true;
     } catch (e) {
-      throw AppException('Suphe senkronu basarisiz: ${_rpcErrorMessage(e)}', code: 'FACILITY_SUSPICION_SYNC_FAILED');
+      throw AppException('Şüphe senkronu başarısız: ${_rpcErrorMessage(e)}', code: 'FACILITY_SUSPICION_SYNC_FAILED');
     }
   }
 
