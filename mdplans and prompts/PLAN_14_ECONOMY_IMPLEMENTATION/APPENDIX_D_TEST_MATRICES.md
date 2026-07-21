@@ -91,4 +91,63 @@ flutter test integration_test/smoke/smoke_gate_test.dart
 ./scripts/run_comprehensive_smoke_10k.sh 1000 7
 ```
 
-**Toplam test sayısı (tam genişletme):** 200+ senaryo × alt sistem = 800+ case (ayrı test dosyalarına bölündüğünde ~150 sayfa eşdeğeri dokümantasyon).
+## D.9 Crafting (VOL_15) — KRİTİK
+
+| ID | Senaryo | Beklenen |
+|----|---------|----------|
+| CR-01 | craft_item_async common recipe | gold -= gold_cost |
+| CR-02 | insufficient gold | reject |
+| CR-03 | start_crafting parity | same cost as async |
+| CR-04 | sim craft gold_out | > 0 |
+
+## D.10 Enhancement (VOL_14)
+
+| ID | Senaryo |
+|----|---------|
+| EN-01 | mythic +1 gold 1.2M |
+| EN-02 | L6 destroy no rune |
+| EN-03 | sim enhancement gold_out > 0 |
+
+## D.11 Daily / Quest (VOL_20)
+
+| ID | Senaryo |
+|----|---------|
+| DR-01 | claim_daily_reward once/day |
+| DR-02 | streak reset miss day |
+| QU-01 | claim_quest_reward gems |
+
+## D.12 Horse Race (VOL_22)
+
+| ID | Senaryo |
+|----|---------|
+| HR-01 | fairness smoke PASS |
+| HR-02 | daily_bet_limit enforce |
+
+## D.13 Trade (VOL_23)
+
+| ID | Senaryo |
+|----|---------|
+| TR-01 | gold escrow on confirm |
+| TR-02 | wash trade flag |
+
+## D.14 Bank / Hospital (VOL_24)
+
+| ID | Senaryo |
+|----|---------|
+| BK-01 | expand_bank_slots 5 gem |
+| HO-01 | heal_with_gems level scale |
+
+## D.15 Cross-System (VOL_25)
+
+| ID | Senaryo |
+|----|---------|
+| XS-01–05 | VOL_25 §Sim Senaryoları |
+
+## D.16 Sim Fidelity (VOL_13)
+
+| ID | Senaryo |
+|----|---------|
+| SF-01 | tam sim side insert ON |
+| SF-02 | segment economy JSON present |
+
+**Toplam test sayısı (tam genişletme):** 300+ senaryo

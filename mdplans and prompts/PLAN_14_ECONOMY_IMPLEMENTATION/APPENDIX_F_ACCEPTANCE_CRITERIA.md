@@ -22,16 +22,27 @@
 - [ ] Script 3: 0 sıfır vendor item
 - [ ] Audit CSV arşivlendi
 
-### Zindan Eğrisi (VOL_05)
+### Zindan Eğrisi (VOL_05 + VOL_05B)
 - [ ] dng_001 tutorial muafiyeti aktif
 - [ ] Bölge 2–4 çarpanları uygulandı
-- [ ] dng_030 günlük projeksiyon PLAN bandına ±30%
+- [ ] **Bölge 5–7 çarpanları uygulandı**
+- [ ] dng_030 / dng_065 projeksiyon PLAN bandına ±30%
 
-### Simülasyon (VOL_07)
-- [ ] `gold_inflation_pct` ≤ **12%**
+### Crafting (VOL_15) — KRİTİK
+- [ ] `craft_item_async` gold deduct staging
+- [ ] CR-01–CR-04 testler geçti
+
+### Sink Sim (VOL_13, 14, 17)
+- [ ] Tam sim side insert ON
+- [ ] enhancement gold_out > 0
+- [ ] craft gold_out > 0
+- [ ] facility gold_out > 0
+
+### Simülasyon (VOL_07 + VOL_13)
+- [ ] **Tam sim** `gold_inflation_pct` ≤ **12%**
 - [ ] `item_inflation_pct` ≤ **15%**
 - [ ] exploit success **0%**
-- [ ] Sonuç JSON arşivlendi
+- [ ] Segment economy JSON arşivlendi
 
 ---
 
@@ -75,8 +86,17 @@
 
 ---
 
+## Registry & Cross-System
+
+- [ ] VOL_19 gold sink registry doğrulandı
+- [ ] VOL_20 gold faucet registry doğrulandı
+- [ ] VOL_21 gem ledger canlı
+- [ ] VOL_25 cross-system 5 sim PASS
+- [ ] APPENDIX_G tüm satırlar ✓ veya bilinçli gap
+
 ## Program Kapanış
 
+- [ ] **APPENDIX_H tüm maddeler (A–H)**
 - [ ] MASTER_GAMEPLAN kanonik değerler güncellendi
 - [ ] PLAN_06 impl notları eklendi
 - [ ] Tüm migration APPENDIX_A'da işaretlendi

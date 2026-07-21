@@ -79,8 +79,33 @@ Dry-run staging'de zorunlu; production'da backup olmadan çalıştırma.
 
 ---
 
+## E.9 Craft Gold Fix Rollback
+
+Önceki `craft_item_async` — gold deduct yok. Rollback = free craft path geri (enflasyon riski).
+
+## E.10 Enhancement Tune Rollback
+
+`get_enhancement_config` + `enhance_item` backup from `20260720_100000`.
+
+## E.11 Energy Refill Cap Rollback
+
+Remove daily counter column / RPC check.
+
+## E.12 Horse Race daily_bet_limit Rollback
+
+Set `daily_bet_limit = NULL` in settings.
+
+## E.13 Trade Rate Limit Rollback
+
+Remove `enforce_rate_limit` wrapper from trade RPCs.
+
+## E.14 Monument / Daily Reward Config Rollback
+
+Restore seed rows from backup table.
+
 ## E.8 Rollback Test (Quarterly)
 
 - [ ] Staging backup restore süresi ölçüldü
 - [ ] Tek migration rollback script test edildi
+- [ ] **VOL_15 craft rollback** test edildi
 - [ ] Runbook güncel

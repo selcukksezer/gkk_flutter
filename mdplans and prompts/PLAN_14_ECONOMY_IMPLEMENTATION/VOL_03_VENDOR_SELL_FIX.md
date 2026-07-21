@@ -106,11 +106,19 @@ COMMIT;
 |--------|------|
 | Loot kutusu açılış | Değişmez (eşya verir, satış ayrı) |
 | Loot Geri Ödeme Oranı gerçek değer | Düşer — hedef bandına yaklaşır |
-| Tesis → NPC satış | Aynı RPC kullanılıyorsa etkilenir — doğrula |
+| **Tesis collect → vendor satış** | **Aynı RPC** — %35 uygulanır (VOL_17) |
+| **Loot drop → vendor satış loop** | Musluk %65 azalır — RTP ile uyumlu |
 | Oyuncu pazarı | Satış farklı RPC — etkilenmez |
 | Quest "5000 altın topla" | Daha yavaş ilerler — kabul edilebilir |
 
-**Tesis satış yolu:** `collect_facility_resources_v2` ve vendor satış zincirini grep ile doğrula. Farklı RPC ise ayrı task.
+**Tesis satış yolu doğrulama (VOL_03_TASK_002 — zorunlu):**
+
+```bash
+rg "sell_inventory|vendor_sell" supabase/migrations/*facility*
+rg "collect_facility" supabase/migrations/ -A5
+```
+
+Beklenen: `collect_facility_resources_v2` item verir → oyuncu `sell_inventory_item_by_row` çağırır → %35 altın.
 
 ---
 

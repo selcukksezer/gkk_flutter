@@ -1,6 +1,6 @@
-# PLAN 14 — Alt Görev İndeksi
+# PLAN 14 — Alt Görev İndeksi (v1.1)
 
-Toplam **119** alt görev.
+Toplam **194** alt görev.
 
 ## VOL_03
 
@@ -89,6 +89,34 @@ Toplam **119** alt görev.
 - [VOL_05_TASK_033_dng-039-d-l-band-do-rulama](tasks/VOL_05_TASK_033_dng-039-d-l-band-do-rulama.md) — dng_039 ödül band doğrulama
 - [VOL_05_TASK_034_dng-040-d-l-band-do-rulama](tasks/VOL_05_TASK_034_dng-040-d-l-band-do-rulama.md) — dng_040 ödül band doğrulama
 
+## VOL_05B
+
+- [VOL_05B_TASK_001_dng-041-band-validation](tasks/VOL_05B_TASK_001_dng-041-band-validation.md) — dng_041 band validation
+- [VOL_05B_TASK_002_dng-042-band-validation](tasks/VOL_05B_TASK_002_dng-042-band-validation.md) — dng_042 band validation
+- [VOL_05B_TASK_003_dng-043-band-validation](tasks/VOL_05B_TASK_003_dng-043-band-validation.md) — dng_043 band validation
+- [VOL_05B_TASK_004_dng-044-band-validation](tasks/VOL_05B_TASK_004_dng-044-band-validation.md) — dng_044 band validation
+- [VOL_05B_TASK_005_dng-045-band-validation](tasks/VOL_05B_TASK_005_dng-045-band-validation.md) — dng_045 band validation
+- [VOL_05B_TASK_006_dng-046-band-validation](tasks/VOL_05B_TASK_006_dng-046-band-validation.md) — dng_046 band validation
+- [VOL_05B_TASK_007_dng-047-band-validation](tasks/VOL_05B_TASK_007_dng-047-band-validation.md) — dng_047 band validation
+- [VOL_05B_TASK_008_dng-048-band-validation](tasks/VOL_05B_TASK_008_dng-048-band-validation.md) — dng_048 band validation
+- [VOL_05B_TASK_009_dng-049-band-validation](tasks/VOL_05B_TASK_009_dng-049-band-validation.md) — dng_049 band validation
+- [VOL_05B_TASK_010_dng-050-band-validation](tasks/VOL_05B_TASK_010_dng-050-band-validation.md) — dng_050 band validation
+- [VOL_05B_TASK_011_dng-051-band-validation](tasks/VOL_05B_TASK_011_dng-051-band-validation.md) — dng_051 band validation
+- [VOL_05B_TASK_012_dng-052-band-validation](tasks/VOL_05B_TASK_012_dng-052-band-validation.md) — dng_052 band validation
+- [VOL_05B_TASK_013_dng-053-band-validation](tasks/VOL_05B_TASK_013_dng-053-band-validation.md) — dng_053 band validation
+- [VOL_05B_TASK_014_dng-054-band-validation](tasks/VOL_05B_TASK_014_dng-054-band-validation.md) — dng_054 band validation
+- [VOL_05B_TASK_015_dng-055-band-validation](tasks/VOL_05B_TASK_015_dng-055-band-validation.md) — dng_055 band validation
+- [VOL_05B_TASK_016_dng-056-band-validation](tasks/VOL_05B_TASK_016_dng-056-band-validation.md) — dng_056 band validation
+- [VOL_05B_TASK_017_dng-057-band-validation](tasks/VOL_05B_TASK_017_dng-057-band-validation.md) — dng_057 band validation
+- [VOL_05B_TASK_018_dng-058-band-validation](tasks/VOL_05B_TASK_018_dng-058-band-validation.md) — dng_058 band validation
+- [VOL_05B_TASK_019_dng-059-band-validation](tasks/VOL_05B_TASK_019_dng-059-band-validation.md) — dng_059 band validation
+- [VOL_05B_TASK_020_dng-060-band-validation](tasks/VOL_05B_TASK_020_dng-060-band-validation.md) — dng_060 band validation
+- [VOL_05B_TASK_021_dng-061-band-validation](tasks/VOL_05B_TASK_021_dng-061-band-validation.md) — dng_061 band validation
+- [VOL_05B_TASK_022_dng-062-band-validation](tasks/VOL_05B_TASK_022_dng-062-band-validation.md) — dng_062 band validation
+- [VOL_05B_TASK_023_dng-063-band-validation](tasks/VOL_05B_TASK_023_dng-063-band-validation.md) — dng_063 band validation
+- [VOL_05B_TASK_024_dng-064-band-validation](tasks/VOL_05B_TASK_024_dng-064-band-validation.md) — dng_064 band validation
+- [VOL_05B_TASK_025_dng-065-band-validation](tasks/VOL_05B_TASK_025_dng-065-band-validation.md) — dng_065 band validation
+
 ## VOL_06
 
 - [VOL_06_TASK_001_apple-app-store-connect-r-n-kayd](tasks/VOL_06_TASK_001_apple-app-store-connect-r-n-kayd.md) — Apple App Store Connect ürün kaydı
@@ -147,4 +175,99 @@ Toplam **119** alt görev.
 - [VOL_11_TASK_007_game-chrome-nav-map](tasks/VOL_11_TASK_007_game-chrome-nav-map.md) — game_chrome nav map
 - [VOL_11_TASK_008_l10n-shop-strings](tasks/VOL_11_TASK_008_l10n-shop-strings.md) — l10n shop strings
 - [VOL_11_TASK_009_l10n-loot-strings](tasks/VOL_11_TASK_009_l10n-loot-strings.md) — l10n loot strings
+
+## VOL_13
+
+- [VOL_13_TASK_001_tam-sim-side-insert-ac](tasks/VOL_13_TASK_001_tam-sim-side-insert-ac.md) — Tam sim side insert ac
+- [VOL_13_TASK_002_segment-economy-json-rpc](tasks/VOL_13_TASK_002_segment-economy-json-rpc.md) — Segment economy JSON RPC
+- [VOL_13_TASK_003_run-full-economy-sim-script](tasks/VOL_13_TASK_003_run-full-economy-sim-script.md) — run_full_economy_sim script
+- [VOL_13_TASK_004_ci-tam-sim-gate](tasks/VOL_13_TASK_004_ci-tam-sim-gate.md) — CI tam sim gate
+
+## VOL_14
+
+- [VOL_14_TASK_001_enhance-item-sim-hook](tasks/VOL_14_TASK_001_enhance-item-sim-hook.md) — enhance_item sim hook
+- [VOL_14_TASK_002_get-enhancement-config-client-sync](tasks/VOL_14_TASK_002_get-enhancement-config-client-sync.md) — get_enhancement_config client sync
+- [VOL_14_TASK_003_monument-discount-test](tasks/VOL_14_TASK_003_monument-discount-test.md) — Monument discount test
+- [VOL_14_TASK_004_item-inflation-gate](tasks/VOL_14_TASK_004_item-inflation-gate.md) — Item inflation gate
+
+## VOL_15
+
+- [VOL_15_TASK_001_craft-item-async-gold-deduct-migration](tasks/VOL_15_TASK_001_craft-item-async-gold-deduct-migration.md) — craft_item_async gold deduct migration
+- [VOL_15_TASK_002_start-crafting-parity-test](tasks/VOL_15_TASK_002_start-crafting-parity-test.md) — start_crafting parity test
+- [VOL_15_TASK_003_recipe-gold-cost-audit](tasks/VOL_15_TASK_003_recipe-gold-cost-audit.md) — Recipe gold_cost audit
+
+## VOL_16
+
+- [VOL_16_TASK_001_gem-refill-daily-cap-rpc](tasks/VOL_16_TASK_001_gem-refill-daily-cap-rpc.md) — Gem refill daily cap RPC
+- [VOL_16_TASK_002_han-pot-trade-ban-verify](tasks/VOL_16_TASK_002_han-pot-trade-ban-verify.md) — Han pot trade ban verify
+- [VOL_16_TASK_003_whale-energy-sim-segment](tasks/VOL_16_TASK_003_whale-energy-sim-segment.md) — Whale energy sim segment
+
+## VOL_17
+
+- [VOL_17_TASK_001_vol-03-task-002-facility-sell-chain](tasks/VOL_17_TASK_001_vol-03-task-002-facility-sell-chain.md) — VOL_03_TASK_002 facility sell chain
+- [VOL_17_TASK_002_collect-rate-audit](tasks/VOL_17_TASK_002_collect-rate-audit.md) — Collect rate audit
+- [VOL_17_TASK_003_upgrade-cost-tune-optional](tasks/VOL_17_TASK_003_upgrade-cost-tune-optional.md) — Upgrade cost tune optional
+
+## VOL_18
+
+- [VOL_18_TASK_001_casual-retention-sim-fix](tasks/VOL_18_TASK_001_casual-retention-sim-fix.md) — Casual retention sim fix
+- [VOL_18_TASK_002_whale-gold-day-cap](tasks/VOL_18_TASK_002_whale-gold-day-cap.md) — Whale gold day cap
+- [VOL_18_TASK_003_hardcore-enhancement-access](tasks/VOL_18_TASK_003_hardcore-enhancement-access.md) — Hardcore enhancement access
+
+## VOL_19
+
+- [VOL_19_TASK_001_monument-donate-audit](tasks/VOL_19_TASK_001_monument-donate-audit.md) — Monument donate audit
+- [VOL_19_TASK_002_horse-race-net-sink-metric](tasks/VOL_19_TASK_002_horse-race-net-sink-metric.md) — Horse race net sink metric
+- [VOL_19_TASK_003_pvp-mekan-commission](tasks/VOL_19_TASK_003_pvp-mekan-commission.md) — PvP mekan commission
+
+## VOL_20
+
+- [VOL_20_TASK_001_daily-reward-band-audit](tasks/VOL_20_TASK_001_daily-reward-band-audit.md) — Daily reward band audit
+- [VOL_20_TASK_002_quest-reward-cap](tasks/VOL_20_TASK_002_quest-reward-cap.md) — Quest reward cap
+- [VOL_20_TASK_003_tutorial-server-side-grants](tasks/VOL_20_TASK_003_tutorial-server-side-grants.md) — Tutorial server-side grants
+- [VOL_20_TASK_004_bp-gem-gold-budget](tasks/VOL_20_TASK_004_bp-gem-gold-budget.md) — BP gem gold budget
+
+## VOL_21
+
+- [VOL_21_TASK_001_gem-ledger-table](tasks/VOL_21_TASK_001_gem-ledger-table.md) — Gem ledger table
+- [VOL_21_TASK_002_bank-ui-5-gem-fix](tasks/VOL_21_TASK_002_bank-ui-5-gem-fix.md) — Bank UI 5 gem fix
+- [VOL_21_TASK_003_mint-spend-dashboard](tasks/VOL_21_TASK_003_mint-spend-dashboard.md) — Mint spend dashboard
+
+## VOL_22
+
+- [VOL_22_TASK_001_daily-bet-limit-migration](tasks/VOL_22_TASK_001_daily-bet-limit-migration.md) — daily_bet_limit migration
+- [VOL_22_TASK_002_fairness-smoke-re-run](tasks/VOL_22_TASK_002_fairness-smoke-re-run.md) — Fairness smoke re-run
+- [VOL_22_TASK_003_net-flow-metric](tasks/VOL_22_TASK_003_net-flow-metric.md) — Net flow metric
+
+## VOL_23
+
+- [VOL_23_TASK_001_trade-sync-spec](tasks/VOL_23_TASK_001_trade-sync-spec.md) — Trade sync spec
+- [VOL_23_TASK_002_wash-trade-detect](tasks/VOL_23_TASK_002_wash-trade-detect.md) — Wash trade detect
+- [VOL_23_TASK_003_trade-rate-limit](tasks/VOL_23_TASK_003_trade-rate-limit.md) — Trade rate limit
+
+## VOL_24
+
+- [VOL_24_TASK_001_heal-with-gems-test](tasks/VOL_24_TASK_001_heal-with-gems-test.md) — heal_with_gems test
+- [VOL_24_TASK_002_expand-bank-slots-5-gem-ui](tasks/VOL_24_TASK_002_expand-bank-slots-5-gem-ui.md) — expand_bank_slots 5 gem UI
+- [VOL_24_TASK_003_ad-timer-3-day](tasks/VOL_24_TASK_003_ad-timer-3-day.md) — Ad timer 3/day
+
+## VOL_25
+
+- [VOL_25_TASK_001_cross-sim-xs-01](tasks/VOL_25_TASK_001_cross-sim-xs-01.md) — Cross sim XS-01
+- [VOL_25_TASK_002_cross-sim-xs-02](tasks/VOL_25_TASK_002_cross-sim-xs-02.md) — Cross sim XS-02
+- [VOL_25_TASK_003_cross-sim-xs-03](tasks/VOL_25_TASK_003_cross-sim-xs-03.md) — Cross sim XS-03
+- [VOL_25_TASK_004_cross-sim-xs-04](tasks/VOL_25_TASK_004_cross-sim-xs-04.md) — Cross sim XS-04
+- [VOL_25_TASK_005_cross-sim-xs-05](tasks/VOL_25_TASK_005_cross-sim-xs-05.md) — Cross sim XS-05
+
+## VOL_26
+
+- [VOL_26_TASK_001_trade-rate-limit](tasks/VOL_26_TASK_001_trade-rate-limit.md) — Trade rate limit
+- [VOL_26_TASK_002_deprecated-faucet-doc-cleanup](tasks/VOL_26_TASK_002_deprecated-faucet-doc-cleanup.md) — Deprecated faucet doc cleanup
+- [VOL_26_TASK_003_captcha-coverage-audit](tasks/VOL_26_TASK_003_captcha-coverage-audit.md) — Captcha coverage audit
+
+## VOL_27
+
+- [VOL_27_TASK_001_han-pot-market-ban](tasks/VOL_27_TASK_001_han-pot-market-ban.md) — Han pot market ban
+- [VOL_27_TASK_002_mekan-gold-in-sim](tasks/VOL_27_TASK_002_mekan-gold-in-sim.md) — Mekan gold_in sim
+- [VOL_27_TASK_003_pvp-5pct-cut-sim](tasks/VOL_27_TASK_003_pvp-5pct-cut-sim.md) — PvP 5pct cut sim
 

@@ -15,22 +15,31 @@ Bu cilt, PLAN_14 ekonomi düzeltme programının nasıl yönetileceğini, kimler
 
 ### 2.1 Bu plan kapsamında
 
-- Altın musluk ve sink dengesi
+- Altın musluk ve sink dengesi (**tüm sistemler** — kayıt defterleri VOL_19–21)
 - Elmas musluk ve sink dengesi
 - Vendor satış oranı düzeltmesi
 - Loot kutusu Geri Ödeme Oranı doğrulama ve ayar
-- Zindan altın eğrisi (Bölge 1–4, genişletilebilir)
-- Uygulama içi satın alma entegrasyonu
-- 365 günlük sezon sıfırlama sistemi (PLAN_06 §6.4)
+- Zindan altın eğrisi **Bölge 1–7** (VOL_05 + VOL_05B)
+- **Crafting gold bug fix** (craft_item_async — VOL_15)
+- **Enhancement sink** sim entegrasyonu (VOL_14)
+- **Enerji gate** vs gold faucet (VOL_16)
+- **Tesis** musluk/sink döngüsü (VOL_17)
+- **Sim gerçekçiliği** — tam sim zorunlu (VOL_13)
+- Uygulama içi satın alma uçtan uca
+- 365 günlük sezon sıfırlama
+- Quest, günlük ödül, Battle Pass, at yarışı, trade, hastane, banka, anıt, PvP, referral
+- Anti-exploit rate limit (VOL_26)
+- Cross-system denge (VOL_25)
+- Mekan/Han köprüsü (VOL_27 — PLAN_07 cross-ref)
 - Simülasyon kapıları ve canlı metrikler
-- Ekonomi arayüzü güven ve şeffaflık düzeltmeleri
+- Ekonomi arayüzü güven ve şeffaflık
 
-### 2.2 Bu plan kapsam dışında
+### 2.2 Bu plan kapsam dışında (bilinçli)
 
-- Lonca savaşı sezon mantığı (ayrı modül)
-- Battle Pass 14 günlük rotasyon (mevcut, dokunulmaz)
-- Mekan sistemi gelirleri (PLAN_07 — ayrı faz)
-- Yeni oyun içeriği (zindan, eşya) tasarımı — yalnızca mevcut seed tune
+- Yeni zindan/eşya **içerik tasarımı** (yalnızca mevcut seed tune)
+- Tam Mekan modül impl (PLAN_07 — VOL_27 yalnızca ekonomi cross-ref)
+- Reklam monetizasyonu (kod yok — product kararı bekleniyor)
+- XP/level ekonomisi detayı (PLAN_06 §11 — APPENDIX_G gap, P2)
 
 ---
 
