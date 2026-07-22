@@ -27,6 +27,10 @@ class DungeonCard extends StatelessWidget {
     required this.onLoot,
     this.useTutorialAnchors = false,
     this.onCardTap,
+    this.siegeActive = false,
+    this.siegeOccupiedSlots = 0,
+    this.siegeHasMySlot = false,
+    this.onSiegeTap,
   });
 
   final DungeonData dungeon;
@@ -43,6 +47,10 @@ class DungeonCard extends StatelessWidget {
   final VoidCallback onLoot;
   final bool useTutorialAnchors;
   final VoidCallback? onCardTap;
+  final bool siegeActive;
+  final int siegeOccupiedSlots;
+  final bool siegeHasMySlot;
+  final VoidCallback? onSiegeTap;
 
   bool get _isBoss => dungeon.difficulty.toLowerCase().contains('dungeon');
 
@@ -136,6 +144,39 @@ class DungeonCard extends StatelessWidget {
                                         ),
                                       ),
                                     ),
+                                    if (siegeActive || onSiegeTap != null) ...<Widget>[
+                                      const SizedBox(width: 6),
+                                      GestureDetector(
+                                        onTap: onSiegeTap,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(4),
+                                            color: siegeActive
+                                                ? const Color(0xFFEF4444).withValues(alpha: 0.18)
+                                                : Colors.white.withValues(alpha: 0.06),
+                                            border: Border.all(
+                                              color: siegeActive
+                                                  ? const Color(0xFFEF4444).withValues(alpha: 0.55)
+                                                  : Colors.white24,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            siegeActive
+                                                ? 'KUŞATMA ${siegeHasMySlot ? '★' : '$siegeOccupiedSlots/5'}'
+                                                : 'KUŞATMA',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color: siegeActive
+                                                  ? const Color(0xFFFCA5A5)
+                                                  : Colors.white54,
+                                              letterSpacing: 0.6,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 5),

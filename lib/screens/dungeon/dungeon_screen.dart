@@ -7,8 +7,10 @@ import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/utils/power_formula.dart';
 import '../../models/dungeon_model.dart';
+import '../../models/dungeon_siege_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dungeon_provider.dart';
+import '../../providers/dungeon_siege_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../core/tutorial/tutorial_track.dart';
@@ -21,6 +23,7 @@ import 'widgets/dungeon_confirm_entry_dialog.dart';
 import 'widgets/dungeon_loot_dialog.dart';
 import 'widgets/dungeon_restriction_strip.dart';
 import 'widgets/dungeon_state_widgets.dart';
+import 'widgets/dungeon_siege_panel.dart';
 import 'widgets/dungeon_zone_tab_bar.dart';
 import 'widgets/featured_cave_dungeon_card.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
@@ -52,6 +55,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       await ref.read(playerProvider.notifier).loadProfile();
       await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
       await ref.read(dungeonProvider.notifier).loadDungeons();
+      await ref.read(dungeonSiegeProvider.notifier).loadStatus();
       if (!mounted) return;
       await TutorialTriggers.onRouteEnter(ref, AppRoutes.dungeon);
     });
@@ -179,9 +183,27 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
     AppMessenger.show(context, message);
   }
 
+  Future<void> _openSiegePanel(DungeonData dungeon) async {
+    await showDungeonSiegePanel(context: context, ref: ref, dungeon: dungeon);
+    if (!mounted) return;
+    await ref.read(dungeonSiegeProvider.notifier).loadStatus();
+  }
+
+  ({bool active, int occupied, bool hasMine}) _siegeMetaFor(String dungeonId) {
+    final DungeonSiegeStatus status = ref.read(dungeonSiegeProvider).status;
+    final DungeonSiegeSession? session = status.sessionForDungeon(dungeonId);
+    final int occupied = session?.slots.where((DungeonSiegeSlot s) => s.isOccupied).length ?? 0;
+    return (
+      active: status.siegeActive && isSiegeDungeon(dungeonId),
+      occupied: occupied,
+      hasMine: status.mySlotId != null && session != null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dungeonState = ref.watch(dungeonProvider);
+    ref.watch(dungeonSiegeProvider);
     final playerState = ref.watch(playerProvider);
     final inventoryState = ref.watch(inventoryProvider);
     final profile = playerState.profile;
@@ -361,6 +383,10 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                       );
                                     }
 
+                                    final bool siegeDungeon = isSiegeDungeon(d.dungeonId);
+                                    final ({bool active, int occupied, bool hasMine}) siegeMeta =
+                                        siegeDungeon ? _siegeMetaFor(d.dungeonId) : (active: false, occupied: 0, hasMine: false);
+
                                     return DungeonCard(
                                       dungeon: d,
                                       zone: zData,
@@ -372,6 +398,12 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                       playerPower: playerTotalPower,
                                       powerRequirement: req,
                                       debugText: debugText,
+                                      siegeActive: siegeMeta.active,
+                                      siegeOccupiedSlots: siegeMeta.occupied,
+                                      siegeHasMySlot: siegeMeta.hasMine,
+                                      onSiegeTap: siegeDungeon
+                                          ? () => _openSiegePanel(d)
+                                          : null,
                                       useTutorialAnchors: i == 0,
                                       onCardTap: i == 0
                                           ? () => TutorialTriggers.onAnchorTap(
