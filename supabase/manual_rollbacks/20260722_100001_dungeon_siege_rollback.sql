@@ -1,10 +1,22 @@
 -- ============================================================
--- Zindan Kuşatması — ROLLBACK
--- Çalıştır: enter_dungeon eski haline döner, siege tabloları silinir.
+-- Zindan Kuşatması — ROLLBACK (Faz A)
+-- ÖNCE çalıştır: 20260722_130001_dungeon_siege_audit_fixes_rollback.sql (varsa)
+-- SONRA: 20260722_120001_dungeon_siege_faz_b_rollback.sql (varsa)
+-- SONRA: bu dosya
 -- Not: _gkk_migration_backups tablosu kalır (diğer rollbackler için).
 -- ============================================================
 
 BEGIN;
+
+-- Faz B kalıntıları (sıra atlanırsa güvenlik ağı)
+DROP FUNCTION IF EXISTS public.mark_siege_notifications_read(uuid[]);
+DROP FUNCTION IF EXISTS public.get_dungeon_siege_notifications(integer);
+DROP FUNCTION IF EXISTS public.get_dungeon_siege_leaderboard(integer);
+DROP FUNCTION IF EXISTS public.get_dungeon_siege_hub();
+DROP FUNCTION IF EXISTS public.start_siege_guild_hold(text);
+DROP TABLE IF EXISTS public.dungeon_siege_weekly_scores;
+DROP TABLE IF EXISTS public.dungeon_siege_notifications;
+DROP TABLE IF EXISTS public.dungeon_siege_holds;
 
 -- ── enter_dungeon restore ───────────────────────────────────
 DO $rollback$

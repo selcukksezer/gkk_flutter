@@ -5,7 +5,6 @@ import '../models/dungeon_siege_model.dart';
 abstract class DungeonSiegeRepository {
   Future<DungeonSiegeStatus> getStatus({String? dungeonId});
   Future<DungeonSiegeHub> getHub();
-  Future<List<DungeonSiegeLeaderboardEntry>> getLeaderboard({int limit = 20});
   Future<({List<DungeonSiegeNotification> notifications, int unreadCount})> getNotifications({
     int limit = 20,
   });
@@ -36,45 +35,18 @@ class SupabaseDungeonSiegeRepository implements DungeonSiegeRepository {
   @override
   Future<DungeonSiegeStatus> getStatus({String? dungeonId}) async {
     _ensureReady();
-    try {
-      final dynamic response = await SupabaseService.client.rpc(
-        'get_dungeon_siege_status',
-        params: <String, dynamic>{'p_dungeon_id': dungeonId},
-      );
-      return DungeonSiegeStatus.fromJson(_asMap(response));
-    } catch (e) {
-      if (e is AppException) rethrow;
-      return DungeonSiegeStatus.empty();
-    }
+    final dynamic response = await SupabaseService.client.rpc(
+      'get_dungeon_siege_status',
+      params: <String, dynamic>{'p_dungeon_id': dungeonId},
+    );
+    return DungeonSiegeStatus.fromJson(_asMap(response));
   }
 
   @override
   Future<DungeonSiegeHub> getHub() async {
     _ensureReady();
-    try {
-      final dynamic response = await SupabaseService.client.rpc('get_dungeon_siege_hub');
-      return DungeonSiegeHub.fromJson(_asMap(response));
-    } catch (e) {
-      if (e is AppException) rethrow;
-      return DungeonSiegeHub.empty();
-    }
-  }
-
-  @override
-  Future<List<DungeonSiegeLeaderboardEntry>> getLeaderboard({int limit = 20}) async {
-    _ensureReady();
-    final dynamic response = await SupabaseService.client.rpc(
-      'get_dungeon_siege_leaderboard',
-      params: <String, dynamic>{'p_limit': limit},
-    );
-    final Map<String, dynamic> map = _asMap(response);
-    return (map['entries'] as List<dynamic>? ?? <dynamic>[])
-        .whereType<Map>()
-        .map(
-          (Map<dynamic, dynamic> row) =>
-              DungeonSiegeLeaderboardEntry.fromJson(Map<String, dynamic>.from(row)),
-        )
-        .toList();
+    final dynamic response = await SupabaseService.client.rpc('get_dungeon_siege_hub');
+    return DungeonSiegeHub.fromJson(_asMap(response));
   }
 
   @override
@@ -99,13 +71,6 @@ class SupabaseDungeonSiegeRepository implements DungeonSiegeRepository {
       notifications: notifications,
       unreadCount: _parseInt(map['unread_count']),
     );
-  }
-
-  int _parseInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
   }
 
   @override
@@ -158,5 +123,12 @@ class SupabaseDungeonSiegeRepository implements DungeonSiegeRepository {
       params: <String, dynamic>{'p_dungeon_id': dungeonId},
     );
     return DungeonSiegeActionResult.fromJson(_asMap(response));
+  }
+
+  int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }

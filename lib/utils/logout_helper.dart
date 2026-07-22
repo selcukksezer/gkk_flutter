@@ -9,6 +9,7 @@ import '../providers/guild_war_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/player_provider.dart';
 import '../providers/pvp_provider.dart';
+import '../providers/dungeon_siege_provider.dart';
 
 /// Clears in-memory game state so the next login never sees stale data.
 void clearGameSessionProviders(WidgetRef ref) {
@@ -22,6 +23,7 @@ void clearGameSessionProviders(WidgetRef ref) {
   ref.invalidate(pvpDashboardProvider);
   ref.invalidate(pvpHistoryProvider);
   ref.invalidate(pvpTournamentProvider);
+  ref.invalidate(dungeonSiegeProvider);
 }
 
 /// Signs out and clears all session providers — use from any screen logout handler.

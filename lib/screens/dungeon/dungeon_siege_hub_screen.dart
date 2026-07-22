@@ -6,13 +6,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/dungeon_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
-import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/logout_helper.dart';
+import 'widgets/dungeon_siege_panel.dart';
 
 class DungeonSiegeHubScreen extends ConsumerStatefulWidget {
   const DungeonSiegeHubScreen({super.key});
@@ -23,12 +24,14 @@ class DungeonSiegeHubScreen extends ConsumerStatefulWidget {
 
 class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
   Timer? _pollTimer;
+  bool _handledDeepLink = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_refresh());
+      unawaited(_maybeOpenDeepLinkedPanel());
     });
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
@@ -43,10 +46,41 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
   }
 
   Future<void> _refresh() async {
-    await Future.wait<void>(<Future<void>>[
-      ref.read(dungeonSiegeProvider.notifier).loadHub(),
-      ref.read(dungeonSiegeProvider.notifier).loadNotifications(),
-    ]);
+    await ref.read(dungeonProvider.notifier).loadDungeons();
+    await ref.read(dungeonSiegeProvider.notifier).loadHub();
+  }
+
+  Future<void> _maybeOpenDeepLinkedPanel() async {
+    if (_handledDeepLink || !mounted) return;
+    final String? dungeonId = GoRouterState.of(context).uri.queryParameters['dungeon_id'];
+    if (dungeonId == null || dungeonId.isEmpty) return;
+    _handledDeepLink = true;
+    await _openSiegePanelForDungeonId(dungeonId);
+  }
+
+  Future<void> _openSiegePanelForDungeonId(String dungeonId) async {
+    final List<DungeonData> dungeons = ref.read(dungeonProvider).dungeons;
+    DungeonData? dungeon;
+    for (final DungeonData d in dungeons) {
+      if (d.dungeonId == dungeonId) {
+        dungeon = d;
+        break;
+      }
+    }
+    if (dungeon == null) {
+      if (!mounted) return;
+      AppMessenger.show(context, 'Zindan bulunamadı: $dungeonId');
+      return;
+    }
+    if (!mounted) return;
+    await showDungeonSiegePanel(context: context, ref: ref, dungeon: dungeon);
+  }
+
+  String _dungeonName(String dungeonId) {
+    for (final DungeonData d in ref.watch(dungeonProvider).dungeons) {
+      if (d.dungeonId == dungeonId) return d.name;
+    }
+    return dungeonId.toUpperCase();
   }
 
   @override
@@ -75,16 +109,37 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 100),
                 children: <Widget>[
                   _HubStatusCard(status: status, weekKey: hub.weekKey),
-                  if (siegeState.unreadNotificationCount > 0) ...<Widget>[
-                    const SizedBox(height: 12),
-                    _NotificationsBanner(
-                      count: siegeState.unreadNotificationCount,
-                      onTap: () async {
-                        await ref.read(dungeonSiegeProvider.notifier).markAllNotificationsRead();
-                        if (!context.mounted) return;
-                        AppMessenger.showSuccess(context, 'Bildirimler okundu.');
-                      },
+                  if (siegeState.errorMessage != null) ...<Widget>[
+                    const SizedBox(height: 8),
+                    _EmptyCard(text: siegeState.errorMessage!),
+                  ],
+                  if (siegeState.notifications.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: <Widget>[
+                        const Expanded(child: _SectionTitle(title: 'Bildirimler')),
+                        if (siegeState.unreadNotificationCount > 0)
+                          TextButton(
+                            onPressed: () async {
+                              await ref.read(dungeonSiegeProvider.notifier).markAllNotificationsRead();
+                            },
+                            child: const Text('Tümünü okundu', style: TextStyle(fontSize: 11)),
+                          ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
+                    ...siegeState.notifications.take(8).map(
+                          (DungeonSiegeNotification n) => _NotificationTile(
+                            notification: n,
+                            onTap: () async {
+                              await ref.read(dungeonSiegeProvider.notifier).markNotificationRead(n.id);
+                              final String? dungeonId = n.dungeonIdFromPayload;
+                              if (dungeonId != null && dungeonId.isNotEmpty && mounted) {
+                                await _openSiegePanelForDungeonId(dungeonId);
+                              }
+                            },
+                          ),
+                        ),
                   ],
                   const SizedBox(height: 16),
                   const _SectionTitle(title: 'Aktif Kuşatmalar'),
@@ -93,7 +148,11 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
                     const _EmptyCard(text: 'Prime time\'da oturumlar burada görünür.')
                   else
                     ...status.sessions.map(
-                      (DungeonSiegeSession session) => _SessionCard(session: session),
+                      (DungeonSiegeSession session) => _SessionCard(
+                        session: session,
+                        dungeonName: _dungeonName(session.dungeonId),
+                        onTap: () => _openSiegePanelForDungeonId(session.dungeonId),
+                      ),
                     ),
                   const SizedBox(height: 16),
                   const _SectionTitle(title: 'Bölge Bağlantısı'),
@@ -102,7 +161,12 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
                     const _EmptyCard(text: 'Lonca savaşı bölgeleri henüz eşlenmedi.')
                   else
                     ...hub.territories.map(
-                      (DungeonSiegeTerritoryLink link) => _TerritoryRow(link: link),
+                      (DungeonSiegeTerritoryLink link) => _TerritoryRow(
+                        link: link,
+                        onTap: link.territoryId != null && link.territoryId!.isNotEmpty
+                            ? () => context.push('${AppRoutes.guildWarTerritory}/${link.territoryId}')
+                            : null,
+                      ),
                     ),
                   const SizedBox(height: 16),
                   const _SectionTitle(title: 'Haftalık Sıralama'),
@@ -124,6 +188,63 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
                         ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({required this.notification, required this.onTap});
+
+  final DungeonSiegeNotification notification;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: notification.isUnread
+                    ? const Color(0xFFFBBF24).withValues(alpha: 0.4)
+                    : const Color(0xFF1F2937),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(
+                  notification.isUnread ? Icons.circle : Icons.circle_outlined,
+                  size: 10,
+                  color: notification.isUnread ? const Color(0xFFFBBF24) : Colors.white24,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        notification.title,
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(notification.body, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -165,10 +286,7 @@ class _HubStatusCard extends StatelessWidget {
               ),
               const Spacer(),
               if (weekKey.isNotEmpty)
-                Text(
-                  weekKey,
-                  style: const TextStyle(color: Colors.white38, fontSize: 10),
-                ),
+                Text(weekKey, style: const TextStyle(color: Colors.white38, fontSize: 10)),
             ],
           ),
           const SizedBox(height: 10),
@@ -193,45 +311,6 @@ class _HubStatusCard extends StatelessWidget {
   }
 }
 
-class _NotificationsBanner extends StatelessWidget {
-  const _NotificationsBanner({required this.count, required this.onTap});
-
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFF1E293B),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            children: <Widget>[
-              const Icon(Icons.notifications_active_outlined, color: Color(0xFFFBBF24), size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$count okunmamış kuşatma bildirimi',
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-              const Text('Okundu', style: TextStyle(color: Color(0xFFFBBF24), fontSize: 11)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
 
@@ -241,11 +320,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-        fontWeight: FontWeight.w800,
-      ),
+      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800),
     );
   }
 }
@@ -271,9 +346,15 @@ class _EmptyCard extends StatelessWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session});
+  const _SessionCard({
+    required this.session,
+    required this.dungeonName,
+    required this.onTap,
+  });
 
   final DungeonSiegeSession session;
+  final String dungeonName;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -282,113 +363,131 @@ class _SessionCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+      child: Material(
         color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: hold != null && hold.holdId.isNotEmpty
-              ? const Color(0xFFEF4444).withValues(alpha: 0.5)
-              : const Color(0xFF1F2937),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Text(
-                session.dungeonId.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: hold != null && hold.holdId.isNotEmpty
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.5)
+                    : const Color(0xFF1F2937),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        dungeonName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    Text('Z${session.zoneNumber}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$occupied/${session.slots.length}',
+                      style: const TextStyle(color: Color(0xFF60A5FA), fontSize: 12),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 18),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Z${session.zoneNumber}',
-                style: const TextStyle(color: Colors.white38, fontSize: 11),
-              ),
-              const Spacer(),
-              Text(
-                '$occupied/${session.slots.length}',
-                style: const TextStyle(color: Color(0xFF60A5FA), fontSize: 12),
-              ),
-            ],
+                Text(session.dungeonId, style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                if (session.territoryOwnerGuildName != null &&
+                    session.territoryOwnerGuildName!.isNotEmpty &&
+                    session.territoryOwnerGuildName != 'Sahipsiz') ...<Widget>[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Bölge: ${session.territoryOwnerGuildName}',
+                    style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11),
+                  ),
+                ],
+                if (hold != null && hold.holdId.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 6),
+                  Text(
+                    'HOLD · ${hold.guildName ?? 'Lonca'} · kırılma ${hold.breakProgress}/${hold.breakRequired}',
+                    style: const TextStyle(
+                      color: Color(0xFFFCA5A5),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          if (session.territoryOwnerGuildName != null &&
-              session.territoryOwnerGuildName!.isNotEmpty &&
-              session.territoryOwnerGuildName != 'Sahipsiz') ...<Widget>[
-            const SizedBox(height: 6),
-            Text(
-              'Bölge: ${session.territoryOwnerGuildName}',
-              style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11),
-            ),
-          ],
-          if (hold != null && hold.holdId.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 6),
-            Text(
-              'HOLD · ${hold.guildName ?? 'Lonca'} · kırılma ${hold.breakProgress}/${hold.breakRequired}',
-              style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 11, fontWeight: FontWeight.w700),
-            ),
-          ] else if (session.guildSlots > 0) ...<Widget>[
-            const SizedBox(height: 6),
-            Text(
-              'Lonca slot: ${session.guildSlots}',
-              style: const TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
 class _TerritoryRow extends StatelessWidget {
-  const _TerritoryRow({required this.link});
+  const _TerritoryRow({required this.link, this.onTap});
 
   final DungeonSiegeTerritoryLink link;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
+      child: Material(
         color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF1E293B)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF1E293B)),
             ),
-            child: Text(
-              '${link.zoneNumber}',
-              style: const TextStyle(color: Color(0xFFFCA5A5), fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: <Widget>[
-                Text(link.territoryName, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                Text(
-                  link.ownerGuildName ?? 'Sahipsiz',
-                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${link.zoneNumber}',
+                    style: const TextStyle(color: Color(0xFFFCA5A5), fontWeight: FontWeight.w800),
+                  ),
                 ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(link.territoryName, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      Text(
+                        '${link.ownerGuildName ?? 'Sahipsiz'}${link.siegeDungeonId != null ? ' · ${link.siegeDungeonId}' : ''}',
+                        style: const TextStyle(color: Colors.white38, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onTap != null) const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 18),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -432,8 +531,8 @@ class _LeaderboardRow extends StatelessWidget {
             ),
           ),
           Text(
-            '${entry.points}p',
-            style: const TextStyle(color: Color(0xFF86EFAC), fontWeight: FontWeight.w700, fontSize: 12),
+            '${entry.points}p · ${entry.slotMinutes}dk',
+            style: const TextStyle(color: Color(0xFF86EFAC), fontWeight: FontWeight.w700, fontSize: 11),
           ),
         ],
       ),

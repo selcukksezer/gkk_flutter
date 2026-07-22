@@ -124,6 +124,50 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
                         accent: heroAccent,
                         isOwner: isOwner,
                       ),
+                      if (t.zoneNumber != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.sm),
+                        Material(
+                          color: const Color(0xFF1F1315),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            onTap: () {
+                              final String dungeonId = switch (t.zoneNumber) {
+                                1 => 'dng_010',
+                                2 => 'dng_020',
+                                3 => 'dng_030',
+                                4 => 'dng_040',
+                                5 => 'dng_050',
+                                6 => 'dng_060',
+                                7 => 'dng_065',
+                                _ => 'dng_010',
+                              };
+                              context.push('${AppRoutes.dungeonSiegeHub}?dungeon_id=$dungeonId');
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.35)),
+                              ),
+                              child: const Row(
+                                children: <Widget>[
+                                  Text('⚔', style: TextStyle(fontSize: 16)),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Bölge sahibi → kuşatmada rezerv slot + bonus',
+                                      style: TextStyle(color: Color(0xFFFCA5A5), fontSize: 12),
+                                    ),
+                                  ),
+                                  Icon(Icons.chevron_right_rounded, color: Colors.white38),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.base),
                       TerritoryAttackSummaryHeader(
                         attacks: detail!.recentAttacks,

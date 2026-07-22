@@ -10,7 +10,7 @@ import '../../components/layout/game_screen_background.dart';
 import '../../core/utils/power_formula.dart';
 import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
-import '../../providers/auth_provider.dart';
+import '../../utils/logout_helper.dart';
 import '../../providers/dungeon_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -74,7 +74,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
 
   void _startSiegePolling() {
     _siegePollTimer?.cancel();
-    _siegePollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+    _siegePollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
       final DungeonSiegeStatus status = ref.read(dungeonSiegeProvider).status;
       if (status.enabled) {
@@ -250,18 +250,12 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       backgroundColor: AppColors.carbonVoid,
       appBar: GameTopBar(
         title: context.l10n.zindan,
-        onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
+        onLogout: () async => performLogout(ref),
       ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.dungeon,
-        onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
+        onLogout: () async => performLogout(ref),
       ),
       body: Stack(
         children: <Widget>[

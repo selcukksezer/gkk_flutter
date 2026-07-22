@@ -36,6 +36,30 @@ String userFacingErrorMessage(
   if (lower.contains('siege_banned')) {
     return 'Kuşatma kaybından dolayı bu zindana giremezsin. Ban süresi bitene kadar bekle.';
   }
+  if (lower.contains('meydan okuma bekleme') || lower.contains('bekleme süresindesin')) {
+    return 'Meydan okuma bekleme süresindesin.';
+  }
+  if (lower.contains('güç farkı') || lower.contains('guc farki')) {
+    return 'Güç farkı çok yüksek. ±30% band içinde rakip seç.';
+  }
+  if (lower.contains('rezerv slot') || lower.contains('bölge sahibi lonca')) {
+    return 'Bölge sahibi lonca rezerv slotları dolu. Meydan oku.';
+  }
+  if (lower.contains('lonca üyesine meydan') || lower.contains('lonca uyesine meydan')) {
+    return 'Lonca üyesine meydan okuyamazsın.';
+  }
+  if (lower.contains('zaten bir kuşatma slotu')) {
+    return 'Zaten bir kuşatma slotu tutuyorsun.';
+  }
+  if (lower.contains('başka lonca hold') || lower.contains('baska lonca hold')) {
+    return 'Başka lonca hold tutuyor.';
+  }
+  if (lower.contains('hold kırıldıktan') || lower.contains('hold kirildiktan')) {
+    return raw.trim();
+  }
+  if (lower.contains('kuşatma şu an aktif değil') || lower.contains('kusatma su an aktif degil')) {
+    return 'Kuşatma şu an aktif değil.';
+  }
   if (lower.contains('jwt expired') || lower.contains('invalid jwt')) {
     return 'Oturum süresi doldu. Tekrar giriş yap.';
   }

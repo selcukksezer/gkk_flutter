@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/errors/app_exception.dart';
+import '../core/errors/user_facing_error.dart';
 import '../models/dungeon_siege_model.dart';
 import '../repositories/dungeon_siege_repository.dart';
 
@@ -62,21 +64,23 @@ class DungeonSiegeNotifier extends Notifier<DungeonSiegeState> {
   @override
   DungeonSiegeState build() => DungeonSiegeState.initial();
 
+  String _message(Object error, String fallback) =>
+      userFacingErrorMessage(error, fallback: fallback);
+
   Future<void> loadStatus({String? dungeonId}) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
       final DungeonSiegeStatus status = await _repository.getStatus(dungeonId: dungeonId);
       state = state.copyWith(loading: false, status: status);
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
         loading: false,
-        status: DungeonSiegeStatus.empty(),
-        errorMessage: 'Kuşatma durumu yuklenemedi.',
+        errorMessage: _message(e, 'Kuşatma durumu yüklenemedi.'),
       );
     }
   }
 
-  Future<void> loadHub() async {
+  Future<void> loadHub({bool includeNotifications = true}) async {
     state = state.copyWith(hubLoading: true, clearError: true);
     try {
       final DungeonSiegeHub hub = await _repository.getHub();
@@ -85,10 +89,13 @@ class DungeonSiegeNotifier extends Notifier<DungeonSiegeState> {
         hub: hub,
         status: hub.status,
       );
-    } catch (_) {
+      if (includeNotifications) {
+        await loadNotifications();
+      }
+    } catch (e) {
       state = state.copyWith(
         hubLoading: false,
-        errorMessage: 'Kuşatma merkezi yuklenemedi.',
+        errorMessage: _message(e, 'Kuşatma merkezi yüklenemedi.'),
       );
     }
   }
@@ -111,6 +118,11 @@ class DungeonSiegeNotifier extends Notifier<DungeonSiegeState> {
     await loadNotifications();
   }
 
+  Future<void> markNotificationRead(String notificationId) async {
+    await _repository.markNotificationsRead(notificationIds: <String>[notificationId]);
+    await loadNotifications();
+  }
+
   Future<DungeonSiegeActionResult?> claimSlot(String dungeonId) async {
     state = state.copyWith(actionLoading: true, clearError: true);
     try {
@@ -118,10 +130,10 @@ class DungeonSiegeNotifier extends Notifier<DungeonSiegeState> {
       await loadStatus(dungeonId: dungeonId);
       state = state.copyWith(actionLoading: false);
       return result;
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
         actionLoading: false,
-        errorMessage: 'Slot alinamadi.',
+        errorMessage: _message(e, 'Slot alınamadı.'),
       );
       return null;
     }
@@ -137,10 +149,10 @@ class DungeonSiegeNotifier extends Notifier<DungeonSiegeState> {
       await loadStatus(dungeonId: dungeonId);
       state = state.copyWith(actionLoading: false);
       return result;
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
         actionLoading: false,
-        errorMessage: 'Meydan okuma basarisiz.',
+        errorMessage: _message(e, 'Meydan okuma başarısız.'),
       );
       return null;
     }
@@ -156,10 +168,10 @@ class DungeonSiegeNotifier extends Notifier<DungeonSiegeState> {
       await loadStatus(dungeonId: dungeonId);
       state = state.copyWith(actionLoading: false);
       return result;
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
         actionLoading: false,
-        errorMessage: 'Slot birakilamadi.',
+        errorMessage: _message(e, 'Slot bırakılamadı.'),
       );
       return null;
     }
@@ -172,10 +184,10 @@ class DungeonSiegeNotifier extends Notifier<DungeonSiegeState> {
       await loadStatus(dungeonId: dungeonId);
       state = state.copyWith(actionLoading: false);
       return result;
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
         actionLoading: false,
-        errorMessage: 'Lonca hold baslatilamadi.',
+        errorMessage: _message(e, 'Lonca hold başlatılamadı.'),
       );
       return null;
     }

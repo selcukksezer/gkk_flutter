@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/user_facing_error.dart';
 import '../../../components/common/app_messenger.dart';
 import '../../../models/dungeon_model.dart';
 import '../../../models/dungeon_siege_model.dart';
@@ -43,7 +44,7 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
   @override
   void initState() {
     super.initState();
-    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
       unawaited(
         ref.read(dungeonSiegeProvider.notifier).loadStatus(dungeonId: widget.dungeon.dungeonId),
@@ -66,6 +67,7 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
     final DungeonSiegeSession? session = status.sessionForDungeon(dungeon.dungeonId);
     final List<DungeonSiegeSlot> slots = session?.slots ?? const <DungeonSiegeSlot>[];
     final DungeonSiegeConfig config = status.config;
+    final String? myGuildId = ref.watch(playerProvider).profile?.guildId;
 
     return Container(
       constraints: BoxConstraints(
@@ -181,14 +183,21 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
                             );
                           }
                           final DungeonSiegeSlot slot = slots[index];
+                          final bool reservedBlocked = slot.isTerritoryReserved &&
+                              !slot.isOccupied &&
+                              session != null &&
+                              session.territoryOwnerGuildId != null &&
+                              myGuildId != session.territoryOwnerGuildId;
                           return _SiegeSlotTile(
                             slot: slot,
                             actionLoading: siegeState.actionLoading,
                             challengeGoldCost: config.challengeGoldCost,
                             siegeActive: status.siegeActive,
                             isBanned: status.isBanned,
+                            reservedBlocked: reservedBlocked,
                             onClaim: status.siegeActive &&
                                     !slot.isOccupied &&
+                                    !reservedBlocked &&
                                     !status.isBanned &&
                                     status.mySlotId == null
                                 ? () => _claim(context, ref)
@@ -230,19 +239,28 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
     if (!context.mounted || result == null) return;
     AppMessenger.show(
       context,
-      result.success ? (result.message ?? 'Slot alındı.') : (result.error ?? 'Slot alınamadı.'),
+      result.success
+          ? (result.message ?? 'Slot alındı.')
+          : userFacingErrorMessage(result.error ?? 'Slot alınamadı.', fallback: 'Slot alınamadı.'),
     );
   }
 
   Future<void> _challenge(BuildContext context, WidgetRef ref, DungeonSiegeSlot slot) async {
     final DungeonSiegeConfig config = ref.read(dungeonSiegeProvider).status.config;
+    final String bandText = config.powerBandPct > 0
+        ? ' Güç farkı ±${(config.powerBandPct * 100).round()}% bandında olmalı.'
+        : '';
+    final String cooldownText = config.challengeCooldownMinutes > 0
+        ? ' Tekrar meydan okuma: ${config.challengeCooldownMinutes} dk bekleme.'
+        : '';
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
         backgroundColor: const Color(0xFF111827),
         title: const Text('Meydan Oku', style: TextStyle(color: Colors.white)),
         content: Text(
-          '${slot.holderName ?? 'Rakip'} slotunu almak için ${config.challengeGoldCost} altın harcanır. Kaybedersen ${config.banDurationMinutes} dk ban yersin.',
+          '${slot.holderName ?? 'Rakip'} slotunu almak için ${config.challengeGoldCost} altın harcanır. '
+          'Kaybedersen ${config.banDurationMinutes} dk ban yersin.$bandText$cooldownText',
           style: const TextStyle(color: Colors.white70, fontSize: 13),
         ),
         actions: <Widget>[
@@ -257,11 +275,16 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
         .read(dungeonSiegeProvider.notifier)
         .challengeSlot(slotId: slot.slotId, dungeonId: dungeon.dungeonId);
     if (!context.mounted || result == null) return;
-    AppMessenger.show(
-      context,
-      result.success ? (result.message ?? 'Düello bitti.') : (result.error ?? 'Meydan okuma başarısız.'),
-    );
-    if (result.success && result.youWon == true) {
+    final String message = result.success
+        ? (result.message ??
+            (result.holdBroken == true
+                ? 'Hold kırıldı!'
+                : result.holdBreakProgress != null
+                    ? 'Hold kırılma: ${result.holdBreakProgress}'
+                    : 'Düello bitti.'))
+        : userFacingErrorMessage(result.error ?? 'Meydan okuma başarısız.', fallback: 'Meydan okuma başarısız.');
+    AppMessenger.show(context, message);
+    if (result.success) {
       await ref.read(playerProvider.notifier).loadProfile();
     }
   }
@@ -303,7 +326,9 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
     if (!context.mounted || result == null) return;
     AppMessenger.show(
       context,
-      result.success ? (result.message ?? 'Hold başladı.') : (result.error ?? 'Hold başlatılamadı.'),
+      result.success
+          ? (result.message ?? 'Hold başladı.')
+          : userFacingErrorMessage(result.error ?? 'Hold başlatılamadı.', fallback: 'Hold başlatılamadı.'),
     );
   }
 }
@@ -529,6 +554,7 @@ class _SiegeSlotTile extends StatelessWidget {
     required this.challengeGoldCost,
     required this.siegeActive,
     required this.isBanned,
+    this.reservedBlocked = false,
     this.onClaim,
     this.onChallenge,
     this.onRelease,
@@ -539,6 +565,7 @@ class _SiegeSlotTile extends StatelessWidget {
   final int challengeGoldCost;
   final bool siegeActive;
   final bool isBanned;
+  final bool reservedBlocked;
   final VoidCallback? onClaim;
   final VoidCallback? onChallenge;
   final VoidCallback? onRelease;
@@ -548,9 +575,11 @@ class _SiegeSlotTile extends StatelessWidget {
     final bool occupied = slot.isOccupied;
     final Color accent = slot.isMine
         ? const Color(0xFF22C55E)
-        : occupied
-            ? const Color(0xFFEF4444)
-            : const Color(0xFF64748B);
+        : slot.isTerritoryReserved
+            ? const Color(0xFFFBBF24)
+            : occupied
+                ? const Color(0xFFEF4444)
+                : const Color(0xFF64748B);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -580,20 +609,45 @@ class _SiegeSlotTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  occupied ? (slot.holderName ?? 'Bilinmeyen') : 'Boş slot',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        occupied ? (slot.holderName ?? 'Bilinmeyen') : 'Boş slot',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (slot.isTerritoryReserved)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFBBF24).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'REZERV',
+                          style: TextStyle(color: Color(0xFFFBBF24), fontSize: 9, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                  ],
                 ),
                 Text(
                   occupied
                       ? 'Güç ${slot.holderPower}${slot.guildName != null ? ' · ${slot.guildName}' : ''}'
-                      : 'Bonus farm için müsait',
+                      : reservedBlocked
+                          ? 'Bölge sahibi lonca rezervi'
+                          : 'Bonus farm için müsait',
                   style: const TextStyle(color: Colors.white38, fontSize: 11),
                 ),
+                if (slot.expiresAt != null && occupied)
+                  Text(
+                    'Bitiş: ${slot.expiresAt}',
+                    style: const TextStyle(color: Colors.white24, fontSize: 10),
+                  ),
               ],
             ),
           ),
@@ -610,6 +664,8 @@ class _SiegeSlotTile extends StatelessWidget {
               onPressed: actionLoading ? null : onClaim,
               child: const Text('Slot Al'),
             )
+          else if (reservedBlocked)
+            const Text('Rezerv', style: TextStyle(color: Color(0xFFFBBF24), fontSize: 11))
           else if (!siegeActive)
             const Text('—', style: TextStyle(color: Colors.white24))
           else if (isBanned)
