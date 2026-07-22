@@ -7,8 +7,8 @@ import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../models/dungeon_model.dart';
 import '../../../theme/app_colors.dart';
-import '../dungeon_zone_data.dart';
 import 'dungeon_progress_row.dart';
+import 'dungeon_siege_badge.dart';
 
 class DungeonCard extends StatelessWidget {
   const DungeonCard({
@@ -30,6 +30,7 @@ class DungeonCard extends StatelessWidget {
     this.siegeActive = false,
     this.siegeOccupiedSlots = 0,
     this.siegeHasMySlot = false,
+    this.siegeSlotCount = 5,
     this.onSiegeTap,
   });
 
@@ -50,6 +51,7 @@ class DungeonCard extends StatelessWidget {
   final bool siegeActive;
   final int siegeOccupiedSlots;
   final bool siegeHasMySlot;
+  final int siegeSlotCount;
   final VoidCallback? onSiegeTap;
 
   bool get _isBoss => dungeon.difficulty.toLowerCase().contains('dungeon');
@@ -146,35 +148,13 @@ class DungeonCard extends StatelessWidget {
                                     ),
                                     if (siegeActive || onSiegeTap != null) ...<Widget>[
                                       const SizedBox(width: 6),
-                                      GestureDetector(
+                                      DungeonSiegeBadge(
+                                        siegeActive: siegeActive,
+                                        slotCount: siegeSlotCount,
+                                        occupiedSlots: siegeOccupiedSlots,
+                                        hasMySlot: siegeHasMySlot,
                                         onTap: onSiegeTap,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(4),
-                                            color: siegeActive
-                                                ? const Color(0xFFEF4444).withValues(alpha: 0.18)
-                                                : Colors.white.withValues(alpha: 0.06),
-                                            border: Border.all(
-                                              color: siegeActive
-                                                  ? const Color(0xFFEF4444).withValues(alpha: 0.55)
-                                                  : Colors.white24,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            siegeActive
-                                                ? 'KUŞATMA ${siegeHasMySlot ? '★' : '$siegeOccupiedSlots/5'}'
-                                                : 'KUŞATMA',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              color: siegeActive
-                                                  ? const Color(0xFFFCA5A5)
-                                                  : Colors.white54,
-                                              letterSpacing: 0.6,
-                                            ),
-                                          ),
-                                        ),
+                                        compact: true,
                                       ),
                                     ],
                                   ],

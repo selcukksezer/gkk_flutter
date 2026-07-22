@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import '../../../components/common/app_messenger.dart';
 import '../../../models/dungeon_model.dart';
 import '../../../models/dungeon_siege_model.dart';
 import '../../../providers/dungeon_siege_provider.dart';
+import '../../../providers/player_provider.dart';
 import '../../../theme/app_colors.dart';
 
 Future<void> showDungeonSiegePanel({
@@ -25,13 +28,39 @@ Future<void> showDungeonSiegePanel({
   );
 }
 
-class _DungeonSiegeSheet extends ConsumerWidget {
+class _DungeonSiegeSheet extends ConsumerStatefulWidget {
   const _DungeonSiegeSheet({required this.dungeon});
 
   final DungeonData dungeon;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DungeonSiegeSheet> createState() => _DungeonSiegeSheetState();
+}
+
+class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted) return;
+      unawaited(
+        ref.read(dungeonSiegeProvider.notifier).loadStatus(dungeonId: widget.dungeon.dungeonId),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  DungeonData get dungeon => widget.dungeon;
+
+  @override
+  Widget build(BuildContext context) {
     final DungeonSiegeState siegeState = ref.watch(dungeonSiegeProvider);
     final DungeonSiegeStatus status = siegeState.status;
     final DungeonSiegeSession? session = status.sessionForDungeon(dungeon.dungeonId);
@@ -130,7 +159,14 @@ class _DungeonSiegeSheet extends ConsumerWidget {
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (BuildContext context, int index) {
                           if (slots.isEmpty) {
-                            return const _SiegeEmptySlots();
+                            return _SiegeEmptySlots(
+                              actionLoading: siegeState.actionLoading,
+                              onClaim: status.siegeActive &&
+                                      !status.isBanned &&
+                                      status.mySlotId == null
+                                  ? () => _claim(context, ref)
+                                  : null,
+                            );
                           }
                           final DungeonSiegeSlot slot = slots[index];
                           return _SiegeSlotTile(
@@ -161,7 +197,10 @@ class _DungeonSiegeSheet extends ConsumerWidget {
               const SizedBox(height: 12),
               if (status.siegeActive && status.mySlotId != null)
                 Text(
-                  'Slot #${status.mySlotNumber} sende — farm bonusu aktif (+${(config.lootBonusPct * 100).round()}% loot, +${(config.goldBonusPct * 100).round()}% gold).',
+                  'Slot #${status.mySlotNumber} sende — bonus: '
+                  '+${(config.lootBonusPct * 100).round()}% loot, '
+                  '+${(config.goldBonusPct * 100).round()}% gold, '
+                  '+${(config.repBonusPct * 100).round()}% rep.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Color(0xFF86EFAC), fontSize: 11),
                 ),
@@ -183,6 +222,24 @@ class _DungeonSiegeSheet extends ConsumerWidget {
   }
 
   Future<void> _challenge(BuildContext context, WidgetRef ref, DungeonSiegeSlot slot) async {
+    final DungeonSiegeConfig config = ref.read(dungeonSiegeProvider).status.config;
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        title: const Text('Meydan Oku', style: TextStyle(color: Colors.white)),
+        content: Text(
+          '${slot.holderName ?? 'Rakip'} slotunu almak için ${config.challengeGoldCost} altın harcanır. Kaybedersen ${config.banDurationMinutes} dk ban yersin.',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Dövüş')),
+        ],
+      ),
+    );
+    if (confirm != true || !context.mounted) return;
+
     final DungeonSiegeActionResult? result = await ref
         .read(dungeonSiegeProvider.notifier)
         .challengeSlot(slotId: slot.slotId, dungeonId: dungeon.dungeonId);
@@ -191,6 +248,9 @@ class _DungeonSiegeSheet extends ConsumerWidget {
       context,
       result.success ? (result.message ?? 'Düello bitti.') : (result.error ?? 'Meydan okuma başarısız.'),
     );
+    if (result.success && result.youWon == true) {
+      await ref.read(playerProvider.notifier).loadProfile();
+    }
   }
 
   Future<void> _release(BuildContext context, WidgetRef ref, DungeonSiegeSlot slot) async {
@@ -291,7 +351,10 @@ class _SiegeWarningBanner extends StatelessWidget {
 }
 
 class _SiegeEmptySlots extends StatelessWidget {
-  const _SiegeEmptySlots();
+  const _SiegeEmptySlots({this.onClaim, this.actionLoading = false});
+
+  final VoidCallback? onClaim;
+  final bool actionLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -301,10 +364,21 @@ class _SiegeEmptySlots extends StatelessWidget {
         color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Text(
-        'Henüz oturum yok. Kuşatma aktifken ilk slot alan oturumu başlatır.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white54, fontSize: 12),
+      child: Column(
+        children: <Widget>[
+          const Text(
+            'Henüz oturum yok. İlk slot alan kuşatmayı başlatır.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          if (onClaim != null) ...<Widget>[
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: actionLoading ? null : onClaim,
+              child: const Text('Slot Al'),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -33,6 +33,9 @@ String userFacingErrorMessage(
   if (lower.contains('boss_daily_limit')) {
     return 'Boss günlük deneme limitine ulaştın.';
   }
+  if (lower.contains('siege_banned')) {
+    return 'Kuşatma kaybından dolayı bu zindana giremezsin. Ban süresi bitene kadar bekle.';
+  }
   if (lower.contains('jwt expired') || lower.contains('invalid jwt')) {
     return 'Oturum süresi doldu. Tekrar giriş yap.';
   }

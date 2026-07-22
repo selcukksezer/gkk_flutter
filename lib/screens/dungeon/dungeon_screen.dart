@@ -1,4 +1,6 @@
-﻿import 'package:flutter/foundation.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +41,7 @@ class DungeonScreen extends ConsumerStatefulWidget {
 class _DungeonScreenState extends ConsumerState<DungeonScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  Timer? _siegePollTimer;
 
   int get _selectedZone => _tabController.index == 0
       ? 0
@@ -57,14 +60,27 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       await ref.read(dungeonProvider.notifier).loadDungeons();
       await ref.read(dungeonSiegeProvider.notifier).loadStatus();
       if (!mounted) return;
+      _startSiegePolling();
       await TutorialTriggers.onRouteEnter(ref, AppRoutes.dungeon);
     });
   }
 
   @override
   void dispose() {
+    _siegePollTimer?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _startSiegePolling() {
+    _siegePollTimer?.cancel();
+    _siegePollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted) return;
+      final DungeonSiegeStatus status = ref.read(dungeonSiegeProvider).status;
+      if (status.enabled) {
+        unawaited(ref.read(dungeonSiegeProvider.notifier).loadStatus());
+      }
+    });
   }
 
   DateTime? _parseRestrictionUntil(String? raw) {
@@ -189,14 +205,16 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
     await ref.read(dungeonSiegeProvider.notifier).loadStatus();
   }
 
-  ({bool active, int occupied, bool hasMine}) _siegeMetaFor(String dungeonId) {
+  ({bool active, int occupied, bool hasMine, int slotCount}) _siegeMetaFor(String dungeonId) {
     final DungeonSiegeStatus status = ref.read(dungeonSiegeProvider).status;
     final DungeonSiegeSession? session = status.sessionForDungeon(dungeonId);
     final int occupied = session?.slots.where((DungeonSiegeSlot s) => s.isOccupied).length ?? 0;
+    final bool hasMine = session?.slots.any((DungeonSiegeSlot s) => s.isMine) ?? false;
     return (
-      active: status.siegeActive && isSiegeDungeon(dungeonId),
+      active: status.siegeActive && isSiegeDungeon(dungeonId, status: status),
       occupied: occupied,
-      hasMine: status.mySlotId != null && session != null,
+      hasMine: hasMine,
+      slotCount: status.config.slotCount,
     );
   }
 
@@ -320,7 +338,10 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                         : filtered.isEmpty
                             ? const DungeonEmptyState()
                             : RefreshIndicator(
-                                onRefresh: () => ref.read(dungeonProvider.notifier).loadDungeons(),
+                                onRefresh: () async {
+                                  await ref.read(dungeonProvider.notifier).loadDungeons();
+                                  await ref.read(dungeonSiegeProvider.notifier).loadStatus();
+                                },
                                 child: ListView.builder(
                                   padding: GameScrollLayout.withClearance(
                                     context,
@@ -357,6 +378,12 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
 
                                     if (isFeaturedCaveDungeon(d)) {
                                       final theme = featuredCaveThemeFor(d)!;
+                                      final bool siegeDungeon =
+                                          isSiegeDungeon(d.dungeonId, status: ref.read(dungeonSiegeProvider).status);
+                                      final ({bool active, int occupied, bool hasMine, int slotCount}) siegeMeta =
+                                          siegeDungeon
+                                              ? _siegeMetaFor(d.dungeonId)
+                                              : (active: false, occupied: 0, hasMine: false, slotCount: 5);
                                       return FeaturedCaveDungeonCard(
                                         dungeon: d,
                                         theme: theme,
@@ -375,6 +402,11 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                         powerRequirement: req,
                                         playerPower: playerTotalPower,
                                         debugText: debugText,
+                                        siegeActive: siegeMeta.active,
+                                        siegeOccupiedSlots: siegeMeta.occupied,
+                                        siegeHasMySlot: siegeMeta.hasMine,
+                                        siegeSlotCount: siegeMeta.slotCount,
+                                        onSiegeTap: siegeDungeon ? () => _openSiegePanel(d) : null,
                                         onEnter: () => _enterDungeon(d),
                                         onLoot: () => showDialog<void>(
                                           context: context,
@@ -383,9 +415,12 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                       );
                                     }
 
-                                    final bool siegeDungeon = isSiegeDungeon(d.dungeonId);
-                                    final ({bool active, int occupied, bool hasMine}) siegeMeta =
-                                        siegeDungeon ? _siegeMetaFor(d.dungeonId) : (active: false, occupied: 0, hasMine: false);
+                                    final bool siegeDungeon =
+                                        isSiegeDungeon(d.dungeonId, status: ref.read(dungeonSiegeProvider).status);
+                                    final ({bool active, int occupied, bool hasMine, int slotCount}) siegeMeta =
+                                        siegeDungeon
+                                            ? _siegeMetaFor(d.dungeonId)
+                                            : (active: false, occupied: 0, hasMine: false, slotCount: 5);
 
                                     return DungeonCard(
                                       dungeon: d,
@@ -401,6 +436,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                       siegeActive: siegeMeta.active,
                                       siegeOccupiedSlots: siegeMeta.occupied,
                                       siegeHasMySlot: siegeMeta.hasMine,
+                                      siegeSlotCount: siegeMeta.slotCount,
                                       onSiegeTap: siegeDungeon
                                           ? () => _openSiegePanel(d)
                                           : null,

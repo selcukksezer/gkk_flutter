@@ -1,7 +1,7 @@
 -- ============================================================
 -- Zindan Kuşatması — Faz A (forward)
 -- Varsayılan: is_enabled = false (sistem kapalı)
--- Geri alma: 20260722_100001_dungeon_siege_rollback.sql
+-- Geri alma: supabase/manual_rollbacks/20260722_100001_dungeon_siege_rollback.sql
 -- ============================================================
 
 BEGIN;
@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS public.dungeon_siege_config (
   ban_duration_minutes integer NOT NULL DEFAULT 45 CHECK (ban_duration_minutes BETWEEN 5 AND 240),
   loot_bonus_pct numeric NOT NULL DEFAULT 0.40 CHECK (loot_bonus_pct >= 0 AND loot_bonus_pct <= 2),
   gold_bonus_pct numeric NOT NULL DEFAULT 0.25 CHECK (gold_bonus_pct >= 0 AND gold_bonus_pct <= 2),
+  rep_bonus_pct numeric NOT NULL DEFAULT 0.15 CHECK (rep_bonus_pct >= 0 AND rep_bonus_pct <= 2),
   power_band_pct numeric NOT NULL DEFAULT 0.30 CHECK (power_band_pct >= 0 AND power_band_pct <= 1),
   timezone text NOT NULL DEFAULT 'Europe/Istanbul',
   prime_windows jsonb NOT NULL DEFAULT '[{"start":"19:00","end":"21:00"},{"start":"22:00","end":"00:00"}]'::jsonb,
@@ -358,6 +359,41 @@ AS $$
   );
 $$;
 
+CREATE OR REPLACE FUNCTION public.dungeon_siege_player_holds_any_slot(p_player_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.dungeon_siege_slots s
+    JOIN public.dungeon_siege_sessions sess ON sess.id = s.session_id
+    WHERE s.holder_id = p_player_id
+      AND sess.is_active = true
+      AND sess.ends_at > now()
+      AND (s.expires_at IS NULL OR s.expires_at > now())
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.dungeon_siege_can_fight(p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT NOT EXISTS (
+    SELECT 1 FROM public.users u
+    WHERE u.auth_id = p_user_id
+      AND (
+        (u.hospital_until IS NOT NULL AND u.hospital_until > now())
+        OR (u.prison_until IS NOT NULL AND u.prison_until > now())
+      )
+  );
+$$;
+
 CREATE OR REPLACE FUNCTION public.dungeon_siege_touch_slot_activity(
   p_player_id uuid,
   p_dungeon_id text
@@ -418,7 +454,8 @@ BEGIN
     'siege_active', true,
     'has_slot', true,
     'gold_mult', 1 + COALESCE(v_cfg.gold_bonus_pct, 0),
-    'loot_mult', 1 + COALESCE(v_cfg.loot_bonus_pct, 0)
+    'loot_mult', 1 + COALESCE(v_cfg.loot_bonus_pct, 0),
+    'rep_bonus_pct', COALESCE(v_cfg.rep_bonus_pct, 0.15)
   );
 END;
 $$;
@@ -462,6 +499,7 @@ BEGIN
     'ban_duration_minutes', v_cfg.ban_duration_minutes,
     'loot_bonus_pct', v_cfg.loot_bonus_pct,
     'gold_bonus_pct', v_cfg.gold_bonus_pct,
+    'rep_bonus_pct', v_cfg.rep_bonus_pct,
     'power_band_pct', v_cfg.power_band_pct,
     'timezone', v_cfg.timezone,
     'prime_windows', v_cfg.prime_windows,
@@ -481,6 +519,7 @@ CREATE OR REPLACE FUNCTION public.set_dungeon_siege_config(
   p_ban_duration_minutes integer DEFAULT NULL,
   p_loot_bonus_pct numeric DEFAULT NULL,
   p_gold_bonus_pct numeric DEFAULT NULL,
+  p_rep_bonus_pct numeric DEFAULT NULL,
   p_power_band_pct numeric DEFAULT NULL,
   p_prime_windows jsonb DEFAULT NULL
 )
@@ -490,7 +529,13 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  -- Not: prod'da service_role veya admin guard eklenebilir.
+  IF COALESCE(current_setting('request.jwt.claim.role', true), '') <> 'service_role' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Bu ayar sadece service_role veya SQL Editor ile degistirilebilir.'
+    );
+  END IF;
+
   UPDATE public.dungeon_siege_config
   SET
     is_enabled = COALESCE(p_is_enabled, is_enabled),
@@ -502,6 +547,7 @@ BEGIN
     ban_duration_minutes = COALESCE(p_ban_duration_minutes, ban_duration_minutes),
     loot_bonus_pct = COALESCE(p_loot_bonus_pct, loot_bonus_pct),
     gold_bonus_pct = COALESCE(p_gold_bonus_pct, gold_bonus_pct),
+    rep_bonus_pct = COALESCE(p_rep_bonus_pct, rep_bonus_pct),
     power_band_pct = COALESCE(p_power_band_pct, power_band_pct),
     prime_windows = COALESCE(p_prime_windows, prime_windows),
     updated_at = now()
@@ -556,19 +602,21 @@ BEGIN
     AND sess.ends_at > now()
     AND (p_dungeon_id IS NULL OR sess.dungeon_id = p_dungeon_id);
 
-  IF v_me IS NOT NULL AND p_dungeon_id IS NOT NULL THEN
+  IF v_me IS NOT NULL THEN
     SELECT jsonb_build_object(
       'slot_id', s.id,
       'slot_number', s.slot_number,
+      'dungeon_id', sess.dungeon_id,
       'expires_at', s.expires_at
     )
     INTO v_my_slot
     FROM public.dungeon_siege_slots s
     JOIN public.dungeon_siege_sessions sess ON sess.id = s.session_id
     WHERE s.holder_id = v_me
-      AND sess.dungeon_id = p_dungeon_id
       AND sess.is_active = true
       AND sess.ends_at > now()
+      AND (p_dungeon_id IS NULL OR sess.dungeon_id = p_dungeon_id)
+    ORDER BY s.claimed_at DESC NULLS LAST
     LIMIT 1;
   END IF;
 
@@ -612,8 +660,16 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Bu zindandan banlısın.');
   END IF;
 
+  IF NOT public.dungeon_siege_can_fight(v_me) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Hastane/cezaevinde slot alamazsın.');
+  END IF;
+
+  IF public.dungeon_siege_player_holds_any_slot(v_me) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Zaten bir kuşatma slotu tutuyorsun.');
+  END IF;
+
   IF public.dungeon_siege_player_has_slot(v_me, p_dungeon_id) THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Zaten bir slot tutuyorsun.');
+    RETURN jsonb_build_object('success', false, 'error', 'Bu zindanda zaten slot tutuyorsun.');
   END IF;
 
   SELECT * INTO v_player FROM public.users WHERE auth_id = v_me;
@@ -741,6 +797,10 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Bu zindandan banlısın.');
   END IF;
 
+  IF NOT public.dungeon_siege_can_fight(v_me) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Hastane/cezaevinde meydan okuyamazsın.');
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM public.dungeon_siege_challenges
     WHERE challenger_id = v_me
@@ -752,13 +812,29 @@ BEGIN
   SELECT * INTO v_challenger FROM public.users WHERE auth_id = v_me FOR UPDATE;
   SELECT * INTO v_defender FROM public.users WHERE auth_id = v_slot.holder_id FOR UPDATE;
 
+  IF v_challenger IS NULL OR v_defender IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Oyuncu bulunamadı.');
+  END IF;
+
+  IF v_challenger.guild_id IS NOT NULL AND v_challenger.guild_id = v_defender.guild_id THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Lonca üyesine meydan okuyamazsın.');
+  END IF;
+
+  IF NOT public.dungeon_siege_can_fight(v_slot.holder_id) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Rakip hastane/cezaevinde.');
+  END IF;
+
   IF v_challenger.gold < v_cfg.challenge_gold_cost THEN
     RETURN jsonb_build_object('success', false, 'error', 'Yetersiz altın.');
   END IF;
 
   IF v_cfg.power_band_pct > 0 THEN
-    IF abs(COALESCE(v_challenger.power, 0) - COALESCE(v_defender.power, 0))::numeric
-       > GREATEST(COALESCE(v_defender.power, 1), 1) * v_cfg.power_band_pct THEN
+    IF abs(
+      COALESCE(public.calculate_user_total_power(v_me), v_challenger.power, 0)
+      - COALESCE(public.calculate_user_total_power(v_slot.holder_id), v_defender.power, 0)
+    )::numeric
+       > GREATEST(COALESCE(public.calculate_user_total_power(v_slot.holder_id), v_defender.power, 1), 1)
+         * v_cfg.power_band_pct THEN
       RETURN jsonb_build_object('success', false, 'error', 'Güç farkı çok yüksek (±30%).');
     END IF;
   END IF;
@@ -854,7 +930,7 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_dungeon_siege_config() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.set_dungeon_siege_config(boolean, integer, integer, integer, integer, bigint, integer, numeric, numeric, numeric, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.set_dungeon_siege_config(boolean, integer, integer, integer, integer, bigint, integer, numeric, numeric, numeric, numeric, jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_dungeon_siege_status(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_siege_slot(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.release_siege_slot(uuid) TO authenticated;
@@ -872,6 +948,8 @@ DECLARE
   v_declare_new text := E'  v_milestone_rewards JSONB := ''[]''::JSONB;\n  v_siege             JSONB;';
   v_ban_marker text := E'  IF v_player.prison_until IS NOT NULL AND v_player.prison_until > now() THEN\n    RETURN jsonb_build_object(''error'', ''in_prison'');\n  END IF;\n';
   v_ban_block text := E'  IF v_player.prison_until IS NOT NULL AND v_player.prison_until > now() THEN\n    RETURN jsonb_build_object(''error'', ''in_prison'');\n  END IF;\n\n  -- [GKK_SIEGE_BAN_BEGIN]\n  IF public.dungeon_siege_is_enabled()\n     AND public.dungeon_siege_is_target_dungeon(p_dungeon_id)\n     AND public.dungeon_siege_is_banned(p_player_id, p_dungeon_id) THEN\n    RETURN jsonb_build_object(''error'', ''siege_banned'', ''message'', ''Kuşatma kaybından dolayı bu zindana giremezsiniz.'');\n  END IF;\n  -- [GKK_SIEGE_BAN_END]\n';
+  v_rep_marker text := E'  IF NOT FOUND THEN\n    RETURN jsonb_build_object(''error'', ''Yetersiz enerji veya işlem çakışması'');\n  END IF;\n';
+  v_rep_block text := E'  IF NOT FOUND THEN\n    RETURN jsonb_build_object(''error'', ''Yetersiz enerji veya işlem çakışması'');\n  END IF;\n\n  -- [GKK_SIEGE_REP_BEGIN]\n  IF v_success AND public.dungeon_siege_is_enabled() THEN\n    v_siege := public.dungeon_siege_reward_multipliers(p_player_id, p_dungeon_id);\n    IF COALESCE((v_siege->>''has_slot'')::boolean, false) THEN\n      UPDATE public.users\n      SET reputation = COALESCE(reputation, 0)\n        + GREATEST(1, floor(20 * COALESCE((v_siege->>''rep_bonus_pct'')::numeric, 0.15)))\n      WHERE auth_id = p_player_id;\n    END IF;\n  END IF;\n  -- [GKK_SIEGE_REP_END]\n';
 BEGIN
   SELECT pg_get_functiondef(p.oid) INTO v_def
   FROM pg_proc p
@@ -899,6 +977,12 @@ BEGIN
   IF position('[GKK_SIEGE_BAN_BEGIN]' in v_def) = 0 THEN
     IF position(v_ban_marker in v_def) > 0 THEN
       v_def := replace(v_def, v_ban_marker, v_ban_block);
+    END IF;
+  END IF;
+
+  IF position('[GKK_SIEGE_REP_BEGIN]' in v_def) = 0 THEN
+    IF position(v_rep_marker in v_def) > 0 THEN
+      v_def := replace(v_def, v_rep_marker, v_rep_block);
     END IF;
   END IF;
 

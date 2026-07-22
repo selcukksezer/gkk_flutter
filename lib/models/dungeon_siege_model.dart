@@ -1,3 +1,14 @@
+/// Kuşatma boss zindanları (DB config fallback).
+const Set<String> kSiegeDungeonIds = <String>{
+  'dng_010',
+  'dng_020',
+  'dng_030',
+  'dng_040',
+  'dng_050',
+  'dng_060',
+  'dng_065',
+};
+
 class DungeonSiegeConfig {
   const DungeonSiegeConfig({
     required this.isEnabled,
@@ -6,8 +17,10 @@ class DungeonSiegeConfig {
     required this.challengeGoldCost,
     required this.lootBonusPct,
     required this.goldBonusPct,
+    required this.repBonusPct,
     required this.inPrimeWindow,
     this.banDurationMinutes = 45,
+    this.siegeDungeonIds = kSiegeDungeonIds,
   });
 
   final bool isEnabled;
@@ -16,8 +29,10 @@ class DungeonSiegeConfig {
   final int challengeGoldCost;
   final double lootBonusPct;
   final double goldBonusPct;
+  final double repBonusPct;
   final bool inPrimeWindow;
   final int banDurationMinutes;
+  final Set<String> siegeDungeonIds;
 
   bool get isLive => isEnabled && inPrimeWindow;
 
@@ -30,6 +45,7 @@ class DungeonSiegeConfig {
         challengeGoldCost: 500,
         lootBonusPct: 0.4,
         goldBonusPct: 0.25,
+        repBonusPct: 0.15,
         inPrimeWindow: false,
       );
     }
@@ -40,9 +56,26 @@ class DungeonSiegeConfig {
       challengeGoldCost: _asInt(json['challenge_gold_cost'], fallback: 500),
       lootBonusPct: _asDouble(json['loot_bonus_pct'], fallback: 0.4),
       goldBonusPct: _asDouble(json['gold_bonus_pct'], fallback: 0.25),
+      repBonusPct: _asDouble(json['rep_bonus_pct'], fallback: 0.15),
       inPrimeWindow: json['in_prime_window'] == true,
       banDurationMinutes: _asInt(json['ban_duration_minutes'], fallback: 45),
+      siegeDungeonIds: _parseDungeonIds(json['siege_dungeon_ids']),
     );
+  }
+
+  static Set<String> _parseDungeonIds(dynamic raw) {
+    if (raw is List) {
+      return raw.map((dynamic e) => e.toString()).toSet();
+    }
+    if (raw is String && raw.startsWith('{') && raw.endsWith('}')) {
+      return raw
+          .substring(1, raw.length - 1)
+          .split(',')
+          .map((String s) => s.trim().replaceAll('"', ''))
+          .where((String s) => s.isNotEmpty)
+          .toSet();
+    }
+    return kSiegeDungeonIds;
   }
 
   static int _asInt(dynamic value, {required int fallback}) {
@@ -223,15 +256,8 @@ class DungeonSiegeActionResult {
   }
 }
 
-/// Kuşatma boss zindanları (DB config ile aynı).
-const Set<String> kSiegeDungeonIds = <String>{
-  'dng_010',
-  'dng_020',
-  'dng_030',
-  'dng_040',
-  'dng_050',
-  'dng_060',
-  'dng_065',
-};
-
-bool isSiegeDungeon(String dungeonId) => kSiegeDungeonIds.contains(dungeonId);
+bool isSiegeDungeon(String dungeonId, {DungeonSiegeStatus? status}) {
+  final Set<String> ids = status?.config.siegeDungeonIds ?? kSiegeDungeonIds;
+  if (ids.isEmpty) return kSiegeDungeonIds.contains(dungeonId);
+  return ids.contains(dungeonId);
+}

@@ -7,6 +7,7 @@ import '../../../core/utils/power_formula.dart';
 import '../../../models/dungeon_model.dart';
 import 'dungeon_cave_theme.dart';
 import 'dungeon_progress_row.dart';
+import 'dungeon_siege_badge.dart';
 
 const double _kCaveArtSize = 165.0;
 const Color _kCardText = Color(0xFFFFFFFF);
@@ -33,6 +34,11 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
     this.debugText,
     required this.onEnter,
     required this.onLoot,
+    this.siegeActive = false,
+    this.siegeOccupiedSlots = 0,
+    this.siegeHasMySlot = false,
+    this.siegeSlotCount = 5,
+    this.onSiegeTap,
   });
 
   final DungeonData dungeon;
@@ -53,6 +59,11 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
   final String? debugText;
   final VoidCallback onEnter;
   final VoidCallback onLoot;
+  final bool siegeActive;
+  final int siegeOccupiedSlots;
+  final bool siegeHasMySlot;
+  final int siegeSlotCount;
+  final VoidCallback? onSiegeTap;
 
   String get _threatLabel {
     if (successPercent >= 80) return 'KOLAY';
@@ -148,6 +159,17 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                                 color: threat,
                                 panel: theme.panel,
                               ),
+                              if (onSiegeTap != null) ...<Widget>[
+                                const SizedBox(width: 6),
+                                DungeonSiegeBadge(
+                                  siegeActive: siegeActive,
+                                  slotCount: siegeSlotCount,
+                                  occupiedSlots: siegeOccupiedSlots,
+                                  hasMySlot: siegeHasMySlot,
+                                  onTap: onSiegeTap,
+                                  compact: true,
+                                ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 7),

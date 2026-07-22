@@ -25,7 +25,7 @@ class SmokeRouteRegistry {
     SmokeRouteEntry(label: 'Ana Sayfa', path: '/home', keyRpcs: <String>['loadProfile']),
     SmokeRouteEntry(label: 'Envanter', path: '/inventory', group: 'quick_menu', keyRpcs: <String>['get_inventory']),
     SmokeRouteEntry(label: 'Karakter', path: '/character', keyRpcs: <String>['claim_alchemist_detox']),
-    SmokeRouteEntry(label: 'Zindan', path: '/dungeon', keyRpcs: <String>['get_dungeons', 'attack_dungeon']),
+    SmokeRouteEntry(label: 'Zindan', path: '/dungeon', keyRpcs: <String>['get_dungeons', 'attack_dungeon', 'get_dungeon_siege_status']),
     SmokeRouteEntry(
       label: 'PvP',
       path: '/pvp',
