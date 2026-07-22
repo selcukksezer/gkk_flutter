@@ -194,6 +194,7 @@ class TerritoryData {
   final int defenseLineLevel;
   final String reward;
   final int tradeIncome;
+  final int? zoneNumber;
 
   const TerritoryData({
     required this.id,
@@ -205,6 +206,7 @@ class TerritoryData {
     this.defenseLineLevel = 0,
     this.reward = '',
     this.tradeIncome = 0,
+    this.zoneNumber,
   });
 
   bool get isUnclaimed =>
@@ -221,6 +223,7 @@ class TerritoryData {
       defenseLineLevel: _asInt(json['defense_line_level']),
       reward: (json['reward'] ?? '').toString(),
       tradeIncome: _asInt(json['trade_income']),
+      zoneNumber: json['zone_number'] != null ? _asInt(json['zone_number']) : null,
     );
   }
 }

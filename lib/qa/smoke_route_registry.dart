@@ -27,6 +27,12 @@ class SmokeRouteRegistry {
     SmokeRouteEntry(label: 'Karakter', path: '/character', keyRpcs: <String>['claim_alchemist_detox']),
     SmokeRouteEntry(label: 'Zindan', path: '/dungeon', keyRpcs: <String>['get_dungeons', 'attack_dungeon', 'get_dungeon_siege_status']),
     SmokeRouteEntry(
+      label: 'Kuşatma Merkezi',
+      path: '/dungeon/siege',
+      group: 'quick_menu',
+      keyRpcs: <String>['get_dungeon_siege_hub', 'get_dungeon_siege_leaderboard', 'get_dungeon_siege_notifications'],
+    ),
+    SmokeRouteEntry(
       label: 'PvP',
       path: '/pvp',
       sampleSubPaths: <String>['/pvp/history', '/pvp/tournament'],

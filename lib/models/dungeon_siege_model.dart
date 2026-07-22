@@ -21,6 +21,10 @@ class DungeonSiegeConfig {
     required this.inPrimeWindow,
     this.banDurationMinutes = 45,
     this.siegeDungeonIds = kSiegeDungeonIds,
+    this.holdMinMembers = 3,
+    this.holdBonusPct = 0.15,
+    this.holdBreakWinsRequired = 3,
+    this.territoryReserveSlotCount = 1,
   });
 
   final bool isEnabled;
@@ -33,6 +37,10 @@ class DungeonSiegeConfig {
   final bool inPrimeWindow;
   final int banDurationMinutes;
   final Set<String> siegeDungeonIds;
+  final int holdMinMembers;
+  final double holdBonusPct;
+  final int holdBreakWinsRequired;
+  final int territoryReserveSlotCount;
 
   bool get isLive => isEnabled && inPrimeWindow;
 
@@ -60,6 +68,10 @@ class DungeonSiegeConfig {
       inPrimeWindow: json['in_prime_window'] == true,
       banDurationMinutes: _asInt(json['ban_duration_minutes'], fallback: 45),
       siegeDungeonIds: _parseDungeonIds(json['siege_dungeon_ids']),
+      holdMinMembers: _asInt(json['hold_min_members'], fallback: 3),
+      holdBonusPct: _asDouble(json['hold_bonus_pct'], fallback: 0.15),
+      holdBreakWinsRequired: _asInt(json['hold_break_wins_required'], fallback: 3),
+      territoryReserveSlotCount: _asInt(json['territory_reserve_slot_count'], fallback: 1),
     );
   }
 
@@ -93,6 +105,41 @@ class DungeonSiegeConfig {
   }
 }
 
+class DungeonSiegeHold {
+  const DungeonSiegeHold({
+    required this.holdId,
+    required this.guildId,
+    this.guildName,
+    this.breakProgress = 0,
+    this.breakRequired = 3,
+    this.memberSlots = 0,
+    this.startedAt,
+  });
+
+  final String holdId;
+  final String guildId;
+  final String? guildName;
+  final int breakProgress;
+  final int breakRequired;
+  final int memberSlots;
+  final String? startedAt;
+
+  factory DungeonSiegeHold.fromJson(Map<String, dynamic>? json) {
+    if (json == null || json.isEmpty) {
+      return const DungeonSiegeHold(holdId: '', guildId: '');
+    }
+    return DungeonSiegeHold(
+      holdId: (json['hold_id'] ?? '').toString(),
+      guildId: (json['guild_id'] ?? '').toString(),
+      guildName: json['guild_name']?.toString(),
+      breakProgress: DungeonSiegeConfig._asInt(json['break_progress']),
+      breakRequired: DungeonSiegeConfig._asInt(json['break_required'], fallback: 3),
+      memberSlots: DungeonSiegeConfig._asInt(json['member_slots']),
+      startedAt: json['started_at']?.toString(),
+    );
+  }
+}
+
 class DungeonSiegeSlot {
   const DungeonSiegeSlot({
     required this.slotId,
@@ -103,6 +150,7 @@ class DungeonSiegeSlot {
     this.guildName,
     this.expiresAt,
     this.isMine = false,
+    this.isTerritoryReserved = false,
   });
 
   final String slotId;
@@ -113,6 +161,7 @@ class DungeonSiegeSlot {
   final String? guildName;
   final String? expiresAt;
   final bool isMine;
+  final bool isTerritoryReserved;
 
   bool get isOccupied => holderId != null && holderId!.isNotEmpty;
 
@@ -126,6 +175,7 @@ class DungeonSiegeSlot {
       guildName: json['guild_name']?.toString(),
       expiresAt: json['expires_at']?.toString(),
       isMine: json['is_mine'] == true,
+      isTerritoryReserved: json['is_territory_reserved'] == true,
     );
   }
 }
@@ -137,6 +187,9 @@ class DungeonSiegeSession {
     required this.zoneNumber,
     required this.endsAt,
     required this.slots,
+    this.territoryOwnerGuildName,
+    this.guildSlots = 0,
+    this.hold,
   });
 
   final String sessionId;
@@ -144,6 +197,9 @@ class DungeonSiegeSession {
   final int zoneNumber;
   final String? endsAt;
   final List<DungeonSiegeSlot> slots;
+  final String? territoryOwnerGuildName;
+  final int guildSlots;
+  final DungeonSiegeHold? hold;
 
   factory DungeonSiegeSession.fromJson(Map<String, dynamic> json) {
     final List<DungeonSiegeSlot> slots = (json['slots'] as List<dynamic>? ?? <dynamic>[])
@@ -151,12 +207,19 @@ class DungeonSiegeSession {
         .map((Map<dynamic, dynamic> row) => DungeonSiegeSlot.fromJson(Map<String, dynamic>.from(row)))
         .toList();
 
+    final Map<String, dynamic>? holdMap = json['hold'] is Map
+        ? Map<String, dynamic>.from(json['hold'] as Map)
+        : null;
+
     return DungeonSiegeSession(
       sessionId: (json['session_id'] ?? '').toString(),
       dungeonId: (json['dungeon_id'] ?? '').toString(),
       zoneNumber: DungeonSiegeConfig._asInt(json['zone_number']),
       endsAt: json['ends_at']?.toString(),
       slots: slots,
+      territoryOwnerGuildName: json['territory_owner_guild_name']?.toString(),
+      guildSlots: DungeonSiegeConfig._asInt(json['guild_slots']),
+      hold: holdMap != null ? DungeonSiegeHold.fromJson(holdMap) : null,
     );
   }
 }
@@ -260,4 +323,169 @@ bool isSiegeDungeon(String dungeonId, {DungeonSiegeStatus? status}) {
   final Set<String> ids = status?.config.siegeDungeonIds ?? kSiegeDungeonIds;
   if (ids.isEmpty) return kSiegeDungeonIds.contains(dungeonId);
   return ids.contains(dungeonId);
+}
+
+class DungeonSiegeLeaderboardEntry {
+  const DungeonSiegeLeaderboardEntry({
+    required this.rank,
+    required this.playerName,
+    this.playerId,
+    this.guildName,
+    this.points = 0,
+    this.challengesWon = 0,
+    this.slotMinutes = 0,
+  });
+
+  final int rank;
+  final String? playerId;
+  final String playerName;
+  final String? guildName;
+  final int points;
+  final int challengesWon;
+  final int slotMinutes;
+
+  factory DungeonSiegeLeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    return DungeonSiegeLeaderboardEntry(
+      rank: DungeonSiegeConfig._asInt(json['rank'], fallback: 0),
+      playerId: json['player_id']?.toString(),
+      playerName: (json['player_name'] ?? '—').toString(),
+      guildName: json['guild_name']?.toString(),
+      points: DungeonSiegeConfig._asInt(json['points']),
+      challengesWon: DungeonSiegeConfig._asInt(json['challenges_won']),
+      slotMinutes: DungeonSiegeConfig._asInt(json['slot_minutes']),
+    );
+  }
+}
+
+class DungeonSiegeRecentChallenge {
+  const DungeonSiegeRecentChallenge({
+    required this.id,
+    required this.dungeonId,
+    required this.challengerName,
+    required this.defenderName,
+    required this.winnerName,
+    this.resolvedAt,
+    this.youWereInvolved = false,
+  });
+
+  final String id;
+  final String dungeonId;
+  final String challengerName;
+  final String defenderName;
+  final String winnerName;
+  final String? resolvedAt;
+  final bool youWereInvolved;
+
+  factory DungeonSiegeRecentChallenge.fromJson(Map<String, dynamic> json) {
+    return DungeonSiegeRecentChallenge(
+      id: (json['id'] ?? '').toString(),
+      dungeonId: (json['dungeon_id'] ?? '').toString(),
+      challengerName: (json['challenger_name'] ?? '—').toString(),
+      defenderName: (json['defender_name'] ?? '—').toString(),
+      winnerName: (json['winner_name'] ?? '—').toString(),
+      resolvedAt: json['resolved_at']?.toString(),
+      youWereInvolved: json['you_were_involved'] == true,
+    );
+  }
+}
+
+class DungeonSiegeTerritoryLink {
+  const DungeonSiegeTerritoryLink({
+    required this.zoneNumber,
+    required this.territoryName,
+    this.ownerGuildName,
+  });
+
+  final int zoneNumber;
+  final String territoryName;
+  final String? ownerGuildName;
+
+  factory DungeonSiegeTerritoryLink.fromJson(Map<String, dynamic> json) {
+    return DungeonSiegeTerritoryLink(
+      zoneNumber: DungeonSiegeConfig._asInt(json['zone_number']),
+      territoryName: (json['territory_name'] ?? '').toString(),
+      ownerGuildName: json['owner_guild_name']?.toString(),
+    );
+  }
+}
+
+class DungeonSiegeNotification {
+  const DungeonSiegeNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.body,
+    this.createdAt,
+    this.isUnread = false,
+  });
+
+  final String id;
+  final String type;
+  final String title;
+  final String body;
+  final String? createdAt;
+  final bool isUnread;
+
+  factory DungeonSiegeNotification.fromJson(Map<String, dynamic> json) {
+    return DungeonSiegeNotification(
+      id: (json['id'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      body: (json['body'] ?? '').toString(),
+      createdAt: json['created_at']?.toString(),
+      isUnread: json['is_unread'] == true,
+    );
+  }
+}
+
+class DungeonSiegeHub {
+  const DungeonSiegeHub({
+    required this.weekKey,
+    required this.status,
+    required this.leaderboard,
+    required this.recentChallenges,
+    required this.territories,
+  });
+
+  final String weekKey;
+  final DungeonSiegeStatus status;
+  final List<DungeonSiegeLeaderboardEntry> leaderboard;
+  final List<DungeonSiegeRecentChallenge> recentChallenges;
+  final List<DungeonSiegeTerritoryLink> territories;
+
+  factory DungeonSiegeHub.empty() {
+    return DungeonSiegeHub(
+      weekKey: '',
+      status: DungeonSiegeStatus.empty(),
+      leaderboard: const <DungeonSiegeLeaderboardEntry>[],
+      recentChallenges: const <DungeonSiegeRecentChallenge>[],
+      territories: const <DungeonSiegeTerritoryLink>[],
+    );
+  }
+
+  factory DungeonSiegeHub.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic>? statusMap = json['status'] is Map
+        ? Map<String, dynamic>.from(json['status'] as Map)
+        : null;
+
+    return DungeonSiegeHub(
+      weekKey: (json['week_key'] ?? '').toString(),
+      status: statusMap != null
+          ? DungeonSiegeStatus.fromJson(statusMap)
+          : DungeonSiegeStatus.empty(),
+      leaderboard: _parseList(json['leaderboard'], DungeonSiegeLeaderboardEntry.fromJson),
+      recentChallenges: _parseList(json['recent_challenges'], DungeonSiegeRecentChallenge.fromJson),
+      territories: _parseList(json['territories'], DungeonSiegeTerritoryLink.fromJson),
+    );
+  }
+
+  static List<T> _parseList<T>(
+    dynamic raw,
+    T Function(Map<String, dynamic> json) mapper,
+  ) {
+    return (raw as List<dynamic>? ?? <dynamic>[])
+        .whereType<Map>()
+        .map((Map<dynamic, dynamic> row) => mapper(Map<String, dynamic>.from(row)))
+        .toList();
+  }
 }

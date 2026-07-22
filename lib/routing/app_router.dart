@@ -16,6 +16,7 @@ import '../screens/chat/chat_screen.dart';
 import '../screens/crafting/crafting_screen.dart';
 import '../screens/dungeon/dungeon_screen.dart';
 import '../screens/dungeon/dungeon_battle_screen.dart';
+import '../screens/dungeon/dungeon_siege_hub_screen.dart';
 import '../screens/enhancement/enhancement_screen.dart';
 import '../screens/facilities/facility_detail_screen.dart';
 import '../screens/facilities/facilities_screen.dart';
@@ -76,6 +77,7 @@ class AppRoutes {
   static const String chat = '/chat';
   static const String crafting = '/crafting';
   static const String dungeonBattle = '/dungeon/battle';
+  static const String dungeonSiegeHub = '/dungeon/siege';
   static const String enhancement = '/enhancement';
   static const String guild = '/guild';
   static const String guildWar = '/guild-war';
@@ -226,6 +228,10 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     gameRoute(
       path: AppRoutes.dungeon,
       build: (BuildContext context, GoRouterState state) => const DungeonScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.dungeonSiegeHub,
+      build: (BuildContext context, GoRouterState state) => const DungeonSiegeHubScreen(),
     ),
     gameRoute(
       path: AppRoutes.character,

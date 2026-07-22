@@ -326,6 +326,12 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                   child: DungeonZoneBanner(zone: currentZone, dungeonCount: filtered.length),
                 ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                child: _SiegeHubEntry(
+                  onTap: () => context.push(AppRoutes.dungeonSiegeHub),
+                ),
+              ),
               const SizedBox(height: 8),
               Expanded(
                 child: dungeonState.status == DungeonStatus.loading
@@ -466,6 +472,59 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SiegeHubEntry extends StatelessWidget {
+  const _SiegeHubEntry({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF111827),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.45)),
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'KUŞATMA',
+                  style: TextStyle(
+                    color: Color(0xFFFCA5A5),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Kuşatma Merkezi — hold, sıralama, son düellolar',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+            ],
+          ),
+        ),
       ),
     );
   }

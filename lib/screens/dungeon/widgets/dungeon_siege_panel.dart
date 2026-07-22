@@ -132,7 +132,19 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
                 ],
               ),
               const SizedBox(height: 8),
-              _SiegeInfoStrip(status: status, config: config),
+              _SiegeInfoStrip(status: status, config: config, session: session),
+              if (session != null) ...<Widget>[
+                const SizedBox(height: 10),
+                _SiegeHoldStrip(
+                  session: session,
+                  config: config,
+                  siegeActive: status.siegeActive,
+                  actionLoading: siegeState.actionLoading,
+                  onStartHold: status.siegeActive
+                      ? () => _startHold(context, ref)
+                      : null,
+                ),
+              ],
               if (status.isBanned) ...<Widget>[
                 const SizedBox(height: 10),
                 _SiegeWarningBanner(
@@ -200,7 +212,8 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
                   'Slot #${status.mySlotNumber} sende — bonus: '
                   '+${(config.lootBonusPct * 100).round()}% loot, '
                   '+${(config.goldBonusPct * 100).round()}% gold, '
-                  '+${(config.repBonusPct * 100).round()}% rep.',
+                  '+${(config.repBonusPct * 100).round()}% rep'
+                  '${session?.hold != null && (session!.hold!.holdId.isNotEmpty) ? ', +${(config.holdBonusPct * 100).round()}% hold' : ''}.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Color(0xFF86EFAC), fontSize: 11),
                 ),
@@ -263,13 +276,138 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
       result.success ? (result.message ?? 'Slot bırakıldı.') : (result.error ?? 'Slot bırakılamadı.'),
     );
   }
+
+  Future<void> _startHold(BuildContext context, WidgetRef ref) async {
+    final DungeonSiegeConfig config = ref.read(dungeonSiegeProvider).status.config;
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        title: const Text('Lonca Hold', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'En az ${config.holdMinMembers} lonca üyesi slot tutunca hold başlar. '
+          'Ek +${(config.holdBonusPct * 100).round()}% bonus. '
+          'Rakip ${config.holdBreakWinsRequired} galibiyetle kırabilir.',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hold Başlat')),
+        ],
+      ),
+    );
+    if (confirm != true || !context.mounted) return;
+
+    final DungeonSiegeActionResult? result =
+        await ref.read(dungeonSiegeProvider.notifier).startGuildHold(dungeon.dungeonId);
+    if (!context.mounted || result == null) return;
+    AppMessenger.show(
+      context,
+      result.success ? (result.message ?? 'Hold başladı.') : (result.error ?? 'Hold başlatılamadı.'),
+    );
+  }
+}
+
+class _SiegeHoldStrip extends StatelessWidget {
+  const _SiegeHoldStrip({
+    required this.session,
+    required this.config,
+    required this.siegeActive,
+    required this.actionLoading,
+    this.onStartHold,
+  });
+
+  final DungeonSiegeSession session;
+  final DungeonSiegeConfig config;
+  final bool siegeActive;
+  final bool actionLoading;
+  final VoidCallback? onStartHold;
+
+  @override
+  Widget build(BuildContext context) {
+    final DungeonSiegeHold? hold = session.hold;
+    final bool hasHold = hold != null && hold.holdId.isNotEmpty;
+    final bool canStart = siegeActive &&
+        !hasHold &&
+        session.guildSlots >= config.holdMinMembers &&
+        onStartHold != null;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F1315),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasHold
+              ? const Color(0xFFEF4444).withValues(alpha: 0.55)
+              : const Color(0xFF374151),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Icon(Icons.flag_rounded, color: Color(0xFFFCA5A5), size: 16),
+              const SizedBox(width: 6),
+              const Text(
+                'Lonca Hold',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
+              ),
+              const Spacer(),
+              Text(
+                '${session.guildSlots}/${config.holdMinMembers} slot',
+                style: const TextStyle(color: Colors.white38, fontSize: 10),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (hasHold)
+            Text(
+              '${hold!.guildName ?? 'Lonca'} hold aktif · kırılma ${hold.breakProgress}/${hold.breakRequired}',
+              style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 11),
+            )
+          else if (session.territoryOwnerGuildName != null &&
+              session.territoryOwnerGuildName!.isNotEmpty &&
+              session.territoryOwnerGuildName != 'Sahipsiz')
+            Text(
+              'Bölge sahibi: ${session.territoryOwnerGuildName} · rezerv slot: ${config.territoryReserveSlotCount}',
+              style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11),
+            )
+          else
+            Text(
+              'Hold için loncada ${config.holdMinMembers}+ slot gerekli.',
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          if (canStart) ...<Widget>[
+            const SizedBox(height: 8),
+            FilledButton.tonal(
+              onPressed: actionLoading ? null : onStartHold,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                foregroundColor: const Color(0xFFFCA5A5),
+              ),
+              child: actionLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Hold Başlat', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _SiegeInfoStrip extends StatelessWidget {
-  const _SiegeInfoStrip({required this.status, required this.config});
+  const _SiegeInfoStrip({required this.status, required this.config, this.session});
 
   final DungeonSiegeStatus status;
   final DungeonSiegeConfig config;
+  final DungeonSiegeSession? session;
 
   @override
   Widget build(BuildContext context) {
