@@ -5,8 +5,8 @@ import 'package:gkk_flutter/qa/smoke_route_registry.dart';
 void main() {
   group('Smoke quick menu labels', () {
     test('menu label count matches registry navigable routes + logout', () {
-      expect(SmokeMenuLabels.all.length, 27);
-      expect(SmokeRouteRegistry.quickMenuRouteCount, 26);
+      expect(SmokeMenuLabels.all.length, 29);
+      expect(SmokeRouteRegistry.quickMenuRouteCount, 29);
     });
 
     test('every navigable menu label exists in route registry', () {

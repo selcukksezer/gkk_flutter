@@ -47,7 +47,17 @@ class SmokeRouteRegistry {
     SmokeRouteEntry(
       label: 'İtibar',
       path: '/reputation',
-      keyRpcs: <String>['get_reputation'],
+      keyRpcs: <String>['get_reputation_overview', 'get_reputation_shop', 'purchase_reputation_item'],
+    ),
+    SmokeRouteEntry(
+      label: 'Arkadaşlar',
+      path: '/friends',
+      keyRpcs: <String>['get_friends', 'send_friend_request'],
+    ),
+    SmokeRouteEntry(
+      label: 'Bildirimler',
+      path: '/notifications',
+      keyRpcs: <String>['get_notifications', 'mark_notifications_read'],
     ),
     SmokeRouteEntry(
       label: 'Savaş Geçidi',

@@ -32,6 +32,8 @@ void main() {
         AppRoutes.chat,
         AppRoutes.settings,
         AppRoutes.horseRace,
+        AppRoutes.friends,
+        AppRoutes.notifications,
       ];
 
       final Set<String> covered = SmokeRouteRegistry.quickMenuRoutes
@@ -43,7 +45,7 @@ void main() {
         expect(covered, contains(path), reason: 'Missing quick menu route: $path');
       }
 
-      expect(SmokeRouteRegistry.quickMenuRouteCount, 26);
+      expect(SmokeRouteRegistry.quickMenuRouteCount, 29);
     });
 
     test('includes mandatory sub-screens', () {
