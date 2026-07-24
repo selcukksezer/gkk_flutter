@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/common/gkk_tab_bar.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import '../../components/common/inline_error_retry.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/utils/captcha_guard.dart';
@@ -13,6 +15,7 @@ import '../../models/mekan_model.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/mekan_arena_bet_sheet.dart';
 import 'widgets/mekan_arena_fighter_card.dart';
@@ -145,7 +148,16 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
       final int net = (res['net_win'] as num?)?.toInt() ?? 0;
       final int repDelta = (res['rep_change'] as num?)?.toInt() ?? 0;
       final bool hospital = res['hospitalized'] == true;
-      await _showResult(won: won, net: net, hospital: hospital, opp: opp, repDelta: repDelta);
+      final int nemesisGold = (res['nemesis_revenge_gold'] as num?)?.toInt() ?? 0;
+      final bool nemesisGranted = res['nemesis_revenge_granted'] == true;
+      await _showResult(
+        won: won,
+        net: net,
+        hospital: hospital,
+        opp: opp,
+        repDelta: repDelta,
+        nemesisRevengeGold: nemesisGranted ? nemesisGold : 0,
+      );
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -169,6 +181,7 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
     required bool hospital,
     required ArenaOpponent opp,
     int repDelta = 0,
+    int nemesisRevengeGold = 0,
   }) async {
     final Color c = won ? MekanPalette.neon : MekanPalette.ruby;
     await showDialog<void>(
@@ -213,6 +226,14 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
                   'Bahsi kaybettin',
                   style: TextStyle(fontSize: 14, color: MekanPalette.textMid, fontWeight: FontWeight.w700),
                 ),
+              if (won && nemesisRevengeGold > 0) ...<Widget>[
+                const SizedBox(height: 10),
+                GlowChip(
+                  icon: Icons.sports_mma_rounded,
+                  label: 'Nemesis intikam bonusu: +$nemesisRevengeGold g',
+                  color: AppColors.liquidGold,
+                ),
+              ],
               if (repDelta != 0) ...<Widget>[
                 const SizedBox(height: 10),
                 ReputationGainBanner(
@@ -287,34 +308,50 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
                   : Column(
                       children: <Widget>[
                         _arenaHeader(energy),
-                        Material(
-                          color: MekanPalette.void_.withValues(alpha: 0.6),
-                          child: TabBar(
-                            controller: _tab,
-                            indicator: BoxDecoration(
-                              color: MekanPalette.ruby.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: MekanPalette.ruby.withValues(alpha: 0.5),
+                        GkkTabBar(
+                          controller: _tab,
+                          isScrollable: false,
+                          padding: EdgeInsets.zero,
+                          margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                          tabs: <Widget>[
+                            GkkTabBar.labeledTab(
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(Icons.sports_mma_rounded, size: 16),
+                                  SizedBox(width: 6),
+                                  Text('Dövüş'),
+                                ],
                               ),
                             ),
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            dividerColor: Colors.transparent,
-                            labelColor: MekanPalette.ruby,
-                            unselectedLabelColor: MekanPalette.textLow,
-                            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
-                            tabs: const <Tab>[
-                              Tab(text: 'Dövüş', icon: Icon(Icons.sports_mma_rounded, size: 18)),
-                              Tab(text: 'Sıralama', icon: Icon(Icons.leaderboard_rounded, size: 18)),
-                            ],
-                          ),
+                            GkkTabBar.labeledTab(
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(Icons.leaderboard_rounded, size: 16),
+                                  SizedBox(width: 6),
+                                  Text('Sıralama'),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         Expanded(
                           child: TabBarView(
                             controller: _tab,
                             children: <Widget>[
-                              _fightTab(energy),
-                              _rankingTab(),
+                              GkkTabPageShell(
+                                tabIndex: 0,
+                                sectionTitle: 'Arena Dövüşleri',
+                                sectionAccent: MekanPalette.ruby,
+                                child: _fightTab(energy),
+                              ),
+                              GkkTabPageShell(
+                                tabIndex: 1,
+                                sectionTitle: 'Arena Sıralaması',
+                                sectionAccent: MekanPalette.gold,
+                                child: _rankingTab(),
+                              ),
                             ],
                           ),
                         ),

@@ -22,9 +22,20 @@ class SmokeRouteRegistry {
   const SmokeRouteRegistry._();
 
   static const List<SmokeRouteEntry> quickMenuRoutes = <SmokeRouteEntry>[
-    SmokeRouteEntry(label: 'Ana Sayfa', path: '/home', keyRpcs: <String>['loadProfile']),
+    SmokeRouteEntry(label: 'Ana Sayfa', path: '/home', keyRpcs: <String>['loadProfile', 'get_comeback_summary', 'get_retention_promos']),
     SmokeRouteEntry(label: 'Envanter', path: '/inventory', group: 'quick_menu', keyRpcs: <String>['get_inventory']),
     SmokeRouteEntry(label: 'Karakter', path: '/character', keyRpcs: <String>['claim_alchemist_detox']),
+    SmokeRouteEntry(
+      label: 'Kodex',
+      path: '/character/codex',
+      sampleSubPaths: <String>['/character/codex?claim=1'],
+      keyRpcs: <String>[
+        'get_codex_dashboard',
+        'get_codex_entries',
+        'get_retention_promos',
+        'claim_all_codex_milestones',
+      ],
+    ),
     SmokeRouteEntry(label: 'Zindan', path: '/dungeon', keyRpcs: <String>['get_dungeons', 'attack_dungeon', 'get_dungeon_siege_status']),
     SmokeRouteEntry(
       label: 'Kuşatma Merkezi',
@@ -35,10 +46,12 @@ class SmokeRouteRegistry {
     SmokeRouteEntry(
       label: 'PvP',
       path: '/pvp',
-      sampleSubPaths: <String>['/pvp/history', '/pvp/tournament'],
+      sampleSubPaths: <String>['/pvp/history', '/pvp/tournament', '/pvp?revenge='],
       keyRpcs: <String>[
         'get_pvp_dashboard',
         'get_pvp_history',
+        'get_nemesis_rival',
+        'get_retention_promos',
         'get_tournament_bracket',
         'join_pvp_tournament',
       ],
@@ -96,7 +109,16 @@ class SmokeRouteRegistry {
       keyRpcs: <String>['get_horse_race_state', 'place_horse_race_bet', 'qa_smoke_horse_race_fairness'],
     ),
     SmokeRouteEntry(label: 'Pazar', path: '/market', keyRpcs: <String>['loadTickers', 'loadMyOrders']),
-    SmokeRouteEntry(label: 'Mağaza', path: '/shop'),
+    SmokeRouteEntry(
+      label: 'Mağaza',
+      path: '/shop',
+      sampleSubPaths: <String>['/shop?tab=night'],
+      keyRpcs: <String>[
+        'get_night_market_status',
+        'buy_night_market_item',
+        'get_retention_promos',
+      ],
+    ),
     SmokeRouteEntry(label: 'Banka', path: '/bank'),
     SmokeRouteEntry(
       label: 'Ticaret',

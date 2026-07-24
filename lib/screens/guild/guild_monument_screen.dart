@@ -18,6 +18,7 @@ import '../../utils/logout_helper.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'widgets/guild_monument_hero_card.dart';
 import 'widgets/guild_monument_ui.dart';
+import 'widgets/monument_donate_amount_dialog.dart';
 
 class GuildMonumentScreen extends ConsumerStatefulWidget {
   const GuildMonumentScreen({super.key});
@@ -40,11 +41,20 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
     }
   }
 
-  Future<void> _quickDonate(MonumentResourceKind kind) async {
-    final int amount =
-        ref.read(guildMonumentProvider).dashboard?.myStats.maxDonatable(kind) ?? 0;
+  Future<void> _donateResource(MonumentResourceKind kind) async {
+    final MonumentDashboard? dashboard = ref.read(guildMonumentProvider).dashboard;
+    if (dashboard == null) return;
+
+    final int? amount = await MonumentDonateAmountDialog.show(
+      context,
+      kind: kind,
+      stats: dashboard.myStats,
+      accent: _kindAccent(kind),
+    );
+    if (!mounted || amount == null || amount <= 0) return;
+
     final MonumentDonateResult? result =
-        await ref.read(guildMonumentProvider.notifier).quickDonate(kind);
+        await ref.read(guildMonumentProvider.notifier).donateKind(kind: kind, amount: amount);
     if (!mounted) return;
 
     if (result != null) {
@@ -200,9 +210,9 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                             kind: MonumentResourceKind.values[i],
                                             stats: dashboard.myStats,
                                             accent: _kindAccent(MonumentResourceKind.values[i]),
-                                            onDonateMax: monumentState.donatingKind != null
+                                            onDonate: monumentState.donatingKind != null
                                                 ? null
-                                                : () => _quickDonate(MonumentResourceKind.values[i]),
+                                                : () => _donateResource(MonumentResourceKind.values[i]),
                                           ),
                                         ],
                                         if (monumentState.donatingKind != null)

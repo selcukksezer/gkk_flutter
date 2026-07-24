@@ -50,8 +50,13 @@ class _GuildMonumentDonateScreenState extends ConsumerState<GuildMonumentDonateS
     final MonumentDashboard? dashboard = ref.read(guildMonumentProvider).dashboard;
     if (dashboard == null) return;
 
-    final int requested = amount ??
-        (int.tryParse(_controllers[kind]!.text.trim()) ?? dashboard.myStats.maxDonatable(kind));
+    final int? parsed = int.tryParse(_controllers[kind]!.text.trim());
+    final int requested = amount ?? parsed ?? 0;
+
+    if (requested <= 0) {
+      AppMessenger.show(context, 'Bağış miktarı gir');
+      return;
+    }
 
     final int capped = monumentDonateCap(
       owned: dashboard.myStats.owned(kind),

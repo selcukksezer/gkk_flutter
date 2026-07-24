@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'dungeon_siege_model.dart';
 import 'reputation_model.dart';
+import 'codex_model.dart';
 
 class DungeonPlayerStats {
   const DungeonPlayerStats({
@@ -433,6 +434,7 @@ class DungeonResult {
     this.siegeBonus,
     this.reputationBuffs = const <ReputationActiveBuff>[],
     this.tutorialWrapperLootCount = 0,
+    this.codexNew = const <CodexDiscovery>[],
   });
 
   final bool success;
@@ -453,6 +455,7 @@ class DungeonResult {
   final DungeonSiegeRunBonus? siegeBonus;
   final List<ReputationActiveBuff> reputationBuffs;
   final int tutorialWrapperLootCount;
+  final List<CodexDiscovery> codexNew;
 
   factory DungeonResult.fromJson(Map<String, dynamic> json) {
     final dynamic itemsRaw = json['items'] ?? json['items_dropped'] ?? json['item_details'];
@@ -494,6 +497,11 @@ class DungeonResult {
         .map((Map e) => ReputationActiveBuff.fromJson(Map<String, dynamic>.from(e)))
         .toList();
 
+    final List<CodexDiscovery> codexNew = (json['codex_new'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map>()
+        .map((Map e) => CodexDiscovery.fromJson(Map<String, dynamic>.from(e)))
+        .toList(growable: false);
+
     return DungeonResult(
       success: (json['success'] as bool?) ?? false,
       error: json['error'] as String?,
@@ -523,6 +531,7 @@ class DungeonResult {
           : null,
       reputationBuffs: repBuffs,
       tutorialWrapperLootCount: _asInt(json['tutorial_wrapper_loot_count']),
+      codexNew: codexNew,
     );
   }
 

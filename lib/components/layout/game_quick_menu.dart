@@ -310,6 +310,7 @@ class _MenuProfileStrip extends StatelessWidget {
             avatarUrl: profile?.avatarUrl,
             backgroundColor: _QuickMenuTheme.gold.withValues(alpha: 0.2),
             glowFrame: profile?.avatarFrame == 'glow',
+            codexFrame: profile?.avatarFrame == 'codex',
           ),
           const SizedBox(width: 12),
           Expanded(

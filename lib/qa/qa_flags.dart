@@ -10,6 +10,12 @@ abstract final class QaFlags {
     return _isTruthy(value);
   }
 
+  /// When true, [HomeScreen] does not auto-open the comeback summary dialog.
+  static bool get skipComebackSummaryDialog {
+    const String value = String.fromEnvironment('QA_SKIP_COMEBACK_SUMMARY');
+    return _isTruthy(value);
+  }
+
   /// When true, tutorial overlays are suppressed.
   static bool get skipTutorial {
     const String value = String.fromEnvironment('QA_SKIP_TUTORIAL');
@@ -45,6 +51,13 @@ abstract final class QaFlags {
   /// Release/profile builds ignore this unless explicitly set.
   static bool get allowMockAds {
     const String value = String.fromEnvironment('QA_ALLOW_MOCK_ADS');
+    return _isTruthy(value);
+  }
+
+  /// Night market smoke: call RPC `qa_force_night_market(true)` once per test run.
+  /// Server-side bypass lives in `_night_market_window` (`night_market_schedule.qa_force_open`).
+  static bool get forceNightMarketOpen {
+    const String value = String.fromEnvironment('QA_FORCE_NIGHT_MARKET');
     return _isTruthy(value);
   }
 }

@@ -1,23 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../components/layout/game_screen_background.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../models/retention_promos_model.dart';
+import '../../../providers/retention_promos_provider.dart';
 import '../../../routing/app_router.dart';
 import '../../../theme/app_colors.dart';
 
-/// Home promo carousel — loot slide pixel-faithful to original `_CratePromoBanner`.
-///
-/// Source: `git show 6210515:lib/screens/home/home_screen.dart` (`_CratePromoBanner`).
-/// Crate art MUST overflow the card (`Positioned` negative insets + `Clip.none`).
-class HomePromoCarousel extends StatefulWidget {
+/// Home promo carousel — hepsi kasa chrome. Yeni sistemler (Gece / Kodex / Nemesis) sabit.
+class HomePromoCarousel extends ConsumerStatefulWidget {
   const HomePromoCarousel({super.key});
 
   @override
-  State<HomePromoCarousel> createState() => _HomePromoCarouselState();
+  ConsumerState<HomePromoCarousel> createState() => _HomePromoCarouselState();
 }
 
 class _HomePromoSlide {
@@ -29,7 +28,7 @@ class _HomePromoSlide {
     required this.route,
     required this.artAsset,
     this.showTimer = false,
-    this.overflowArt = false,
+    this.timerSeconds = 0,
     this.ctaIcon = Icons.diamond,
     this.ctaIconColor = Colors.cyanAccent,
     this.radialInner = const Color(0xFF8B0000),
@@ -37,6 +36,7 @@ class _HomePromoSlide {
     this.borderColor,
     this.ctaGradient = const <Color>[Color(0xFFE50000), Color(0xFF990000)],
     this.ctaBorderColor = const Color(0xFFFF3333),
+    this.showDismiss = false,
   });
 
   final String id;
@@ -46,8 +46,7 @@ class _HomePromoSlide {
   final String route;
   final String artAsset;
   final bool showTimer;
-  /// Loot only: intentional large overflow. Other slides keep art contained.
-  final bool overflowArt;
+  final int timerSeconds;
   final IconData ctaIcon;
   final Color ctaIconColor;
   final Color radialInner;
@@ -55,6 +54,7 @@ class _HomePromoSlide {
   final Color? borderColor;
   final List<Color> ctaGradient;
   final Color ctaBorderColor;
+  final bool showDismiss;
 }
 
 class _FeaturedLootBox {
@@ -80,36 +80,191 @@ class _FeaturedLootBox {
   }
 }
 
-class _HomePromoCarouselState extends State<HomePromoCarousel> {
+class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
   late final PageController _pageController;
   int _page = 0;
   _FeaturedLootBox? _featuredBox;
   Timer? _autoTimer;
+  Timer? _countdownTimer;
   bool _userInteracting = false;
+  bool _dismissingNemesis = false;
+  int _nightMarketBaseSeconds = 0;
+  DateTime? _nightMarketSyncedAt;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(retentionPromosProvider.notifier).load(silent: true);
       _loadFeaturedBox();
       _startAutoAdvance();
+      _startCountdownTick();
     });
   }
 
   @override
   void dispose() {
     _autoTimer?.cancel();
+    _countdownTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
+  void _syncNightMarketClock(RetentionPromos promos) {
+    if (!promos.nightMarket.active) {
+      _nightMarketSyncedAt = null;
+      return;
+    }
+    final int serverSecs = promos.nightMarket.secondsLeft;
+    if (_nightMarketSyncedAt == null) {
+      _nightMarketBaseSeconds = serverSecs;
+      _nightMarketSyncedAt = DateTime.now();
+      return;
+    }
+    final int elapsed = DateTime.now().difference(_nightMarketSyncedAt!).inSeconds;
+    final int localSecs = (_nightMarketBaseSeconds - elapsed).clamp(0, 999999);
+    if ((localSecs - serverSecs).abs() > 3) {
+      _nightMarketBaseSeconds = serverSecs;
+      _nightMarketSyncedAt = DateTime.now();
+    }
+  }
+
+  int _liveNightMarketSeconds(RetentionPromos promos) {
+    if (!promos.nightMarket.active) return 0;
+    _syncNightMarketClock(promos);
+    if (_nightMarketSyncedAt == null) return promos.nightMarket.secondsLeft;
+    final int elapsed = DateTime.now().difference(_nightMarketSyncedAt!).inSeconds;
+    return (_nightMarketBaseSeconds - elapsed).clamp(0, 999999);
+  }
+
+  Future<void> _dismissNemesisBanner() async {
+    if (_dismissingNemesis) return;
+    setState(() => _dismissingNemesis = true);
+    try {
+      await SupabaseService.client.rpc('dismiss_nemesis_banner');
+      await ref.read(retentionPromosProvider.notifier).load(silent: true);
+    } catch (_) {
+      // Sessiz.
+    } finally {
+      if (mounted) setState(() => _dismissingNemesis = false);
+    }
+  }
+
+  void _startCountdownTick() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final RetentionPromos promos = ref.read(retentionPromosProvider).promos;
+      _syncNightMarketClock(promos);
+      if (promos.nightMarket.active) {
+        setState(() {});
+      }
+    });
+  }
+
+  /// Yeni sistemler — her zaman carousel'de (kasa chrome).
+  List<_HomePromoSlide> _newSystemSlides(RetentionPromos promos) {
+    final bool nightOpen = promos.nightMarket.active;
+    final int nightSecs = _liveNightMarketSeconds(promos);
+    final bool claimable = promos.codex.claimableMilestones > 0;
+    final bool hasRival = promos.nemesis.hasRival && !promos.nemesis.dismissed;
+    final String rival = promos.nemesis.rivalUsername ?? 'Rakip';
+    final String revengeRoute = promos.nemesis.rivalId != null
+        ? '${AppRoutes.pvp}?revenge=${promos.nemesis.rivalId}'
+        : AppRoutes.pvp;
+
+    return <_HomePromoSlide>[
+      _HomePromoSlide(
+        id: 'night_market',
+        title: 'GECE PAZARI',
+        subtitle: nightOpen
+            ? 'Günlük gem teklifleri.\nSınırlı stok — kaçırma.'
+            : 'Her gün 20:00–22:00 TR.\nGem fırsatları seni bekliyor.',
+        ctaLabel: nightOpen ? 'Pazara Git' : 'Mağazaya Git',
+        route: '${AppRoutes.shop}?tab=night',
+        artAsset: 'assets/menuitems/magaza.png',
+        showTimer: nightOpen && nightSecs > 0,
+        timerSeconds: nightSecs,
+        ctaIcon: Icons.nights_stay_rounded,
+        ctaIconColor: AppColors.warningSolar,
+        radialInner: const Color(0xFF6B1A4A),
+        radialOuter: const Color(0xFF12040C),
+        borderColor: AppColors.cyberFuchsia.withValues(alpha: 0.45),
+        ctaGradient: const <Color>[
+          Color(0xFFFFB800),
+          Color(0xFFE08A00),
+        ],
+        ctaBorderColor: AppColors.liquidGold,
+      ),
+      _HomePromoSlide(
+        id: 'codex',
+        title: 'KODEX',
+        subtitle: claimable
+            ? '${promos.codex.claimableMilestones} ödül bekliyor.\nKoleksiyonunu tamamla.'
+            : promos.codex.newEntries24h > 0
+                ? '${promos.codex.newEntries24h} yeni keşif.\nKodex\'ine göz at.'
+                : '${promos.codex.discovered}/${promos.codex.total} keşif.\nBoss, eşya, zindan topla.',
+        ctaLabel: claimable ? 'Ödülleri Al' : 'Kodex\'i Aç',
+        route: claimable ? '${AppRoutes.codex}?claim=1' : AppRoutes.codex,
+        artAsset: 'assets/menuitems/karakter.png',
+        ctaIcon: Icons.menu_book_rounded,
+        ctaIconColor: AppColors.liquidGold,
+        radialInner: const Color(0xFF6B5200),
+        radialOuter: const Color(0xFF120E00),
+        borderColor: AppColors.liquidGold.withValues(alpha: 0.4),
+        ctaGradient: const <Color>[
+          Color(0xFFFFD64A),
+          Color(0xFFFFB800),
+          Color(0xFFE08A00),
+        ],
+        ctaBorderColor: AppColors.liquidGold,
+      ),
+      if (hasRival)
+        _HomePromoSlide(
+          id: 'nemesis',
+          title: 'NEMESIS',
+          subtitle: '$rival — ${promos.nemesis.losses} yenilgi.\nİntikam zamanı.',
+          ctaLabel: 'Düello Gönder',
+          route: revengeRoute,
+          artAsset: 'assets/menuitems/pvp.png',
+          ctaIcon: Icons.sports_mma_rounded,
+          ctaIconColor: Colors.white,
+          radialInner: const Color(0xFF8B0000),
+          radialOuter: const Color(0xFF1A0000),
+          borderColor: AppColors.mysticRuby.withValues(alpha: 0.45),
+          ctaGradient: const <Color>[
+            Color(0xFFE52E2E),
+            Color(0xFF8B0000),
+          ],
+          ctaBorderColor: AppColors.mysticRuby,
+          showDismiss: true,
+        )
+      else
+        const _HomePromoSlide(
+          id: 'nemesis',
+          title: 'NEMESIS',
+          subtitle: 'PvP rakibin peşinde.\nİntikam + bonus altın.',
+          ctaLabel: 'Arenaya Gir',
+          route: AppRoutes.pvp,
+          artAsset: 'assets/menuitems/pvp.png',
+          ctaIcon: Icons.sports_mma_rounded,
+          ctaIconColor: Colors.white70,
+          radialInner: Color(0xFF5A1010),
+          radialOuter: Color(0xFF120404),
+          borderColor: Color(0x73E52E2E),
+          ctaGradient: <Color>[Color(0xFFE52E2E), Color(0xFF8B0000)],
+          ctaBorderColor: AppColors.mysticRuby,
+        ),
+    ];
+  }
+
   List<_HomePromoSlide> get _slides {
+    final RetentionPromos promos = ref.watch(retentionPromosProvider).promos;
     final _FeaturedLootBox? box = _featuredBox;
     final String lootCta = box == null ? '500 ile Aç' : _lootPriceLabel(box);
 
-    return <_HomePromoSlide>[
-      // LOOT — exact original `_CratePromoBanner` chrome + redcase overflow art.
+    final List<_HomePromoSlide> classic = <_HomePromoSlide>[
       _HomePromoSlide(
         id: 'loot',
         title: 'KASA AÇ',
@@ -117,8 +272,6 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
         ctaLabel: lootCta,
         route: AppRoutes.loot,
         artAsset: 'assets/elements/redcase512px.png',
-        showTimer: false,
-        overflowArt: true,
         ctaIcon: Icons.diamond,
         ctaIconColor: Colors.cyanAccent,
       ),
@@ -131,11 +284,11 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
         artAsset: 'assets/menuitems/zindan.png',
         ctaIcon: Icons.shield_moon_outlined,
         ctaIconColor: Colors.white70,
-        radialInner: AppColors.accentPurpleDim,
-        radialOuter: Color(0xFF0D0618),
-        borderColor: AppColors.accentPurpleGlow,
-        ctaGradient: <Color>[AppColors.accentPurple, AppColors.accentPurpleDim],
-        ctaBorderColor: AppColors.accentPurple,
+        radialInner: Color(0xFF6B1A4A),
+        radialOuter: Color(0xFF12040C),
+        borderColor: Color(0x73E01E5A),
+        ctaGradient: <Color>[AppColors.cyberFuchsia, Color(0xFF9A1040)],
+        ctaBorderColor: AppColors.cyberFuchsia,
       ),
       const _HomePromoSlide(
         id: 'horse',
@@ -159,13 +312,17 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
         ctaLabel: 'Geçidi Aç',
         route: AppRoutes.season,
         artAsset: 'assets/menuitems/battlepass.png',
-        ctaIcon: Icons.ac_unit_rounded,
-        ctaIconColor: Colors.white70,
-        radialInner: Color(0xFF0D47A1),
-        radialOuter: Color(0xFF020B1A),
-        borderColor: Color(0x4D2196F3),
-        ctaGradient: <Color>[Color(0xFF1E88E5), Color(0xFF0D47A1)],
-        ctaBorderColor: Color(0xFF64B5F6),
+        ctaIcon: Icons.military_tech_rounded,
+        ctaIconColor: AppColors.liquidGold,
+        radialInner: Color(0xFF6B5200),
+        radialOuter: Color(0xFF120E00),
+        borderColor: Color(0x66FFB800),
+        ctaGradient: <Color>[
+          Color(0xFFFFD64A),
+          AppColors.liquidGold,
+          Color(0xFFE08A00),
+        ],
+        ctaBorderColor: AppColors.liquidGold,
       ),
       const _HomePromoSlide(
         id: 'enhance',
@@ -197,6 +354,12 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
         ctaGradient: <Color>[Color(0xFFE53935), Color(0xFFB71C1C)],
         ctaBorderColor: Color(0xFFEF9A9A),
       ),
+    ];
+
+    // Yeni sistemler önde → kasa → klasik.
+    return <_HomePromoSlide>[
+      ..._newSystemSlides(promos),
+      ...classic,
     ];
   }
 
@@ -248,14 +411,11 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
   Widget build(BuildContext context) {
     final List<_HomePromoSlide> slides = _slides;
 
-    // Match original: LayoutBuilder width (ListView content) → compact.
-    // Margin horizontal 16 like original `_CratePromoBanner`.
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool compact = constraints.maxWidth < 390;
         final double bannerHeight = compact ? 190 : 200;
 
-        // Original margin: horizontal 16. Overflow paints past card (Clip.none).
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
@@ -269,7 +429,6 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
                   onPointerCancel: (_) => _onPointerUp(),
                   child: PageView.builder(
                     controller: _pageController,
-                    // CRITICAL: default Clip.hardEdge killed crate overflow.
                     clipBehavior: Clip.none,
                     itemCount: slides.length,
                     onPageChanged: (int index) {
@@ -281,6 +440,10 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
                         compact: compact,
                         bannerHeight: bannerHeight,
                         onTap: () => context.push(slides[index].route),
+                        onDismiss: slides[index].showDismiss
+                            ? _dismissNemesisBanner
+                            : null,
+                        dismissLoading: _dismissingNemesis,
                       );
                     },
                   ),
@@ -296,36 +459,40 @@ class _HomePromoCarouselState extends State<HomePromoCarousel> {
   }
 }
 
-/// Pixel-faithful shell from original `_CratePromoBanner` (6210515).
+/// Kasa chrome — tüm slide'lar aynı shell (overflow art + grid + radial).
 class _CrateBannerShell extends StatelessWidget {
   const _CrateBannerShell({
     required this.slide,
     required this.compact,
     required this.bannerHeight,
     required this.onTap,
+    this.onDismiss,
+    this.dismissLoading = false,
   });
 
   final _HomePromoSlide slide;
   final bool compact;
   final double bannerHeight;
   final VoidCallback onTap;
+  final VoidCallback? onDismiss;
+  final bool dismissLoading;
 
   @override
   Widget build(BuildContext context) {
-    // Loot: intentional large overflow. Other slides: contained ~40% right rail.
-    final bool overflow = slide.overflowArt;
-    final double imageWidth = overflow
+    // Kasa: büyük overflow. Diğerleri: daha küçük contained art.
+    final bool isLoot = slide.id == 'loot';
+    final double imageWidth = isLoot
         ? (compact ? 240.0 : 280.0)
         : (compact ? 118.0 : 132.0);
-    final double imageRight = overflow
+    final double imageRight = isLoot
         ? (compact ? -34.0 : -50.0)
         : (compact ? 8.0 : 12.0);
-    final double imageTopBottom = overflow
+    final double imageTopBottom = isLoot
         ? (compact ? -36.0 : -50.0)
-        : (compact ? 18.0 : 22.0);
-    final double contentRight = overflow
+        : (compact ? 22.0 : 26.0);
+    final double contentRight = isLoot
         ? (compact ? 148.0 : 180.0)
-        : (compact ? 132.0 : 150.0);
+        : (compact ? 128.0 : 146.0);
     final Color borderColor =
         slide.borderColor ?? Colors.red.withValues(alpha: 0.3);
 
@@ -338,7 +505,6 @@ class _CrateBannerShell extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: <Widget>[
-            // Background layer — original red radial + grid (loot); accents vary.
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -348,26 +514,14 @@ class _CrateBannerShell extends StatelessWidget {
                     radius: 1.5,
                     colors: <Color>[slide.radialInner, slide.radialOuter],
                   ),
-                  border: Border.all(
-                    color: borderColor,
-                    width: 1,
-                  ),
+                  border: Border.all(color: borderColor, width: 1),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: overflow
-                      ? const CustomPaint(painter: _GridPainter())
-                      : const CustomPaint(
-                          painter: DotGridPainter(
-                            spacing: 18,
-                            dotRadius: 0.9,
-                            dotOpacity: 0.07,
-                          ),
-                        ),
+                  child: const CustomPaint(painter: _GridPainter()),
                 ),
               ),
             ),
-            // Image — loot overflows; other slides stay inside the card.
             Positioned(
               right: imageRight,
               top: imageTopBottom,
@@ -376,20 +530,42 @@ class _CrateBannerShell extends StatelessWidget {
               child: Image.asset(
                 slide.artAsset,
                 fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => overflow
-                    ? Image.asset(
-                        'assets/elements/redcase512px.png',
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => const SizedBox(),
-                      )
-                    : Icon(
-                        slide.ctaIcon,
-                        size: compact ? 56 : 64,
-                        color: Colors.white.withValues(alpha: 0.35),
-                      ),
+                errorBuilder: (_, _, _) => Icon(
+                  slide.ctaIcon,
+                  size: compact ? 72 : 88,
+                  color: Colors.white.withValues(alpha: 0.35),
+                ),
               ),
             ),
-            // Left Content
+            if (onDismiss != null)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Material(
+                  color: AppColors.carbonVoid.withValues(alpha: 0.55),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    onPressed: dismissLoading ? null : onDismiss,
+                    tooltip: '24 saat gizle',
+                    iconSize: 18,
+                    padding: const EdgeInsets.all(6),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    icon: dismissLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            Icons.close_rounded,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                  ),
+                ),
+              ),
             Positioned(
               left: 20,
               top: compact ? 18 : 24,
@@ -415,6 +591,31 @@ class _CrateBannerShell extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: compact ? 6 : 8),
+                  if (slide.showTimer && slide.timerSeconds > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.carbonVoid.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(
+                            color: AppColors.warningSolar.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Text(
+                          _formatTimer(slide.timerSeconds),
+                          style: GoogleFonts.urbanist(
+                            fontSize: compact ? 11 : 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.warningSolar,
+                          ),
+                        ),
+                      ),
+                    ),
                   Text(
                     slide.subtitle,
                     style: GoogleFonts.urbanist(
@@ -450,7 +651,6 @@ class _CrateBannerShell extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.3),
                           offset: const Offset(0, 1),
                           blurRadius: 0,
-                          spreadRadius: 0,
                         ),
                       ],
                       border: Border.all(
@@ -527,7 +727,6 @@ class _PageDots extends StatelessWidget {
   }
 }
 
-/// Original grid texture from `_CratePromoBanner`.
 class _GridPainter extends CustomPainter {
   const _GridPainter();
 
@@ -547,6 +746,15 @@ class _GridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+String _formatTimer(int seconds) {
+  final int h = seconds ~/ 3600;
+  final int m = (seconds % 3600) ~/ 60;
+  final int s = seconds % 60;
+  if (h > 0) return '${h}s ${m}dk ${s}sn';
+  if (m > 0) return '${m}dk ${s}sn';
+  return '${s}sn';
 }
 
 List<Map<String, dynamic>> _lootRowsFromRpc(dynamic raw) {

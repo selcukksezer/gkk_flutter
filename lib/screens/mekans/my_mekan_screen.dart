@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/common/gkk_tab_bar.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../models/mekan_model.dart';
@@ -121,40 +123,61 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
               : Column(
                   children: <Widget>[
                     _vaultHeader(mekan, accent),
-                    Material(
-                      color: MekanPalette.void_.withValues(alpha: 0.6),
-                      child: TabBar(
-                        controller: _tab,
-                        isScrollable: true,
-                        tabAlignment: TabAlignment.start,
-                        indicator: BoxDecoration(
-                          color: accent.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.5),
+                    GkkTabBar(
+                      controller: _tab,
+                      padding: EdgeInsets.zero,
+                      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                      tabs: <Widget>[
+                        GkkTabBar.labeledTab(
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(Icons.dashboard_rounded, size: 16),
+                              SizedBox(width: 6),
+                              Text('Genel'),
+                            ],
                           ),
                         ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        labelColor: accent,
-                        unselectedLabelColor: MekanPalette.textLow,
-                        labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
-                        tabs: const <Tab>[
-                          Tab(text: 'Genel', icon: Icon(Icons.dashboard_rounded, size: 18)),
-                          Tab(text: 'Stok', icon: Icon(Icons.inventory_2_rounded, size: 18)),
-                          Tab(text: 'Istatistik', icon: Icon(Icons.insights_rounded, size: 18)),
-                          Tab(text: 'Yukseltme', icon: Icon(Icons.upgrade_rounded, size: 18)),
-                        ],
-                      ),
+                        GkkTabBar.labeledTab(
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(Icons.inventory_2_rounded, size: 16),
+                              SizedBox(width: 6),
+                              Text('Stok'),
+                            ],
+                          ),
+                        ),
+                        GkkTabBar.labeledTab(
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(Icons.insights_rounded, size: 16),
+                              SizedBox(width: 6),
+                              Text('Istatistik'),
+                            ],
+                          ),
+                        ),
+                        GkkTabBar.labeledTab(
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(Icons.upgrade_rounded, size: 16),
+                              SizedBox(width: 6),
+                              Text('Yukseltme'),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     Expanded(
                       child: TabBarView(
                         controller: _tab,
                         children: <Widget>[
-                          _overviewTab(mekan, accent),
-                          _stockTab(mekan, accent),
-                          _statsTab(mekan, accent),
-                          _upgradeTab(mekan, accent),
+                          GkkTabPageShell(tabIndex: 0, sectionTitle: 'Mekan Özeti', child: _overviewTab(mekan, accent)),
+                          GkkTabPageShell(tabIndex: 1, sectionTitle: 'Stok Yönetimi', child: _stockTab(mekan, accent)),
+                          GkkTabPageShell(tabIndex: 2, sectionTitle: 'İstatistikler', child: _statsTab(mekan, accent)),
+                          GkkTabPageShell(tabIndex: 3, sectionTitle: 'Yükseltmeler', child: _upgradeTab(mekan, accent)),
                         ],
                       ),
                     ),

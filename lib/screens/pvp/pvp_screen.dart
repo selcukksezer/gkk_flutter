@@ -1,19 +1,29 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
+import '../../core/services/retention_analytics.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/pvp_provider.dart';
+import '../../models/nemesis_model.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import 'widgets/nemesis_rival_panel.dart';
 
 class OnlinePlayer {
   const OnlinePlayer({
@@ -51,7 +61,9 @@ class OnlinePlayer {
 }
 
 class PvpScreen extends ConsumerStatefulWidget {
-  const PvpScreen({super.key});
+  const PvpScreen({super.key, this.revengeTargetId});
+
+  final String? revengeTargetId;
 
   @override
   ConsumerState<PvpScreen> createState() => _PvpScreenState();
@@ -61,6 +73,9 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
   List<OnlinePlayer> _onlinePlayers = const <OnlinePlayer>[];
   bool _loadingOnline = false;
   String? _invitingId;
+  NemesisRival _nemesis = NemesisRival.none;
+  bool _dismissLoading = false;
+  bool _revengeHandled = false;
 
   @override
   void initState() {
@@ -70,6 +85,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       ref.read(pvpDashboardProvider.notifier).load();
     });
     _loadOnlinePlayers();
+    _loadNemesis();
   }
 
   @override
@@ -79,6 +95,75 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       ref.read(playerProvider.notifier).loadProfile();
       ref.read(pvpDashboardProvider.notifier).load();
     });
+  }
+
+  Future<void> _loadNemesis() async {
+    try {
+      final dynamic res = await SupabaseService.client.rpc('get_nemesis_rival');
+      if (!mounted || res is! Map) return;
+      setState(() => _nemesis = NemesisRival.fromJson(Map<String, dynamic>.from(res)));
+      _maybeOpenRevengeInvite();
+    } catch (_) {}
+  }
+
+  Future<void> _dismissNemesisBanner() async {
+    setState(() => _dismissLoading = true);
+    try {
+      await SupabaseService.client.rpc('dismiss_nemesis_banner');
+      await _loadNemesis();
+    } finally {
+      if (mounted) setState(() => _dismissLoading = false);
+    }
+  }
+
+  void _maybeOpenRevengeInvite() {
+    if (_revengeHandled) return;
+    final String? targetId = widget.revengeTargetId;
+    if (targetId == null || targetId.isEmpty) return;
+    _revengeHandled = true;
+
+    OnlinePlayer? target;
+    for (final OnlinePlayer p in _onlinePlayers) {
+      if (p.authId == targetId) {
+        target = p;
+        break;
+      }
+    }
+
+    target ??= OnlinePlayer(
+      authId: targetId,
+      username: _nemesis.rivalUsername ?? 'Rakip',
+      displayName: _nemesis.rivalUsername ?? 'Rakip',
+      avatarUrl: '',
+      level: _nemesis.level,
+      power: _nemesis.power,
+      pvpRating: _nemesis.pvpRating,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sendDuelInvite(target!);
+    });
+  }
+
+  Future<void> _sendRevengeInvite(String rivalId) async {
+    RetentionAnalytics.nemesisRevengeInvite(rivalId: rivalId);
+    OnlinePlayer? target;
+    for (final OnlinePlayer p in _onlinePlayers) {
+      if (p.authId == rivalId) {
+        target = p;
+        break;
+      }
+    }
+    target ??= OnlinePlayer(
+      authId: rivalId,
+      username: _nemesis.rivalUsername ?? 'Rakip',
+      displayName: _nemesis.rivalUsername ?? 'Rakip',
+      avatarUrl: '',
+      level: _nemesis.level,
+      power: _nemesis.power,
+      pvpRating: _nemesis.pvpRating,
+    );
+    await _sendDuelInvite(target);
   }
 
   Future<void> _loadOnlinePlayers() async {
@@ -97,6 +182,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
               .toList(growable: false);
         }
       });
+      _maybeOpenRevengeInvite();
     } catch (_) {
       if (mounted) setState(() => _loadingOnline = false);
     }
@@ -230,6 +316,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       ref.read(playerProvider.notifier).loadProfile(),
       ref.read(pvpDashboardProvider.notifier).load(),
       _loadOnlinePlayers(),
+      _loadNemesis(),
     ]);
   }
 
@@ -260,14 +347,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       appBar: GameTopBar(title: context.l10n.routePvp, onLogout: _doLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.pvp, onLogout: _doLogout),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF10131D), Color(0xFF171E2C), Color(0xFF10131D)],
-          ),
-        ),
+      body: GameScreenBackground(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
@@ -276,12 +356,31 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
               const EdgeInsets.fromLTRB(16, 16, 16, 24),
             ),
             children: <Widget>[
+              if (_nemesis.hasRival) ...<Widget>[
+                TutorialAnchorScope(
+                  id: TutorialAnchorId.pvpNemesisPanel,
+                  child: NemesisRivalPanel(
+                    rival: _nemesis,
+                    dismissLoading: _dismissLoading,
+                    onDismiss: _dismissNemesisBanner,
+                    onRevenge: (String rivalId) {
+                      unawaited(
+                        TutorialTriggers.onAnchorTap(
+                          ref,
+                          TutorialAnchorId.pvpNemesisPanel,
+                        ),
+                      );
+                      _sendRevengeInvite(rivalId);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               _card(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text('⚔️ PvP İstatistikleri',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    const GkkTabSectionTitle('PvP İstatistikleri', accent: AppColors.liquidGold),
                     const SizedBox(height: 14),
                     Row(
                       children: <Widget>[
@@ -354,13 +453,10 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                 ),
               ],
               const SizedBox(height: 20),
+              const GkkTabSectionTitle('Online Oyuncular', accent: AppColors.toxicNeon),
               Row(
                 children: <Widget>[
-                  const Expanded(
-                    child: Text('🟢 Online Oyuncular',
-                        style:
-                            TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  ),
+                  const Spacer(),
                   IconButton(
                     onPressed: _loadingOnline ? null : _loadOnlinePlayers,
                     icon: const Icon(Icons.refresh_rounded,
@@ -383,8 +479,12 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   onPressed: () => _goToFirstArena(dashboard.arenas),
                 )
               else
-                ..._onlinePlayers.map((OnlinePlayer p) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                ..._onlinePlayers.asMap().entries.map((MapEntry<int, OnlinePlayer> entry) {
+                  final OnlinePlayer p = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: GkkTabStaggerItem(
+                      index: entry.key,
                       child: _OnlinePlayerCard(
                         player: p,
                         inviting: _invitingId == p.authId,
@@ -392,10 +492,11 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                             ? null
                             : () => _sendDuelInvite(p),
                       ),
-                    )),
+                    ),
+                  );
+                }),
               const SizedBox(height: 20),
-              const Text('🏟️ Açık Arenalar',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const GkkTabSectionTitle('Açık Arenalar', accent: AppColors.coralFlare),
               const SizedBox(height: 10),
               if (dashboard.isLoading)
                 const Center(
@@ -412,8 +513,12 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   onPressed: () => context.go(AppRoutes.mekans),
                 )
               else
-                ...dashboard.arenas.map((arena) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                ...dashboard.arenas.asMap().entries.map((MapEntry<int, dynamic> entry) {
+                  final arena = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: GkkTabStaggerItem(
+                      index: entry.key,
                       child: _ArenaCard(
                         arenaName: arena.name,
                         mekanTypeLabel: _mekanTypeLabel(arena.mekanType),
@@ -427,10 +532,11 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                           context.go('/mekans/${arena.id}/arena');
                         },
                       ),
-                    )),
+                    ),
+                  );
+                }),
               const SizedBox(height: 20),
-              const Text('📋 Son Maçlar',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const GkkTabSectionTitle('Son Maçlar', accent: AppColors.cyberFuchsia),
               const SizedBox(height: 10),
               if (!dashboard.isLoading && dashboard.recentMatches.isEmpty)
                 _emptyStateCard(
@@ -471,16 +577,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
   }
 
   Widget _card({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: child,
-    );
+    return GkkTabListCard(child: child);
   }
 
   Widget _warningBanner(

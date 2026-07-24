@@ -31,6 +31,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double _musicVolume = 0.7;
   bool _muteAll = false;
   bool _notifications = true;
+  bool _notifNightMarket = true;
+  bool _notifNemesis = true;
 
   late TextEditingController _nameController;
   bool _savingName = false;
@@ -50,7 +52,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _loadNotificationPref() async {
     await LocalNotificationService.instance.loadEnabledPreference();
     if (!mounted) return;
-    setState(() => _notifications = LocalNotificationService.instance.isEnabled);
+    setState(() {
+      _notifications = LocalNotificationService.instance.isEnabled;
+      _notifNightMarket = LocalNotificationService.instance.isNightMarketEnabled;
+      _notifNemesis = LocalNotificationService.instance.isNemesisEnabled;
+    });
   }
 
   @override
@@ -197,6 +203,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     }
                   },
                 ),
+                if (_notifications) ...<Widget>[
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.only(left: 12),
+                    title: const Text('Gece Pazarı'),
+                    subtitle: const Text(
+                      'Açılış / kapanış hatırlatmaları',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                    value: _notifNightMarket,
+                    onChanged: (bool v) async {
+                      setState(() => _notifNightMarket = v);
+                      await LocalNotificationService.instance
+                          .setNightMarketEnabled(v);
+                      if (v) {
+                        await GameNotificationScheduler.instance
+                            .syncNightMarketReminder();
+                      } else {
+                        await GameNotificationScheduler.instance
+                            .cancelNightMarketReminders();
+                      }
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.only(left: 12),
+                    title: const Text('Nemesis'),
+                    subtitle: const Text(
+                      'Çevrimiçi / intikam bildirimleri',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                    value: _notifNemesis,
+                    onChanged: (bool v) async {
+                      setState(() => _notifNemesis = v);
+                      await LocalNotificationService.instance
+                          .setNemesisEnabled(v);
+                    },
+                  ),
+                ],
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(context.l10n.otomatik_sava),

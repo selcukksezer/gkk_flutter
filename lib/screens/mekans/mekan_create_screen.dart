@@ -184,13 +184,7 @@ class _MekanCreateScreenState extends ConsumerState<MekanCreateScreen> {
                         style: TextStyle(fontSize: 12.5, color: MekanPalette.textMid),
                       ),
                       const SizedBox(height: 14),
-                      Row(
-                        children: <Widget>[
-                          GlowChip(icon: Icons.paid_rounded, label: formatMekanGold(gold), color: MekanPalette.gold),
-                          const SizedBox(width: 8),
-                          GlowChip(icon: Icons.military_tech_rounded, label: 'Sv $level', color: MekanPalette.aqua),
-                        ],
-                      ),
+                      GlowChip(icon: Icons.military_tech_rounded, label: 'Sv $level', color: MekanPalette.aqua),
                       const SizedBox(height: 14),
                       TextField(
                         controller: _name,

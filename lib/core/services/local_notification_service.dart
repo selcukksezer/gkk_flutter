@@ -14,6 +14,8 @@ class LocalNotificationService {
   static final LocalNotificationService instance = LocalNotificationService._();
 
   static const String _enabledKey = 'phone_notifications_enabled';
+  static const String nightMarketEnabledKey = 'notif_night_market_enabled';
+  static const String nemesisEnabledKey = 'notif_nemesis_enabled';
   static const String channelId = 'gkk_game_events';
   static const String channelName = 'Oyun Bildirimleri';
   static const String channelDescription =
@@ -23,8 +25,12 @@ class LocalNotificationService {
 
   bool _initialized = false;
   bool _enabled = true;
+  bool _nightMarketEnabled = true;
+  bool _nemesisEnabled = true;
 
   bool get isEnabled => _enabled;
+  bool get isNightMarketEnabled => _nightMarketEnabled;
+  bool get isNemesisEnabled => _nemesisEnabled;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -69,6 +75,8 @@ class LocalNotificationService {
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool(_enabledKey) ?? true;
+    _nightMarketEnabled = prefs.getBool(nightMarketEnabledKey) ?? true;
+    _nemesisEnabled = prefs.getBool(nemesisEnabledKey) ?? true;
     _initialized = true;
 
     if (_enabled) {
@@ -114,9 +122,23 @@ class LocalNotificationService {
     }
   }
 
+  Future<void> setNightMarketEnabled(bool enabled) async {
+    _nightMarketEnabled = enabled;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(nightMarketEnabledKey, enabled);
+  }
+
+  Future<void> setNemesisEnabled(bool enabled) async {
+    _nemesisEnabled = enabled;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(nemesisEnabledKey, enabled);
+  }
+
   Future<void> loadEnabledPreference() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool(_enabledKey) ?? true;
+    _nightMarketEnabled = prefs.getBool(nightMarketEnabledKey) ?? true;
+    _nemesisEnabled = prefs.getBool(nemesisEnabledKey) ?? true;
   }
 
   NotificationDetails _details() {

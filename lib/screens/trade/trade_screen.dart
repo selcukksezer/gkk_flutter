@@ -61,8 +61,6 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
     'done': '🎉 Ticaret tamamlandı',
   };
 
-  int get _playerGoldBalance => ref.read(playerProvider).profile?.gold ?? 0;
-
   bool get _hasTradeOffer => _myOffer.isNotEmpty || _myGold > 0;
 
   void _dismissKeyboard() => FocusManager.instance.primaryFocus?.unfocus();
@@ -1213,7 +1211,6 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
   }
 
   Widget _buildActiveState() {
-    final int balance = _playerGoldBalance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -1234,10 +1231,6 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    Text(
-                      'Bakiyeniz: $balance altın',
-                      style: const TextStyle(color: AppColors.mutedTitanium, fontSize: 10),
                     ),
                     if (_partnerConfirmed)
                       const Text(

@@ -257,7 +257,7 @@ Widget monumentUpgradeProgressPanel({
 Widget monumentMemberResourceRow({
   required MonumentResourceKind kind,
   required MonumentMyStats stats,
-  required VoidCallback? onDonateMax,
+  required VoidCallback? onDonate,
   Color accent = AppColors.liquidGold,
 }) {
   final int donated = stats.donatedTotal(kind);
@@ -306,17 +306,17 @@ Widget monumentMemberResourceRow({
         ),
         if (canDonate > 0)
           TextButton(
-            onPressed: onDonateMax,
+            onPressed: onDonate,
             style: TextButton.styleFrom(
               foregroundColor: AppColors.liquidGold,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: Text(
-              'Bağışla\n$canDonate',
+            child: const Text(
+              'Bağışla',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, height: 1.2),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
             ),
           )
         else

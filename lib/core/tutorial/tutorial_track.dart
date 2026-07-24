@@ -13,6 +13,7 @@ abstract final class TutorialTrackId {
   static const String season = 'season';
   static const String quests = 'quests';
   static const String dailyChain = 'daily_chain';
+  static const String retentionIntro = 'retention_intro';
 
   static const List<String> coreTracks = <String>[
     onboarding,
@@ -59,6 +60,9 @@ abstract final class TutorialAnchorId {
   static const String seasonQuestsTab = 'season.quests_tab';
   static const String seasonL20Reward = 'season.l20_reward_row';
   static const String questsClaimBtn = 'quests.claim_btn';
+  static const String characterCodexTile = 'character.codex_tile';
+  static const String pvpNemesisPanel = 'pvp.nemesis_panel';
+  static const String shopNightTab = 'shop.night_tab';
 }
 
 enum TutorialMode {

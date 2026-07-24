@@ -5,11 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/provider_scheduling.dart';
+import '../../components/comeback/comeback_summary_dialog.dart';
 import '../../components/daily_reward/daily_reward_dialog.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../models/inventory_model.dart';
+import '../../models/comeback_summary_model.dart';
 import '../../models/player_model.dart';
+import '../../providers/comeback_summary_provider.dart';
 import '../../providers/daily_reward_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
@@ -44,7 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ) {
       if (next.status == PlayerStatus.ready &&
           prev?.status != PlayerStatus.ready) {
-        deferProviderUpdate(_maybeShowDailyReward);
+        deferProviderUpdate(_maybeShowComebackSummary);
       }
     });
     deferProviderUpdate(_loadHomeData);
@@ -63,8 +66,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// Geri dönüş özeti — günlük ödülden önce; günlük satırı varsa ayrı popup atlanır.
+  Future<void> _maybeShowComebackSummary() async {
+    if (QaFlags.skipComebackSummaryDialog) {
+      await _maybeShowDailyReward();
+      return;
+    }
+
+    final ComebackSummaryNotifier notifier =
+        ref.read(comebackSummaryProvider.notifier);
+    if (ref.read(comebackSummaryProvider).shownThisSession) {
+      await _maybeShowDailyReward();
+      return;
+    }
+
+    await notifier.load();
+    if (!mounted) return;
+
+    final ComebackSummaryState comebackState = ref.read(comebackSummaryProvider);
+    final bool shouldShow = comebackState.summary?.showSummary ?? false;
+    if (!shouldShow) {
+      await _maybeShowDailyReward();
+      return;
+    }
+
+    await showComebackSummaryDialog(context, ref);
+    if (!mounted) return;
+    notifier.markShownThisSession();
+  }
+
   Future<void> _maybeShowDailyReward() async {
     if (QaFlags.skipDailyRewardDialog) return;
+    // Günlük ödül comeback modalında satır olarak gösterildiyse tekrar açma.
+    if (ref.read(comebackSummaryProvider).shownThisSession) {
+      final bool hadDailyRow = ref
+              .read(comebackSummaryProvider)
+              .summary
+              ?.items
+              .any((item) => item.kind == ComebackItemKind.dailyReward) ??
+          false;
+      if (hadDailyRow) return;
+    }
     await ref.read(dailyRewardProvider.notifier).loadStatus();
     if (!mounted) return;
     final bool canClaim =

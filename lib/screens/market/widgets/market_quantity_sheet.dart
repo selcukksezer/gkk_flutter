@@ -231,18 +231,15 @@ class _MarketQuantitySheetState extends State<MarketQuantitySheet> {
             _summaryRow('Pazar vergisi (%5)', '-${formatMarketGold(_fee)} altin'),
             _summaryRow('Alacagin', '${formatMarketGold(_sellerReceives)} altin', highlight: true),
           ],
-          if (widget.mode == MarketQuantityMode.buy && widget.playerGold != null) ...<Widget>[
-            _summaryRow('Altinin', '${formatMarketGold(widget.playerGold!)} altin'),
-            if (!_canConfirm)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text(
-                  'Yeterli altin yok',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.mysticRuby, fontWeight: FontWeight.w700),
-                ),
+          if (widget.mode == MarketQuantityMode.buy && widget.playerGold != null && !_canConfirm)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Yeterli altin yok',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.mysticRuby, fontWeight: FontWeight.w700),
               ),
-          ],
+            ),
           const SizedBox(height: 16),
           Row(
             children: <Widget>[

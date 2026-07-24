@@ -175,3 +175,170 @@ class BpLevelReward {
     );
   }
 }
+
+class BpSeasonRewardEntry {
+  final String? id;
+  final String track;
+  final int level;
+  final String rewardType;
+  final int gold;
+  final int gems;
+  final int quantity;
+  final String? itemId;
+  final String displayName;
+  final String displayRarity;
+  final bool isFeatured;
+  final String? itemName;
+  final String? itemRarity;
+  final String? itemIcon;
+
+  const BpSeasonRewardEntry({
+    this.id,
+    required this.track,
+    required this.level,
+    required this.rewardType,
+    required this.gold,
+    required this.gems,
+    required this.quantity,
+    this.itemId,
+    required this.displayName,
+    required this.displayRarity,
+    this.isFeatured = false,
+    this.itemName,
+    this.itemRarity,
+    this.itemIcon,
+  });
+
+  String get label {
+    if (itemId != null && (itemName?.isNotEmpty ?? false)) {
+      return '$itemName x$quantity';
+    }
+    if (gold > 0) return '$gold Altın';
+    if (gems > 0) return '$gems Elmas';
+    return displayName;
+  }
+
+  String get effectiveRarity => itemRarity ?? displayRarity;
+
+  factory BpSeasonRewardEntry.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> value =
+        Map<String, dynamic>.from(json['reward_value'] as Map? ?? const {});
+    return BpSeasonRewardEntry(
+      id: json['id'] as String?,
+      track: json['track'] as String? ?? 'free',
+      level: json['level'] as int? ?? 0,
+      rewardType: json['reward_type'] as String? ?? 'mixed',
+      gold: (value['gold'] as num?)?.toInt() ?? 0,
+      gems: (value['gems'] as num?)?.toInt() ?? 0,
+      quantity: (value['quantity'] as num?)?.toInt() ?? 1,
+      itemId: json['item_id'] as String?,
+      displayName: json['display_name'] as String? ?? 'Ödül',
+      displayRarity: json['display_rarity'] as String? ?? 'common',
+      isFeatured: json['is_featured'] as bool? ?? false,
+      itemName: json['item_name'] as String?,
+      itemRarity: json['item_rarity'] as String?,
+      itemIcon: json['item_icon'] as String?,
+    );
+  }
+}
+
+class BpSeasonRewardsBundle {
+  final String seasonId;
+  final int seasonNumber;
+  final List<BpSeasonLevelRewards> levels;
+  final List<BpSeasonRewardEntry> featuredFree;
+  final List<BpSeasonRewardEntry> featuredVip;
+
+  const BpSeasonRewardsBundle({
+    required this.seasonId,
+    required this.seasonNumber,
+    required this.levels,
+    required this.featuredFree,
+    required this.featuredVip,
+  });
+
+  List<BpLevelReward> toLevelRewards() {
+    return levels.map((BpSeasonLevelRewards row) {
+      final BpSeasonRewardEntry? free = row.free;
+      final BpSeasonRewardEntry? vip = row.vip;
+      return BpLevelReward(
+        level: row.level,
+        normalRewardItemId: free?.itemId,
+        normalRewardQuantity: free?.quantity ?? 1,
+        normalRewardGold: free?.gold ?? 0,
+        vipRewardItemId: vip?.itemId,
+        vipRewardQuantity: vip?.quantity ?? 1,
+        vipRewardGold: vip?.gold ?? 0,
+        normalRewardItem: free == null
+            ? null
+            : <String, dynamic>{
+                'name': free.itemName ?? free.displayName,
+                'rarity': free.effectiveRarity,
+                'icon': free.itemIcon,
+              },
+        vipRewardItem: vip == null
+            ? null
+            : <String, dynamic>{
+                'name': vip.itemName ?? vip.displayName,
+                'rarity': vip.effectiveRarity,
+                'icon': vip.itemIcon,
+              },
+      );
+    }).toList();
+  }
+
+  factory BpSeasonRewardsBundle.fromRpc(Map<String, dynamic> json) {
+    final List<dynamic> levelRows = json['levels'] as List? ?? const [];
+    final List<BpSeasonLevelRewards> levels = levelRows
+        .map((dynamic row) => BpSeasonLevelRewards.fromJson(
+              Map<String, dynamic>.from(row as Map),
+            ))
+        .toList();
+
+    List<BpSeasonRewardEntry> parseFeatured(String key) {
+      final List<dynamic> raw = json[key] as List? ?? const [];
+      return raw
+          .map((dynamic e) => BpSeasonRewardEntry.fromJson(
+                Map<String, dynamic>.from(e as Map),
+              ))
+          .toList();
+    }
+
+    return BpSeasonRewardsBundle(
+      seasonId: json['season_id'] as String? ?? '',
+      seasonNumber: json['season_number'] as int? ?? 1,
+      levels: levels,
+      featuredFree: parseFeatured('featured_free'),
+      featuredVip: parseFeatured('featured_vip'),
+    );
+  }
+}
+
+class BpSeasonLevelRewards {
+  final int level;
+  final BpSeasonRewardEntry? free;
+  final BpSeasonRewardEntry? vip;
+
+  const BpSeasonLevelRewards({
+    required this.level,
+    this.free,
+    this.vip,
+  });
+
+  factory BpSeasonLevelRewards.fromJson(Map<String, dynamic> json) {
+    BpSeasonRewardEntry? parseTrack(String key, String track) {
+      final dynamic raw = json[key];
+      if (raw == null) return null;
+      final Map<String, dynamic> map = Map<String, dynamic>.from(raw as Map);
+      map['track'] ??= track;
+      map['level'] ??= json['level'];
+      return BpSeasonRewardEntry.fromJson(map);
+    }
+
+    return BpSeasonLevelRewards(
+      level: json['level'] as int,
+      free: parseTrack('free_reward', 'free'),
+      vip: parseTrack('vip_reward', 'vip'),
+    );
+  }
+}

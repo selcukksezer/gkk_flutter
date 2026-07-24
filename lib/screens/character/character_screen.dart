@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -154,6 +156,9 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
             child: _buildIdentityCard(profile, level, xpProgress, reputation),
           ),
           const GameScrollSection(child: BadgeShowcasePanel()),
+          GameScrollSection(
+            child: _buildCodexLink(context),
+          ),
           GameScrollSection(child: _buildQuickResources(profile)),
           if ((profile?.statPoints ?? 0) > 0)
             GameScrollSection(
@@ -174,6 +179,61 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
 
   Widget _card({required Widget child, EdgeInsetsGeometry? padding}) {
     return DottedPanel(padding: padding, child: child);
+  }
+
+  Widget _buildCodexLink(BuildContext context) {
+    return TutorialAnchorScope(
+      id: TutorialAnchorId.characterCodexTile,
+      child: _card(
+        child: InkWell(
+          onTap: () {
+            unawaited(
+              TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.characterCodexTile),
+            );
+            context.push(AppRoutes.codex);
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.liquidGold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.35)),
+                  ),
+                  child: const Icon(Icons.menu_book_rounded, color: AppColors.liquidGold),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Koleksiyon Kodex',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Eşya, boss ve zindan keşiflerini topla.',
+                        style: TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.mutedTitanium),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showAvatarPicker() async {
@@ -249,9 +309,30 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   }
 
   Future<void> _showFramePicker() async {
-    final frames = [
-      {'id': null, 'name': 'Çerçevesiz (Normal)'},
-      {'id': 'glow', 'name': '✨ Parlayan Mavi Çerçeve'},
+    bool codexFrameUnlocked = false;
+    try {
+      final dynamic dashRaw =
+          await SupabaseService.client.rpc('get_codex_dashboard');
+      if (dashRaw is Map && dashRaw['success'] == true) {
+        final List<dynamic> milestones = dashRaw['milestones'] is List
+            ? dashRaw['milestones'] as List
+            : const <dynamic>[];
+        codexFrameUnlocked = milestones.any(
+          (dynamic row) =>
+              row is Map &&
+              (row['threshold'] as num?)?.toInt() == 50 &&
+              row['claimed'] == true,
+        );
+      }
+    } catch (_) {
+      // Frame picker still works with default frames.
+    }
+
+    final List<Map<String, Object?>> frames = <Map<String, Object?>>[
+      <String, Object?>{'id': null, 'name': 'Çerçevesiz (Normal)'},
+      <String, Object?>{'id': 'glow', 'name': '✨ Parlayan Mavi Çerçeve'},
+      if (codexFrameUnlocked)
+        <String, Object?>{'id': 'codex', 'name': '📖 Kodex Kaşifi Çerçevesi'},
     ];
 
     await showModalBottomSheet(
@@ -421,6 +502,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                   avatarUrl: profile?.avatarUrl,
                   backgroundColor: GameScreenBackground.spaceNavy,
                   glowFrame: profile?.avatarFrame == 'glow',
+                  codexFrame: profile?.avatarFrame == 'codex',
                 ),
                 Positioned(
                   right: 0,
@@ -547,16 +629,6 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   Widget _buildQuickResources(PlayerProfile? profile) {
     final List<Widget> cards = <Widget>[
       _miniResource(
-        '💰 Altın',
-        _fmtCompact(profile?.gold ?? 0),
-        AppColors.warningSolar,
-      ),
-      _miniResource(
-        '💎 Elmas',
-        _fmtCompact(profile?.gems ?? 0),
-        AppColors.mutedTitanium,
-      ),
-      _miniResource(
         '⚡ Enerji',
         '${profile?.energy ?? 0}/${profile?.maxEnergy ?? 100}',
         AppColors.cyberFuchsia,
@@ -568,34 +640,12 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
       ),
     ];
 
-    if (MediaQuery.sizeOf(context).width >= 360) {
-      return Row(
-        children: <Widget>[
-          for (int i = 0; i < cards.length; i++) ...<Widget>[
-            if (i > 0) const SizedBox(width: 8),
-            Expanded(child: cards[i]),
-          ],
-        ],
-      );
-    }
-
-    return Column(
+    return Row(
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(child: cards[0]),
-            const SizedBox(width: 8),
-            Expanded(child: cards[1]),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: <Widget>[
-            Expanded(child: cards[2]),
-            const SizedBox(width: 8),
-            Expanded(child: cards[3]),
-          ],
-        ),
+        for (int i = 0; i < cards.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: cards[i]),
+        ],
       ],
     );
   }

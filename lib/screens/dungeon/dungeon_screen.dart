@@ -12,6 +12,7 @@ import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
 import '../../models/dungeon_siege_prime_timer.dart';
 import '../../utils/logout_helper.dart';
+import '../../models/player_model.dart';
 import '../../providers/dungeon_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -20,6 +21,7 @@ import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import 'dungeon_zone_data.dart';
 import 'widgets/dungeon_card.dart';
 import 'widgets/dungeon_confirm_entry_dialog.dart';
@@ -271,7 +273,6 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
   Widget build(BuildContext context) {
     final dungeonState = ref.watch(dungeonProvider);
     ref.watch(dungeonSiegeProvider);
-    final DungeonSiegeConfig siegeConfig = ref.watch(dungeonSiegeProvider).status.config;
     final playerState = ref.watch(playerProvider);
     final inventoryState = ref.watch(inventoryProvider);
     final profile = playerState.profile;
@@ -372,146 +373,179 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                 ),
               const SizedBox(height: 8),
               Expanded(
-                child: dungeonState.status == DungeonStatus.loading
-                    ? const DungeonLoadingShimmer()
-                    : dungeonState.status == DungeonStatus.error
-                        ? DungeonErrorState(
-                            message: dungeonState.errorMessage,
-                            onRetry: () => ref.read(dungeonProvider.notifier).loadDungeons(),
-                          )
-                        : filtered.isEmpty
-                            ? const DungeonEmptyState()
-                            : RefreshIndicator(
-                                onRefresh: () async {
-                                  await ref.read(dungeonProvider.notifier).loadDungeons();
-                                  await ref.read(dungeonSiegeProvider.notifier).loadStatus();
-                                },
-                                child: ListView.builder(
-                                  padding: GameScrollLayout.withClearance(
-                                    context,
-                                    const EdgeInsets.fromLTRB(14, 0, 14, 24),
-                                  ),
-                                  itemCount: filtered.length,
-                                  itemBuilder: (BuildContext ctx, int i) {
-                                    final DungeonData d = filtered[i];
-                                    final int zoneNum = zoneForDungeon(d);
-                                    final DungeonZone? zData = zoneDataFor(zoneNum);
-                                    final bool canEnter = !isRestricted &&
-                                        profile != null &&
-                                        profile.energy >= d.energyCost;
-                                    final int req = d.powerRequirement ?? (d.requiredLevel * 500);
-                                    final int successPct;
-                                    String? debugText;
-                                    if (profile != null && powerBreakdown != null) {
-                                      successPct = (calculateDungeonSuccessRate(
-                                            playerTotalPower: playerTotalPower,
-                                            dungeonPowerRequirement: req,
-                                            playerLuck: profile.luck ?? 0,
-                                            reputation: profile.reputation ?? 0,
-                                            characterClass: profile.characterClass,
-                                          ) *
-                                          100)
-                                          .round();
-                                      debugText = kDebugMode
-                                          ? 'pwr:$playerTotalPower eq:${powerBreakdown.equipmentPower} req:$req'
-                                          : null;
-                                    } else {
-                                      successPct = 5;
-                                      debugText = kDebugMode ? 'no profile' : null;
-                                    }
-
-                                    if (isFeaturedCaveDungeon(d)) {
-                                      final theme = featuredCaveThemeFor(d)!;
-                                      final bool siegeDungeon =
-                                          isSiegeDungeon(d.dungeonId, status: ref.read(dungeonSiegeProvider).status);
-                                      final ({bool active, int occupied, bool hasMine, int slotCount}) siegeMeta =
-                                          siegeDungeon
-                                              ? _siegeMetaFor(d.dungeonId)
-                                              : (active: false, occupied: 0, hasMine: false, slotCount: 5);
-                                      return FeaturedCaveDungeonCard(
-                                        dungeon: d,
-                                        theme: theme,
-                                        zoneIcon: zData?.icon ?? Icons.park,
-                                        zoneLabel: (zData?.name.split(' ').first ?? 'ZINDAN')
-                                            .toUpperCase(),
-                                        zoneColor: zData?.color ?? const Color(0xFF4ADE80),
-                                        canEnter: canEnter,
-                                        inHospital: inHospital,
-                                        inPrison: inPrison,
-                                        entering: dungeonState.entering,
-                                        successPercent: successPct,
-                                        energyCost: d.energyCost,
-                                        minGold: d.minGold,
-                                        maxGold: d.maxGold,
-                                        powerRequirement: req,
-                                        playerPower: playerTotalPower,
-                                        debugText: debugText,
-                                        siegeActive: siegeMeta.active,
-                                        siegeOccupiedSlots: siegeMeta.occupied,
-                                        siegeHasMySlot: siegeMeta.hasMine,
-                                        siegeSlotCount: siegeMeta.slotCount,
-                                        siegeConfig: siegeDungeon ? siegeConfig : null,
-                                        onSiegeTap: siegeDungeon ? () => _openSiegePanel(d) : null,
-                                        onEnter: () => _enterDungeon(d),
-                                        onLoot: () => showDialog<void>(
-                                          context: context,
-                                          builder: (_) => DungeonLootDialog(dungeon: d, zone: zData),
-                                        ),
-                                      );
-                                    }
-
-                                    final bool siegeDungeon =
-                                        isSiegeDungeon(d.dungeonId, status: ref.read(dungeonSiegeProvider).status);
-                                    final ({bool active, int occupied, bool hasMine, int slotCount}) siegeMeta =
-                                        siegeDungeon
-                                            ? _siegeMetaFor(d.dungeonId)
-                                            : (active: false, occupied: 0, hasMine: false, slotCount: 5);
-
-                                    return DungeonCard(
-                                      dungeon: d,
-                                      zone: zData,
-                                      canEnter: canEnter,
-                                      inHospital: inHospital,
-                                      inPrison: inPrison,
-                                      entering: dungeonState.entering,
-                                      successPercent: successPct,
-                                      playerPower: playerTotalPower,
-                                      powerRequirement: req,
-                                      debugText: debugText,
-                                      siegeActive: siegeMeta.active,
-                                      siegeOccupiedSlots: siegeMeta.occupied,
-                                      siegeHasMySlot: siegeMeta.hasMine,
-                                      siegeSlotCount: siegeMeta.slotCount,
-                                      siegeConfig: siegeDungeon ? siegeConfig : null,
-                                      onSiegeTap: siegeDungeon
-                                          ? () => _openSiegePanel(d)
-                                          : null,
-                                      useTutorialAnchors: i == 0,
-                                      onCardTap: i == 0
-                                          ? () => TutorialTriggers.onAnchorTap(
-                                                ref,
-                                                TutorialAnchorId.dungeonZone0,
-                                              )
-                                          : null,
-                                      onEnter: () async {
-                                        await TutorialTriggers.onAnchorTap(
-                                          ref,
-                                          TutorialAnchorId.dungeonEnterBtn,
-                                        );
-                                        await _enterDungeon(d);
+                child: AnimatedBuilder(
+                  animation: _tabController,
+                  builder: (BuildContext context, Widget? _) {
+                    final String sectionTitle = _tabController.index == 0
+                        ? 'Tüm Zindanlar'
+                        : currentZone?.name ?? 'Bölge $_selectedZone';
+                    return GkkTabPageShell(
+                      tabIndex: _tabController.index,
+                      sectionTitle: sectionTitle,
+                      sectionAccent: currentZone?.color ?? AppColors.liquidGold,
+                      child: dungeonState.status == DungeonStatus.loading
+                          ? const DungeonLoadingShimmer()
+                          : dungeonState.status == DungeonStatus.error
+                              ? DungeonErrorState(
+                                  message: dungeonState.errorMessage,
+                                  onRetry: () => ref.read(dungeonProvider.notifier).loadDungeons(),
+                                )
+                              : filtered.isEmpty
+                                  ? const DungeonEmptyState()
+                                  : RefreshIndicator(
+                                      onRefresh: () async {
+                                        await ref.read(dungeonProvider.notifier).loadDungeons();
+                                        await ref.read(dungeonSiegeProvider.notifier).loadStatus();
                                       },
-                                      onLoot: () => showDialog<void>(
-                                        context: context,
-                                        builder: (_) => DungeonLootDialog(dungeon: d, zone: zData),
+                                      child: ListView.builder(
+                                        padding: GameScrollLayout.withClearance(
+                                          context,
+                                          const EdgeInsets.fromLTRB(14, 0, 14, 24),
+                                        ),
+                                        itemCount: filtered.length,
+                                        itemBuilder: (BuildContext ctx, int i) {
+                                          final DungeonData d = filtered[i];
+                                          return GkkTabStaggerItem(
+                                            index: i,
+                                            child: _buildDungeonListItem(
+                                              context: ctx,
+                                              dungeon: d,
+                                              index: i,
+                                              zoneForDungeon: zoneForDungeon,
+                                              profile: profile,
+                                              powerBreakdown: powerBreakdown,
+                                              playerTotalPower: playerTotalPower,
+                                              isRestricted: isRestricted,
+                                              inHospital: inHospital,
+                                              inPrison: inPrison,
+                                              dungeonState: dungeonState,
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    );
-                                  },
-                                ),
-                              ),
+                                    ),
+                    );
+                  },
+                ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDungeonListItem({
+    required BuildContext context,
+    required DungeonData dungeon,
+    required int Function(DungeonData) zoneForDungeon,
+    required PlayerProfile? profile,
+    required PowerBreakdown? powerBreakdown,
+    required int playerTotalPower,
+    required bool isRestricted,
+    required bool inHospital,
+    required bool inPrison,
+    required DungeonState dungeonState,
+    required int index,
+  }) {
+    final int zoneNum = zoneForDungeon(dungeon);
+    final DungeonZone? zData = zoneDataFor(zoneNum);
+    final bool canEnter =
+        !isRestricted && profile != null && profile.energy >= dungeon.energyCost;
+    final int req = dungeon.powerRequirement ?? (dungeon.requiredLevel * 500);
+    final int successPct;
+    String? debugText;
+    if (profile != null && powerBreakdown != null) {
+      successPct = (calculateDungeonSuccessRate(
+                playerTotalPower: playerTotalPower,
+                dungeonPowerRequirement: req,
+                playerLuck: profile.luck ?? 0,
+                reputation: profile.reputation ?? 0,
+                characterClass: profile.characterClass,
+              ) *
+              100)
+          .round();
+      debugText =
+          kDebugMode ? 'pwr:$playerTotalPower eq:${powerBreakdown.equipmentPower} req:$req' : null;
+    } else {
+      successPct = 5;
+      debugText = kDebugMode ? 'no profile' : null;
+    }
+
+    final DungeonSiegeConfig siegeConfig = ref.read(dungeonSiegeProvider).status.config;
+
+    if (isFeaturedCaveDungeon(dungeon)) {
+      final theme = featuredCaveThemeFor(dungeon)!;
+      final bool siegeDungeon =
+          isSiegeDungeon(dungeon.dungeonId, status: ref.read(dungeonSiegeProvider).status);
+      final ({bool active, int occupied, bool hasMine, int slotCount}) siegeMeta = siegeDungeon
+          ? _siegeMetaFor(dungeon.dungeonId)
+          : (active: false, occupied: 0, hasMine: false, slotCount: 5);
+      return FeaturedCaveDungeonCard(
+        dungeon: dungeon,
+        theme: theme,
+        zoneIcon: zData?.icon ?? Icons.park,
+        zoneLabel: (zData?.name.split(' ').first ?? 'ZINDAN').toUpperCase(),
+        zoneColor: zData?.color ?? const Color(0xFF4ADE80),
+        canEnter: canEnter,
+        inHospital: inHospital,
+        inPrison: inPrison,
+        entering: dungeonState.entering,
+        successPercent: successPct,
+        energyCost: dungeon.energyCost,
+        minGold: dungeon.minGold,
+        maxGold: dungeon.maxGold,
+        powerRequirement: req,
+        playerPower: playerTotalPower,
+        debugText: debugText,
+        siegeActive: siegeMeta.active,
+        siegeOccupiedSlots: siegeMeta.occupied,
+        siegeHasMySlot: siegeMeta.hasMine,
+        siegeSlotCount: siegeMeta.slotCount,
+        siegeConfig: siegeDungeon ? siegeConfig : null,
+        onSiegeTap: siegeDungeon ? () => _openSiegePanel(dungeon) : null,
+        onEnter: () => _enterDungeon(dungeon),
+        onLoot: () => showDialog<void>(
+          context: context,
+          builder: (_) => DungeonLootDialog(dungeon: dungeon, zone: zData),
+        ),
+      );
+    }
+
+    final bool siegeDungeon =
+        isSiegeDungeon(dungeon.dungeonId, status: ref.read(dungeonSiegeProvider).status);
+    final ({bool active, int occupied, bool hasMine, int slotCount}) siegeMeta = siegeDungeon
+        ? _siegeMetaFor(dungeon.dungeonId)
+        : (active: false, occupied: 0, hasMine: false, slotCount: 5);
+
+    return DungeonCard(
+      dungeon: dungeon,
+      zone: zData,
+      canEnter: canEnter,
+      inHospital: inHospital,
+      inPrison: inPrison,
+      entering: dungeonState.entering,
+      successPercent: successPct,
+      playerPower: playerTotalPower,
+      powerRequirement: req,
+      debugText: debugText,
+      siegeActive: siegeMeta.active,
+      siegeOccupiedSlots: siegeMeta.occupied,
+      siegeHasMySlot: siegeMeta.hasMine,
+      siegeSlotCount: siegeMeta.slotCount,
+      siegeConfig: siegeDungeon ? siegeConfig : null,
+      onSiegeTap: siegeDungeon ? () => _openSiegePanel(dungeon) : null,
+      useTutorialAnchors: index == 0,
+      onCardTap: index == 0
+          ? () => TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.dungeonZone0)
+          : null,
+      onEnter: () async {
+        await TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.dungeonEnterBtn);
+        await _enterDungeon(dungeon);
+      },
+      onLoot: () => showDialog<void>(
+        context: context,
+        builder: (_) => DungeonLootDialog(dungeon: dungeon, zone: zData),
       ),
     );
   }

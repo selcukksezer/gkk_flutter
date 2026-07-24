@@ -16,6 +16,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/logout_helper.dart';
 import 'guild_war_defense_sheet.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import 'widgets/guild_war_design.dart';
 import 'widgets/guild_war_season_header.dart';
 import 'widgets/guild_war_skeleton.dart';
@@ -42,6 +43,12 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
 
   static const List<String> _tabLabels = <String>['Sıralama', 'Turnuva', 'Bölge', 'Krallık'];
   static const List<String> _tabIcons = <String>['🏅', '🏆', '🗺', '👑'];
+  static const List<String> _tabSectionTitles = <String>[
+    'Lonca Sıralaması',
+    'Aktif Turnuvalar',
+    'Bölge Haritası',
+    'Krallık Seçimi',
+  ];
 
   @override
   void initState() {
@@ -187,18 +194,22 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
                       children: <Widget>[
                         _scrollTab(
                           index: 0,
+                          title: _tabSectionTitles[0],
                           child: RankingPodium(rankings: warState.rankings, highlightGuildName: guildName),
                         ),
                         _scrollTab(
                           index: 1,
+                          title: _tabSectionTitles[1],
                           child: _buildTournamentsList(warState.tournaments, guildId),
                         ),
                         _scrollTab(
                           index: 2,
+                          title: _tabSectionTitles[2],
                           child: _buildTerritoriesContent(warState.territories, guildId),
                         ),
                         _scrollTab(
                           index: 3,
+                          title: _tabSectionTitles[3],
                           child: const KingdomElectionPanel(),
                         ),
                       ],
@@ -210,22 +221,13 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     );
   }
 
-  Widget _scrollTab({required int index, required Widget child}) {
-    return RefreshIndicator(
-      color: WarPalette.gold,
-      backgroundColor: WarPalette.navy,
+  Widget _scrollTab({required int index, required String title, required Widget child}) {
+    return GkkTabScrollShell(
+      tabIndex: index,
+      sectionTitle: title,
+      sectionAccent: WarPalette.gold,
       onRefresh: _refresh,
-      child: ListView(
-        key: PageStorageKey<String>('guild_war_tab_$index'),
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.base,
-          AppSpacing.sm,
-          AppSpacing.base,
-          warBottomInset(context),
-        ),
-        children: <Widget>[child],
-      ),
+      child: child,
     );
   }
 

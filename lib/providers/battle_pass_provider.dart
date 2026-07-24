@@ -8,6 +8,7 @@ class BattlePassState {
   final BpPlayerStatus? status;
   final List<BpPlayerQuest> quests;
   final List<BpLevelReward> rewards;
+  final BpSeasonRewardsBundle? seasonRewards;
   final String? error;
 
   const BattlePassState({
@@ -16,8 +17,15 @@ class BattlePassState {
     this.status,
     this.quests = const [],
     this.rewards = const [],
+    this.seasonRewards,
     this.error,
   });
+
+  List<BpSeasonRewardEntry> get featuredFree =>
+      seasonRewards?.featuredFree ?? const [];
+
+  List<BpSeasonRewardEntry> get featuredVip =>
+      seasonRewards?.featuredVip ?? const [];
 
   BattlePassState copyWith({
     bool? isLoading,
@@ -25,6 +33,7 @@ class BattlePassState {
     BpPlayerStatus? status,
     List<BpPlayerQuest>? quests,
     List<BpLevelReward>? rewards,
+    BpSeasonRewardsBundle? seasonRewards,
     String? error,
   }) {
     return BattlePassState(
@@ -33,6 +42,7 @@ class BattlePassState {
       status: status ?? this.status,
       quests: quests ?? this.quests,
       rewards: rewards ?? this.rewards,
+      seasonRewards: seasonRewards ?? this.seasonRewards,
       error: error ?? this.error,
     );
   }
@@ -68,15 +78,24 @@ class BattlePassNotifier extends Notifier<BattlePassState> {
       final results = await Future.wait([
         _repository.getPlayerStatus(playerId, season.id),
         _repository.getPlayerQuests(playerId, season.id),
+        _repository.getSeasonRewards(seasonId: season.id),
         _repository.getLevelRewards(),
       ]);
+
+      final BpSeasonRewardsBundle? bundle =
+          results[2] as BpSeasonRewardsBundle?;
+      final List<BpLevelReward> legacyRewards =
+          results[3] as List<BpLevelReward>;
 
       state = state.copyWith(
         isLoading: false,
         activeSeason: season,
         status: results[0] as BpPlayerStatus?,
         quests: results[1] as List<BpPlayerQuest>,
-        rewards: results[2] as List<BpLevelReward>,
+        seasonRewards: bundle,
+        rewards: bundle != null && bundle.levels.isNotEmpty
+            ? bundle.toLevelRewards()
+            : legacyRewards,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/services/app_foreground_service.dart';
 import '../core/services/game_notification_scheduler.dart';
+import '../core/services/local_notification_service.dart';
 import '../core/services/supabase_service.dart';
 import '../models/facility_model.dart';
 import '../models/notification_item.dart';
@@ -447,6 +448,7 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
         ),
         SupabaseService.client.rpc('get_player_facilities_with_queue'),
         SupabaseService.client.rpc('get_unseen_friendship_events'),
+        SupabaseService.client.rpc('get_retention_promos'),
       ]);
 
       final dynamic friendsRaw = results[0];
@@ -562,11 +564,153 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
       }
 
       out.addAll(_friendshipEventItems(results[5]));
+      out.addAll(await _retentionPromoItems(results[6]));
     } catch (_) {
       // Son bilinen remote liste korunur.
     }
 
     return out;
+  }
+
+  Future<List<GameNotificationItem>> _retentionPromoItems(dynamic raw) async {
+    final DateTime now = DateTime.now();
+    final List<GameNotificationItem> out = <GameNotificationItem>[];
+    if (raw is! Map || raw['success'] != true) return out;
+
+    final LocalNotificationService notif = LocalNotificationService.instance;
+    await notif.loadEnabledPreference();
+
+    final Map<String, dynamic> codex = raw['codex'] is Map
+        ? Map<String, dynamic>.from(raw['codex'] as Map)
+        : <String, dynamic>{};
+    final int newEntries = (codex['new_entries_24h'] as num?)?.toInt() ?? 0;
+    final int claimable = (codex['claimable_milestones'] as num?)?.toInt() ?? 0;
+
+    if (newEntries > 0) {
+      final int? slot = await _tryConsumeCodexDiscoverySlot(newEntries);
+      if (slot != null) {
+        out.add(
+          GameNotificationItem(
+            id: 'codex:new:${now.day}:$slot',
+            kind: NotificationKind.codexNewEntry,
+            title: 'Yeni Kodex keşfi',
+            body: '$newEntries yeni kayıt keşfedildi.',
+            createdAt: now,
+            routePath: AppRoutes.codex,
+            priority: 72,
+          ),
+        );
+      }
+    }
+    if (claimable > 0) {
+      out.add(
+        GameNotificationItem(
+          id: 'codex:milestone:$claimable',
+          kind: NotificationKind.codexMilestone,
+          title: 'Kodex kilometre taşı',
+          body: '$claimable ödül alınabilir.',
+          createdAt: now,
+          routePath: '${AppRoutes.codex}?claim=1',
+          priority: 74,
+        ),
+      );
+    }
+
+    final Map<String, dynamic> nemesis = raw['nemesis'] is Map
+        ? Map<String, dynamic>.from(raw['nemesis'] as Map)
+        : <String, dynamic>{};
+    if (notif.isNemesisEnabled &&
+        nemesis['has_rival'] == true &&
+        nemesis['dismissed'] != true) {
+      final int losses = (nemesis['losses'] as num?)?.toInt() ?? 0;
+      final String rivalId = (nemesis['rival_id'] ?? '').toString();
+      final String rivalName = (nemesis['rival_username'] ?? 'Rakip').toString();
+      if (losses >= 1 && rivalId.isNotEmpty) {
+        out.add(
+          GameNotificationItem(
+            id: 'nemesis:revenge:$rivalId',
+            kind: NotificationKind.nemesisRevenge,
+            title: 'Nemesis intikamı',
+            body: '$rivalName — $losses yenilgi.',
+            createdAt: now,
+            routePath: '${AppRoutes.pvp}?revenge=$rivalId',
+            priority: 78,
+          ),
+        );
+      }
+      // Intikam bildirimi varken online ping spam yapma.
+      // Server: should_notify_online = true yalnızca 1/Istanbul gün.
+      final bool hasRevengeNotice = out.any(
+        (GameNotificationItem item) => item.kind == NotificationKind.nemesisRevenge,
+      );
+      if (!hasRevengeNotice &&
+          nemesis['should_notify_online'] == true &&
+          rivalId.isNotEmpty) {
+        out.add(
+          GameNotificationItem(
+            id: 'nemesis:online:${now.day}:$rivalId',
+            kind: NotificationKind.nemesisOnline,
+            title: 'Nemesis çevrimiçi',
+            body: '$rivalName şu an online.',
+            createdAt: now,
+            routePath: '${AppRoutes.pvp}?revenge=$rivalId',
+            priority: 76,
+          ),
+        );
+      }
+    }
+
+    final Map<String, dynamic> night = raw['night_market'] is Map
+        ? Map<String, dynamic>.from(raw['night_market'] as Map)
+        : <String, dynamic>{};
+    if (notif.isNightMarketEnabled && night['active'] == true) {
+      final int secs = (night['seconds_left'] as num?)?.toInt() ?? 0;
+      out.add(
+        GameNotificationItem(
+          id: 'night:open:${now.day}',
+          kind: NotificationKind.nightMarketOpen,
+          title: 'Gece Pazarı açık',
+          body: 'Günlük gem teklifleri — sınırlı stok.',
+          createdAt: now,
+          routePath: '${AppRoutes.shop}?tab=night',
+          priority: 82,
+        ),
+      );
+      if (secs > 0 && secs <= 1800) {
+        out.add(
+          GameNotificationItem(
+            id: 'night:ending:${now.hour}',
+            kind: NotificationKind.nightMarketEnding,
+            title: 'Gece Pazarı kapanıyor',
+            body: '${(secs / 60).ceil()} dk kaldı.',
+            createdAt: now,
+            routePath: '${AppRoutes.shop}?tab=night',
+            priority: 84,
+          ),
+        );
+      }
+    }
+
+    return out;
+  }
+
+  /// Max 3 `codexNewEntry` inbox emits / user / day when discovery count rises.
+  Future<int?> _tryConsumeCodexDiscoverySlot(int newEntries) async {
+    final String? uid = SupabaseService.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return null;
+    final DateTime now = DateTime.now();
+    final String day =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final String countKey = 'codex_discovery_notices_${uid}_$day';
+    final String lastKey = 'codex_discovery_last_${uid}_$day';
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final int count = prefs.getInt(countKey) ?? 0;
+    final int lastSeen = prefs.getInt(lastKey) ?? 0;
+    if (newEntries <= lastSeen) return null;
+    if (count >= 3) return null;
+    await prefs.setInt(lastKey, newEntries);
+    await prefs.setInt(countKey, count + 1);
+    return count;
   }
 
   bool _isFuture(String? iso) {

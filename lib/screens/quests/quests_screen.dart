@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../components/common/gkk_tab_bar.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/quest_model.dart';
@@ -249,36 +251,54 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
 
           // ── Body ─────────────────────────────────────────────────────────
           Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: _QColors.accent),
-                  )
-                : _error != null
-                ? _buildError()
-                : sorted.isEmpty
-                ? _buildEmpty()
-                : RefreshIndicator(
-                    onRefresh: _loadQuests,
-                    color: _QColors.accent,
-                    child: ListView.builder(
-                      padding: GameScrollLayout.fromLTRB(
-                        context,
-                        left: 16,
-                        top: 4,
-                        right: 16,
-                      ),
-                      itemCount: sorted.length,
-                      itemBuilder: (_, i) => _QuestCard(
-                        quest: sorted[i],
-                        actionLoading: _actionLoading,
-                        highlightClaimAnchor: i == claimTutorialIndex,
-                        onComplete: () => _completeQuest(sorted[i]),
-                        onClaim: () => _claimReward(sorted[i]),
-                        onGoToSeason: () => context.go(AppRoutes.season),
-                        onDetail: () => _showDetail(sorted[i]),
-                      ),
-                    ),
-                  ),
+            child: AnimatedBuilder(
+              animation: _tabCtrl,
+              builder: (BuildContext context, Widget? _) {
+                return GkkTabPageShell(
+                  tabIndex: _tabCtrl.index,
+                  sectionTitle: switch (_category) {
+                    _QuestCategory.all => 'Tüm Görevler',
+                    _QuestCategory.daily => 'Günlük Görevler',
+                    _QuestCategory.weekly => 'Haftalık Görevler',
+                    _QuestCategory.main => 'Ana Görevler',
+                  },
+                  sectionAccent: _QColors.accent,
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: _QColors.accent),
+                        )
+                      : _error != null
+                          ? _buildError()
+                          : sorted.isEmpty
+                              ? _buildEmpty()
+                              : RefreshIndicator(
+                                  onRefresh: _loadQuests,
+                                  color: _QColors.accent,
+                                  child: ListView.builder(
+                                    padding: GameScrollLayout.fromLTRB(
+                                      context,
+                                      left: 16,
+                                      top: 4,
+                                      right: 16,
+                                    ),
+                                    itemCount: sorted.length,
+                                    itemBuilder: (_, i) => GkkTabStaggerItem(
+                                      index: i,
+                                      child: _QuestCard(
+                                        quest: sorted[i],
+                                        actionLoading: _actionLoading,
+                                        highlightClaimAnchor: i == claimTutorialIndex,
+                                        onComplete: () => _completeQuest(sorted[i]),
+                                        onClaim: () => _claimReward(sorted[i]),
+                                        onGoToSeason: () => context.go(AppRoutes.season),
+                                        onDetail: () => _showDetail(sorted[i]),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                );
+              },
+            ),
           ),
         ],
         ),
@@ -402,53 +422,23 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
       (Icons.auto_awesome_rounded, 'Ana'),
     ];
 
-    return Container(
-      height: 44,
+    return GkkTabBar(
+      controller: _tabCtrl,
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _QColors.border),
-      ),
-      child: TabBar(
-        controller: _tabCtrl,
-        indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(11),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _QColors.accent.withValues(alpha: 0.4),
-              blurRadius: 8,
-            ),
-          ],
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicatorPadding: const EdgeInsets.all(3),
-        dividerColor: Colors.transparent,
-        labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-        ),
-        labelColor: Colors.white,
-        unselectedLabelColor: _QColors.textMuted,
-        tabs: tabs
-            .map(
-              (t) => Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(t.$1, size: 13),
-                    const SizedBox(width: 4),
-                    Text(t.$2),
-                  ],
-                ),
+      tabs: tabs
+          .map(
+            (t) => GkkTabBar.labeledTab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(t.$1, size: 13),
+                  const SizedBox(width: 4),
+                  Text(t.$2),
+                ],
               ),
-            )
-            .toList(),
-      ),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -645,34 +635,27 @@ class _QuestCardState extends State<_QuestCard>
 
     return GestureDetector(
       onTap: widget.onDetail,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: _isCompleted
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _QColors.green.withValues(alpha: 0.08),
-                    _QColors.surface,
-                  ],
-                )
-              : null,
-          color: _isCompleted ? null : _QColors.surface,
-          border: Border.all(color: borderColor, width: 1.2),
-          boxShadow: _isCompleted
-              ? [
-                  BoxShadow(
-                    color: _QColors.green.withValues(alpha: 0.1),
-                    blurRadius: 12,
-                  ),
-                ]
-              : null,
-        ),
-        child: Stack(
-          children: [
+      child: GkkTabListCard(
+        borderColor: borderColor,
+        padding: EdgeInsets.zero,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: _isCompleted
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      _QColors.green.withValues(alpha: 0.08),
+                      Colors.transparent,
+                    ],
+                  )
+                : null,
+          ),
+          child: Stack(
+            children: <Widget>[
             // Shimmer overlay for completed quests
             if (_isCompleted)
               Positioned.fill(
@@ -836,6 +819,7 @@ class _QuestCardState extends State<_QuestCard>
           ],
         ),
       ),
+    ),
     );
   }
 

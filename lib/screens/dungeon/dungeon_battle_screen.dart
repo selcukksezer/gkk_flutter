@@ -23,6 +23,7 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'dungeon_item_utils.dart';
+import 'widgets/codex_discovery_chip.dart';
 import 'dungeon_result_widgets.dart';
 import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/dungeon_battle_effects.dart';
@@ -2055,6 +2056,10 @@ class _VictoryView extends StatelessWidget {
         if ((result.siegeBonus?.repGained ?? 0) > 0)
           ReputationGainBanner(amount: result.siegeBonus!.repGained),
         DungeonMilestoneBanner(rewards: result.milestoneRewards),
+        CodexDiscoveryChip(
+          discoveries: result.codexNew,
+          onTap: () => context.push(AppRoutes.codex),
+        ),
         FadeSlideIn(
           delayMs: 200,
           child: GlassPanel(

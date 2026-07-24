@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/common/gkk_tab_bar.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import '../../components/common/universal_game_dialog.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
@@ -19,6 +20,8 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
+import 'widgets/battle_pass_shop_tab.dart';
+import 'widgets/night_market_tab.dart';
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -30,12 +33,16 @@ class _GemPackage {
     required this.gems,
     required this.priceTry,
     required this.priceUsd,
+    this.label,
+    this.bonusPercent,
     this.isBestValue = false,
   });
   final String id;
   final int gems;
   final String priceTry;
   final String priceUsd;
+  final String? label;
+  final int? bonusPercent;
   final bool isBestValue;
 }
 
@@ -44,7 +51,9 @@ class _GemPackage {
 // ---------------------------------------------------------------------------
 
 class ShopScreen extends ConsumerStatefulWidget {
-  const ShopScreen({super.key});
+  const ShopScreen({super.key, this.initialTabIndex});
+
+  final int? initialTabIndex;
 
   @override
   ConsumerState<ShopScreen> createState() => _ShopScreenState();
@@ -56,16 +65,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
 
   late TabController _tabController;
 
-  List<Map<String, dynamic>> _offers = [];
-  List<Map<String, dynamic>> _battlePassItems = [];
   List<Map<String, dynamic>> _shopItems = [];
-  bool _offersLoading = true;
+  bool _shopDataLoading = true;
   bool _purchaseLoading = false;
   String _itemSearchQuery = '';
   Map<String, dynamic>? _quantityDialogItem;
   int _quantityInput = 1;
   String? _buyingId;
   String? _buyingGemId;
+  String? _buyingGoldKey;
 
   static List<_GemPackage> get _gemPackages => EconomyConstants.gemIapPackages
       .map(
@@ -74,6 +82,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           gems: pkg.gems,
           priceTry: pkg.priceTry,
           priceUsd: pkg.priceUsd,
+          label: pkg.label,
+          bonusPercent: pkg.bonusPercent,
           isBestValue: pkg.isBestValue,
         ),
       )
@@ -82,8 +92,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabCount, vsync: this);
-    _loadOffers();
+    final int initial = widget.initialTabIndex ?? 0;
+    _tabController = TabController(
+      length: _tabCount,
+      vsync: this,
+      initialIndex: initial.clamp(0, _tabCount - 1),
+    );
+    _loadShopData();
   }
 
   void _ensureTabControllerIntegrity() {
@@ -159,11 +174,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     }).where((Map<String, dynamic> item) => (item['id'] as String).isNotEmpty).toList(growable: false);
   }
 
-  Future<void> _loadOffers() async {
-    setState(() => _offersLoading = true);
+  Future<void> _loadShopData() async {
+    setState(() => _shopDataLoading = true);
     List<Map<String, dynamic>> mappedShopItems = <Map<String, dynamic>>[];
-    List<Map<String, dynamic>> offers = <Map<String, dynamic>>[];
-    List<Map<String, dynamic>> battlePassItems = <Map<String, dynamic>>[];
     String? itemsLoadError;
 
     // `items` yüklemesini bağımsız tutuyoruz: diğer tablolar patlasa bile Eşya sekmesi dolmalı.
@@ -196,33 +209,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       }
     }
 
-    // Opsiyonel sekmeler: hata olursa boş geç.
-    try {
-      final dynamic offersRes = await SupabaseService.client
-          .from('shop_offers')
-          .select()
-          .eq('is_active', true);
-      offers = List<Map<String, dynamic>>.from(offersRes as List);
-    } catch (_) {
-      offers = <Map<String, dynamic>>[];
-    }
-
-    try {
-      final dynamic bpRes = await SupabaseService.client
-          .from('battle_pass_items')
-          .select();
-      battlePassItems = List<Map<String, dynamic>>.from(bpRes as List);
-    } catch (_) {
-      battlePassItems = <Map<String, dynamic>>[];
-    }
-
     if (!mounted) return;
 
     setState(() {
-      _offers = offers;
-      _battlePassItems = battlePassItems;
       _shopItems = mappedShopItems;
-      _offersLoading = false;
+      _shopDataLoading = false;
     });
 
     if (mappedShopItems.isEmpty && itemsLoadError != null) {
@@ -352,8 +343,87 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   }
 
   static String _fmtGold(int gold) {
+    if (gold >= 1000000) {
+      final double m = gold / 1000000;
+      return m == m.roundToDouble() ? '${m.toInt()}M' : '${m.toStringAsFixed(1)}M';
+    }
     if (gold >= 1000) return '${(gold / 1000).toStringAsFixed(0)}K';
     return '$gold';
+  }
+
+  static String _fmtGoldFull(int gold) {
+    final String s = gold.toString();
+    final StringBuffer buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  Future<void> _buyGoldWithGems(int goldAmount, {required String purchaseKey}) async {
+    if (_buyingGoldKey != null || _purchaseLoading) return;
+
+    final int gemsNeeded = EconomyConstants.gemsRequiredForGold(goldAmount);
+    final profile = ref.read(playerProvider).profile;
+    if ((profile?.gems ?? 0) < gemsNeeded) {
+      if (!mounted) return;
+      AppMessenger.showError(context, 'Yetersiz elmas!');
+      return;
+    }
+
+    if (!mounted) return;
+    final bool? confirmed = await UniversalGameDialog.show(
+      context,
+      title: 'Altın Al',
+      message:
+          '${_fmtGoldFull(goldAmount)} altın almak istediğine emin misin?\n'
+          'Maliyet: $gemsNeeded 💎',
+      confirmLabel: 'Satın Al',
+      cancelLabel: 'İptal',
+    );
+    if (confirmed != true) return;
+
+    setState(() => _buyingGoldKey = purchaseKey);
+
+    try {
+      final dynamic res = await SupabaseService.client.rpc(
+        'buy_gold_with_gems',
+        params: <String, dynamic>{'p_gold_amount': goldAmount},
+      );
+
+      final bool ok = res is Map && res['success'] == true;
+      if (!ok) {
+        if (!mounted) return;
+        final String serverError =
+            res is Map ? (res['error']?.toString() ?? '') : '';
+        AppMessenger.showError(
+          context,
+          switch (serverError) {
+            'Insufficient gems' => 'Yetersiz elmas!',
+            'Invalid amount' => 'Geçersiz altın miktarı.',
+            _ => 'Altın satın alma başarısız.',
+          },
+        );
+        return;
+      }
+
+      if (mounted) {
+        await ref.read(playerProvider.notifier).loadProfile();
+        if (!mounted) return;
+        AppMessenger.show(
+          context,
+          '+${_fmtGoldFull(goldAmount)} altın eklendi!',
+          type: AppMessageType.success,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppMessenger.showError(context, 'Altın satın alma başarısız.');
+      }
+    } finally {
+      if (mounted) setState(() => _buyingGoldKey = null);
+    }
   }
 
   Future<void> _doLogout() async {
@@ -366,8 +436,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     _ensureTabControllerIntegrity();
 
     final profile = ref.watch(playerProvider).profile;
-    final gems = profile?.gems ?? 0;
-    final gold = profile?.gold ?? 0;
+    final int gems = (profile?.gems ?? 0).toInt();
 
     return Stack(
       children: [
@@ -375,91 +444,85 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       appBar: GameTopBar(title: context.l10n.routeShop, onLogout: _doLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.shop, onLogout: _doLogout),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF10131D), Color(0xFF171E2C), Color(0xFF10131D)],
-          ),
-        ),
+      body: GameScreenBackground(
         child: Column(
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.white.withValues(alpha: 0.05),
-                  border: Border.all(color: Colors.white12),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    const Icon(Icons.paid_rounded, color: Colors.amber, size: 16),
-                    const SizedBox(width: 6),
-                    Text(_fmtGold(gold),
-                        style: const TextStyle(
-                            color: Colors.amber, fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 20),
-                    const Icon(Icons.diamond_rounded,
-                        color: AppColors.accentCyan, size: 16),
-                    const SizedBox(width: 6),
-                    Text('$gems',
-                        style: const TextStyle(
-                            color: AppColors.accentCyan, fontWeight: FontWeight.w700)),
-                  ],
-                ),
-              ),
-            ),
-            TabBar(
+            GkkTabBar(
               controller: _tabController,
               isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white38,
-              indicator: BoxDecoration(
-                color: AppColors.accentCyan.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.accentCyan.withValues(alpha: 0.5),
-                ),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              tabs: const <Tab>[
-                Tab(text: '💎 Gem'),
-                Tab(text: '⚖️ Ekonomi'),
-                Tab(text: '🎁 Teklif'),
-                Tab(text: '⚔️ Pass'),
-                Tab(text: '🛍️ Eşya'),
-              ],
+              tabs: GkkTabBar.textTabs(const <String>[
+                '💎 Gem',
+                '🪙 Altın',
+                '🌙 Gece Pazarı',
+                '⚔️ Pass',
+                '🛍️ Eşya',
+              ]),
             ),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: <Widget>[
-                  _GemPackagesTab(
-                    packages: _gemPackages,
-                    purchaseLoading: _purchaseLoading,
-                    buyingGemId: _buyingGemId,
-                    onBuyGem: _buyGemPackage,
+                  GkkTabPageShell(
+                    tabIndex: 0,
+                    sectionTitle: 'Elmas Paketleri',
+                    child: _GemPackagesTab(
+                      packages: _gemPackages,
+                      purchaseLoading: _purchaseLoading,
+                      buyingGemId: _buyingGemId,
+                      onBuyGem: _buyGemPackage,
+                    ),
                   ),
-                  const _EconomyGuideTab(),
-                  _OffersTab(offers: _offers, loading: _offersLoading),
-                  _BattlePassTab(items: _battlePassItems, loading: _offersLoading),
-                  _ItemsTab(
-                    items: _shopItems,
-                    loading: _offersLoading,
-                    searchQuery: _itemSearchQuery,
-                    buyingId: _buyingId,
-                    playerTolerance:
-                        ref.watch(playerProvider).profile?.tolerance ?? 0,
-                    onSearchChanged: (q) => setState(() => _itemSearchQuery = q),
-                    onBuyTap: _handleBuyClick,
-                    rarityColor: (String? rarity) =>
-                        AppColors.forRarity(rarity ?? ''),
-                    buildItemIcon: _buildItemIcon,
+                  GkkTabPageShell(
+                    tabIndex: 1,
+                    sectionTitle: 'Altın Paketleri',
+                    child: _GoldPurchaseTab(
+                      buyingGoldKey: _buyingGoldKey,
+                      onBuyGold: _buyGoldWithGems,
+                      fmtGold: _fmtGold,
+                    ),
+                  ),
+                  GkkTabPageShell(
+                    tabIndex: 2,
+                    sectionTitle: 'Gece Pazarı',
+                    sectionAccent: AppColors.cyberFuchsia,
+                    child: TutorialAnchorScope(
+                      id: TutorialAnchorId.shopNightTab,
+                      child: NightMarketTab(
+                        onPurchased: () async {
+                          await TutorialTriggers.onAnchorTap(
+                            ref,
+                            TutorialAnchorId.shopNightTab,
+                          );
+                          await ref.read(playerProvider.notifier).loadProfile();
+                          await ref
+                              .read(inventoryProvider.notifier)
+                              .loadInventory(silent: true);
+                        },
+                      ),
+                    ),
+                  ),
+                  GkkTabPageShell(
+                    tabIndex: 3,
+                    sectionTitle: 'Savaş Pass',
+                    sectionAccent: AppColors.coralFlare,
+                    child: BattlePassShopTab(playerGems: gems),
+                  ),
+                  GkkTabPageShell(
+                    tabIndex: 4,
+                    sectionTitle: 'Mağaza Eşyaları',
+                    child: _ItemsTab(
+                      items: _shopItems,
+                      loading: _shopDataLoading,
+                      searchQuery: _itemSearchQuery,
+                      buyingId: _buyingId,
+                      playerTolerance:
+                          ref.watch(playerProvider).profile?.tolerance ?? 0,
+                      onSearchChanged: (q) => setState(() => _itemSearchQuery = q),
+                      onBuyTap: _handleBuyClick,
+                      rarityColor: (String? rarity) =>
+                          AppColors.forRarity(rarity ?? ''),
+                      buildItemIcon: _buildItemIcon,
+                    ),
                   ),
                 ],
               ),
@@ -562,6 +625,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
 // Tab content widgets
 // ---------------------------------------------------------------------------
 
+EdgeInsets _shopScrollPadding(BuildContext context) =>
+    GameScrollLayout.fromLTRB(
+      context,
+      left: 14,
+      top: 4,
+      right: 14,
+      bottomExtra: 48,
+    );
+
 class _GemPackagesTab extends StatelessWidget {
   const _GemPackagesTab({
     required this.packages,
@@ -576,221 +648,264 @@ class _GemPackagesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.82,
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
       ),
-      itemCount: packages.length,
-      itemBuilder: (context, index) {
-        final pkg = packages[index];
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: pkg.isBestValue
-                  ? <Color>[AppColors.liquidGold, AppColors.goldDim]
-                  : const <Color>[Color(0xFF1A1D2E), Color(0xFF252840)],
-            ),
-            border: Border.all(
-              color: pkg.isBestValue ? AppColors.liquidGold : Colors.white12,
-              width: pkg.isBestValue ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (pkg.isBestValue) ...<Widget>[
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.amber,
-                  ),
-                  child: const Text('En İyi Değer',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black)),
-                ),
-                const SizedBox(height: 6),
-              ],
-              const Icon(Icons.diamond_rounded, color: AppColors.accentCyan, size: 44),
-              const SizedBox(height: 8),
-              Text('${pkg.gems} 💎',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const Text('Elmas',
-                  style: TextStyle(color: Colors.white54, fontSize: 11)),
-              const SizedBox(height: 4),
-              Text(
-                pkg.priceTry,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
+      padding: _shopScrollPadding(context),
+      children: <Widget>[
+        GameFixedGrid(
+          crossAxisCount: 2,
+          spacing: 12,
+          itemCount: packages.length,
+          itemBuilder: (BuildContext context, int index) {
+            return GkkTabStaggerItem(
+              index: index,
+              child: _GemPackageCard(
+                pkg: packages[index],
+                purchaseLoading: purchaseLoading,
+                buyingGemId: buyingGemId,
+                onBuy: () => onBuyGem(packages[index]),
               ),
-              Text(
-                pkg.priceUsd,
-                style: const TextStyle(color: Colors.white54, fontSize: 10),
-              ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: purchaseLoading ? null : () => onBuyGem(pkg),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accentCyan,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                  textStyle:
-                      const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-                child: (buyingGemId == pkg.id)
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Satın Al'),
-              ),
-            ],
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ],
     );
   }
 }
 
-class _EconomyGuideTab extends StatelessWidget {
-  const _EconomyGuideTab();
+class _GemPackageCard extends StatelessWidget {
+  const _GemPackageCard({
+    required this.pkg,
+    required this.purchaseLoading,
+    required this.buyingGemId,
+    required this.onBuy,
+  });
+
+  final _GemPackage pkg;
+  final bool purchaseLoading;
+  final String? buyingGemId;
+  final VoidCallback onBuy;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isBest = pkg.isBestValue;
+    final bool isBuying = buyingGemId == pkg.id;
+    final int? bonus = pkg.bonusPercent;
+    final String tierLabel = pkg.label ?? '💎 Elmas';
+
+    return DottedPanel(
+      borderColor: isBest
+          ? AppColors.liquidGold.withValues(alpha: 0.5)
+          : AppColors.liquidGold.withValues(alpha: 0.16),
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          if (isBest)
+            Positioned(
+              top: -10,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: AppColors.liquidGoldGradient,
+                    border: Border.all(
+                      color: AppColors.liquidGold.withValues(alpha: 0.65),
+                    ),
+                  ),
+                  child: const Text(
+                    'En İyi Değer',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.carbonVoid,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (!isBest && bonus != null && bonus > 0)
+            Positioned(
+              top: -8,
+              right: -2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.accentCyan.withValues(alpha: 0.18),
+                  border: Border.all(
+                    color: AppColors.accentCyan.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Text(
+                  '+$bonus% Bonus',
+                  style: const TextStyle(
+                    fontSize: 7.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accentCyan,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                if (isBest) const SizedBox(height: 4),
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: <Color>[
+                        AppColors.accentCyan.withValues(alpha: 0.28),
+                        AppColors.accentCyan.withValues(alpha: 0.04),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: AppColors.accentCyan.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.diamond_rounded,
+                    color: AppColors.accentCyan,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${pkg.gems}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Text(
+                  tierLabel,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.mutedTitanium,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isBest && bonus != null && bonus > 0) ...<Widget>[
+                  const SizedBox(height: 2),
+                  Text(
+                    '+$bonus% Bonus',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.accentCyan.withValues(alpha: 0.85),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: Text(
+                    pkg.priceTry,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.liquidGold,
+                    ),
+                  ),
+                ),
+                Text(
+                  pkg.priceUsd,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.mutedTitanium.withValues(alpha: 0.75),
+                    fontSize: 9,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: _ShopScaleButton(
+                    label: 'Satın Al',
+                    accent: AppColors.accentCyan,
+                    loading: isBuying,
+                    enabled: !purchaseLoading && !isBuying,
+                    onTap: onBuy,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoldPurchaseTab extends StatelessWidget {
+  const _GoldPurchaseTab({
+    required this.buyingGoldKey,
+    required this.onBuyGold,
+    required this.fmtGold,
+  });
+
+  final String? buyingGoldKey;
+  final Future<void> Function(int goldAmount, {required String purchaseKey}) onBuyGold;
+  final String Function(int gold) fmtGold;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: _shopScrollPadding(context),
       children: <Widget>[
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                AppColors.cyberFuchsia.withValues(alpha: 0.18),
-                AppColors.carbonVoid,
-              ],
-            ),
-            border: Border.all(color: AppColors.cyberFuchsia.withValues(alpha: 0.35)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Text(
-                'Elmas ≠ Altın',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                ),
+        GameFixedGrid(
+          crossAxisCount: 2,
+          spacing: 12,
+          itemCount: EconomyConstants.goldShopPackages.length,
+          itemBuilder: (BuildContext context, int index) {
+            final GoldShopPackage pkg = EconomyConstants.goldShopPackages[index];
+            final bool isBuying = buyingGoldKey == pkg.id;
+            final bool disabled = isBuying || buyingGoldKey != null;
+
+            return GkkTabStaggerItem(
+              index: index,
+              child: _GoldPackageCard(
+                pkg: pkg,
+                fmtGold: fmtGold,
+                isBuying: isBuying,
+                disabled: disabled,
+                onBuy: () => onBuyGold(pkg.gold, purchaseKey: pkg.id),
               ),
-              const SizedBox(height: 6),
-              Text(
-                'Upgrade milyonlarca altın ister. Elmas ile altın alma kaldırıldı — '
-                'elmas premium sink, altın oyun içi grind.',
-                style: TextStyle(
-                  color: AppColors.mutedTitanium.withValues(alpha: 0.95),
-                  fontSize: 12,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
         const SizedBox(height: 16),
-        const Text(
-          '💎 ELMAS NEREYE?',
+        Text(
+          'Kur: ${EconomyConstants.shopGoldPerGem} altın = 1 💎',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: AppColors.mutedTitanium,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ...EconomyConstants.gemSinks.map(
-          (GemSinkInfo sink) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.white.withValues(alpha: 0.04),
-                border: Border.all(color: AppColors.accentCyan.withValues(alpha: 0.22)),
-              ),
-              child: Row(
-                children: <Widget>[
-                  Text(sink.emoji, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          sink.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          sink.subtitle,
-                          style: const TextStyle(color: Colors.white54, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          '🪙 ALTIN NEREDEN?',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: AppColors.mutedTitanium,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ...EconomyConstants.goldSources.map(
-          (String source) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Icon(Icons.check_circle_outline, size: 14, color: AppColors.toxicNeon),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    source,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.35),
-                  ),
-                ),
-              ],
-            ),
+            color: AppColors.mutedTitanium.withValues(alpha: 0.65),
+            fontSize: 10,
+            height: 1.3,
           ),
         ),
       ],
@@ -798,117 +913,208 @@ class _EconomyGuideTab extends StatelessWidget {
   }
 }
 
-class _OffersTab extends StatelessWidget {
-  const _OffersTab({required this.offers, required this.loading});
-  final List<Map<String, dynamic>> offers;
-  final bool loading;
+class _GoldPackageCard extends StatelessWidget {
+  const _GoldPackageCard({
+    required this.pkg,
+    required this.fmtGold,
+    required this.isBuying,
+    required this.disabled,
+    required this.onBuy,
+  });
+
+  final GoldShopPackage pkg;
+  final String Function(int gold) fmtGold;
+  final bool isBuying;
+  final bool disabled;
+  final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator());
-    if (offers.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(Icons.local_offer_outlined, size: 48, color: Colors.white24),
-            SizedBox(height: 12),
-            Text('Şu anda aktif teklif yok.',
-                style: TextStyle(color: Colors.white54)),
-          ],
-        ),
-      );
-    }
-    return ListView.separated(
-      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
-      itemCount: offers.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final offer = offers[index];
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: Colors.white.withValues(alpha: 0.05),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return DottedPanel(
+      borderColor: pkg.isBestValue
+          ? AppColors.liquidGold.withValues(alpha: 0.5)
+          : AppColors.liquidGold.withValues(alpha: 0.16),
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          if (pkg.isBestValue)
+            Positioned(
+              top: -10,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: AppColors.liquidGoldGradient,
+                    border: Border.all(
+                      color: AppColors.liquidGold.withValues(alpha: 0.65),
+                    ),
+                  ),
+                  child: const Text(
+                    'En İyi Değer',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.carbonVoid,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Text(offer['name']?.toString() ?? 'Teklif',
-                  style:
-                      const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              if (offer['description'] != null) ...<Widget>[
-                const SizedBox(height: 4),
-                Text(offer['description'].toString(),
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 12)),
-              ],
+              if (pkg.isBestValue) const SizedBox(height: 8),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: <Color>[
+                      AppColors.liquidGold.withValues(alpha: 0.28),
+                      AppColors.liquidGold.withValues(alpha: 0.04),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: AppColors.liquidGold.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: const Icon(Icons.paid_rounded, color: AppColors.liquidGold, size: 28),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                fmtGold(pkg.gold),
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Text(
+                '🪙 Altın',
+                style: TextStyle(color: AppColors.mutedTitanium, fontSize: 10),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(Icons.diamond_rounded, size: 13, color: AppColors.accentCyan),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${pkg.gems}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accentCyan,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _ShopScaleButton(
+                label: 'Satın Al',
+                loading: isBuying,
+                enabled: !disabled,
+                onTap: onBuy,
+              ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
 
-class _BattlePassTab extends StatelessWidget {
-  const _BattlePassTab({required this.items, required this.loading});
-  final List<Map<String, dynamic>> items;
+class _ShopScaleButton extends StatefulWidget {
+  const _ShopScaleButton({
+    required this.label,
+    required this.onTap,
+    this.enabled = true,
+    this.loading = false,
+    this.accent,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool enabled;
   final bool loading;
+  final Color? accent;
+
+  @override
+  State<_ShopScaleButton> createState() => _ShopScaleButtonState();
+}
+
+class _ShopScaleButtonState extends State<_ShopScaleButton> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator());
-    if (items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: GameScrollLayout.withClearance(
-            context,
-            const EdgeInsets.all(24),
+    final bool active = widget.enabled && !widget.loading;
+    final Color accent = widget.accent ?? AppColors.liquidGold;
+    final bool useGoldGradient = widget.accent == null;
+
+    return GestureDetector(
+      onTapDown: active ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: active ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: active ? () => setState(() => _pressed = false) : null,
+      onTap: active ? widget.onTap : null,
+      child: AnimatedScale(
+        scale: _pressed && active ? 0.94 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 6,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Icon(Icons.military_tech_outlined, size: 48, color: Colors.white24),
-              const SizedBox(height: 12),
-              const Text(
-                'Muharebe Geçidi sezon ekranında.',
-                style: TextStyle(color: Colors.white54),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => context.push(AppRoutes.season),
-                icon: const Icon(Icons.ac_unit_rounded),
-                label: const Text('Sezona Git'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.liquidGold,
-                  foregroundColor: AppColors.carbonVoid,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return ListView.separated(
-      padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Container(
-          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: Colors.white.withValues(alpha: 0.05),
-            border: Border.all(color: Colors.white12),
+            borderRadius: BorderRadius.circular(10),
+            gradient: active && useGoldGradient ? AppColors.liquidGoldGradient : null,
+            color: active
+                ? (useGoldGradient ? null : accent.withValues(alpha: 0.88))
+                : AppColors.darkObsidian.withValues(alpha: 0.55),
+            border: Border.all(
+              color: active
+                  ? accent.withValues(alpha: 0.55)
+                  : Colors.white.withValues(alpha: 0.08),
+            ),
+            boxShadow: active
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
-          child: Text(item['name']?.toString() ?? 'İtem',
-              style: const TextStyle(fontWeight: FontWeight.w700)),
-        );
-      },
+          child: widget.loading
+              ? SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: useGoldGradient ? AppColors.carbonVoid : Colors.white,
+                  ),
+                )
+              : Text(
+                  widget.label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: active
+                        ? (useGoldGradient ? AppColors.carbonVoid : Colors.white)
+                        : AppColors.mutedTitanium,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }
@@ -950,62 +1156,98 @@ class _ItemsTab extends StatelessWidget {
     );
 
     return Column(
-      children: [
-        // Search bar
-        Container(
-          margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0C1220),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Row(children: [
-            const Icon(Icons.search, color: Colors.white38, size: 16),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                onChanged: onSearchChanged,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: context.l10n.e_ya_ara,
-                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                  border: InputBorder.none,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+          child: DottedPanel(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            borderColor: AppColors.liquidGold.withValues(alpha: 0.16),
+            child: Row(
+              children: <Widget>[
+                const Icon(Icons.search, color: AppColors.mutedTitanium, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    onChanged: onSearchChanged,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: context.l10n.e_ya_ara,
+                      hintStyle: TextStyle(
+                        color: AppColors.mutedTitanium.withValues(alpha: 0.65),
+                        fontSize: 13,
+                      ),
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                    ),
+                  ),
                 ),
-              ),
+                if (searchQuery.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => onSearchChanged(''),
+                    child: Icon(
+                      Icons.close,
+                      color: AppColors.mutedTitanium.withValues(alpha: 0.75),
+                      size: 14,
+                    ),
+                  ),
+              ],
             ),
-            if (searchQuery.isNotEmpty)
-              GestureDetector(onTap: () => onSearchChanged(''), child: const Icon(Icons.close, color: Colors.white38, size: 14)),
-          ]),
+          ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text('${filtered.length} eşya${q.isNotEmpty ? ' "$searchQuery" için bulundu' : ''}', style: const TextStyle(color: Colors.white38, fontSize: 10)),
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+          child: Text(
+            '${filtered.length} eşya${q.isNotEmpty ? ' · "$searchQuery"' : ''}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.mutedTitanium.withValues(alpha: 0.75),
+              fontSize: 10,
+            ),
           ),
         ),
         Expanded(
           child: filtered.isEmpty
               ? Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.shopping_bag_outlined, size: 48, color: Colors.white12),
-                    const SizedBox(height: 10),
-                    Text(q.isNotEmpty ? '"$searchQuery" için eşya bulunamadı' : 'Mağazada henüz eşya yok', style: const TextStyle(color: Colors.white38, fontSize: 13)),
-                  ]),
+                  child: Padding(
+                    padding: _shopScrollPadding(context),
+                    child: DottedPanel(
+                      borderColor: AppColors.liquidGold.withValues(alpha: 0.2),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 48,
+                            color: AppColors.mutedTitanium.withValues(alpha: 0.35),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            q.isNotEmpty
+                                ? '"$searchQuery" için eşya bulunamadı'
+                                : 'Mağazada henüz eşya yok',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.mutedTitanium,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 )
               : GridView.builder(
-                  padding: GameScrollLayout.withClearance(
-                    context,
-                    const EdgeInsets.all(12),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
                   ),
+                  padding: _shopScrollPadding(context),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 0.72,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.74,
                   ),
                   itemCount: filtered.length,
                   itemBuilder: (context, i) {
@@ -1146,7 +1388,7 @@ class _ItemsTab extends StatelessWidget {
                         child: cell,
                       );
                     }
-                    return cell;
+                    return GkkTabStaggerItem(index: i, child: cell);
                   },
                 ),
         ),

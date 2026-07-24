@@ -11,6 +11,7 @@ import '../../providers/player_provider.dart';
 import '../../providers/reputation_provider.dart';
 import '../../routing/app_router.dart';
 import '../../utils/logout_helper.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import '../mekans/widgets/mekan_design.dart';
 import 'widgets/reputation_activity_log.dart';
 import 'widgets/reputation_design.dart';
@@ -115,23 +116,52 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
                     ),
                     const SizedBox(height: 16),
                     ReputationTabBar(index: _tab, onChanged: (int i) => setState(() => _tab = i)),
-                    const SizedBox(height: 16),
                     if (state.error != null) ...<Widget>[
-                      Text(state.error!, style: const TextStyle(color: MekanPalette.ruby, fontSize: 12)),
                       const SizedBox(height: 8),
+                      Text(state.error!, style: const TextStyle(color: MekanPalette.ruby, fontSize: 12)),
                     ],
-                    if (_tab == 0) ...<Widget>[
-                      ReputationEarnSection(),
-                    ] else if (_tab == 1) ...<Widget>[
-                      ReputationShopGrid(
-                        items: overview.shopItems,
-                        globalRep: globalRep,
-                        purchasingId: state.purchasingId,
-                        onPurchase: _purchase,
+                    const SizedBox(height: 16),
+                    TweenAnimationBuilder<double>(
+                      key: ValueKey<int>(_tab),
+                      tween: Tween<double>(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      builder: (BuildContext context, double value, Widget? child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, 10 * (1 - value)),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          GkkTabSectionTitle(
+                            switch (_tab) {
+                              0 => 'İtibar Kazan',
+                              1 => 'İtibar Dükkanı',
+                              _ => 'Aktivite Geçmişi',
+                            },
+                            accent: MekanPalette.gold,
+                          ),
+                          const SizedBox(height: 8),
+                          if (_tab == 0) ...<Widget>[
+                            ReputationEarnSection(),
+                          ] else if (_tab == 1) ...<Widget>[
+                            ReputationShopGrid(
+                              items: overview.shopItems,
+                              globalRep: globalRep,
+                              purchasingId: state.purchasingId,
+                              onPurchase: _purchase,
+                            ),
+                          ] else ...<Widget>[
+                            ReputationActivityLog(entries: overview.activity),
+                          ],
+                        ],
                       ),
-                    ] else ...<Widget>[
-                      ReputationActivityLog(entries: overview.activity),
-                    ],
+                    ),
                     const SizedBox(height: 24),
                   ],
                 ),

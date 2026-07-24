@@ -302,16 +302,6 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
           loading: _healing,
           onPressed: _healing ? null : () => _healWithGems(),
         ),
-        const SizedBox(height: 6),
-        Center(
-          child: Text(
-            'Mevcut: ${profile.gems} 💎',
-            style: const TextStyle(
-              color: AppColors.mutedTitanium,
-              fontSize: 12,
-            ),
-          ),
-        ),
         const SizedBox(height: 10),
         RestrictionOutlineButton(
           label: 'Reklam İzle — Süreni 30 DK Kısalt',

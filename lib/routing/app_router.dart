@@ -12,6 +12,7 @@ import '../screens/auth/register_screen.dart';
 import '../screens/auth/splash_screen.dart';
 import '../screens/bank/bank_screen.dart';
 import '../screens/character/character_screen.dart';
+import '../screens/character/codex_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/crafting/crafting_screen.dart';
 import '../screens/dungeon/dungeon_screen.dart';
@@ -67,6 +68,7 @@ class AppRoutes {
   static const String inventory = '/inventory';
   static const String dungeon = '/dungeon';
   static const String character = '/character';
+  static const String codex = '/character/codex';
   static const String horseRace = '/horse-race';
   static const String hospital = '/hospital';
   static const String market = '/market';
@@ -240,6 +242,14 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
       build: (BuildContext context, GoRouterState state) => const CharacterScreen(),
     ),
     gameRoute(
+      path: AppRoutes.codex,
+      build: (BuildContext context, GoRouterState state) {
+        final String category = state.uri.queryParameters['category'] ?? 'item';
+        final bool claim = state.uri.queryParameters['claim'] == '1';
+        return CodexScreen(initialCategory: category, autoClaim: claim);
+      },
+    ),
+    gameRoute(
       path: AppRoutes.hospital,
       build: (BuildContext context, GoRouterState state) => const HospitalScreen(),
     ),
@@ -389,7 +399,9 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     ),
     gameRoute(
       path: AppRoutes.pvp,
-      build: (BuildContext context, GoRouterState state) => const PvpScreen(),
+      build: (BuildContext context, GoRouterState state) => PvpScreen(
+        revengeTargetId: state.uri.queryParameters['revenge'],
+      ),
     ),
     gameRoute(
       path: AppRoutes.pvpHistory,
@@ -417,7 +429,11 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     ),
     gameRoute(
       path: AppRoutes.shop,
-      build: (BuildContext context, GoRouterState state) => const ShopScreen(),
+      build: (BuildContext context, GoRouterState state) {
+        final String? tab = state.uri.queryParameters['tab'];
+        final int? initialTab = tab == 'night' ? 2 : null;
+        return ShopScreen(initialTabIndex: initialTab);
+      },
     ),
     gameRoute(
       path: AppRoutes.trade,

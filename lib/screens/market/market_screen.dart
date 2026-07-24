@@ -9,6 +9,7 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/market_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../../components/common/gkk_tab_page_shell.dart';
 import 'widgets/market_browse_tab.dart';
 import 'widgets/market_design.dart';
 import 'widgets/market_my_market_tab.dart';
@@ -59,7 +60,6 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final int gold = ref.watch(playerProvider).profile?.gold ?? 0;
     final int listingCount = ref.watch(marketProvider).tickers.length;
 
     return Scaffold(
@@ -70,13 +70,41 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
         child: ListView(
           padding: GameScrollLayout.fromLTRB(context, left: 12, top: 8, right: 12),
           children: <Widget>[
-            MarketHeroBanner(listingCount: listingCount, goldBalance: gold),
+            MarketHeroBanner(listingCount: listingCount),
             const SizedBox(height: 10),
             MarketTabBar(activeTab: _tab, onTabChanged: _onTabChanged),
             const SizedBox(height: 10),
-            if (_tab == MarketTab.browse) const MarketBrowseTab(),
-            if (_tab == MarketTab.sell) const MarketSellTab(),
-            if (_tab == MarketTab.myMarket) const MarketMyMarketTab(),
+            TweenAnimationBuilder<double>(
+              key: ValueKey<MarketTab>(_tab),
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              builder: (BuildContext context, double value, Widget? child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, 10 * (1 - value)),
+                    child: child,
+                  ),
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  GkkTabSectionTitle(
+                    switch (_tab) {
+                      MarketTab.browse => 'Pazar Listeleri',
+                      MarketTab.sell => 'Eşya Sat',
+                      MarketTab.myMarket => 'Benim Pazarim',
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  if (_tab == MarketTab.browse) const MarketBrowseTab(),
+                  if (_tab == MarketTab.sell) const MarketSellTab(),
+                  if (_tab == MarketTab.myMarket) const MarketMyMarketTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),

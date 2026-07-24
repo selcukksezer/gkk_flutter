@@ -166,9 +166,11 @@ class GameNotificationScheduler {
       await syncBoxOpenings(boxOpenings);
     } else {
       await syncFacilitiesFromServer();
+      await syncNightMarketReminder();
       return;
     }
     await syncFacilitiesFromServer();
+    await syncNightMarketReminder();
   }
 
   Future<void> pushInboxItemIfBackground(GameNotificationItem item) async {
@@ -183,6 +185,7 @@ class GameNotificationScheduler {
   }
 
   bool _shouldPushInstant(GameNotificationItem item) {
+    final LocalNotificationService notif = _notifications;
     return switch (item.kind) {
       NotificationKind.hospital ||
       NotificationKind.prison ||
@@ -201,7 +204,75 @@ class GameNotificationScheduler {
       NotificationKind.questReward ||
       NotificationKind.referralReward =>
         true,
+      NotificationKind.codexNewEntry ||
+      NotificationKind.codexMilestone =>
+        true,
+      NotificationKind.nemesisRevenge ||
+      NotificationKind.nemesisOnline =>
+        notif.isNemesisEnabled,
+      NotificationKind.nightMarketOpen ||
+      NotificationKind.nightMarketEnding =>
+        notif.isNightMarketEnabled,
     };
+  }
+
+  static const int nightMarketOpenId = 1100;
+  static const int nightMarketFridayId = 1101;
+
+  Future<void> cancelNightMarketReminders() async {
+    await _notifications.cancel(nightMarketOpenId);
+    await _notifications.cancel(nightMarketFridayId);
+  }
+
+  /// Açılıştan 5 dk önce — opsiyonel Gece Pazarı hatırlatıcısı.
+  Future<void> syncNightMarketReminder() async {
+    if (!SupabaseService.isInitialized) return;
+    if (!_notifications.isNightMarketEnabled) {
+      await cancelNightMarketReminders();
+      return;
+    }
+    try {
+      final dynamic raw = await SupabaseService.client.rpc('get_night_market_status');
+      if (raw is! Map || raw['success'] != true) return;
+
+      final bool active = raw['active'] == true;
+      final DateTime? startsAt = raw['starts_at'] == null
+          ? null
+          : DateTime.tryParse(raw['starts_at'].toString())?.toLocal();
+      final DateTime? endsAt = raw['ends_at'] == null
+          ? null
+          : DateTime.tryParse(raw['ends_at'].toString())?.toLocal();
+      final DateTime now = DateTime.now();
+
+      if (active && endsAt != null && endsAt.isAfter(now)) {
+        await _notifications.scheduleAt(
+          id: nightMarketOpenId,
+          title: 'Gece Pazarı açık',
+          body: 'Günlük gem teklifleri seni bekliyor.',
+          when: now.add(const Duration(seconds: 5)),
+          payload: '${AppRoutes.shop}?tab=night',
+        );
+      } else {
+        await _notifications.cancel(nightMarketOpenId);
+      }
+
+      if (startsAt != null && startsAt.isAfter(now)) {
+        final DateTime remindAt = startsAt.subtract(const Duration(minutes: 5));
+        if (remindAt.isAfter(now)) {
+          await _notifications.scheduleAt(
+            id: nightMarketFridayId,
+            title: 'Gece Pazarı yakında',
+            body: '5 dk içinde açılıyor — hazır ol.',
+            when: remindAt,
+            payload: '${AppRoutes.shop}?tab=night',
+          );
+        }
+      } else {
+        await _notifications.cancel(nightMarketFridayId);
+      }
+    } catch (_) {
+      // ignore
+    }
   }
 
   String _facilityLabel(String typeKey) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../components/common/gkk_card.dart';
+import '../../../components/common/gkk_tab_bar.dart';
 import '../../../components/common/item_icon_view.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../../models/crafting_model.dart';
@@ -54,80 +55,13 @@ class CraftingCategoryTabBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          AnimatedBuilder(
-            animation: controller,
-            builder: (BuildContext context, Widget? child) {
-              return Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: AppColors.darkObsidian.withValues(alpha: 0.78),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: AppColors.carbonVoid.withValues(alpha: 0.45),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: List<Widget>.generate(tabs.length, (int index) {
-                      final bool active = controller.index == index;
-                      return Padding(
-                        padding: EdgeInsets.only(right: index < tabs.length - 1 ? 4 : 0),
-                        child: GestureDetector(
-                          onTap: () => controller.animateTo(index),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOutCubic,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(9),
-                              gradient: active
-                                  ? const LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: <Color>[
-                                        Color(0x33FFB800),
-                                        Color(0x14FFB800),
-                                      ],
-                                    )
-                                  : null,
-                              border: Border.all(
-                                color: active
-                                    ? AppColors.liquidGold.withValues(alpha: 0.55)
-                                    : Colors.transparent,
-                                width: active ? 1.2 : 0,
-                              ),
-                              boxShadow: active
-                                  ? <BoxShadow>[
-                                      BoxShadow(
-                                        color: AppColors.liquidGold.withValues(alpha: 0.12),
-                                        blurRadius: 10,
-                                        spreadRadius: -2,
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Text(
-                              tabs[index].$2,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: active ? AppColors.liquidGold : AppColors.mutedTitanium,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-              );
-            },
+          GkkTabBar(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+            margin: EdgeInsets.zero,
+            tabs: GkkTabBar.textTabs(
+              tabs.map((t) => t.$2).toList(growable: false),
+            ),
           ),
         ],
       ),

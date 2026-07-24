@@ -19,6 +19,7 @@ class PvpHistoryScreen extends ConsumerStatefulWidget {
 
 class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
   String _filter = 'all';
+  String? _nemesisRivalId;
 
   @override
   void initState() {
@@ -26,6 +27,17 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
     deferProviderUpdate(() {
       ref.read(pvpHistoryProvider.notifier).load();
     });
+    _loadNemesisRival();
+  }
+
+  Future<void> _loadNemesisRival() async {
+    try {
+      final dynamic res = await SupabaseService.client.rpc('get_nemesis_rival');
+      if (!mounted || res is! Map) return;
+      if (res['has_rival'] == true) {
+        setState(() => _nemesisRivalId = res['rival_id']?.toString());
+      }
+    } catch (_) {}
   }
 
   @override
@@ -63,6 +75,12 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
     if (_filter == 'loss') {
       filtered = history.matches.where((m) => m.winnerId != authId).toList();
     }
+    if (_filter == 'nemesis' && _nemesisRivalId != null) {
+      filtered = history.matches
+          .where((PvpRecentMatch m) =>
+              m.attackerId == _nemesisRivalId || m.defenderId == _nemesisRivalId)
+          .toList();
+    }
 
     Future<void> logout() async {
       await ref.read(authProvider.notifier).logout();
@@ -88,7 +106,12 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
-                  for (final f in [('all', 'Tümü'), ('win', 'Kazandım'), ('loss', 'Kaybettim')])
+                  for (final f in <(String, String)>[
+                    ('all', 'Tümü'),
+                    ('win', 'Kazandım'),
+                    ('loss', 'Kaybettim'),
+                    ('nemesis', 'NEMESIS'),
+                  ])
                     Expanded(
                       child: GestureDetector(
                         onTap: () => setState(() => _filter = f.$1),
@@ -214,6 +237,27 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
                                                   style: const TextStyle(
                                                       color: Colors.white54, fontSize: 12),
                                                 ),
+                                                if (_nemesisRivalId != null &&
+                                                    (m.attackerId == _nemesisRivalId ||
+                                                        m.defenderId == _nemesisRivalId))
+                                                  Container(
+                                                    margin: const EdgeInsets.only(top: 4),
+                                                    padding: const EdgeInsets.symmetric(
+                                                        horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFE52E2E)
+                                                          .withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: const Text(
+                                                      'NEMESIS',
+                                                      style: TextStyle(
+                                                        color: Color(0xFFE52E2E),
+                                                        fontSize: 9,
+                                                        fontWeight: FontWeight.w900,
+                                                      ),
+                                                    ),
+                                                  ),
                                                 Text(
                                                   _timeAgo(m.createdAt),
                                                   style: const TextStyle(

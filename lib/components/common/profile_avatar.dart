@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_colors.dart';
+
 /// Selectable profile photos bundled in [assets/profile/].
 abstract final class ProfilePhotoCatalog {
   static const String assetBase = 'assets/profile/';
@@ -23,6 +25,7 @@ class ProfileAvatar extends StatelessWidget {
     this.avatarUrl,
     this.backgroundColor,
     this.glowFrame = false,
+    this.codexFrame = false,
     this.border,
     this.placeholderIconColor = Colors.white,
   });
@@ -31,6 +34,7 @@ class ProfileAvatar extends StatelessWidget {
   final String? avatarUrl;
   final Color? backgroundColor;
   final bool glowFrame;
+  final bool codexFrame;
   final BoxBorder? border;
   final Color placeholderIconColor;
 
@@ -41,22 +45,42 @@ class ProfileAvatar extends StatelessWidget {
     final double radius = cornerRadiusFor(size);
     final BorderRadius borderRadius = BorderRadius.circular(radius);
 
+    final BoxBorder? resolvedBorder = codexFrame
+        ? Border.all(
+            color: AppColors.liquidGold.withValues(alpha: 0.85),
+            width: 2,
+          )
+        : border;
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.white10,
         borderRadius: borderRadius,
-        border: border,
-        boxShadow: glowFrame
+        border: resolvedBorder,
+        boxShadow: codexFrame
             ? <BoxShadow>[
                 BoxShadow(
-                  color: Colors.blueAccent.withValues(alpha: 0.6),
-                  blurRadius: 10,
-                  spreadRadius: 2,
+                  color: AppColors.liquidGold.withValues(alpha: 0.55),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+                BoxShadow(
+                  color: AppColors.liquidGold.withValues(alpha: 0.25),
+                  blurRadius: 22,
+                  spreadRadius: 3,
                 ),
               ]
-            : null,
+            : glowFrame
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: Colors.blueAccent.withValues(alpha: 0.6),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: _buildImage(radius),

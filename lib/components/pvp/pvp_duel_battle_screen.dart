@@ -240,6 +240,8 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
       : widget.duel['challenger_won'] != true;
   int get _wager => (widget.duel['wager'] as num?)?.toInt() ?? widget.wager;
   int get _netWin => (widget.duel['net_win'] as num?)?.toInt() ?? 0;
+  int get _nemesisRevengeGold =>
+      (widget.duel['nemesis_revenge_gold'] as num?)?.toInt() ?? 0;
   int get _myRatingChange => widget.iAmChallenger
       ? (widget.duel['challenger_rating_change'] as num?)?.toInt() ?? 0
       : (widget.duel['target_rating_change'] as num?)?.toInt() ?? 0;
@@ -992,6 +994,13 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
                               won ? '+$_netWin altın' : '-$_wager altın',
                               won ? _kGold : _kRed,
                             ),
+                          if (won && _nemesisRevengeGold > 0) ...<Widget>[
+                            const SizedBox(height: 6),
+                            _resultChip(
+                              'Nemesis intikam bonusu: +$_nemesisRevengeGold g',
+                              const Color(0xFFFFB800), // Liquid Gold
+                            ),
+                          ],
                           const SizedBox(height: 6),
                           _resultChip(
                             _myRatingChange >= 0

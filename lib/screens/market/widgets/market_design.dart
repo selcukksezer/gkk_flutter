@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../components/common/gkk_tab_bar.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../../theme/app_colors.dart';
 
@@ -126,11 +127,9 @@ class MarketHeroBanner extends StatelessWidget {
   const MarketHeroBanner({
     super.key,
     required this.listingCount,
-    required this.goldBalance,
   });
 
   final int listingCount;
-  final int goldBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -208,8 +207,6 @@ class MarketHeroBanner extends StatelessWidget {
                 label: '%5 vergi',
                 accent: AppColors.coralFlare,
               ),
-              const Spacer(),
-              MarketGoldBadge(gold: goldBalance, compact: true),
             ],
           ),
         ],
@@ -248,69 +245,6 @@ class MarketHeroBanner extends StatelessWidget {
   }
 }
 
-/// Gold balance chip.
-class MarketGoldBadge extends StatelessWidget {
-  const MarketGoldBadge({
-    super.key,
-    required this.gold,
-    this.compact = false,
-  });
-
-  final int gold;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 4 : 6,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[
-            AppColors.liquidGold.withValues(alpha: 0.18),
-            AppColors.carbonVoid.withValues(alpha: 0.6),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(compact ? 8 : 10),
-        border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.45)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AppColors.liquidGold.withValues(alpha: 0.12),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(
-            Icons.monetization_on_rounded,
-            size: compact ? 12 : 14,
-            color: AppColors.liquidGold,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            _formatGold(gold),
-            style: TextStyle(
-              color: AppColors.liquidGold,
-              fontWeight: FontWeight.w900,
-              fontSize: compact ? 10 : 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatGold(int value) {
-    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-    if (value >= 10000) return '${(value / 1000).toStringAsFixed(1)}K';
-    return value.toString();
-  }
-}
-
 /// Main tab strip — Gözat / Sat / Pazarım.
 class MarketTabStrip extends StatelessWidget {
   const MarketTabStrip({
@@ -326,54 +260,12 @@ class MarketTabStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DottedPanel(
-      padding: const EdgeInsets.all(4),
-      borderRadius: 14,
-      borderColor: AppColors.darkObsidian.withValues(alpha: 0.8),
-      child: Row(
-        children: List<Widget>.generate(labels.length, (int index) {
-          final bool active = index == activeIndex;
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(left: index > 0 ? 4 : 0),
-              child: MarketPressable(
-                onTap: () => onChanged(index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    gradient: active ? MarketDesign.goldGradient : null,
-                    color: active ? null : Colors.transparent,
-                    border: active
-                        ? null
-                        : Border.all(color: AppColors.darkObsidian.withValues(alpha: 0.6)),
-                    boxShadow: active
-                        ? <BoxShadow>[
-                            BoxShadow(
-                              color: AppColors.liquidGold.withValues(alpha: 0.22),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Text(
-                    labels[index],
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: active ? AppColors.carbonVoid : AppColors.mutedTitanium,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
+    return GkkSegmentedTabBar(
+      labels: labels,
+      activeIndex: activeIndex,
+      onChanged: onChanged,
+      padding: EdgeInsets.zero,
+      margin: EdgeInsets.zero,
     );
   }
 }

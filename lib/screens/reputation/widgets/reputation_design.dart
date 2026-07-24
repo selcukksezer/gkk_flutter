@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../components/common/gkk_tab_bar.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../mekans/widgets/mekan_design.dart';
 
@@ -247,54 +248,11 @@ class ReputationTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const List<String> labels = <String>['Kazan', 'Harca', 'Geçmiş'];
-    return Row(
-      children: List<Widget>.generate(labels.length, (int i) {
-        final bool active = index == i;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i < labels.length - 1 ? 8 : 0),
-            child: PressableScale(
-              onTap: () => onChanged(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: active
-                      ? const LinearGradient(
-                          colors: <Color>[Color(0xFFFFD64A), MekanPalette.gold],
-                        )
-                      : null,
-                  color: active ? null : MekanPalette.obsidian.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: active
-                        ? MekanPalette.gold.withValues(alpha: 0.8)
-                        : Colors.white.withValues(alpha: 0.08),
-                  ),
-                  boxShadow: active
-                      ? <BoxShadow>[
-                          BoxShadow(
-                            color: MekanPalette.gold.withValues(alpha: 0.25),
-                            blurRadius: 12,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Text(
-                  labels[i],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: active ? MekanPalette.void_ : MekanPalette.textMid,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
+    return GkkSegmentedTabBar(
+      labels: labels,
+      activeIndex: index,
+      onChanged: onChanged,
+      padding: EdgeInsets.zero,
     );
   }
 }

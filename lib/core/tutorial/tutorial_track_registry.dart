@@ -392,6 +392,55 @@ abstract final class TutorialTrackRegistry {
         ),
       ],
     ),
+    TutorialTrack(
+      id: TutorialTrackId.retentionIntro,
+      triggerRoute: TutorialRoutes.character,
+      steps: <TutorialStepV2>[
+        TutorialStepV2(
+          id: 'retention_codex',
+          trackId: TutorialTrackId.retentionIntro,
+          title: 'Kodex',
+          body: 'Keşifleri Kodex’te topla. Kilometre taşı ödülleri seni bekliyor.',
+          anchorId: TutorialAnchorId.characterCodexTile,
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Devam',
+          allowedRoutes: <String>[TutorialRoutes.character, TutorialRoutes.home],
+        ),
+        TutorialStepV2(
+          id: 'retention_nemesis',
+          trackId: TutorialTrackId.retentionIntro,
+          title: 'Nemesis',
+          body: 'PvP’de rakibini izle — intikam düellosu ve bonus altın.',
+          anchorId: TutorialAnchorId.pvpNemesisPanel,
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Devam',
+          allowedRoutes: <String>[
+            TutorialRoutes.pvp,
+            TutorialRoutes.character,
+            TutorialRoutes.home,
+          ],
+          requiresPrior: <String>['retention_codex'],
+        ),
+        TutorialStepV2(
+          id: 'retention_night',
+          trackId: TutorialTrackId.retentionIntro,
+          title: 'Gece Pazarı',
+          body: 'Her gün 20:00–22:00 TR — sınırlı gem teklifleri.',
+          anchorId: TutorialAnchorId.shopNightTab,
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Tamam',
+          allowedRoutes: <String>[
+            TutorialRoutes.shop,
+            TutorialRoutes.character,
+            TutorialRoutes.home,
+          ],
+          requiresPrior: <String>['retention_nemesis'],
+        ),
+      ],
+    ),
   ];
 
   static TutorialTrack? trackById(String id) {

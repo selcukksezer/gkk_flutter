@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../components/layout/game_chrome.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../providers/retention_promos_provider.dart';
 import '../../../routing/app_router.dart';
 
 String _compact(int value) {
@@ -14,14 +16,14 @@ String _compact(int value) {
   return '$value';
 }
 
-class StickyActionBar extends StatefulWidget {
+class StickyActionBar extends ConsumerStatefulWidget {
   const StickyActionBar({super.key});
 
   @override
-  State<StickyActionBar> createState() => _StickyActionBarState();
+  ConsumerState<StickyActionBar> createState() => _StickyActionBarState();
 }
 
-class _StickyActionBarState extends State<StickyActionBar>
+class _StickyActionBarState extends ConsumerState<StickyActionBar>
     with TickerProviderStateMixin {
   late AnimationController _expandController;
   late AnimationController _pulseController;
@@ -155,9 +157,14 @@ class _StickyActionBarState extends State<StickyActionBar>
   }
 
   String get _subtitleLabel {
+    final nemesisGap = ref.watch(retentionPromosProvider).promos.nemesis.leaderboardGap;
+    final bool hasNemesis = ref.watch(retentionPromosProvider).promos.nemesis.hasRival;
     if (_loading) return 'Canli guc siralamasi';
     if (_rank == null) return 'Henuz siralama yok';
     if (_rank == 1) return 'Zirvedesin!';
+    if (hasNemesis && nemesisGap > 0) {
+      return 'Nemesis farki: ${_compact(nemesisGap)} Guc';
+    }
     if (_gap != null && _gap! > 0) return 'Rakibe ${_compact(_gap!)} Guc';
     return 'Gucunu artir, yuksel';
   }
@@ -255,9 +262,14 @@ class _StickyActionBarState extends State<StickyActionBar>
             children: <Widget>[
               Expanded(
                 child: GestureDetector(
-                  onTap: () => _onPanelTap(
-                    () => context.push(AppRoutes.leaderboard),
-                  ),
+                  onTap: () => _onPanelTap(() {
+                    final promos = ref.read(retentionPromosProvider).promos;
+                    if (promos.nemesis.hasRival && promos.nemesis.rivalId != null) {
+                      context.push('${AppRoutes.pvp}?revenge=${promos.nemesis.rivalId}');
+                    } else {
+                      context.push(AppRoutes.leaderboard);
+                    }
+                  }),
                   behavior: HitTestBehavior.opaque,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

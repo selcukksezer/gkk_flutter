@@ -51,6 +51,17 @@ class BattlePassRepository {
     return (response as List).map((json) => BpLevelReward.fromJson(json)).toList();
   }
 
+  Future<BpSeasonRewardsBundle?> getSeasonRewards({String? seasonId}) async {
+    final dynamic raw = await _client.rpc(
+      'get_battle_pass_season_rewards',
+      params: seasonId == null
+          ? null
+          : <String, dynamic>{'p_season_id': seasonId},
+    );
+    if (raw is! Map || raw['success'] != true) return null;
+    return BpSeasonRewardsBundle.fromRpc(Map<String, dynamic>.from(raw));
+  }
+
   Future<Map<String, dynamic>> claimReward(int level, bool isVip) async {
     final response = await _client.rpc('bp_claim_reward', params: {
       'p_level': level,

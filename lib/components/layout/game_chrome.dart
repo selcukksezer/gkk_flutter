@@ -79,18 +79,31 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
     return Semantics(
       header: true,
       label: title,
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: width,
-                height: compact ? 126 : 134,
-                margin: const EdgeInsets.only(top: 4),
-                child: Stack(
-                  children: [
+      child: Material(
+        // Kill scaffold blue bleed in status-bar / preferredSize gap.
+        color: const Color(0xFF0A0F16),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        child: Builder(
+          builder: (context) {
+            final topInset = MediaQuery.paddingOf(context).top;
+            // ~8px up vs full SafeArea.
+            final topPad = (topInset - 8).clamp(0.0, double.infinity);
+            return Padding(
+              padding: EdgeInsets.only(top: topPad),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: width,
+                      // Tight to XP row — less dead space above ticker/bell.
+                      height: bgHeight + 8,
+                      margin: EdgeInsets.zero,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
                     Positioned(
                       top: 0,
                       left: 0,
@@ -183,6 +196,7 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                                 alpha: 0.3,
                               ),
                               glowFrame: profile?.avatarFrame == 'glow',
+                              codexFrame: profile?.avatarFrame == 'codex',
                             ),
                             const SizedBox(width: 8),
                             ConstrainedBox(
@@ -213,7 +227,9 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                  if (hasCosmeticTitle(profile?.cosmeticTitle)) ...<Widget>[
+                                  if (hasCosmeticTitle(
+                                    profile?.cosmeticTitle,
+                                  )) ...<Widget>[
                                     const SizedBox(height: 2),
                                     CosmeticTitleBadge(
                                       titleKey: profile!.cosmeticTitle,
@@ -242,9 +258,8 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
               child: Row(
                 children: <Widget>[
                   const Expanded(child: LiveTicker()),
@@ -253,7 +268,10 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                 ],
               ),
             ),
-          ],
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -983,8 +1001,9 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                 ) {
                                   final _BottomItem item = items[i];
                                   final bool isActive = i == activeIdx;
-                                  final String? navAnchor =
-                                      ref.read(tutorialProvider.notifier).anchorForNavIndex(i);
+                                  final String? navAnchor = ref
+                                      .read(tutorialProvider.notifier)
+                                      .anchorForNavIndex(i);
                                   Widget tabCell = Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: <Widget>[
@@ -1035,7 +1054,9 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                           return;
                                         }
                                         if (navAnchor != null) {
-                                          await tutorialCtrl.onAnchorTap(navAnchor);
+                                          await tutorialCtrl.onAnchorTap(
+                                            navAnchor,
+                                          );
                                         }
                                         if (!context.mounted) return;
                                         if (item.isMenuTrigger) {

@@ -261,13 +261,6 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen>
       releaseLabel: formatRestrictionRelease(releaseTime),
       countdown: formatRestrictionCountdown(restrictionRemainingDuration),
       progress: restrictionProgress(),
-      extraInfo: Text(
-        '💎 Mevcut: ${profile.gems} elmas',
-        style: const TextStyle(
-          color: RestrictionScreenUi.gemAccent,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
       actions: <Widget>[
         RestrictionFilledButton(
           label: 'Kefalet Öde ($bailCost Elmas)',

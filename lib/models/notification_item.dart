@@ -19,6 +19,12 @@ enum NotificationKind {
   hospital,
   prison,
   lowHealth,
+  codexNewEntry,
+  codexMilestone,
+  nemesisRevenge,
+  nemesisOnline,
+  nightMarketOpen,
+  nightMarketEnding,
 }
 
 extension NotificationKindX on NotificationKind {
@@ -38,6 +44,12 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.hospital => Icons.local_hospital_rounded,
         NotificationKind.prison => Icons.gavel_rounded,
         NotificationKind.lowHealth => Icons.favorite_border_rounded,
+        NotificationKind.codexNewEntry => Icons.menu_book_rounded,
+        NotificationKind.codexMilestone => Icons.emoji_events_rounded,
+        NotificationKind.nemesisRevenge => Icons.sports_mma_rounded,
+        NotificationKind.nemesisOnline => Icons.visibility_rounded,
+        NotificationKind.nightMarketOpen => Icons.nights_stay_rounded,
+        NotificationKind.nightMarketEnding => Icons.timer_rounded,
       };
 
   Color get accentColor => switch (this) {
@@ -56,6 +68,12 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.hospital => AppColors.mysticRuby,
         NotificationKind.prison => AppColors.coralFlare,
         NotificationKind.lowHealth => AppColors.mysticRuby,
+        NotificationKind.codexNewEntry => AppColors.liquidGold,
+        NotificationKind.codexMilestone => AppColors.liquidGold,
+        NotificationKind.nemesisRevenge => AppColors.mysticRuby,
+        NotificationKind.nemesisOnline => AppColors.coralFlare,
+        NotificationKind.nightMarketOpen => AppColors.warningSolar,
+        NotificationKind.nightMarketEnding => AppColors.warningSolar,
       };
 
   String get sectionLabel => switch (this) {
@@ -74,6 +92,12 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.hospital => 'Hastane',
         NotificationKind.prison => 'Hapishane',
         NotificationKind.lowHealth => 'Sağlık',
+        NotificationKind.codexNewEntry => 'Kodex',
+        NotificationKind.codexMilestone => 'Kodex',
+        NotificationKind.nemesisRevenge => 'PvP',
+        NotificationKind.nemesisOnline => 'PvP',
+        NotificationKind.nightMarketOpen => 'Mağaza',
+        NotificationKind.nightMarketEnding => 'Mağaza',
       };
 }
 

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../components/common/gkk_tab_bar.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
@@ -843,10 +844,6 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                   _riskColor(currentLevel),
                 ),
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _statChip('Altın', _formatGold(gold), _kFrameGold),
-              ),
             ],
           ),
           if (config.goldDiscountPct > 0 && _selectedItem != null)
@@ -1207,47 +1204,20 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       ),
     ];
 
-    return SizedBox(
-      height: 26,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
-        separatorBuilder: (_, int i) => const SizedBox(width: 5),
-        itemBuilder: (BuildContext context, int i) {
-          final (_InvTab tab, String label, int count) = tabs[i];
-          final bool sel = _invTab == tab;
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _invTab = tab);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 9),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                color: sel
-                    ? _kFrameGold.withValues(alpha: 0.16)
-                    : Colors.black26,
-                border: Border.all(
-                  color: sel
-                      ? _kFrameGold.withValues(alpha: 0.6)
-                      : Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-              child: Text(
-                '$label ($count)',
-                style: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w800,
-                  color: sel ? _kFrameGold : AppColors.mutedTitanium,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+    final int activeIndex = tabs.indexWhere((e) => e.$1 == _invTab);
+
+    return GkkSegmentedTabBar(
+      labels: tabs
+          .map((e) => '${e.$2} (${e.$3})')
+          .toList(growable: false),
+      activeIndex: activeIndex >= 0 ? activeIndex : 0,
+      onChanged: (int index) {
+        HapticFeedback.selectionClick();
+        setState(() => _invTab = tabs[index].$1);
+      },
+      isScrollable: true,
+      height: 36,
+      padding: EdgeInsets.zero,
     );
   }
 

@@ -110,43 +110,6 @@ class GuildMonumentNotifier extends Notifier<GuildMonumentState> {
     }
   }
 
-  Future<MonumentDonateResult?> quickDonate(MonumentResourceKind kind) async {
-    final MonumentDashboard? dashboard = state.dashboard;
-    if (dashboard == null) {
-      state = state.copyWith(errorMessage: 'Anıt verisi yok');
-      return null;
-    }
-
-    final int amount = dashboard.myStats.maxDonatable(kind);
-    if (amount <= 0) {
-      state = state.copyWith(
-        errorMessage: 'Bağışlanacak ${kind.shortLabel.toLowerCase()} kaynağın yok',
-      );
-      return null;
-    }
-
-    state = state.copyWith(donatingKind: kind, clearError: true);
-    try {
-      final MonumentDonateResult result = await monumentDonateKind(
-        repository: _repository,
-        kind: kind,
-        amount: amount,
-        stats: dashboard.myStats,
-      );
-      await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
-      await ref.read(playerProvider.notifier).loadProfile();
-      await loadDashboard();
-      return result;
-    } catch (e) {
-      state = state.copyWith(
-        errorMessage: userFacingErrorMessage(e, fallback: 'Bağış tamamlanamadı.'),
-      );
-      return null;
-    } finally {
-      state = state.copyWith(clearDonatingKind: true);
-    }
-  }
-
   Future<MonumentDonateResult?> donateKind({
     required MonumentResourceKind kind,
     required int amount,
