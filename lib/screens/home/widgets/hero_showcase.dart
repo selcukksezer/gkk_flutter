@@ -81,6 +81,7 @@ class _HeroShowcaseState extends State<HeroShowcase>
           height: showcaseHeight,
           width: double.infinity,
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               AnimatedBuilder(
@@ -131,20 +132,6 @@ class _HeroShowcaseState extends State<HeroShowcase>
                 },
               ),
               Positioned(
-                bottom: 14,
-                child: _buildLevelBadge(widget.profile.level),
-              ),
-              Positioned(
-                top: 12,
-                left: 28,
-                child: HomeStatBadge.power(value: _compact(widget.totalPower)),
-              ),
-              Positioned(
-                top: 12,
-                right: 28,
-                child: HomeStatBadge.reputation(reputation: widget.reputation),
-              ),
-              Positioned(
                 left: 8,
                 top: 72,
                 child: Column(
@@ -174,6 +161,26 @@ class _HeroShowcaseState extends State<HeroShowcase>
                       ),
                     );
                   }).toList(),
+                ),
+              ),
+              Positioned(
+                bottom: 14,
+                child: _buildLevelBadge(widget.profile.level),
+              ),
+              Positioned(
+                top: 6,
+                left: 2,
+                child: HomeStatBadge.power(
+                  value: _compact(widget.totalPower),
+                  compact: true,
+                ),
+              ),
+              Positioned(
+                top: 6,
+                right: 2,
+                child: HomeStatBadge.reputation(
+                  reputation: widget.reputation,
+                  compact: true,
                 ),
               ),
             ],
