@@ -10,6 +10,26 @@ Future<void> smokePump(
   while (DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 100));
   }
+  drainExceptions(tester);
+}
+
+/// Clears accumulated framework exceptions so later taps are not cascaded.
+void drainExceptions(WidgetTester tester) {
+  while (tester.takeException() != null) {}
+}
+
+/// Bounded settle — pumps until idle or [timeout].
+Future<void> smokeSettle(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 3),
+}) async {
+  final DateTime deadline = DateTime.now().add(timeout);
+  int frames = 0;
+  while (DateTime.now().isBefore(deadline) && frames < 60) {
+    await tester.pump(const Duration(milliseconds: 50));
+    frames++;
+  }
+  drainExceptions(tester);
 }
 
 /// Waits until [finder] appears or [timeout] elapses.

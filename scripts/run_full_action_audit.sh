@@ -108,6 +108,7 @@ with open(out_path, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 print('RPC audit verdict:', data.get('verdict'))
 PY
+fi
 
 echo "==> Step 3: Integration auto_tap shards (${SHARD_TOTAL} jobs)"
 INTEGRATION_OK=1

@@ -34,6 +34,7 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
   }
 
   Future<void> _refresh() async {
+    if (!mounted) return;
     await Future.wait<void>(<Future<void>>[
       ref.read(reputationProvider.notifier).load(),
       ref.read(playerProvider.notifier).loadProfile(),

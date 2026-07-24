@@ -63,6 +63,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   }
 
   Future<void> _refresh() async {
+    if (!mounted) return;
     await ref.read(guildWarProvider.notifier).loadAll();
   }
 
@@ -75,6 +76,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   }
 
   Future<void> _joinTournament(String id) async {
+    if (!mounted) return;
     final String? error = await ref.read(guildWarProvider.notifier).joinTournament(id);
     if (!mounted) return;
     if (error != null) {
@@ -93,6 +95,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
       accent: WarPalette.ruby,
     );
     if (confirmed != true) return;
+    if (!mounted) return;
 
     final GuildWarAttackResult? result =
         await ref.read(guildWarProvider.notifier).attackTerritory(territory.id);
@@ -111,6 +114,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   Future<void> _addDefense(TerritoryData territory) async {
     final int? gems = await showGuildWarDefenseSheet(context);
     if (gems == null || gems <= 0) return;
+    if (!mounted) return;
 
     final String? error = await ref.read(guildWarProvider.notifier).addDefense(territory.id, gems);
     if (!mounted) return;

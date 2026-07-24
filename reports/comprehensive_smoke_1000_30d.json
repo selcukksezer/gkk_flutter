@@ -1,0 +1,219 @@
+{
+  "bots": 1000,
+  "duration_seconds": 62.34,
+  "events": 30000,
+  "failures": [
+    "gold_inflation_56.47%_exceeds_12%",
+    "item_inflation_0.5019_exceeds_0.15",
+    "casual_d30_retention_0.35_below_15%",
+    "newbie_d30_retention_0.16_below_10%"
+  ],
+  "gameplay": {
+    "alchemist_craft_vs_warrior": 1,
+    "avg_session_by_segment": {
+      "casual": 8.84,
+      "exploit": 31.72,
+      "guild": 35.11,
+      "hardcore": 129.71,
+      "multi": 28.45,
+      "newbie": 4.53,
+      "normal": 47.64,
+      "pvp": 32.01,
+      "trader": 29.63,
+      "whale": 116.11
+    },
+    "class_engagement": {
+      "alchemist": {
+        "avg_craft_actions": 1.5,
+        "avg_dungeon_runs": 1.49,
+        "avg_gold_earned_d30": 672.18,
+        "avg_session_minutes": 61.71,
+        "bots": 334
+      },
+      "shadow": {
+        "avg_craft_actions": 1.49,
+        "avg_dungeon_runs": 1.51,
+        "avg_gold_earned_d30": 667.48,
+        "avg_session_minutes": 62.53,
+        "bots": 333
+      },
+      "warrior": {
+        "avg_craft_actions": 1.49,
+        "avg_dungeon_runs": 1.48,
+        "avg_gold_earned_d30": 679.82,
+        "avg_session_minutes": 61.01,
+        "bots": 333
+      }
+    },
+    "retention": {
+      "d1": 0.938,
+      "d30": 0.288,
+      "d7": 0.678
+    },
+    "warnings": []
+  },
+  "gates": {
+    "facilities_stress": {
+      "bots_tested": 1000,
+      "double_unlock_blocked": 855,
+      "fetch_fail": 0,
+      "fetch_ok": 1000,
+      "success": true,
+      "unlock_fail": 0,
+      "unlock_ok": 855,
+      "verdict": "PASS: facilities RPCs stable under 1000 bots"
+    },
+    "plan11": {
+      "all_pass": true,
+      "tests": [
+        {
+          "detail": {
+            "shadow_100": 80,
+            "warrior_100": 100
+          },
+          "pass": true,
+          "plan": "PLAN_11 §2.3 Hayalet Adımlar",
+          "test": "shadow_effective_suspicion_cap_80"
+        },
+        {
+          "detail": {
+            "actual": 19,
+            "expected": 19,
+            "raw_formula_risk": 28
+          },
+          "pass": true,
+          "plan": "PLAN_11 §2.3 Gizli Operasyon",
+          "test": "shadow_facility_suspicion_reduction_30pct"
+        },
+        {
+          "detail": {
+            "gems_after": 46,
+            "gems_before": 50,
+            "rpc": {
+              "gems_spent": 4,
+              "success": true
+            }
+          },
+          "pass": true,
+          "plan": "PLAN_11 §2.3 Pazarlık",
+          "test": "shadow_bribe_gem_cost_minus_25pct"
+        },
+        {
+          "detail": {
+            "expected_reduction": 19,
+            "rpc": {
+              "detox_type": "minor",
+              "new_addiction": 5,
+              "new_tolerance": 31,
+              "success": true
+            },
+            "tolerance_after": 31,
+            "tolerance_before": 50
+          },
+          "pass": true,
+          "plan": "PLAN_11 §2.2 Detox Gücü",
+          "test": "alchemist_detox_effectiveness_plus_25pct"
+        },
+        {
+          "pass": true,
+          "plan": "PLAN_11 §4 DB",
+          "test": "character_classes_passive_bonuses_seeded"
+        }
+      ]
+    },
+    "plan13": {
+      "casual_d30_pass": false,
+      "casual_d30_retention": 0.0035,
+      "exploit_pass": true,
+      "exploit_success_rate_pct": 0,
+      "gold_inflation_pass": false,
+      "gold_inflation_pct": 56.47,
+      "item_inflation_pass": false,
+      "item_inflation_pct": 50.19,
+      "newbie_d30_pass": false,
+      "newbie_d30_retention": 0.0016
+    }
+  },
+  "report_id": "4a3abb1e-56d6-4a17-90f7-4957c595e55c",
+  "run_id": "c114f7ba-1065-43a8-855d-f264cc7c010c",
+  "seed": {
+    "seeded_bots": 1000,
+    "segments": {
+      "casual": 200,
+      "exploit": 10,
+      "guild": 40,
+      "hardcore": 150,
+      "multi": 10,
+      "newbie": 150,
+      "normal": 200,
+      "pvp": 60,
+      "trader": 80,
+      "whale": 100
+    },
+    "success": true
+  },
+  "sim_days": 30,
+  "summary": {
+    "bots": 1000,
+    "economy": {
+      "gems_out": 4402,
+      "gold_in": 20255438,
+      "gold_out": 8817873,
+      "item_in": 59981,
+      "item_out": 29876
+    },
+    "exploits": [
+      {
+        "attempts": 300,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "cooldown_bypass",
+        "severity": "high",
+        "success": 0
+      },
+      {
+        "attempts": 30,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "hospital_escape_abuse",
+        "severity": "medium",
+        "success": 0
+      },
+      {
+        "attempts": 30,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "premium_stack_abuse",
+        "severity": "critical",
+        "success": 0
+      },
+      {
+        "attempts": 21,
+        "impact_gems": 0,
+        "impact_gold": 0,
+        "key": "prison_escape_abuse",
+        "severity": "high",
+        "success": 0
+      }
+    ],
+    "retention": {
+      "d1": 0.938,
+      "d30": 0.288,
+      "d7": 0.678
+    },
+    "run_id": "c114f7ba-1065-43a8-855d-f264cc7c010c",
+    "segments": {
+      "casual": 200,
+      "exploit": 10,
+      "guild": 40,
+      "hardcore": 150,
+      "multi": 10,
+      "newbie": 150,
+      "normal": 200,
+      "pvp": 60,
+      "trader": 80,
+      "whale": 100
+    }
+  },
+  "verdict": "FAIL"
+}

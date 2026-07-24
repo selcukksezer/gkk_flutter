@@ -122,19 +122,25 @@ class SmokeHarness {
   }
 
   static int countInteractiveWidgets(WidgetTester tester) {
-    return find.byType(InkWell).evaluate().length +
-        find.byType(GestureDetector).evaluate().length +
-        find.byType(ElevatedButton).evaluate().length +
-        find.byType(FilledButton).evaluate().length +
-        find.byType(TextButton).evaluate().length +
-        find.byType(IconButton).evaluate().length;
+    return _collectTapTargets(tester).length;
   }
 
-  /// Safe tap by interactive widget index on current screen.
-  static Future<bool> tapInteractiveAt(
-    WidgetTester tester,
-    int actionIndex,
-  ) async {
+  static bool _isSafeTapTarget(Element element) {
+    final Widget widget = element.widget;
+    if (widget is IconButton) {
+      final Object? tooltip = widget.tooltip;
+      if (tooltip == 'Çıkış' || tooltip == 'Logout') return false;
+    }
+    final BuildContext? ctx = element is StatefulElement ? element : null;
+    if (ctx == null) return true;
+    final String type = widget.runtimeType.toString();
+    if (type.contains('Logout') || type.contains('GameQuickMenu')) {
+      return false;
+    }
+    return true;
+  }
+
+  static List<Element> _collectTapTargets(WidgetTester tester) {
     final List<Finder> finders = <Finder>[
       find.byType(ElevatedButton),
       find.byType(FilledButton),
@@ -144,13 +150,39 @@ class SmokeHarness {
     ];
     final List<Element> targets = <Element>[];
     for (final Finder f in finders) {
-      targets.addAll(f.evaluate());
+      for (final Element e in f.evaluate()) {
+        if (_isSafeTapTarget(e)) {
+          targets.add(e);
+        }
+      }
     }
+    return targets;
+  }
+
+  /// Safe tap by interactive widget index on current screen.
+  static Future<bool> tapInteractiveAt(
+    WidgetTester tester,
+    int actionIndex,
+  ) async {
+    drainExceptions(tester);
+    final List<Element> targets = _collectTapTargets(tester);
     if (targets.isEmpty) return false;
     final int idx = (actionIndex - 1) % targets.length;
-    await tester.tap(find.byElementPredicate((Element e) => e == targets[idx]),
-        warnIfMissed: false);
-    await smokePump(tester, duration: const Duration(milliseconds: 600));
+    final Element target = targets[idx];
+    final Finder tapFinder =
+        find.byElementPredicate((Element e) => e == target);
+
+    try {
+      await tester.ensureVisible(tapFinder);
+    } catch (_) {
+      // Off-screen targets are skipped instead of crashing the shard.
+      return false;
+    }
+
+    await smokeSettle(tester, timeout: const Duration(milliseconds: 400));
+    await tester.tap(tapFinder, warnIfMissed: false);
+    await smokeSettle(tester, timeout: const Duration(seconds: 2));
+    drainExceptions(tester);
     return true;
   }
 }

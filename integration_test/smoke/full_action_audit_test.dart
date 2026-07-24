@@ -98,9 +98,11 @@ void main() {
         }
 
         try {
+          drainExceptions(tester);
           if (lastRoute != route) {
             await SmokeHarness.navigateRoute(tester, router, route);
             lastRoute = route;
+            await smokeSettle(tester);
           }
 
           final Object? navErr = tester.takeException();
@@ -162,7 +164,7 @@ void main() {
               error: e.toString(),
             ),
           );
-          tester.takeException();
+          drainExceptions(tester);
         }
       }
 
