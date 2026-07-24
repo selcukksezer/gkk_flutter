@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'dungeon_siege_model.dart';
+import 'reputation_model.dart';
 
 class DungeonPlayerStats {
   const DungeonPlayerStats({
@@ -430,6 +431,7 @@ class DungeonResult {
     this.inventoryFull = false,
     this.milestoneRewards = const <DungeonMilestoneReward>[],
     this.siegeBonus,
+    this.reputationBuffs = const <ReputationActiveBuff>[],
     this.tutorialWrapperLootCount = 0,
   });
 
@@ -449,6 +451,7 @@ class DungeonResult {
   final bool inventoryFull;
   final List<DungeonMilestoneReward> milestoneRewards;
   final DungeonSiegeRunBonus? siegeBonus;
+  final List<ReputationActiveBuff> reputationBuffs;
   final int tutorialWrapperLootCount;
 
   factory DungeonResult.fromJson(Map<String, dynamic> json) {
@@ -486,6 +489,11 @@ class DungeonResult {
       }
     }
 
+    final List<ReputationActiveBuff> repBuffs = (json['reputation_buffs'] as List<dynamic>? ?? [])
+        .whereType<Map>()
+        .map((Map e) => ReputationActiveBuff.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
     return DungeonResult(
       success: (json['success'] as bool?) ?? false,
       error: json['error'] as String?,
@@ -513,6 +521,7 @@ class DungeonResult {
               Map<String, dynamic>.from(json['siege_bonus'] as Map),
             )
           : null,
+      reputationBuffs: repBuffs,
       tutorialWrapperLootCount: _asInt(json['tutorial_wrapper_loot_count']),
     );
   }

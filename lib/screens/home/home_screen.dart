@@ -16,6 +16,7 @@ import '../../providers/player_provider.dart';
 import '../../qa/qa_flags.dart';
 import '../../routing/app_router.dart';
 import '../../l10n/l10n.dart';
+import '../../core/utils/reputation_tier.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
@@ -25,6 +26,7 @@ import 'widgets/home_promo_carousel.dart';
 import 'widgets/pantheon_board.dart';
 import 'widgets/hero_showcase.dart';
 import 'widgets/sticky_action_bar.dart';
+import '../reputation/widgets/reputation_home_chip.dart';
 import '../../utils/logout_helper.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -262,6 +264,15 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
             ),
             children: <Widget>[
               const HomePromoCarousel(),
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ReputationHomeChip(
+                  reputation: reputation,
+                  tierTitle: reputationTierFor(reputation).title,
+                  tierColor: reputationTierFor(reputation).color,
+                ),
+              ),
               const SizedBox(height: AppSpacing.md),
 
               // Hero Showcase (Character & Equip)

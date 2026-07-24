@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../components/character/badge_showcase_panel.dart';
 import '../../components/character/character_combat_stats_panel.dart';
@@ -474,6 +475,54 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                 Text(
                   'Seviye $level • $guild',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: () => context.push(AppRoutes.reputation),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.liquidGold.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.liquidGold.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Icon(
+                          Icons.military_tech_rounded,
+                          size: 14,
+                          color: AppColors.liquidGold,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _fmtCompact(profile?.reputation ?? 0),
+                          style: const TextStyle(
+                            color: AppColors.liquidGold,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          repTier.title,
+                          style: TextStyle(
+                            color: repTier.color,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 14,
+                          color: Colors.white38,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 ClipRRect(

@@ -24,6 +24,7 @@ import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'dungeon_item_utils.dart';
 import 'dungeon_result_widgets.dart';
+import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/dungeon_battle_effects.dart';
 import 'widgets/dungeon_cave_theme.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
@@ -2049,6 +2050,10 @@ class _VictoryView extends StatelessWidget {
         ),
         if (result.siegeBonus != null)
           DungeonSiegeResultBanner(bonus: result.siegeBonus!),
+        if (result.reputationBuffs.isNotEmpty)
+          ReputationBuffResultBanner(buffs: result.reputationBuffs),
+        if ((result.siegeBonus?.repGained ?? 0) > 0)
+          ReputationGainBanner(amount: result.siegeBonus!.repGained),
         DungeonMilestoneBanner(rewards: result.milestoneRewards),
         FadeSlideIn(
           delayMs: 200,

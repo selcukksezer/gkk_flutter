@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
+import '../../models/reputation_model.dart';
 import 'dungeon_item_utils.dart';
 import 'dungeon_victory_effects.dart';
 import '../../l10n/l10n.dart';
@@ -211,6 +212,62 @@ class DungeonSiegeResultBanner extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class ReputationBuffResultBanner extends StatelessWidget {
+  const ReputationBuffResultBanner({
+    super.key,
+    required this.buffs,
+  });
+
+  final List<ReputationActiveBuff> buffs;
+
+  @override
+  Widget build(BuildContext context) {
+    if (buffs.isEmpty) return const SizedBox.shrink();
+
+    final String summary = buffs.map((ReputationActiveBuff b) => b.label()).join(' · ');
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: <Color>[
+            const Color(0xFF059669).withValues(alpha: 0.35),
+            const Color(0xFF0EA5E9).withValues(alpha: 0.18),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF34D399).withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        children: <Widget>[
+          const Text(
+            'İTİBAR MAĞAZASI — Aktif buff',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFFD1FAE5),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            summary,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF6EE7B7),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

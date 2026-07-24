@@ -13,6 +13,7 @@ import '../../models/mekan_model.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/mekan_arena_bet_sheet.dart';
 import 'widgets/mekan_arena_fighter_card.dart';
 import 'widgets/mekan_arena_rank_row.dart';
@@ -133,8 +134,9 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
       await ref.read(playerProvider.notifier).loadProfile();
       final bool won = res['won'] == true;
       final int net = (res['net_win'] as num?)?.toInt() ?? 0;
+      final int repDelta = (res['rep_change'] as num?)?.toInt() ?? 0;
       final bool hospital = res['hospitalized'] == true;
-      await _showResult(won: won, net: net, hospital: hospital, opp: opp);
+      await _showResult(won: won, net: net, hospital: hospital, opp: opp, repDelta: repDelta);
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -157,6 +159,7 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
     required int net,
     required bool hospital,
     required ArenaOpponent opp,
+    int repDelta = 0,
   }) async {
     final Color c = won ? MekanPalette.neon : MekanPalette.ruby;
     await showDialog<void>(
@@ -201,6 +204,13 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
                   'Bahsi kaybettin',
                   style: TextStyle(fontSize: 14, color: MekanPalette.textMid, fontWeight: FontWeight.w700),
                 ),
+              if (repDelta != 0) ...<Widget>[
+                const SizedBox(height: 10),
+                ReputationGainBanner(
+                  amount: repDelta.abs(),
+                  label: repDelta > 0 ? 'İtibar kazanıldı' : 'İtibar kaybedildi',
+                ),
+              ],
               if (hospital) ...<Widget>[
                 const SizedBox(height: 12),
                 const GlowChip(
