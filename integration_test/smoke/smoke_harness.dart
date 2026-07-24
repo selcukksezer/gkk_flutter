@@ -19,12 +19,12 @@ class SmokeHarness {
 
   /// Login via API before UI pump — faster and avoids redirect loops.
   static Future<void> loginBeforePump() async {
-    if (!SmokeEnv.hasCredentials) return;
+    if (!SmokeEnv.hasResolvedCredentials) return;
     if (SupabaseService.client.auth.currentSession != null) return;
 
     await SupabaseService.client.auth.signInWithPassword(
-      email: SmokeEnv.email!,
-      password: SmokeEnv.password!,
+      email: SmokeEnv.resolvedEmail!,
+      password: SmokeEnv.resolvedPassword!,
     );
   }
 
@@ -52,8 +52,8 @@ class SmokeHarness {
 
     final Finder fields = find.byType(TextFormField);
     expect(fields, findsAtLeast(2));
-    await tester.enterText(fields.at(0), SmokeEnv.email!);
-    await tester.enterText(fields.at(1), SmokeEnv.password!);
+    await tester.enterText(fields.at(0), SmokeEnv.resolvedEmail!);
+    await tester.enterText(fields.at(1), SmokeEnv.resolvedPassword!);
     await tester.tap(find.text('Giris Yap'));
     await smokePump(tester, duration: const Duration(seconds: 4));
 
@@ -64,7 +64,7 @@ class SmokeHarness {
   }
 
   static Future<void> loginOrSkip(WidgetTester tester) async {
-    if (!SmokeEnv.hasCredentials) return;
+    if (!SmokeEnv.hasResolvedCredentials) return;
     await loginBeforePump();
     await smokePump(tester);
   }
@@ -128,5 +128,29 @@ class SmokeHarness {
         find.byType(FilledButton).evaluate().length +
         find.byType(TextButton).evaluate().length +
         find.byType(IconButton).evaluate().length;
+  }
+
+  /// Safe tap by interactive widget index on current screen.
+  static Future<bool> tapInteractiveAt(
+    WidgetTester tester,
+    int actionIndex,
+  ) async {
+    final List<Finder> finders = <Finder>[
+      find.byType(ElevatedButton),
+      find.byType(FilledButton),
+      find.byType(TextButton),
+      find.byType(IconButton),
+      find.byType(InkWell),
+    ];
+    final List<Element> targets = <Element>[];
+    for (final Finder f in finders) {
+      targets.addAll(f.evaluate());
+    }
+    if (targets.isEmpty) return false;
+    final int idx = (actionIndex - 1) % targets.length;
+    await tester.tap(find.byElementPredicate((Element e) => e == targets[idx]),
+        warnIfMissed: false);
+    await smokePump(tester, duration: const Duration(milliseconds: 600));
+    return true;
   }
 }

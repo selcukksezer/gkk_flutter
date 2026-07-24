@@ -1,5 +1,12 @@
-/// P0 safe tap targets for integration smoke (phase 1 of 350-action gate).
+/// UI action registry for 350-action QA gate.
 /// Full inventory: reports/_ui_action_inventory.json
+/// Generated entries: smoke_action_registry_full.dart
+library;
+
+import 'smoke_action_registry_full.dart';
+
+export 'smoke_action_registry_full.dart';
+
 class SmokeActionTarget {
   const SmokeActionTarget({
     required this.route,
@@ -44,9 +51,6 @@ class SmokeActionRegistry {
     SmokeActionTarget(route: '/settings', label: 'Ayarlar', kind: 'quick_menu'),
   ];
 
-  /// @deprecated Use [_quickMenu].
-  static const List<SmokeActionTarget> _drawer = _quickMenu;
-
   static const List<SmokeActionTarget> _bottomNav = <SmokeActionTarget>[
     SmokeActionTarget(route: '/home', label: 'Home', kind: 'bottom_nav'),
     SmokeActionTarget(route: '/inventory', label: 'Envanter', kind: 'bottom_nav'),
@@ -64,7 +68,6 @@ class SmokeActionRegistry {
     SmokeActionTarget(route: '/quests', label: 'Haftalık', kind: 'tab'),
   ];
 
-  /// Quick menu + bottom nav + tab switches — safe navigation-only taps.
   static const List<SmokeActionTarget> p0Navigation = <SmokeActionTarget>[
     ..._quickMenu,
     ..._bottomNav,
@@ -73,8 +76,23 @@ class SmokeActionRegistry {
 
   static int get p0Count => p0Navigation.length;
 
-  /// Total actions from static UI inventory (reports/_ui_action_inventory.json).
-  static const int fullInventoryActionCount = 350;
+  static const int fullInventoryActionCount =
+      SmokeActionRegistryFull.totalActionCount;
 
   static double get p0CoverageRatio => p0Count / fullInventoryActionCount;
+
+  /// All 350 inventory actions with coverage mode.
+  static List<SmokeActionEntry> get allActions =>
+      SmokeActionRegistryFull.allActions;
+
+  static List<SmokeActionEntry> shardActions({
+    required int shardIndex,
+    required int shardTotal,
+  }) {
+    if (shardTotal <= 1) return allActions;
+    return allActions
+        .where((SmokeActionEntry a) =>
+            allActions.indexOf(a) % shardTotal == shardIndex)
+        .toList();
+  }
 }

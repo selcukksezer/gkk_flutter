@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/qa/smoke_action_registry.dart';
 import 'package:gkk_flutter/qa/smoke_route_registry.dart';
 import 'package:gkk_flutter/qa/smoke_route_resolver.dart';
 import 'package:gkk_flutter/routing/app_router.dart';
@@ -11,17 +12,18 @@ import 'package:integration_test/integration_test.dart';
 import 'helpers.dart';
 import 'smoke_harness.dart';
 
-/// Visits every registered route and counts interactive widgets.
-/// Does not tap actions (safe audit scaffold for 350-action gate).
+/// Route inventory scaffold — full tap audit lives in full_action_audit_test.dart.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('UI action tap audit scaffold', () {
-    testWidgets('route matrix + interactive widget inventory', (
+    testWidgets('350 registry + route matrix inventory', (
       WidgetTester tester,
     ) async {
-      if (!SmokeEnv.hasCredentials) {
-        expect(SmokeRouteRegistry.uniquePaths.length, greaterThanOrEqualTo(35));
+      expect(SmokeActionRegistry.fullInventoryActionCount, 350);
+      expect(SmokeRouteRegistry.uniquePaths.length, greaterThanOrEqualTo(35));
+
+      if (!SmokeEnv.hasResolvedCredentials) {
         return;
       }
 
@@ -90,6 +92,8 @@ void main() {
       print('SMOKE_REPORT_JSON:${jsonEncode(report.toJson())}');
       // ignore: avoid_print
       print('SMOKE_INTERACTIVE_TOTAL:$totalInteractive');
+      // ignore: avoid_print
+      print('SMOKE_ACTION_REGISTRY_TOTAL:${SmokeActionRegistry.allActions.length}');
 
       expect(report.failures, isEmpty, reason: report.failures.join('\n'));
     });

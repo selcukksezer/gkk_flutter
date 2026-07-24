@@ -64,12 +64,66 @@ class SmokeEnv {
         .toList();
   }
 
+  /// Matrix shard index (0-based) for 350-action audit.
+  static int get auditShardIndex {
+    const String fromDefine = String.fromEnvironment('AUDIT_SHARD_INDEX');
+    if (fromDefine.isEmpty) return 0;
+    return int.tryParse(fromDefine) ?? 0;
+  }
+
+  /// Total shards — default 1 (no sharding).
+  static int get auditShardTotal {
+    const String fromDefine = String.fromEnvironment('AUDIT_SHARD_TOTAL');
+    if (fromDefine.isEmpty) return 1;
+    return int.tryParse(fromDefine) ?? 1;
+  }
+
+  /// Round-robin QA account index from comma-separated QA_ACCOUNTS env.
+  static int get qaAccountIndex {
+    const String fromDefine = String.fromEnvironment('QA_ACCOUNT_INDEX');
+    if (fromDefine.isEmpty) return 0;
+    return int.tryParse(fromDefine) ?? 0;
+  }
+
+  /// Comma-separated email:password pairs (bootstrap script).
+  static List<MapEntry<String, String>> get qaAccountPairs {
+    const String fromDefine = String.fromEnvironment('QA_ACCOUNTS');
+    if (fromDefine.isEmpty) return <MapEntry<String, String>>[];
+    final List<MapEntry<String, String>> pairs = <MapEntry<String, String>>[];
+    for (final String part in fromDefine.split(',')) {
+      final List<String> bits = part.trim().split(':');
+      if (bits.length >= 2) {
+        pairs.add(MapEntry<String, String>(bits[0].trim(), bits[1].trim()));
+      }
+    }
+    return pairs;
+  }
+
+  /// Resolved credentials — QA_ACCOUNTS round-robin or single QA_TEST_*.
+  static String? get resolvedEmail {
+    final List<MapEntry<String, String>> pairs = qaAccountPairs;
+    if (pairs.isNotEmpty) {
+      return pairs[qaAccountIndex % pairs.length].key;
+    }
+    return email;
+  }
+
+  static String? get resolvedPassword {
+    final List<MapEntry<String, String>> pairs = qaAccountPairs;
+    if (pairs.isNotEmpty) {
+      return pairs[qaAccountIndex % pairs.length].value;
+    }
+    return password;
+  }
+
+  static bool get hasResolvedCredentials =>
+      (resolvedEmail ?? '').isNotEmpty && (resolvedPassword ?? '').isNotEmpty;
+
   static void requireCredentials() {
-    if (!hasCredentials) {
+    if (!hasResolvedCredentials) {
       fail(
-        'QA_TEST_EMAIL and QA_TEST_PASSWORD required. '
-        'Run: flutter test integration_test/smoke/... '
-        '--dart-define=QA_TEST_EMAIL=... --dart-define=QA_TEST_PASSWORD=...',
+        'QA credentials required (QA_TEST_EMAIL/PASSWORD or QA_ACCOUNTS). '
+        'Run: ./scripts/run_full_action_audit.sh',
       );
     }
   }
@@ -120,5 +174,73 @@ class SmokeRunReport {
         'fail': failCount,
         'failures': failures,
         'screens': screens.map((SmokeScreenAudit s) => s.toJson()).toList(),
+      };
+}
+
+class ActionAuditResult {
+  ActionAuditResult({
+    required this.actionId,
+    required this.coverage,
+    required this.status,
+    this.route,
+    this.error,
+    this.skipReason,
+  });
+
+  final String actionId;
+  final String coverage;
+  final String status;
+  final String? route;
+  final String? error;
+  final String? skipReason;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'action_id': actionId,
+        'coverage': coverage,
+        'status': status,
+        'route': route,
+        'error': error,
+        'skip_reason': skipReason,
+      };
+}
+
+class FullActionAuditReport {
+  FullActionAuditReport({
+    required this.runId,
+    required this.shardIndex,
+    required this.shardTotal,
+    this.accountEmail,
+  });
+
+  final String runId;
+  final int shardIndex;
+  final int shardTotal;
+  final String? accountEmail;
+  final List<ActionAuditResult> actions = <ActionAuditResult>[];
+
+  void add(ActionAuditResult result) => actions.add(result);
+
+  int get passCount =>
+      actions.where((ActionAuditResult a) => a.status == 'pass').length;
+
+  int get failCount =>
+      actions.where((ActionAuditResult a) => a.status == 'fail').length;
+
+  int get skipCount =>
+      actions.where((ActionAuditResult a) => a.status == 'skip').length;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'run_id': runId,
+        'test_name': 'full_action_audit',
+        'shard_index': shardIndex,
+        'shard_total': shardTotal,
+        'account_email': accountEmail,
+        'total': actions.length,
+        'pass': passCount,
+        'fail': failCount,
+        'skip': skipCount,
+        'auto_tap': actions.where((ActionAuditResult a) => a.coverage == 'auto_tap').length,
+        'rpc': actions.where((ActionAuditResult a) => a.coverage == 'rpc').length,
+        'actions': actions.map((ActionAuditResult a) => a.toJson()).toList(),
       };
 }
