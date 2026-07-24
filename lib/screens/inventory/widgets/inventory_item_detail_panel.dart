@@ -42,6 +42,7 @@ class InventoryItemDetailPanel extends StatelessWidget {
     required this.item,
     required this.actions,
     required this.isFavorite,
+    this.infoOnly = false,
   });
 
   static const Color cardBg = Color(0xFFFFFFFF);
@@ -54,6 +55,7 @@ class InventoryItemDetailPanel extends StatelessWidget {
   final InventoryItem item;
   final InventoryItemDetailActions actions;
   final bool isFavorite;
+  final bool infoOnly;
 
   Widget _buildActionButton({
     required String label,
@@ -164,6 +166,133 @@ class InventoryItemDetailPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final List<(String, String)> stats = <(String, String)>[
+      ('SALDIRI', '${item.attack}'),
+      ('SAVUNMA', '${item.defense}'),
+      ('GUC', '${item.power}'),
+      ('SEVIYE', 'Lv. ${item.requiredLevel}'),
+      ('DEGER', '${item.vendorSellPrice}g'),
+    ];
+
+    final String footerRight =
+        item.vendorSellPrice > 0 ? '${item.vendorSellPrice}g' : 'Lv. ${item.requiredLevel}';
+    final String description =
+        actions.descriptionOverride ?? item.description;
+
+    if (infoOnly) {
+      return Material(
+        color: Colors.transparent,
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.14),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 40,
+                offset: const Offset(0, 16),
+                spreadRadius: -4,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    _buildItemIconWithShadow(item),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded, color: textMuted),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'ESYA ADI',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.name.toUpperCase(),
+                  style: const TextStyle(
+                    color: textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${item.rarity.name.toUpperCase()} · ${item.equipSlot != EquipSlot.none ? item.equipSlot.name.toUpperCase() : item.itemType.name.toUpperCase()}',
+                  style: const TextStyle(
+                    color: textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (description.isNotEmpty)
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: textBody,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      height: 1.55,
+                    ),
+                  ),
+                const SizedBox(height: 14),
+                _buildStatsRow(stats),
+                const SizedBox(height: 18),
+                Row(
+                  children: <Widget>[
+                    Text(
+                      'x${item.quantity}',
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      footerRight,
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final bool canEquip = item.equipSlot != EquipSlot.none;
     final bool canUse =
         isStatResetScroll(item.itemId) ||
@@ -175,14 +304,6 @@ class InventoryItemDetailPanel extends StatelessWidget {
     final bool canSell = item.vendorSellPrice > 0 && actions.onSell != null;
     final bool canSplit =
         item.isStackable && item.quantity > 1 && actions.onSplit != null;
-
-    final List<(String, String)> stats = <(String, String)>[
-      ('SALDIRI', '${item.attack}'),
-      ('SAVUNMA', '${item.defense}'),
-      ('GUC', '${item.power}'),
-      ('SEVIYE', 'Lv. ${item.requiredLevel}'),
-      ('DEGER', '${item.vendorSellPrice}g'),
-    ];
 
     final String primaryLabel;
     final VoidCallback? primaryAction;
@@ -207,11 +328,6 @@ class InventoryItemDetailPanel extends StatelessWidget {
       primaryLabel = 'KULLANILAMAZ';
       primaryAction = null;
     }
-
-    final String footerRight =
-        canSell ? '${item.vendorSellPrice}g' : 'Lv. ${item.requiredLevel}';
-    final String description =
-        actions.descriptionOverride ?? item.description;
 
     Widget primaryButton = _buildActionButton(
       label: primaryLabel,

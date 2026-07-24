@@ -164,12 +164,19 @@ class _HomeDashboard extends ConsumerStatefulWidget {
 }
 
 class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
-  Future<void> _openEquippedItemInfo(InventoryItem item) async {
-    await InventoryItemDetailFlow(
-      context: context,
-      ref: ref,
-      source: 'home_equipped',
-    ).open(item);
+  Future<void> _openSlotInfo(String slotLabel, InventoryItem? item) async {
+    if (item != null) {
+      await InventoryItemDetailFlow(
+        context: context,
+        ref: ref,
+        source: 'home_equipped',
+      ).openInfo(item);
+      return;
+    }
+    await InventoryItemDetailFlow.showEmptyEquipSlotInfo(
+      context,
+      slotLabel: slotLabel,
+    );
   }
 
   @override
@@ -270,7 +277,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                 inventoryState: widget.inventoryState,
                 totalPower: totalPower,
                 reputation: reputation,
-                onEquippedTap: _openEquippedItemInfo,
+                onSlotTap: _openSlotInfo,
               ),
               const SizedBox(height: AppSpacing.xxl),
 

@@ -121,6 +121,128 @@ class InventoryItemDetailFlow {
     );
   }
 
+  /// Home / showcase — bilgi only, aksiyon yok.
+  Future<void> openInfo(InventoryItem item) async {
+    if (!context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 32,
+          ),
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 338),
+            child: InventoryItemDetailPanel(
+              item: item,
+              isFavorite: item.isFavorite,
+              actions: const InventoryItemDetailActions(),
+              infoOnly: true,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Future<void> showEmptyEquipSlotInfo(
+    BuildContext context, {
+    required String slotLabel,
+  }) {
+    return showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 32,
+          ),
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 338),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: InventoryItemDetailPanel.cardBg,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.14),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          const Expanded(
+                            child: Text(
+                              'BOS SLOT',
+                              style: TextStyle(
+                                color: InventoryItemDetailPanel.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: InventoryItemDetailPanel.textMuted,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        slotLabel.toUpperCase(),
+                        style: const TextStyle(
+                          color: InventoryItemDetailPanel.textPrimary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Bu slotta esya yok. Kusanmak icin envanter ekranini kullan.',
+                        style: TextStyle(
+                          color: InventoryItemDetailPanel.textBody,
+                          fontSize: 13,
+                          height: 1.55,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _handleUnequip(String slot) async {
     final bool ok =
         await ref.read(inventoryProvider.notifier).unequipItem(slot: slot);

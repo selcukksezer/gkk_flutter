@@ -12,7 +12,7 @@ class HeroShowcase extends StatefulWidget {
   final InventoryState inventoryState;
   final int totalPower;
   final int reputation;
-  final void Function(InventoryItem item)? onEquippedTap;
+  final void Function(String slotLabel, InventoryItem? item)? onSlotTap;
 
   const HeroShowcase({
     super.key,
@@ -20,7 +20,7 @@ class HeroShowcase extends StatefulWidget {
     required this.inventoryState,
     required this.totalPower,
     required this.reputation,
-    this.onEquippedTap,
+    this.onSlotTap,
   });
 
   @override
@@ -253,7 +253,7 @@ class _HeroShowcaseState extends State<HeroShowcase>
           );
 
     return GestureDetector(
-      onTap: equipped != null ? () => widget.onEquippedTap?.call(equipped) : null,
+      onTap: () => widget.onSlotTap?.call(type, equipped),
       child: Container(
         width: 58,
         height: 58,
