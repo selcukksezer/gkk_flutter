@@ -130,6 +130,11 @@ class _InventoryReadyInteractiveState
   }
 
   Future<void> _handleUnequip(String slot) async {
+    if (!ref.read(inventoryProvider.notifier).canDirectUnequip()) {
+      _showSnack('Envanter dolu — benzer slottaki esyayla degistir');
+      return;
+    }
+
     final ok = await ref
         .read(inventoryProvider.notifier)
         .unequipItem(slot: slot);

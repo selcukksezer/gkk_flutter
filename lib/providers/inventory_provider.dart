@@ -274,7 +274,16 @@ class InventoryNotifier extends Notifier<InventoryState> {
     }
   }
 
+  bool canDirectUnequip() => findFirstEmptySlot() >= 0;
+
   Future<bool> unequipItem({required String slot}) async {
+    if (!canDirectUnequip()) {
+      state = state.copyWith(
+        errorMessage: 'Envanter dolu — benzer slottaki esyayla degistir',
+      );
+      return false;
+    }
+
     try {
       final success = await _repository.unequipItem(slot: slot);
       if (success) {
@@ -554,10 +563,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
     return state.equippedItems[slot.toLowerCase()];
   }
 
-  bool isFull() {
-    final used = state.items.map((item) => item.slotPosition).toSet();
-    return used.length >= inventoryCapacity;
-  }
+  bool isFull() => findFirstEmptySlot() < 0;
 
   int findFirstEmptySlot() {
     final used = state.items.map((item) => item.slotPosition).toSet();

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/common/universal_game_dialog.dart';
 import '../../routing/app_router.dart';
 import '../tutorial/tutorial_triggers.dart';
 
@@ -34,35 +35,19 @@ class BankTutorial {
 
     _dialogOpen = true;
     try {
-      await showDialog<void>(
-        context: context,
-        builder: (BuildContext ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF141B2A),
-          title: const Text(
-            'Envanterin Dolu',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-          content: const Text(
-            'Çantanda yer kalmadı ve yeni eşyalar alınamıyor.\n\n'
-            'Kullanmadığın eşyalarını BANKAYA koyarak yer açabilirsin. '
-            'Bankadaki eşyalar güvende kalır ve istediğin zaman geri alabilirsin.',
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Sonra'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                ctx.go(AppRoutes.bank);
-              },
-              child: const Text('Bankaya Git'),
-            ),
-          ],
-        ),
+      final bool? goBank = await UniversalGameDialog.show(
+        context,
+        title: 'Envanterin Dolu',
+        message:
+            'Cantanda yer kalmadi ve yeni esyalar alinamiyor.\n\n'
+            'Kullanmadigin esyalarini BANKAYA koyarak yer acabilirsin. '
+            'Bankadaki esyalar guvende kalir ve istedigin zaman geri alabilirsin.',
+        confirmLabel: 'Bankaya Git',
+        cancelLabel: 'Sonra',
       );
+      if (goBank == true && context.mounted) {
+        context.go(AppRoutes.bank);
+      }
       await prefs.setBool(_shownKey, true);
     } finally {
       _dialogOpen = false;

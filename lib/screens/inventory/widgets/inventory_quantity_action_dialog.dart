@@ -1,4 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+
+import '../../../components/common/universal_game_dialog.dart';
+import '../../../theme/app_colors.dart';
 
 class InventoryQuantityActionDialog extends StatefulWidget {
   const InventoryQuantityActionDialog({
@@ -37,45 +42,161 @@ class _InventoryQuantityActionDialogState
   Widget build(BuildContext context) {
     final int total = widget.unitValue * _quantity;
 
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(widget.subtitle),
-          const SizedBox(height: 12),
-          Text('Miktar: $_quantity / ${widget.maxQuantity}'),
-          Slider(
-            value: _quantity.toDouble(),
-            min: 1,
-            max: widget.maxQuantity.toDouble(),
-            divisions: widget.maxQuantity > 1 ? widget.maxQuantity - 1 : null,
-            onChanged: widget.maxQuantity <= 1
-                ? null
-                : (value) {
-                    setState(() {
-                      _quantity = value.round();
-                    });
-                  },
-          ),
-          if (widget.showTotalValue)
-            Text(
-              'Toplam Deger: $total',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: UniversalDialogPanel(
+            borderColor: AppColors.liquidGold.withValues(alpha: 0.45),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  widget.subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: AppColors.mutedTitanium,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Miktar: $_quantity / ${widget.maxQuantity}',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Slider(
+                  value: _quantity.toDouble(),
+                  min: 1,
+                  max: widget.maxQuantity.toDouble(),
+                  divisions: widget.maxQuantity > 1 ? widget.maxQuantity - 1 : null,
+                  activeColor: AppColors.liquidGold,
+                  onChanged: widget.maxQuantity <= 1
+                      ? null
+                      : (double value) {
+                          setState(() {
+                            _quantity = value.round();
+                          });
+                        },
+                ),
+                if (widget.showTotalValue)
+                  Text(
+                    'Toplam Deger: $total',
+                    style: const TextStyle(
+                      color: AppColors.mutedTitanium,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _ObsidianCancel(
+                        label: 'Iptal',
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _GoldConfirm(
+                        label: widget.confirmLabel,
+                        onPressed: () => Navigator.of(context).pop(_quantity),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Iptal'),
+    );
+  }
+}
+
+class _GoldConfirm extends StatelessWidget {
+  const _GoldConfirm({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: AppColors.liquidGoldGradient,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.carbonVoid,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
         ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_quantity),
-          child: Text(widget.confirmLabel),
+      ),
+    );
+  }
+}
+
+class _ObsidianCancel extends StatelessWidget {
+  const _ObsidianCancel({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AppColors.darkObsidian,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.mutedTitanium.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.mutedTitanium,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ),
-      ],
+      ),
     );
   }
 }

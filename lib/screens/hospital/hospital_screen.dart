@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/common/universal_game_dialog.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/restriction/restriction_screen_ui.dart';
 import '../../core/services/ad_service.dart';
@@ -63,78 +64,40 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
         expectFree || canFreeHospitalDischarge(profile.hospitalLifetimeCount);
 
     if (useFree) {
-      final bool? confirm = await showDialog<bool>(
-        context: context,
-        builder: (BuildContext ctx) => AlertDialog(
-          backgroundColor: AppColors.spaceNavy,
-          title: const Text('Ücretsiz Taburcu'),
-          content: Text(
-            freeRemaining > 0
-                ? 'Ücretsiz taburcu olmak istiyor musun? (Kalan hak: $freeRemaining)'
-                : 'Taburcu olmak istiyor musun?',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('İptal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Taburcu Ol'),
-            ),
-          ],
-        ),
+      final bool? confirm = await UniversalGameDialog.show(
+        context,
+        title: 'Ucretsiz Taburcu',
+        message: freeRemaining > 0
+            ? 'Ucretsiz taburcu olmak istiyor musun? (Kalan hak: $freeRemaining)'
+            : 'Taburcu olmak istiyor musun?',
+        confirmLabel: 'Taburcu Ol',
+        cancelLabel: 'Iptal',
       );
       if (confirm != true) return;
     } else {
       final int gemCost = _gemHealCost();
       if (profile.gems < gemCost) {
         if (!mounted) return;
-        await showDialog<void>(
-          context: context,
-          builder: (BuildContext ctx) => AlertDialog(
-            backgroundColor: AppColors.spaceNavy,
-            title: const Text('Yetersiz Elmas'),
-            content: Text(
-              'Bu işlem için $gemCost 💎 gerekiyor. Mevcut: ${profile.gems} 💎',
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('İptal'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  context.go(AppRoutes.shop);
-                },
-                child: const Text('Dükkana Git'),
-              ),
-            ],
-          ),
+        final bool? goShop = await UniversalGameDialog.show(
+          context,
+          title: 'Yetersiz Elmas',
+          message:
+              'Bu islem icin $gemCost elmas gerekiyor. Mevcut: ${profile.gems}',
+          confirmLabel: 'Dukkana Git',
+          cancelLabel: 'Iptal',
         );
+        if (goShop == true && mounted) {
+          context.go(AppRoutes.shop);
+        }
         return;
       }
 
-      final bool? confirm = await showDialog<bool>(
-        context: context,
-        builder: (BuildContext ctx) => AlertDialog(
-          backgroundColor: AppColors.spaceNavy,
-          title: const Text('Taburcu Ol'),
-          content: Text(
-            '$gemCost 💎 harcayarak hemen taburcu olmak istiyor musunuz?',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('İptal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Onayla'),
-            ),
-          ],
-        ),
+      final bool? confirm = await UniversalGameDialog.show(
+        context,
+        title: 'Taburcu Ol',
+        message: '$gemCost elmas harcayarak hemen taburcu olmak istiyor musun?',
+        confirmLabel: 'Onayla',
+        cancelLabel: 'Iptal',
       );
       if (confirm != true) return;
     }

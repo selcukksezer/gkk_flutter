@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/common/app_messenger.dart';
+import '../../../components/common/universal_game_dialog.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../theme/app_colors.dart';
 import '../../../core/utils/bank_tutorial.dart';
 import '../../../models/inventory_model.dart';
 import '../../../models/item_model.dart';
@@ -98,6 +100,11 @@ class InventoryItemDetailFlow {
       return;
     }
 
+    final bool canDirectUnequip =
+        ref.read(inventoryProvider.notifier).canDirectUnequip();
+    const String unequipBlockedReason =
+        'Envanter dolu — benzer slottaki esyayla degistir';
+
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.55),
@@ -114,6 +121,9 @@ class InventoryItemDetailFlow {
               item: item,
               isFavorite: item.isFavorite,
               actions: _actionsFor(dialogContext),
+              canDirectUnequip: canDirectUnequip,
+              unequipBlockedReason:
+                  canDirectUnequip ? null : unequipBlockedReason,
             ),
           ),
         );
@@ -295,31 +305,15 @@ class InventoryItemDetailFlow {
     }
 
     if (isStatResetScroll(item.itemId)) {
-      final bool? confirm = await showDialog<bool>(
-        context: context,
-        builder: (BuildContext ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF141B2A),
-          title: const Text(
-            'Stat Sifirlama',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-          content: const Text(
+      final bool? confirm = await UniversalGameDialog.show(
+        context,
+        title: 'Stat Sifirlama',
+        message:
             'Dagitilmis stat puanlarin geri alinir.\n'
             'Saldiri, Savunma ve Sans bonuslari sifirlanir.\n\n'
             'Devam?',
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Iptal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Sifirla'),
-            ),
-          ],
-        ),
+        confirmLabel: 'Sifirla',
+        cancelLabel: 'Iptal',
       );
       if (confirm != true || !context.mounted) return;
     }
@@ -341,35 +335,24 @@ class InventoryItemDetailFlow {
       return;
     }
 
-    final String? payment = await showDialog<String>(
-      context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141B2A),
-        title: Text(
-          '📦 ${item.name}',
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        content: const Text(
+    final String? payment = await UniversalGameDialog.showChoice<String>(
+      context,
+      title: item.name,
+      message:
           'Kutuyu nasil acmak istersin?\n\n'
-          '💎 Gem: aninda acilir\n'
-          '📺 Reklam: 30 dakika sayac',
-          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          'Gem: aninda acilir\n'
+          'Reklam: 30 dakika sayac',
+      choices: const <UniversalDialogChoice<String>>[
+        UniversalDialogChoice<String>(
+          label: 'Reklam Izle',
+          value: 'ad',
+          isPrimary: false,
         ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Iptal'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(ctx).pop('ad'),
-            child: const Text('📺 Reklam Izle'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop('gems'),
-            child: const Text('💎 Gem ile Ac'),
-          ),
-        ],
-      ),
+        UniversalDialogChoice<String>(
+          label: 'Gem ile Ac',
+          value: 'gems',
+        ),
+      ],
     );
     if (payment == null || !context.mounted) return;
 
@@ -455,24 +438,13 @@ class InventoryItemDetailFlow {
   }
 
   Future<void> _handleBoxCancel(BoxOpening opening) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Kutuyu Sil'),
-        content: const Text(
+    final bool? confirmed = await UniversalGameDialog.show(
+      context,
+      title: 'Kutuyu Sil',
+      message:
           'Kutu silinirse odul IPTAL olur — sure dolsa bile item verilmez. Emin misin?',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Vazgec'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Sil',
+      cancelLabel: 'Vazgec',
     );
     if (confirmed != true) return;
 
@@ -542,12 +514,17 @@ class InventoryItemDetailFlow {
 
     final int? quantity = await showDialog<int>(
       context: context,
-      builder: (BuildContext ctx) => InventoryQuantityActionDialog(
-        title: 'Item Sat',
-        subtitle: '${item.name} satmak istedigin miktari sec.',
-        confirmLabel: 'Sat',
-        unitValue: item.vendorSellPrice,
-        maxQuantity: item.quantity,
+      barrierColor: AppColors.carbonVoid.withValues(alpha: 0.52),
+      builder: (BuildContext ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: InventoryQuantityActionDialog(
+          title: 'Item Sat',
+          subtitle: '${item.name} satmak istedigin miktari sec.',
+          confirmLabel: 'Sat',
+          unitValue: item.vendorSellPrice,
+          maxQuantity: item.quantity,
+        ),
       ),
     );
 
@@ -572,13 +549,18 @@ class InventoryItemDetailFlow {
 
     final int? quantity = await showDialog<int>(
       context: context,
-      builder: (BuildContext ctx) => InventoryQuantityActionDialog(
-        title: 'Stack Bol',
-        subtitle: 'Yeni stack icin miktar sec.',
-        confirmLabel: 'Bol',
-        unitValue: 0,
-        maxQuantity: item.quantity - 1,
-        showTotalValue: false,
+      barrierColor: AppColors.carbonVoid.withValues(alpha: 0.52),
+      builder: (BuildContext ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: InventoryQuantityActionDialog(
+          title: 'Stack Bol',
+          subtitle: 'Yeni stack icin miktar sec.',
+          confirmLabel: 'Bol',
+          unitValue: 0,
+          maxQuantity: item.quantity - 1,
+          showTotalValue: false,
+        ),
       ),
     );
 
@@ -595,24 +577,12 @@ class InventoryItemDetailFlow {
   }
 
   Future<void> _handleDelete(InventoryItem item) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Item Sil'),
-        content: Text(
-          '${item.name} itemini cop kutusuna gondermek istiyor musun?',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Iptal'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
+    final bool? confirmed = await UniversalGameDialog.show(
+      context,
+      title: 'Item Sil',
+      message: '${item.name} itemini cop kutusuna gondermek istiyor musun?',
+      confirmLabel: 'Sil',
+      cancelLabel: 'Iptal',
     );
 
     if (confirmed != true) return;

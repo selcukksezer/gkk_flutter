@@ -140,11 +140,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('equip_item', params: <String, dynamic>{
+      final dynamic response = await SupabaseService.client.rpc('equip_item', params: <String, dynamic>{
         'p_row_id': rowId,
         'p_slot': slot.toLowerCase(),
       });
-      return true;
+      return _rpcSucceeded(response, fallbackError: 'Kusanma islemi basarisiz.');
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Kusanma islemi basarisiz.', code: 'INVENTORY_EQUIP_FAILED');
     }
@@ -160,10 +162,12 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('unequip_item', params: <String, dynamic>{
+      final dynamic response = await SupabaseService.client.rpc('unequip_item', params: <String, dynamic>{
         'p_slot': slot.toLowerCase(),
       });
-      return true;
+      return _rpcSucceeded(response, fallbackError: 'Kusani cikarma islemi basarisiz.');
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Kusani cikarma islemi basarisiz.', code: 'INVENTORY_UNEQUIP_FAILED');
     }
@@ -237,15 +241,16 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('unequip_item', params: <String, dynamic>{
+      final dynamic response = await SupabaseService.client.rpc('unequip_item', params: <String, dynamic>{
         'p_slot': slot.toLowerCase(),
+        'p_target_slot': targetSlot,
       });
-      await SupabaseService.client.rpc('update_item_positions', params: <String, dynamic>{
-        'p_updates': <Map<String, dynamic>>[
-          <String, dynamic>{'row_id': rowId, 'slot_position': targetSlot},
-        ],
-      });
-      return true;
+      return _rpcSucceeded(
+        response,
+        fallbackError: 'Kusani hedef slota birakma basarisiz.',
+      );
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Kusani hedef slota birakma basarisiz.', code: 'INVENTORY_UNEQUIP_TO_SLOT_FAILED');
     }
@@ -728,4 +733,18 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
     return -1;
   }
+}
+
+bool _rpcSucceeded(dynamic response, {required String fallbackError}) {
+  if (response is Map) {
+    final Map<String, dynamic> data = Map<String, dynamic>.from(response);
+    final dynamic successValue = data['success'];
+    if (successValue is bool && successValue == false) {
+      throw AppException(
+        (data['error'] as String?) ?? fallbackError,
+        code: 'INVENTORY_RPC_FAILED',
+      );
+    }
+  }
+  return true;
 }

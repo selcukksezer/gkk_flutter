@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../components/common/universal_game_dialog.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
@@ -87,16 +88,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _logout() async {
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.settingsLogoutTitle),
-        content: Text(context.l10n.settingsLogoutConfirm),
-        actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(context.l10n.commonCancel)),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(context.l10n.settingsLogoutTitle)),
-        ],
-      ),
+    final bool? confirm = await UniversalGameDialog.show(
+      context,
+      title: context.l10n.settingsLogoutTitle,
+      message: context.l10n.settingsLogoutConfirm,
+      confirmLabel: context.l10n.settingsLogoutTitle,
+      cancelLabel: context.l10n.commonCancel,
     );
     if (confirm != true) return;
     await ref.read(authProvider.notifier).logout();
@@ -105,20 +102,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _deleteAccount() async {
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.settingsDeleteAccountTitle, style: const TextStyle(color: Colors.redAccent)),
-        content: Text(context.l10n.settingsDeleteAccountConfirm),
-        actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(context.l10n.commonCancel)),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: Text(context.l10n.settingsDeleteAccountTitle),
-          ),
-        ],
-      ),
+    final bool? confirm = await UniversalGameDialog.show(
+      context,
+      title: context.l10n.settingsDeleteAccountTitle,
+      message: context.l10n.settingsDeleteAccountConfirm,
+      confirmLabel: context.l10n.settingsDeleteAccountTitle,
+      cancelLabel: context.l10n.commonCancel,
+      accent: AppColors.mysticRuby,
     );
     if (confirm != true) return;
     try {

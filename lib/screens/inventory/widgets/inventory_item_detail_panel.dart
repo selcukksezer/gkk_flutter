@@ -43,6 +43,8 @@ class InventoryItemDetailPanel extends StatelessWidget {
     required this.actions,
     required this.isFavorite,
     this.infoOnly = false,
+    this.canDirectUnequip = true,
+    this.unequipBlockedReason,
   });
 
   static const Color cardBg = Color(0xFFFFFFFF);
@@ -56,6 +58,8 @@ class InventoryItemDetailPanel extends StatelessWidget {
   final InventoryItemDetailActions actions;
   final bool isFavorite;
   final bool infoOnly;
+  final bool canDirectUnequip;
+  final String? unequipBlockedReason;
 
   Widget _buildActionButton({
     required String label,
@@ -313,8 +317,13 @@ class InventoryItemDetailPanel extends StatelessWidget {
           ? () => actions.onPrimaryOverride!(item)
           : null;
     } else if (item.isEquipped && actions.onUnequip != null) {
-      primaryLabel = 'CIKAR (${item.equipSlot.name.toUpperCase()})';
-      primaryAction = () => actions.onUnequip!(item);
+      if (canDirectUnequip) {
+        primaryLabel = 'CIKAR (${item.equipSlot.name.toUpperCase()})';
+        primaryAction = () => actions.onUnequip!(item);
+      } else {
+        primaryLabel = 'CIKAR (ENVANTER DOLU)';
+        primaryAction = null;
+      }
     } else if (isInventoryLootBox(item.itemId) && actions.onUse != null) {
       primaryLabel = 'AC (💎 / 📺)';
       primaryAction = () => actions.onUse!(item);
@@ -377,6 +386,20 @@ class InventoryItemDetailPanel extends StatelessWidget {
                     child: Column(
                       children: <Widget>[
                         primaryButton,
+                        if (item.isEquipped &&
+                            !canDirectUnequip &&
+                            unequipBlockedReason != null) ...<Widget>[
+                          const SizedBox(height: 8),
+                          Text(
+                            unequipBlockedReason!,
+                            style: const TextStyle(
+                              color: Color(0xFFE89558),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         _buildActionButton(
                           label: 'BOL',

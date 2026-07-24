@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/common/universal_game_dialog.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
@@ -329,24 +330,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     final currency = item['currency']?.toString() ?? 'gold';
     final price = item['price'] ?? 0;
     final isGem = currency == 'gems';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2030),
-        title: Text('🛒 $name', style: const TextStyle(color: Color(0xFFFBBF24))),
-        content: Text(
-          '$name satın almak istediğinize emin misiniz?\nFiyat: $price ${isGem ? '💎' : '🪙'}',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal', style: TextStyle(color: Colors.white54))),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBBF24), foregroundColor: Colors.black),
-            child: const Text('✓ Satın Al', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+    final confirmed = await UniversalGameDialog.show(
+      context,
+      title: name,
+      message:
+          '$name satin almak istedigine emin misin?\nFiyat: $price ${isGem ? 'gem' : 'altin'}',
+      confirmLabel: 'Satin Al',
+      cancelLabel: 'Iptal',
     );
     if (confirmed != true) return;
     _buyShopItem(item, 1);
