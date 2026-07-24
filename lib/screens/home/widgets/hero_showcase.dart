@@ -4,6 +4,8 @@ import '../../../../components/common/item_icon_view.dart';
 import '../../../../models/player_model.dart';
 import '../../../../models/inventory_model.dart';
 import '../../../../providers/inventory_provider.dart';
+import '../../../../theme/app_colors.dart';
+import 'home_stat_badge.dart';
 
 class HeroShowcase extends StatefulWidget {
   final PlayerProfile profile;
@@ -130,28 +132,17 @@ class _HeroShowcaseState extends State<HeroShowcase>
               ),
               Positioned(
                 bottom: 14,
-                child: _buildBadge(
-                  "LVL ${widget.profile.level}",
-                  const Color(0xFFFFB800),
-                ),
+                child: _buildLevelBadge(widget.profile.level),
               ),
               Positioned(
-                top: 16,
-                left: 36,
-                child: _buildBadge(
-                  'POWER',
-                  const Color(0xFFE01E5A),
-                  _compact(widget.totalPower),
-                ),
+                top: 12,
+                left: 28,
+                child: HomeStatBadge.power(value: _compact(widget.totalPower)),
               ),
               Positioned(
-                top: 16,
-                right: 36,
-                child: _buildBadge(
-                  'REP',
-                  const Color(0xFF8A2BE2),
-                  _compact(widget.reputation),
-                ),
+                top: 12,
+                right: 28,
+                child: HomeStatBadge.reputation(reputation: widget.reputation),
               ),
               Positioned(
                 left: 8,
@@ -202,36 +193,31 @@ class _HeroShowcaseState extends State<HeroShowcase>
     return value.toString();
   }
 
-  Widget _buildBadge(String text, Color color, [String? value]) {
+  Widget _buildLevelBadge(int level) {
+    const Color gold = AppColors.liquidGold;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF121826).withValues(alpha: 0.8),
+        gradient: LinearGradient(
+          colors: <Color>[
+            AppColors.spaceNavy.withValues(alpha: 0.92),
+            AppColors.carbonVoid.withValues(alpha: 0.96),
+          ],
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8)],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(
-            text,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              shadows: <Shadow>[Shadow(color: color, blurRadius: 4)],
-            ),
-          ),
-          if (value != null)
-            Text(
-              value,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.92),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+        border: Border.all(color: gold.withValues(alpha: 0.55)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(color: gold.withValues(alpha: 0.28), blurRadius: 10),
         ],
+      ),
+      child: Text(
+        'LVL $level',
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.6,
+          shadows: <Shadow>[Shadow(color: gold, blurRadius: 6)],
+        ),
       ),
     );
   }
