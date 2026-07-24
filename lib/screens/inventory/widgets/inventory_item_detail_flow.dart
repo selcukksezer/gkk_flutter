@@ -507,8 +507,16 @@ class InventoryItemDetailFlow {
   }
 
   Future<void> _handleSell(InventoryItem item) async {
-    if (!item.isTradeable) {
-      _showSnack('Bu item satilamaz.');
+    if (item.isEquipped) {
+      _showSnack('Kusanili esya satilamaz — once cikar.');
+      return;
+    }
+    if (!item.isTradeable || item.vendorSellPrice <= 0) {
+      _showSnack('Bu item NPC\'ye satilamaz.');
+      return;
+    }
+    if (isInventoryLootBox(item.itemId)) {
+      _showSnack('Kutu satilamaz.');
       return;
     }
 
@@ -519,8 +527,9 @@ class InventoryItemDetailFlow {
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.zero,
         child: InventoryQuantityActionDialog(
-          title: 'Item Sat',
-          subtitle: '${item.name} satmak istedigin miktari sec.',
+          title: 'Esya Sat',
+          subtitle:
+              '${item.name} — birim ${item.vendorSellPrice} altin (NPC)',
           confirmLabel: 'Sat',
           unitValue: item.vendorSellPrice,
           maxQuantity: item.quantity,
@@ -528,7 +537,19 @@ class InventoryItemDetailFlow {
       ),
     );
 
-    if (quantity == null) return;
+    if (quantity == null || !context.mounted) return;
+
+    final int totalGold = item.vendorSellPrice * quantity;
+    final bool? confirmed = await UniversalGameDialog.show(
+      context,
+      title: 'Satis Onayi',
+      message: quantity == 1
+          ? '${item.name} satilacak.\n$totalGold altin alacaksin.'
+          : '$quantity adet ${item.name} satilacak.\n$totalGold altin alacaksin.',
+      confirmLabel: 'Sat',
+    );
+    if (confirmed != true || !context.mounted) return;
+
     final SellItemResult result = await ref
         .read(inventoryProvider.notifier)
         .sellItemByRow(rowId: item.rowId, quantity: quantity);

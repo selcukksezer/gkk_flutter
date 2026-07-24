@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../components/common/item_icon_view.dart';
+import '../../../core/utils/gold_format.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../models/inventory_model.dart';
@@ -175,11 +176,12 @@ class InventoryItemDetailPanel extends StatelessWidget {
       ('SAVUNMA', '${item.defense}'),
       ('GUC', '${item.power}'),
       ('SEVIYE', 'Lv. ${item.requiredLevel}'),
-      ('DEGER', '${item.vendorSellPrice}g'),
+      ('DEGER', item.vendorSellPrice > 0 ? '${formatCompactGold(item.vendorSellPrice)}g' : '-'),
     ];
 
-    final String footerRight =
-        item.vendorSellPrice > 0 ? '${item.vendorSellPrice}g' : 'Lv. ${item.requiredLevel}';
+    final String footerRight = item.vendorSellPrice > 0
+        ? '${formatCompactGold(item.vendorSellPrice)}g'
+        : 'Lv. ${item.requiredLevel}';
     final String description =
         actions.descriptionOverride ?? item.description;
 
@@ -305,7 +307,13 @@ class InventoryItemDetailPanel extends StatelessWidget {
         item.potionType != PotionType.none ||
         item.energyRestore > 0 ||
         item.healthRestore > 0;
-    final bool canSell = item.vendorSellPrice > 0 && actions.onSell != null;
+    final bool canSell = !item.isEquipped &&
+        item.vendorSellPrice > 0 &&
+        item.isTradeable &&
+        actions.onSell != null;
+    final String sellLabel = canSell
+        ? 'SAT (${formatCompactGold(item.vendorSellPrice)})'
+        : 'SAT';
     final bool canSplit =
         item.isStackable && item.quantity > 1 && actions.onSplit != null;
 
@@ -416,7 +424,7 @@ class InventoryItemDetailPanel extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         _buildActionButton(
-                          label: 'SAT',
+                          label: sellLabel,
                           onPressed: canSell ? () => actions.onSell!(item) : null,
                           isPrimary: false,
                         ),

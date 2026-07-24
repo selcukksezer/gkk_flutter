@@ -484,7 +484,10 @@ class InventoryNotifier extends Notifier<InventoryState> {
     try {
       final SellItemResult result = await _repository.sellItemByRow(rowId: rowId, quantity: quantity);
       if (result.success) {
-        await loadInventory(silent: true);
+        await Future.wait<void>(<Future<void>>[
+          loadInventory(silent: true),
+          ref.read(playerProvider.notifier).loadProfile(),
+        ]);
         return result;
       }
 

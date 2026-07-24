@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../components/common/universal_game_dialog.dart';
+import '../../../core/utils/gold_format.dart';
 import '../../../theme/app_colors.dart';
 
 class InventoryQuantityActionDialog extends StatefulWidget {
@@ -95,10 +96,11 @@ class _InventoryQuantityActionDialogState
                 ),
                 if (widget.showTotalValue)
                   Text(
-                    'Toplam Deger: $total',
+                    '${formatCompactGold(total)} altin alacaksin',
                     style: const TextStyle(
-                      color: AppColors.mutedTitanium,
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.liquidGold,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
                     ),
                   ),
                 const SizedBox(height: 16),
