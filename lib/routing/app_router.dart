@@ -17,6 +17,7 @@ import '../screens/crafting/crafting_screen.dart';
 import '../screens/dungeon/dungeon_screen.dart';
 import '../screens/dungeon/dungeon_battle_screen.dart';
 import '../screens/dungeon/dungeon_siege_hub_screen.dart';
+import '../screens/dungeon/siege_challenge_battle_screen.dart';
 import '../screens/enhancement/enhancement_screen.dart';
 import '../screens/facilities/facility_detail_screen.dart';
 import '../screens/facilities/facilities_screen.dart';
@@ -78,6 +79,7 @@ class AppRoutes {
   static const String crafting = '/crafting';
   static const String dungeonBattle = '/dungeon/battle';
   static const String dungeonSiegeHub = '/dungeon/siege';
+  static const String siegeChallengeBattle = '/dungeon/siege/challenge';
   static const String enhancement = '/enhancement';
   static const String guild = '/guild';
   static const String guildWar = '/guild-war';
@@ -272,6 +274,16 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     gameRoute(
       path: AppRoutes.dungeonBattle,
       build: (BuildContext context, GoRouterState state) => const DungeonBattleScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.siegeChallengeBattle,
+      build: (BuildContext context, GoRouterState state) {
+        final Object? extra = state.extra;
+        if (extra is SiegeChallengeBattleArgs) {
+          return SiegeChallengeBattleScreen(args: extra);
+        }
+        return const DungeonScreen();
+      },
     ),
     gameRoute(
       path: AppRoutes.enhancement,

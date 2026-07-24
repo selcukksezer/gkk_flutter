@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/gold_format.dart';
 import '../../../models/dungeon_model.dart';
 import '../dungeon_zone_data.dart';
 
@@ -15,11 +16,7 @@ class DungeonLootDialog extends StatelessWidget {
   final DungeonData dungeon;
   final DungeonZone? zone;
 
-  String _fmtGold(int value) {
-    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-    if (value >= 1000) return '${(value / 1000).toStringAsFixed(0)}K';
-    return '$value';
-  }
+  String _fmtGold(int value) => formatCompactGold(value);
 
   String _pct(double chance) => '${(chance * 100).toStringAsFixed(0)}%';
 

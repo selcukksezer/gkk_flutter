@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_screen_background.dart';
+import '../../models/dungeon_siege_model.dart';
 import '../../models/guild_war_model.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/player_provider.dart';
@@ -157,7 +158,7 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Bölge sahibi → kuşatmada rezerv slot + bonus',
+                                      'Kuşatma: rezerv slot #1 · owner lonca elmas savunması ile slot +%25''e kadar güçlenir',
                                       style: TextStyle(color: Color(0xFFFCA5A5), fontSize: 12),
                                     ),
                                   ),
@@ -177,7 +178,9 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
                       GameGridColumns(
                         crossAxisCount: 2,
                         children: [
-                          _StatTile(label: 'Savunma', value: '${t.defensePower}', icon: '🛡'),
+                          _StatTile(label: 'Savunma', value: '${t.displayDefensePower}', icon: '🛡'),
+                          if (t.gemDefenseBoost > 0)
+                            _StatTile(label: 'Elmas', value: '+${t.gemDefenseBoost}', icon: '💎'),
                           _StatTile(label: 'Trade Geliri', value: '${t.tradeIncome}/gün', icon: '💰'),
                           _StatTile(label: 'Ödül', value: t.reward.isEmpty ? '—' : t.reward, icon: '🎁'),
                           _StatTile(
@@ -200,11 +203,17 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
                                 fontSize: 12,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Elmas savunması prime time''da eklenir; prime bitince sıfırlanır. '
+                              'Owner lonca kuşatma slotları +${(DungeonSiegeConfig.territoryDefenseSiegeBonusPct(t.displayDefensePower) * 100).round()}% alır (max %25).',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                            ),
                             const SizedBox(height: AppSpacing.sm),
                             DefensePowerBar(
-                              current: t.defensePower,
-                              max: t.defensePower > t.baseDefensePower
-                                  ? t.defensePower
+                              current: t.displayDefensePower,
+                              max: t.displayDefensePower > t.baseDefensePower
+                                  ? t.displayDefensePower
                                   : t.baseDefensePower,
                               height: 10,
                             ),

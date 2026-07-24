@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
+import '../../../core/utils/gold_format.dart';
 import '../../../models/dungeon_model.dart';
+import '../../../models/dungeon_siege_model.dart';
+import '../dungeon_zone_data.dart';
 import '../../../theme/app_colors.dart';
 import 'dungeon_progress_row.dart';
 import 'dungeon_siege_badge.dart';
+import 'dungeon_siege_prime_timer_chip.dart';
 
 class DungeonCard extends StatelessWidget {
   const DungeonCard({
@@ -31,6 +35,7 @@ class DungeonCard extends StatelessWidget {
     this.siegeOccupiedSlots = 0,
     this.siegeHasMySlot = false,
     this.siegeSlotCount = 5,
+    this.siegeConfig,
     this.onSiegeTap,
   });
 
@@ -52,6 +57,7 @@ class DungeonCard extends StatelessWidget {
   final int siegeOccupiedSlots;
   final bool siegeHasMySlot;
   final int siegeSlotCount;
+  final DungeonSiegeConfig? siegeConfig;
   final VoidCallback? onSiegeTap;
 
   bool get _isBoss => dungeon.difficulty.toLowerCase().contains('dungeon');
@@ -148,14 +154,24 @@ class DungeonCard extends StatelessWidget {
                                     ),
                                     if (siegeActive || onSiegeTap != null) ...<Widget>[
                                       const SizedBox(width: 6),
-                                      DungeonSiegeBadge(
-                                        siegeActive: siegeActive,
-                                        slotCount: siegeSlotCount,
-                                        occupiedSlots: siegeOccupiedSlots,
-                                        hasMySlot: siegeHasMySlot,
-                                        onTap: onSiegeTap,
-                                        compact: true,
-                                      ),
+                                      siegeConfig != null
+                                          ? DungeonSiegeBadgeWithTimer(
+                                              siegeActive: siegeActive,
+                                              slotCount: siegeSlotCount,
+                                              occupiedSlots: siegeOccupiedSlots,
+                                              hasMySlot: siegeHasMySlot,
+                                              config: siegeConfig!,
+                                              onTap: onSiegeTap,
+                                              compact: true,
+                                            )
+                                          : DungeonSiegeBadge(
+                                              siegeActive: siegeActive,
+                                              slotCount: siegeSlotCount,
+                                              occupiedSlots: siegeOccupiedSlots,
+                                              hasMySlot: siegeHasMySlot,
+                                              onTap: onSiegeTap,
+                                              compact: true,
+                                            ),
                                     ],
                                   ],
                                 ),
@@ -348,12 +364,6 @@ class _DungeonStatsRow extends StatelessWidget {
   final int maxGold;
   final int powerReq;
 
-  String _fmt(int v) {
-    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
-    if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}K';
-    return '$v';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Wrap(
@@ -361,8 +371,8 @@ class _DungeonStatsRow extends StatelessWidget {
       runSpacing: 6,
       children: <Widget>[
         _chip(Icons.bolt, '${energyCost}E', Colors.white),
-        _chip(Icons.monetization_on_outlined, '${_fmt(minGold)}-${_fmt(maxGold)}G', const Color(0xFFF5C842), isGold: true),
-        if (powerReq > 0) _chip(Icons.security, _fmt(powerReq), Colors.white),
+        _chip(Icons.monetization_on_outlined, formatCompactGoldRange(minGold, maxGold), const Color(0xFFF5C842), isGold: true),
+        if (powerReq > 0) _chip(Icons.security, formatCompactGold(powerReq), Colors.white),
       ],
     );
   }

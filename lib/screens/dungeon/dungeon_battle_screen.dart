@@ -250,7 +250,6 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
         }
 
         if (parsed.inventoryFull) {
-          AppMessenger.show(context, 'Envanter dolu! Bazı eşyalar alınamadı.');
           unawaited(BankTutorial.maybeShowInventoryFullDialog(context, ref));
         }
       } else {
@@ -2048,6 +2047,8 @@ class _VictoryView extends StatelessWidget {
           isCritical: result.isCritical,
           isFirstClear: result.isFirstClear,
         ),
+        if (result.siegeBonus != null)
+          DungeonSiegeResultBanner(bonus: result.siegeBonus!),
         DungeonMilestoneBanner(rewards: result.milestoneRewards),
         FadeSlideIn(
           delayMs: 200,
@@ -2095,16 +2096,11 @@ class _VictoryView extends StatelessWidget {
                     ],
                   ],
                 ),
-                if (result.rewardMultiplier != null &&
-                    result.rewardMultiplier! < 0.99) ...<Widget>[
-                  const SizedBox(height: 10),
-                  Text(
-                    'Ödül çarpanı: ×${result.rewardMultiplier!.toStringAsFixed(2)} (farm cezası)',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 10),
-                  ),
-                ],
+                DungeonResultBalanceNotes(
+                  rewardMultiplier: result.rewardMultiplier,
+                  tutorialWrapperLootCount: result.tutorialWrapperLootCount,
+                  siegeBonusApplied: result.siegeBonus?.shouldShowOnResult ?? false,
+                ),
               ],
             ),
           ),

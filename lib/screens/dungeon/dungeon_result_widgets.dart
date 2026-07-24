@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../components/common/item_icon_view.dart';
 import '../../models/dungeon_model.dart';
+import '../../models/dungeon_siege_model.dart';
 import 'dungeon_item_utils.dart';
 import 'dungeon_victory_effects.dart';
 import '../../l10n/l10n.dart';
@@ -117,6 +118,146 @@ class DungeonResultBanner extends StatelessWidget {
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+class DungeonSiegeResultBanner extends StatelessWidget {
+  const DungeonSiegeResultBanner({
+    super.key,
+    required this.bonus,
+  });
+
+  final DungeonSiegeRunBonus bonus;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!bonus.shouldShowAny) return const SizedBox.shrink();
+
+    if (bonus.shouldShowNoSlotWarning) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.45)),
+        ),
+        child: Text(
+          bonus.noSlotWarningText(
+            slotLootPct: bonus.slotLootBonusPct > 0 ? bonus.slotLootBonusPct : 40,
+            slotGoldPct: bonus.slotGoldBonusPct > 0 ? bonus.slotGoldBonusPct : 25,
+          ),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFFDE68A),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            height: 1.35,
+          ),
+        ),
+      );
+    }
+
+    final String? holdLine = bonus.holdExtraLine();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: <Color>[
+            const Color(0xFF7C3AED).withValues(alpha: 0.38),
+            const Color(0xFF2563EB).withValues(alpha: 0.18),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFA78BFA).withValues(alpha: 0.65)),
+      ),
+      child: Column(
+        children: <Widget>[
+          const Text(
+            'KUŞATMA PRIME — Slot bonusu uygulandı',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFFEDE9FE),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            bonus.resultSummary(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFC4B5FD),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (holdLine != null) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              holdLine,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFFFDE68A).withValues(alpha: 0.95),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class DungeonResultBalanceNotes extends StatelessWidget {
+  const DungeonResultBalanceNotes({
+    super.key,
+    this.rewardMultiplier,
+    this.tutorialWrapperLootCount = 0,
+    this.siegeBonusApplied = false,
+  });
+
+  final double? rewardMultiplier;
+  final int tutorialWrapperLootCount;
+  final bool siegeBonusApplied;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasFarmPenalty = rewardMultiplier != null && rewardMultiplier! < 0.99;
+    final bool hasWrapperLoot = tutorialWrapperLootCount > 0;
+    if (!hasFarmPenalty && !hasWrapperLoot) return const SizedBox.shrink();
+
+    return Column(
+      children: <Widget>[
+        if (hasFarmPenalty) ...<Widget>[
+          const SizedBox(height: 10),
+          Text(
+            'Farm cezası: ×${rewardMultiplier!.toStringAsFixed(2)}'
+            '${siegeBonusApplied ? ' (kuşatma bonusundan ayrı uygulandı)' : ''}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white38, fontSize: 10),
+          ),
+        ],
+        if (hasWrapperLoot) ...<Widget>[
+          const SizedBox(height: 6),
+          Text(
+            'Öğretici ek loot: +$tutorialWrapperLootCount eşya (kuşatma bonusuna ek, ayrı düştü)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF93C5FD).withValues(alpha: 0.85),
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ],
     );
   }

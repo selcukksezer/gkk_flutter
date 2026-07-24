@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'dungeon_siege_model.dart';
+
 class DungeonPlayerStats {
   const DungeonPlayerStats({
     this.totalAttempts = 0,
@@ -427,6 +429,8 @@ class DungeonResult {
     this.hospitalRiskPct,
     this.inventoryFull = false,
     this.milestoneRewards = const <DungeonMilestoneReward>[],
+    this.siegeBonus,
+    this.tutorialWrapperLootCount = 0,
   });
 
   final bool success;
@@ -444,6 +448,8 @@ class DungeonResult {
   final double? hospitalRiskPct;
   final bool inventoryFull;
   final List<DungeonMilestoneReward> milestoneRewards;
+  final DungeonSiegeRunBonus? siegeBonus;
+  final int tutorialWrapperLootCount;
 
   factory DungeonResult.fromJson(Map<String, dynamic> json) {
     final dynamic itemsRaw = json['items'] ?? json['items_dropped'] ?? json['item_details'];
@@ -502,6 +508,12 @@ class DungeonResult {
           : _asDouble(json['hospital_risk_pct']),
       inventoryFull: json['inventory_full'] == true,
       milestoneRewards: milestones,
+      siegeBonus: json['siege_bonus'] is Map
+          ? DungeonSiegeRunBonus.fromJson(
+              Map<String, dynamic>.from(json['siege_bonus'] as Map),
+            )
+          : null,
+      tutorialWrapperLootCount: _asInt(json['tutorial_wrapper_loot_count']),
     );
   }
 

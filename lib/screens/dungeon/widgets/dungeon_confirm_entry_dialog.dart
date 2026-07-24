@@ -10,12 +10,16 @@ class DungeonConfirmEntryDialog extends StatelessWidget {
     required this.dungeon,
     this.hospitalRiskPct,
     this.rewardMultiplierPreview,
+    this.siegePrimeHint,
+    this.siegeNoSlotWarning,
     this.onConfirmTap,
   });
 
   final DungeonData dungeon;
   final double? hospitalRiskPct;
   final double? rewardMultiplierPreview;
+  final String? siegePrimeHint;
+  final String? siegeNoSlotWarning;
   final VoidCallback? onConfirmTap;
 
   @override
@@ -27,7 +31,14 @@ class DungeonConfirmEntryDialog extends StatelessWidget {
       body.write('\n\nYenilgi hastane riski: %${hospitalRiskPct!.toStringAsFixed(0)}');
     }
     if (rewardMultiplierPreview != null && rewardMultiplierPreview! < 0.99) {
-      body.write('\nÖdül çarpanı: ×${rewardMultiplierPreview!.toStringAsFixed(2)}');
+      body.write(
+        '\nFarm cezası: ×${rewardMultiplierPreview!.toStringAsFixed(2)} (kuşatma bonusundan ayrı)',
+      );
+    }
+    if (siegeNoSlotWarning != null && siegeNoSlotWarning!.isNotEmpty) {
+      body.write('\n\n⚠ $siegeNoSlotWarning');
+    } else if (siegePrimeHint != null && siegePrimeHint!.isNotEmpty) {
+      body.write('\n\n⚔ $siegePrimeHint');
     }
 
     return AlertDialog(

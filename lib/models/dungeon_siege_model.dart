@@ -1,3 +1,5 @@
+import 'dungeon_siege_prime_timer.dart';
+
 /// Kuşatma boss zindanları (DB config fallback).
 const Set<String> kSiegeDungeonIds = <String>{
   'dng_010',
@@ -8,6 +10,19 @@ const Set<String> kSiegeDungeonIds = <String>{
   'dng_060',
   'dng_065',
 };
+
+/// Kuşatma zone numarası → o bölgenin boss zindanı (zindan sekmeleriyle aynı 1–7).
+const Map<int, String> kSiegeCapstoneByZone = <int, String>{
+  1: 'dng_010',
+  2: 'dng_020',
+  3: 'dng_030',
+  4: 'dng_040',
+  5: 'dng_050',
+  6: 'dng_060',
+  7: 'dng_065',
+};
+
+String? siegeCapstoneForZone(int zoneNumber) => kSiegeCapstoneByZone[zoneNumber];
 
 class DungeonSiegeConfig {
   const DungeonSiegeConfig({
@@ -30,6 +45,8 @@ class DungeonSiegeConfig {
     this.powerBandPct = 0.30,
     this.sessionDurationMinutes = 180,
     this.holdReholdCooldownMinutes = 15,
+    this.timezone = 'Europe/Istanbul',
+    this.primeWindows = kDefaultSiegePrimeWindows,
   });
 
   final bool isEnabled;
@@ -51,8 +68,76 @@ class DungeonSiegeConfig {
   final double powerBandPct;
   final int sessionDurationMinutes;
   final int holdReholdCooldownMinutes;
+  final String timezone;
+  final List<DungeonSiegePrimeWindow> primeWindows;
 
   bool get isLive => isEnabled && inPrimeWindow;
+
+  static int repPerRun(DungeonSiegeConfig config) =>
+      (20 * config.repBonusPct).floor().clamp(1, 99);
+
+  /// Bölge `defense_power` → owner lonca kuşatma bonusu (1000 güç = +25%, tavan %25).
+  static double territoryDefenseSiegeBonusPct(int defensePower) =>
+      (defensePower / 4000.0).clamp(0.0, 0.25);
+
+  static String territoryDefenseSummary(int defensePower, {bool ownerOnly = true}) {
+    if (defensePower <= 0) return 'Savunma yok';
+    final int pct = (territoryDefenseSiegeBonusPct(defensePower) * 100).round();
+    if (ownerOnly) {
+      return '🛡 $defensePower · owner slot +$pct% (max %25)';
+    }
+    return '🛡 $defensePower · kuşatma +$pct%';
+  }
+
+  /// Kuşatma oturum kartı / panel — owner vs diğer lonca metni.
+  static String territoryDefenseSessionLabel({
+    required int defensePower,
+    required int myBonusPercent,
+    required int maxBonusPercent,
+    required bool receivesBonus,
+  }) {
+    if (defensePower <= 0) return '';
+    if (receivesBonus && myBonusPercent > 0) {
+      return 'Bölge savunması $defensePower · loncan +$myBonusPercent% slot gücü';
+    }
+    if (maxBonusPercent > 0) {
+      return 'Bölge savunması $defensePower · owner lonca +$maxBonusPercent% (sen alamazsın)';
+    }
+    return 'Bölge savunması $defensePower';
+  }
+
+  static String farmBonusSummary(DungeonSiegeConfig config, {bool holdBonus = false}) {
+    final int lootPct =
+        ((config.lootBonusPct + (holdBonus ? config.holdBonusPct : 0)) * 100).round();
+    final int goldPct =
+        ((config.goldBonusPct + (holdBonus ? config.holdBonusPct : 0)) * 100).round();
+    final int rep = repPerRun(config);
+    return '+$lootPct% loot, +$goldPct% altın, +$rep itibar/koşu';
+  }
+
+  /// Sunucu `challenge_siege_slot` güç bandı — shadow çarpanı dahil.
+  static int siegeChallengePower(int basePower, {bool shadowClass = false}) {
+    var power = basePower;
+    if (power <= 0) return 0;
+    if (shadowClass) power = (power * 1.15).round();
+    return power;
+  }
+
+  /// `abs(att - def) > max(def, 1) * powerBandPct` (sunucu ile aynı kural).
+  static bool exceedsChallengePowerBand({
+    required int attackerPower,
+    required int defenderPower,
+    required double powerBandPct,
+  }) {
+    if (powerBandPct <= 0) return false;
+    final int def = defenderPower > 0 ? defenderPower : 1;
+    return (attackerPower - defenderPower).abs() > def * powerBandPct;
+  }
+
+  static String challengePowerBandError(double powerBandPct) {
+    final int pct = (powerBandPct * 100).round();
+    return 'Güç farkı çok yüksek (±$pct%).';
+  }
 
   factory DungeonSiegeConfig.fromJson(Map<String, dynamic>? json) {
     if (json == null || json.isEmpty) {
@@ -60,7 +145,7 @@ class DungeonSiegeConfig {
         isEnabled: false,
         slotCount: 5,
         slotDurationMinutes: 20,
-        challengeGoldCost: 500,
+        challengeGoldCost: 250000,
         lootBonusPct: 0.4,
         goldBonusPct: 0.25,
         repBonusPct: 0.15,
@@ -71,7 +156,7 @@ class DungeonSiegeConfig {
       isEnabled: json['is_enabled'] == true,
       slotCount: _asInt(json['slot_count'], fallback: 5),
       slotDurationMinutes: _asInt(json['slot_duration_minutes'], fallback: 20),
-      challengeGoldCost: _asInt(json['challenge_gold_cost'], fallback: 500),
+      challengeGoldCost: _asInt(json['challenge_gold_cost'], fallback: 250000),
       lootBonusPct: _asDouble(json['loot_bonus_pct'], fallback: 0.4),
       goldBonusPct: _asDouble(json['gold_bonus_pct'], fallback: 0.25),
       repBonusPct: _asDouble(json['rep_bonus_pct'], fallback: 0.15),
@@ -87,7 +172,25 @@ class DungeonSiegeConfig {
       powerBandPct: _asDouble(json['power_band_pct'], fallback: 0.30),
       sessionDurationMinutes: _asInt(json['session_duration_minutes'], fallback: 180),
       holdReholdCooldownMinutes: _asInt(json['hold_rehold_cooldown_minutes'], fallback: 15),
+      timezone: json['timezone']?.toString() ?? 'Europe/Istanbul',
+      primeWindows: _parsePrimeWindows(json['prime_windows']),
     );
+  }
+
+  static List<DungeonSiegePrimeWindow> _parsePrimeWindows(dynamic raw) {
+    if (raw is List) {
+      final List<DungeonSiegePrimeWindow> parsed = raw
+          .whereType<Map>()
+          .map(
+            (Map<dynamic, dynamic> row) => DungeonSiegePrimeWindow(
+              start: row['start']?.toString() ?? '19:00',
+              end: row['end']?.toString() ?? '21:00',
+            ),
+          )
+          .toList();
+      if (parsed.isNotEmpty) return parsed;
+    }
+    return kDefaultSiegePrimeWindows;
   }
 
   static Set<String> _parseDungeonIds(dynamic raw) {
@@ -116,6 +219,84 @@ class DungeonSiegeConfig {
     if (value is double) return value;
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value) ?? fallback;
+    return fallback;
+  }
+}
+
+/// Kuşatma prime slot bonusu — tek koşu sonucu (attack_dungeon siege_bonus).
+class DungeonSiegeRunBonus {
+  const DungeonSiegeRunBonus({
+    this.active = false,
+    this.primeActive = false,
+    this.hasSlot = false,
+    this.applied = false,
+    this.hasHoldBonus = false,
+    this.lootBonusPct = 0,
+    this.goldBonusPct = 0,
+    this.slotLootBonusPct = 0,
+    this.slotGoldBonusPct = 0,
+    this.holdBonusPct = 0,
+    this.repGained = 0,
+  });
+
+  final bool active;
+  final bool primeActive;
+  final bool hasSlot;
+  final bool applied;
+  final bool hasHoldBonus;
+  final int lootBonusPct;
+  final int goldBonusPct;
+  final int slotLootBonusPct;
+  final int slotGoldBonusPct;
+  final int holdBonusPct;
+  final int repGained;
+
+  bool get shouldShowOnResult =>
+      applied && hasSlot && (lootBonusPct > 0 || goldBonusPct > 0 || repGained > 0);
+
+  /// Prime + kuşatma zindanı + slot yok → normal ödül uyarısı.
+  bool get shouldShowNoSlotWarning => applied && active && primeActive && !hasSlot;
+
+  bool get shouldShowAny => shouldShowOnResult || shouldShowNoSlotWarning;
+
+  String noSlotWarningText({required int slotLootPct, required int slotGoldPct}) =>
+      'Prime aktif — slot yok: normal ödül. Slot alsaydın +$slotLootPct% loot, +$slotGoldPct% altın.';
+
+  String resultSummary() {
+    final List<String> parts = <String>[
+      '+$lootBonusPct% loot',
+      '+$goldBonusPct% altın',
+    ];
+    if (repGained > 0) parts.add('+$repGained itibar');
+    return parts.join(', ');
+  }
+
+  String? holdExtraLine() {
+    if (!hasHoldBonus || holdBonusPct <= 0) return null;
+    return 'Hold bonusu: +$holdBonusPct% loot & altın (lonca tutuyor)';
+  }
+
+  factory DungeonSiegeRunBonus.fromJson(Map<String, dynamic>? json) {
+    if (json == null || json.isEmpty) return const DungeonSiegeRunBonus();
+    return DungeonSiegeRunBonus(
+      active: json['active'] == true,
+      primeActive: json['prime_active'] == true,
+      hasSlot: json['has_slot'] == true,
+      applied: json['applied'] == true,
+      hasHoldBonus: json['has_hold_bonus'] == true,
+      lootBonusPct: _asInt(json['loot_bonus_pct']),
+      goldBonusPct: _asInt(json['gold_bonus_pct']),
+      slotLootBonusPct: _asInt(json['slot_loot_bonus_pct']),
+      slotGoldBonusPct: _asInt(json['slot_gold_bonus_pct']),
+      holdBonusPct: _asInt(json['hold_bonus_pct']),
+      repGained: _asInt(json['rep_gained']),
+    );
+  }
+
+  static int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
     return fallback;
   }
 }
@@ -162,6 +343,7 @@ class DungeonSiegeSlot {
     this.holderId,
     this.holderName,
     this.holderPower = 0,
+    this.guildId,
     this.guildName,
     this.expiresAt,
     this.isMine = false,
@@ -173,6 +355,7 @@ class DungeonSiegeSlot {
   final String? holderId;
   final String? holderName;
   final int holderPower;
+  final String? guildId;
   final String? guildName;
   final String? expiresAt;
   final bool isMine;
@@ -187,6 +370,7 @@ class DungeonSiegeSlot {
       holderId: json['holder_id']?.toString(),
       holderName: json['holder_name']?.toString(),
       holderPower: DungeonSiegeConfig._asInt(json['holder_power']),
+      guildId: json['guild_id']?.toString(),
       guildName: json['guild_name']?.toString(),
       expiresAt: json['expires_at']?.toString(),
       isMine: json['is_mine'] == true,
@@ -204,6 +388,9 @@ class DungeonSiegeSession {
     required this.slots,
     this.territoryOwnerGuildName,
     this.territoryOwnerGuildId,
+    this.territoryDefensePower = 0,
+    this.territoryDefenseSiegeBonusPct = 0,
+    this.territoryDefenseMaxBonusPct = 0,
     this.guildSlots = 0,
     this.hold,
   });
@@ -215,8 +402,50 @@ class DungeonSiegeSession {
   final List<DungeonSiegeSlot> slots;
   final String? territoryOwnerGuildName;
   final String? territoryOwnerGuildId;
+  final int territoryDefensePower;
+  final double territoryDefenseSiegeBonusPct;
+  final double territoryDefenseMaxBonusPct;
   final int guildSlots;
   final DungeonSiegeHold? hold;
+
+  int get territoryDefenseSiegeBonusPercent => (territoryDefenseSiegeBonusPct * 100).round();
+
+  int get territoryDefenseMaxBonusPercent => (territoryDefenseMaxBonusPct * 100).round();
+
+  bool receivesTerritoryDefenseBonus(String? myGuildId) =>
+      myGuildId != null &&
+      hasTerritoryOwner &&
+      myGuildId == territoryOwnerGuildId &&
+      territoryDefenseSiegeBonusPct > 0;
+
+  bool slotReceivesTerritoryDefenseBonus(DungeonSiegeSlot slot) =>
+      hasTerritoryOwner &&
+      slot.guildId != null &&
+      slot.guildId!.isNotEmpty &&
+      slot.guildId == territoryOwnerGuildId &&
+      territoryDefenseMaxBonusPct > 0;
+
+  /// Meydan okumada sunucunun uyguladığı slot savunucu gücü (bölge bonusu dahil).
+  int effectiveSiegePowerForSlot(DungeonSiegeSlot slot) {
+    if (!slot.isOccupied) return 0;
+    final double bonus = slotReceivesTerritoryDefenseBonus(slot)
+        ? territoryDefenseMaxBonusPct
+        : 0.0;
+    return (slot.holderPower * (1 + bonus)).round();
+  }
+
+  bool get hasTerritoryOwner =>
+      territoryOwnerGuildId != null && territoryOwnerGuildId!.isNotEmpty;
+
+  int holdMinRequired(DungeonSiegeConfig config, {String? myGuildId}) =>
+      config.holdMinMembers;
+
+  bool canStartHold(DungeonSiegeConfig config, {String? myGuildId}) {
+    if (hasTerritoryOwner && (myGuildId == null || myGuildId != territoryOwnerGuildId)) {
+      return false;
+    }
+    return guildSlots >= config.holdMinMembers;
+  }
 
   factory DungeonSiegeSession.fromJson(Map<String, dynamic> json) {
     final List<DungeonSiegeSlot> slots = (json['slots'] as List<dynamic>? ?? <dynamic>[])
@@ -236,6 +465,17 @@ class DungeonSiegeSession {
       slots: slots,
       territoryOwnerGuildName: json['territory_owner_guild_name']?.toString(),
       territoryOwnerGuildId: json['territory_owner_guild_id']?.toString(),
+      territoryDefensePower: DungeonSiegeConfig._asInt(json['territory_defense_power']),
+      territoryDefenseSiegeBonusPct: DungeonSiegeConfig._asDouble(
+        json['territory_defense_siege_bonus_pct'],
+        fallback: 0,
+      ),
+      territoryDefenseMaxBonusPct: DungeonSiegeConfig._asDouble(
+        json['territory_defense_max_bonus_pct'],
+        fallback: DungeonSiegeConfig.territoryDefenseSiegeBonusPct(
+          DungeonSiegeConfig._asInt(json['territory_defense_power']),
+        ),
+      ),
       guildSlots: DungeonSiegeConfig._asInt(json['guild_slots']),
       hold: holdMap != null ? DungeonSiegeHold.fromJson(holdMap) : null,
     );
@@ -252,6 +492,9 @@ class DungeonSiegeStatus {
     required this.sessions,
     this.mySlotId,
     this.mySlotNumber,
+    this.mySlotGlobalDungeonId,
+    this.holdsSlotElsewhere = false,
+    this.bannedDungeonIds = const <String>[],
   });
 
   final bool enabled;
@@ -262,6 +505,43 @@ class DungeonSiegeStatus {
   final List<DungeonSiegeSession> sessions;
   final String? mySlotId;
   final int? mySlotNumber;
+  final String? mySlotGlobalDungeonId;
+  final bool holdsSlotElsewhere;
+  final List<String> bannedDungeonIds;
+
+  bool isBannedForDungeon(String dungeonId) {
+    if (dungeonId.isEmpty) return isBanned;
+    if (bannedDungeonIds.contains(dungeonId)) return true;
+    return isBanned;
+  }
+
+  DungeonSiegeStatus copyWith({
+    bool? enabled,
+    bool? inPrimeWindow,
+    bool? siegeActive,
+    bool? isBanned,
+    DungeonSiegeConfig? config,
+    List<DungeonSiegeSession>? sessions,
+    String? mySlotId,
+    int? mySlotNumber,
+    String? mySlotGlobalDungeonId,
+    bool? holdsSlotElsewhere,
+    List<String>? bannedDungeonIds,
+  }) {
+    return DungeonSiegeStatus(
+      enabled: enabled ?? this.enabled,
+      inPrimeWindow: inPrimeWindow ?? this.inPrimeWindow,
+      siegeActive: siegeActive ?? this.siegeActive,
+      isBanned: isBanned ?? this.isBanned,
+      config: config ?? this.config,
+      sessions: sessions ?? this.sessions,
+      mySlotId: mySlotId ?? this.mySlotId,
+      mySlotNumber: mySlotNumber ?? this.mySlotNumber,
+      mySlotGlobalDungeonId: mySlotGlobalDungeonId ?? this.mySlotGlobalDungeonId,
+      holdsSlotElsewhere: holdsSlotElsewhere ?? this.holdsSlotElsewhere,
+      bannedDungeonIds: bannedDungeonIds ?? this.bannedDungeonIds,
+    );
+  }
 
   factory DungeonSiegeStatus.empty() {
     return DungeonSiegeStatus(
@@ -291,6 +571,9 @@ class DungeonSiegeStatus {
     final Map<String, dynamic>? mySlot = json['my_slot'] is Map
         ? Map<String, dynamic>.from(json['my_slot'] as Map)
         : null;
+    final Map<String, dynamic>? mySlotGlobal = json['my_slot_global'] is Map
+        ? Map<String, dynamic>.from(json['my_slot_global'] as Map)
+        : null;
 
     return DungeonSiegeStatus(
       enabled: json['enabled'] == true,
@@ -303,6 +586,12 @@ class DungeonSiegeStatus {
       mySlotNumber: mySlot?['slot_number'] != null
           ? DungeonSiegeConfig._asInt(mySlot!['slot_number'])
           : null,
+      mySlotGlobalDungeonId: mySlotGlobal?['dungeon_id']?.toString(),
+      holdsSlotElsewhere: json['holds_slot_elsewhere'] == true,
+      bannedDungeonIds: (json['banned_dungeon_ids'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic id) => id.toString())
+          .where((String id) => id.isNotEmpty)
+          .toList(growable: false),
     );
   }
 
@@ -311,6 +600,20 @@ class DungeonSiegeStatus {
       if (session.dungeonId == dungeonId) return session;
     }
     return null;
+  }
+
+  bool hasSlotInDungeon(String dungeonId) {
+    final DungeonSiegeSession? session = sessionForDungeon(dungeonId);
+    if (session == null) return false;
+    return session.slots.any((DungeonSiegeSlot slot) => slot.isMine);
+  }
+
+  bool canChallengeSlot(String dungeonId, DungeonSiegeSlot slot) {
+    if (!siegeActive) return false;
+    if (isBannedForDungeon(dungeonId)) return false;
+    if (!slot.isOccupied || slot.isMine) return false;
+    if (hasSlotInDungeon(dungeonId)) return false;
+    return true;
   }
 }
 
@@ -438,23 +741,41 @@ class DungeonSiegeTerritoryLink {
     required this.zoneNumber,
     required this.territoryName,
     this.territoryId,
+    this.ownerGuildId,
     this.ownerGuildName,
     this.siegeDungeonId,
+    this.defensePower = 0,
+    this.gemDefenseBoost = 0,
+    this.defenseSiegeBonusPct = 0,
   });
 
   final int zoneNumber;
   final String territoryName;
   final String? territoryId;
+  final String? ownerGuildId;
   final String? ownerGuildName;
   final String? siegeDungeonId;
+  final int defensePower;
+  final int gemDefenseBoost;
+  final double defenseSiegeBonusPct;
+
+  int get defenseSiegeBonusPercent => (defenseSiegeBonusPct * 100).round();
 
   factory DungeonSiegeTerritoryLink.fromJson(Map<String, dynamic> json) {
+    final int defensePower = DungeonSiegeConfig._asInt(json['defense_power']);
     return DungeonSiegeTerritoryLink(
       zoneNumber: DungeonSiegeConfig._asInt(json['zone_number']),
       territoryName: (json['territory_name'] ?? '').toString(),
       territoryId: json['territory_id']?.toString(),
+      ownerGuildId: json['owner_guild_id']?.toString(),
       ownerGuildName: json['owner_guild_name']?.toString(),
       siegeDungeonId: json['siege_dungeon_id']?.toString(),
+      defensePower: defensePower,
+      gemDefenseBoost: DungeonSiegeConfig._asInt(json['gem_defense_boost']),
+      defenseSiegeBonusPct: DungeonSiegeConfig._asDouble(
+        json['defense_siege_bonus_pct'],
+        fallback: DungeonSiegeConfig.territoryDefenseSiegeBonusPct(defensePower),
+      ),
     );
   }
 }

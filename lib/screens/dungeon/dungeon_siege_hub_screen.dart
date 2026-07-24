@@ -6,13 +6,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
 import '../../providers/dungeon_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
+import '../../providers/guild_war_provider.dart';
+import '../../providers/player_provider.dart';
+import '../guild_war/guild_war_defense_sheet.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../../utils/logout_helper.dart';
+import 'dungeon_zone_data.dart';
+import 'widgets/dungeon_siege_design.dart';
 import 'widgets/dungeon_siege_panel.dart';
 
 class DungeonSiegeHubScreen extends ConsumerStatefulWidget {
@@ -25,17 +32,18 @@ class DungeonSiegeHubScreen extends ConsumerStatefulWidget {
 class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
   Timer? _pollTimer;
   bool _handledDeepLink = false;
+  bool _entranceDone = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_refresh());
+      unawaited(_refresh(silent: false));
       unawaited(_maybeOpenDeepLinkedPanel());
     });
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
-      unawaited(ref.read(dungeonSiegeProvider.notifier).loadHub());
+      unawaited(ref.read(dungeonSiegeProvider.notifier).loadHub(silent: true));
     });
   }
 
@@ -45,9 +53,27 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
     super.dispose();
   }
 
-  Future<void> _refresh() async {
-    await ref.read(dungeonProvider.notifier).loadDungeons();
-    await ref.read(dungeonSiegeProvider.notifier).loadHub();
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.dungeon);
+    }
+  }
+
+  Future<void> _refresh({bool silent = true}) async {
+    if (!silent) {
+      await ref.read(dungeonProvider.notifier).loadDungeons();
+    }
+    await ref.read(dungeonSiegeProvider.notifier).loadHub(silent: silent);
+    if (mounted && !_entranceDone && ref.read(dungeonSiegeProvider).hub != null) {
+      setState(() => _entranceDone = true);
+    }
+  }
+
+  Widget _section(int index, Widget child) {
+    if (_entranceDone) return child;
+    return SiegeFadeSlide(index: index, child: child);
   }
 
   Future<void> _maybeOpenDeepLinkedPanel() async {
@@ -83,111 +109,294 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
     return dungeonId.toUpperCase();
   }
 
+  Future<void> _addGemDefense(String territoryId) async {
+    final int? gems = await showGuildWarDefenseSheet(context);
+    if (gems == null || gems <= 0 || !mounted) return;
+
+    final String? error = await ref.read(guildWarProvider.notifier).addDefense(territoryId, gems);
+    if (!mounted) return;
+    if (error != null) {
+      AppMessenger.showError(context, error);
+    } else {
+      AppMessenger.showSuccess(context, '💎 Prime savunma eklendi!');
+      await _refresh(silent: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final DungeonSiegeState siegeState = ref.watch(dungeonSiegeProvider);
     final DungeonSiegeHub hub = siegeState.hub ?? DungeonSiegeHub.empty();
     final DungeonSiegeStatus status = hub.status;
+    final String? myGuildId = ref.watch(playerProvider).profile?.guildId;
+    int slideIndex = 0;
 
-    return Scaffold(
-      backgroundColor: AppColors.carbonVoid,
-      appBar: GameTopBar(
-        title: 'Kuşatma Merkezi',
-        onLogout: () async => performLogout(ref),
-      ),
-      extendBody: true,
-      bottomNavigationBar: GameBottomBar(
-        currentRoute: AppRoutes.dungeonSiegeHub,
-        onLogout: () async => performLogout(ref),
-      ),
-      body: RefreshIndicator(
-        color: const Color(0xFFEF4444),
-        onRefresh: _refresh,
-        child: siegeState.hubLoading && siegeState.hub == null
-            ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 100),
-                children: <Widget>[
-                  _HubStatusCard(status: status, weekKey: hub.weekKey),
-                  if (siegeState.errorMessage != null) ...<Widget>[
-                    const SizedBox(height: 8),
-                    _EmptyCard(text: siegeState.errorMessage!),
-                  ],
-                  if (siegeState.notifications.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 16),
-                    Row(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (bool didPop, _) {
+        if (!didPop) _goBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.carbonVoid,
+        appBar: GameTopBar(
+          title: 'Kuşatma Merkezi',
+          onLogout: () async => performLogout(ref),
+        ),
+        extendBody: true,
+        bottomNavigationBar: GameBottomBar(
+          currentRoute: AppRoutes.dungeonSiegeHub,
+          onLogout: () async => performLogout(ref),
+        ),
+        body: SiegeBackdrop(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
+                child: SiegePressable(
+                  onTap: _goBack,
+                  child: SiegeNeonCard(
+                    accent: SiegePalette.gold,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        const Expanded(child: _SectionTitle(title: 'Bildirimler')),
-                        if (siegeState.unreadNotificationCount > 0)
-                          TextButton(
-                            onPressed: () async {
-                              await ref.read(dungeonSiegeProvider.notifier).markAllNotificationsRead();
-                            },
-                            child: const Text('Tümünü okundu', style: TextStyle(fontSize: 11)),
+                        Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: SiegePalette.gold),
+                        SizedBox(width: 6),
+                        Text(
+                          'Geri',
+                          style: TextStyle(
+                            color: SiegePalette.gold,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
                           ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    ...siegeState.notifications.take(8).map(
-                          (DungeonSiegeNotification n) => _NotificationTile(
-                            notification: n,
-                            onTap: () async {
-                              await ref.read(dungeonSiegeProvider.notifier).markNotificationRead(n.id);
-                              final String? dungeonId = n.dungeonIdFromPayload;
-                              if (dungeonId != null && dungeonId.isNotEmpty && mounted) {
-                                await _openSiegePanelForDungeonId(dungeonId);
-                              }
-                            },
+                  ),
+                ),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  color: SiegePalette.gold,
+                  backgroundColor: SiegePalette.navy,
+                  onRefresh: () => _refresh(silent: siegeState.hub != null),
+                  child: siegeState.hubLoading && siegeState.hub == null
+                      ? const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2, color: SiegePalette.gold),
+                        )
+                      : ListView(
+                          padding: GameScrollLayout.padding(context, top: AppSpacing.sm),
+                          children: <Widget>[
+                            _section(
+                              slideIndex++,
+                              _HubStatusCard(status: status, weekKey: hub.weekKey),
+                            ),
+                    if (siegeState.errorMessage != null) ...<Widget>[
+                      GameScrollLayout.sectionSpacer,
+                      _section(
+                        slideIndex++,
+                        SiegeEmptyTab(icon: '⚠️', message: siegeState.errorMessage!),
+                      ),
+                    ],
+                    if (siegeState.notifications.isNotEmpty) ...<Widget>[
+                      GameScrollLayout.sectionSpacer,
+                      _section(
+                        slideIndex++,
+                        Row(
+                          children: <Widget>[
+                            const Expanded(
+                              child: SiegeSectionHeader(
+                                title: 'Bildirimler',
+                                subtitle: 'Kuşatma olayları',
+                                accent: SiegePalette.solar,
+                              ),
+                            ),
+                            if (siegeState.unreadNotificationCount > 0)
+                              SiegeOutlineButton(
+                                label: 'Okundu',
+                                expand: false,
+                                accent: SiegePalette.gold,
+                                icon: Icons.done_all_rounded,
+                                onPressed: () async {
+                                  await ref.read(dungeonSiegeProvider.notifier).markAllNotificationsRead();
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                      GameScrollLayout.titleSpacer,
+                      ...siegeState.notifications.take(8).map(
+                            (DungeonSiegeNotification n) => Padding(
+                              key: ValueKey<String>('notif-${n.id}'),
+                              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              child: _section(
+                                slideIndex++,
+                                _NotificationTile(
+                                  notification: n,
+                                  onTap: () async {
+                                    await ref.read(dungeonSiegeProvider.notifier).markNotificationRead(n.id);
+                                    final String? dungeonId = n.dungeonIdFromPayload;
+                                    if (dungeonId != null && dungeonId.isNotEmpty && mounted) {
+                                      await _openSiegePanelForDungeonId(dungeonId);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                    ],
+                    GameScrollLayout.sectionSpacer,
+                    _section(
+                      slideIndex++,
+                      const SiegeSectionHeader(
+                        title: 'Aktif Kuşatmalar',
+                        subtitle: 'Prime time oturumları',
+                        accent: SiegePalette.ruby,
+                      ),
+                    ),
+                    GameScrollLayout.titleSpacer,
+                    if (status.sessions.isEmpty)
+                      _section(
+                        slideIndex++,
+                        const SiegeEmptyTab(
+                          icon: '🏰',
+                          message: 'Prime time\'da oturumlar burada görünür.',
+                        ),
+                      )
+                    else
+                      ...status.sessions.map(
+                        (DungeonSiegeSession session) => Padding(
+                          key: ValueKey<String>('session-${session.sessionId}'),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: _section(
+                            slideIndex++,
+                            _SessionCard(
+                              session: session,
+                              myGuildId: myGuildId,
+                              dungeonName: _dungeonName(session.dungeonId),
+                              onTap: () => _openSiegePanelForDungeonId(session.dungeonId),
+                            ),
                           ),
                         ),
-                  ],
-                  const SizedBox(height: 16),
-                  const _SectionTitle(title: 'Aktif Kuşatmalar'),
-                  const SizedBox(height: 8),
-                  if (status.sessions.isEmpty)
-                    const _EmptyCard(text: 'Prime time\'da oturumlar burada görünür.')
-                  else
-                    ...status.sessions.map(
-                      (DungeonSiegeSession session) => _SessionCard(
-                        session: session,
-                        dungeonName: _dungeonName(session.dungeonId),
-                        onTap: () => _openSiegePanelForDungeonId(session.dungeonId),
+                      ),
+                    GameScrollLayout.sectionSpacer,
+                    _section(
+                      slideIndex++,
+                      const SiegeSectionHeader(
+                        title: 'Zindan Bölgeleri',
+                        subtitle: 'Zindan sekmeleri ↔ kuşatma ↔ lonca savaşı',
+                        accent: SiegePalette.gold,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  const _SectionTitle(title: 'Bölge Bağlantısı'),
-                  const SizedBox(height: 8),
-                  if (hub.territories.isEmpty)
-                    const _EmptyCard(text: 'Lonca savaşı bölgeleri henüz eşlenmedi.')
-                  else
-                    ...hub.territories.map(
-                      (DungeonSiegeTerritoryLink link) => _TerritoryRow(
-                        link: link,
-                        onTap: link.territoryId != null && link.territoryId!.isNotEmpty
-                            ? () => context.push('${AppRoutes.guildWarTerritory}/${link.territoryId}')
-                            : null,
+                    GameScrollLayout.titleSpacer,
+                    ...kDungeonZones.map(
+                        (DungeonZone zone) {
+                          DungeonSiegeTerritoryLink? link;
+                          for (final DungeonSiegeTerritoryLink t in hub.territories) {
+                            if (t.zoneNumber == zone.number) {
+                              link = t;
+                              break;
+                            }
+                          }
+                          final String capstoneId =
+                              link?.siegeDungeonId ?? siegeCapstoneForZone(zone.number) ?? '';
+                          return Padding(
+                            key: ValueKey<String>('siege-zone-${zone.number}'),
+                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            child: _section(
+                              slideIndex++,
+                              _TerritoryRow(
+                                zone: zone,
+                                link: link,
+                                capstoneId: capstoneId,
+                                dungeonName: _dungeonName(capstoneId),
+                                siegeActive: status.siegeActive,
+                                isOwner: link?.ownerGuildId != null &&
+                                    myGuildId != null &&
+                                    link!.ownerGuildId == myGuildId,
+                                onAddDefense: link?.territoryId != null &&
+                                        status.siegeActive &&
+                                        link?.ownerGuildId != null &&
+                                        myGuildId != null &&
+                                        link!.ownerGuildId == myGuildId
+                                    ? () => _addGemDefense(link!.territoryId!)
+                                    : null,
+                                onTap: link?.territoryId != null && link!.territoryId!.isNotEmpty
+                                    ? () => context.push('${AppRoutes.guildWarTerritory}/${link!.territoryId}')
+                                    : capstoneId.isNotEmpty
+                                        ? () => _openSiegePanelForDungeonId(capstoneId)
+                                        : null,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    GameScrollLayout.sectionSpacer,
+                    _section(
+                      slideIndex++,
+                      const SiegeSectionHeader(
+                        title: 'Haftalık Sıralama',
+                        subtitle: 'Slot + meydan okuma puanı',
+                        accent: SiegePalette.neon,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  const _SectionTitle(title: 'Haftalık Sıralama'),
-                  const SizedBox(height: 8),
-                  if (hub.leaderboard.isEmpty)
-                    const _EmptyCard(text: 'Bu hafta henüz puan yok.')
-                  else
-                    ...hub.leaderboard.take(10).map(
-                          (DungeonSiegeLeaderboardEntry entry) => _LeaderboardRow(entry: entry),
+                    GameScrollLayout.titleSpacer,
+                    if (hub.leaderboard.isEmpty)
+                      _section(
+                        slideIndex++,
+                        const SiegeEmptyTab(
+                          icon: '🏆',
+                          message: 'Bu hafta henüz puan yok.',
                         ),
-                  const SizedBox(height: 16),
-                  const _SectionTitle(title: 'Son Düellolar (24s)'),
-                  const SizedBox(height: 8),
-                  if (hub.recentChallenges.isEmpty)
-                    const _EmptyCard(text: 'Henüz meydan okuma yok.')
-                  else
-                    ...hub.recentChallenges.take(12).map(
-                          (DungeonSiegeRecentChallenge row) => _ChallengeRow(challenge: row),
+                      )
+                    else
+                      ...hub.leaderboard.take(10).map(
+                            (DungeonSiegeLeaderboardEntry entry) => Padding(
+                              key: ValueKey<String>('lb-${entry.rank}-${entry.playerId ?? entry.playerName}'),
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: _section(
+                                slideIndex++,
+                                _LeaderboardRow(entry: entry),
+                              ),
+                            ),
+                          ),
+                    GameScrollLayout.sectionSpacer,
+                    _section(
+                      slideIndex++,
+                      const SiegeSectionHeader(
+                        title: 'Son Düellolar',
+                        subtitle: 'Son 24 saat',
+                        accent: SiegePalette.coral,
+                      ),
+                    ),
+                    GameScrollLayout.titleSpacer,
+                    if (hub.recentChallenges.isEmpty)
+                      _section(
+                        slideIndex++,
+                        const SiegeEmptyTab(
+                          icon: '⚔',
+                          message: 'Henüz meydan okuma yok.',
                         ),
-                ],
+                      )
+                    else
+                      ...hub.recentChallenges.take(12).map(
+                            (DungeonSiegeRecentChallenge row) => Padding(
+                              key: ValueKey<String>('challenge-${row.id}'),
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: _section(
+                                slideIndex++,
+                                _ChallengeRow(challenge: row),
+                              ),
+                            ),
+                          ),
+                          ],
+                        ),
+                ),
               ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -201,50 +410,50 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.all(10),
+    final Color accent = notification.isUnread ? SiegePalette.solar : SiegePalette.titanium;
+    return SiegeNeonCard(
+      accent: accent,
+      glow: notification.isUnread,
+      padding: const EdgeInsets.all(12),
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(top: 4),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: notification.isUnread
-                    ? const Color(0xFFFBBF24).withValues(alpha: 0.4)
-                    : const Color(0xFF1F2937),
-              ),
+              shape: BoxShape.circle,
+              color: notification.isUnread ? SiegePalette.solar : SiegePalette.titanium.withValues(alpha: 0.4),
+              boxShadow: notification.isUnread
+                  ? <BoxShadow>[BoxShadow(color: SiegePalette.solar.withValues(alpha: 0.5), blurRadius: 8)]
+                  : null,
             ),
-            child: Row(
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(
-                  notification.isUnread ? Icons.circle : Icons.circle_outlined,
-                  size: 10,
-                  color: notification.isUnread ? const Color(0xFFFBBF24) : Colors.white24,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        notification.title,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(notification.body, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                    ],
+                Text(
+                  notification.title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
                   ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  notification.body,
+                  style: const TextStyle(color: SiegePalette.titanium, fontSize: 11, height: 1.35),
                 ),
               ],
             ),
           ),
-        ),
+          Icon(Icons.chevron_right_rounded, color: accent.withValues(alpha: 0.7), size: 18),
+        ],
       ),
     );
   }
@@ -258,89 +467,95 @@ class _HubStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[
-            const Color(0xFFEF4444).withValues(alpha: 0.18),
-            const Color(0xFF111827),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.45)),
-      ),
+    final Color accent = status.siegeActive ? SiegePalette.neon : SiegePalette.titanium;
+    return SiegeHeroBanner(
+      accent: status.siegeActive ? SiegePalette.fuchsia : SiegePalette.ruby,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Text(
-                'KUŞATMA MERKEZİ',
-                style: TextStyle(
-                  color: Color(0xFFFCA5A5),
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
-                  fontSize: 11,
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: <Color>[
+                      SiegePalette.fuchsia.withValues(alpha: 0.35),
+                      SiegePalette.gold.withValues(alpha: 0.18),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: SiegePalette.fuchsia.withValues(alpha: 0.5)),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(color: SiegePalette.fuchsia.withValues(alpha: 0.22), blurRadius: 14),
+                  ],
+                ),
+                child: const Text('🏰', style: TextStyle(fontSize: 24)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text(
+                      'KUŞATMA MERKEZİ',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: SiegePalette.titanium,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    Text(
+                      status.siegeActive ? 'Prime Time Aktif' : 'Prime Time Kapalı',
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
               if (weekKey.isNotEmpty)
-                Text(weekKey, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                SiegeStatusPill(label: weekKey, color: SiegePalette.gold),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              SiegeStatChip(
+                emoji: status.siegeActive ? '⚡' : (status.inPrimeWindow ? '🔥' : '🌙'),
+                label: status.siegeActive
+                    ? 'Kuşatma aktif'
+                    : (status.inPrimeWindow ? 'Prime time' : 'Prime dışı'),
+                accent: status.siegeActive ? SiegePalette.neon : SiegePalette.titanium,
+              ),
+              SiegeStatChip(
+                emoji: '🎯',
+                label: '${status.sessions.length} oturum',
+                accent: SiegePalette.gold,
+              ),
+              if (status.inPrimeWindow)
+                const SiegeStatChip(emoji: '🔥', label: 'Prime penceresi', accent: SiegePalette.coral),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            status.siegeActive ? 'Prime time AKTİF' : 'Prime time kapalı',
-            style: TextStyle(
-              color: status.siegeActive ? const Color(0xFF86EFAC) : Colors.white54,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            status.enabled
-                ? '${status.sessions.length} aktif oturum · hold + bölge bonusları'
-                : 'Sistem DB\'de kapalı (is_enabled=false)',
-            style: const TextStyle(color: Colors.white60, fontSize: 12),
+            status.siegeActive
+                ? 'Hold bonusları + bölge rezerv slotları şu an devrede.'
+                : status.inPrimeWindow
+                    ? 'Prime time penceresindesin — oturumlar kısa sürede açılır.'
+                    : 'Prime time dışında slot ve hold kapalı; prime saatlerde tekrar dene.',
+            style: const TextStyle(color: SiegePalette.titanium, fontSize: 12, height: 1.35),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800),
-    );
-  }
-}
-
-class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF1F2937)),
-      ),
-      child: Text(text, style: const TextStyle(color: Colors.white38, fontSize: 12)),
     );
   }
 }
@@ -350,144 +565,188 @@ class _SessionCard extends StatelessWidget {
     required this.session,
     required this.dungeonName,
     required this.onTap,
+    this.myGuildId,
   });
 
   final DungeonSiegeSession session;
   final String dungeonName;
   final VoidCallback onTap;
+  final String? myGuildId;
 
   @override
   Widget build(BuildContext context) {
     final int occupied = session.slots.where((DungeonSiegeSlot s) => s.isOccupied).length;
     final DungeonSiegeHold? hold = session.hold;
+    final bool hasHold = hold != null && hold.holdId.isNotEmpty;
+    final Color accent = hasHold ? SiegePalette.ruby : SiegePalette.fuchsia;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: hold != null && hold.holdId.isNotEmpty
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.5)
-                    : const Color(0xFF1F2937),
+    return SiegeNeonCard(
+      accent: accent,
+      glow: hasHold,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  dungeonName,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              SiegeTag(label: 'Z${session.zoneNumber}', accent: SiegePalette.gold, compact: true),
+              const SizedBox(width: 6),
+              SiegeStatChip(
+                emoji: '👥',
+                label: '$occupied/${session.slots.length}',
+                accent: SiegePalette.neon,
+              ),
+              const Icon(Icons.chevron_right_rounded, color: SiegePalette.titanium, size: 20),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(session.dungeonId, style: TextStyle(color: SiegePalette.titanium.withValues(alpha: 0.7), fontSize: 10)),
+          if (session.territoryDefensePower > 0 && session.territoryDefenseMaxBonusPercent > 0) ...<Widget>[
+            const SizedBox(height: 8),
+            SiegeStatChip(
+              emoji: '🛡',
+              label: session.receivesTerritoryDefenseBonus(myGuildId)
+                  ? 'Loncan +${session.territoryDefenseSiegeBonusPercent}% slot savunma'
+                  : 'Owner +${session.territoryDefenseMaxBonusPercent}% slot savunma',
+              accent: session.receivesTerritoryDefenseBonus(myGuildId)
+                  ? SiegePalette.neon
+                  : SiegePalette.gold,
+            ),
+          ],
+          if (session.territoryOwnerGuildName != null &&
+              session.territoryOwnerGuildName!.isNotEmpty &&
+              session.territoryOwnerGuildName != 'Sahipsiz') ...<Widget>[
+            const SizedBox(height: 8),
+            SiegeStatChip(
+              emoji: '🛡',
+              label: session.territoryOwnerGuildName!,
+              accent: SiegePalette.gold,
+            ),
+          ],
+          if (hasHold) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              'HOLD · ${hold.guildName ?? 'Lonca'} · ${hold.breakProgress}/${hold.breakRequired}',
+              style: const TextStyle(
+                color: SiegePalette.ruby,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        dungeonName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    Text('Z${session.zoneNumber}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$occupied/${session.slots.length}',
-                      style: const TextStyle(color: Color(0xFF60A5FA), fontSize: 12),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 18),
-                  ],
-                ),
-                Text(session.dungeonId, style: const TextStyle(color: Colors.white24, fontSize: 10)),
-                if (session.territoryOwnerGuildName != null &&
-                    session.territoryOwnerGuildName!.isNotEmpty &&
-                    session.territoryOwnerGuildName != 'Sahipsiz') ...<Widget>[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Bölge: ${session.territoryOwnerGuildName}',
-                    style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11),
-                  ),
-                ],
-                if (hold != null && hold.holdId.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 6),
-                  Text(
-                    'HOLD · ${hold.guildName ?? 'Lonca'} · kırılma ${hold.breakProgress}/${hold.breakRequired}',
-                    style: const TextStyle(
-                      color: Color(0xFFFCA5A5),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
+          ],
+        ],
       ),
     );
   }
 }
 
 class _TerritoryRow extends StatelessWidget {
-  const _TerritoryRow({required this.link, this.onTap});
+  const _TerritoryRow({
+    required this.zone,
+    required this.capstoneId,
+    required this.dungeonName,
+    this.link,
+    this.onTap,
+    this.onAddDefense,
+    this.isOwner = false,
+    this.siegeActive = false,
+  });
 
-  final DungeonSiegeTerritoryLink link;
+  final DungeonZone zone;
+  final DungeonSiegeTerritoryLink? link;
+  final String capstoneId;
+  final String dungeonName;
   final VoidCallback? onTap;
+  final VoidCallback? onAddDefense;
+  final bool isOwner;
+  final bool siegeActive;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    final String? warTerritory = link?.territoryName;
+    final String owner = link?.ownerGuildName ?? 'Sahipsiz';
+    final String defenseLine = link != null && link!.defensePower > 0
+        ? ' · ${DungeonSiegeConfig.territoryDefenseSummary(link!.defensePower)}'
+        : '';
+    final String gemLine = link != null && link!.gemDefenseBoost > 0
+        ? ' · 💎+${link!.gemDefenseBoost} prime'
+        : '';
+    final String subtitle = warTerritory != null && warTerritory.isNotEmpty
+        ? 'Lonca: $warTerritory · $owner$defenseLine$gemLine · Kuşatma: $dungeonName'
+        : 'Lonca savaşı bölgesi yok · Kuşatma: $dungeonName ($capstoneId)';
+
+    return SiegeNeonCard(
+      accent: zone.color,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      onTap: onTap,
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF1E293B)),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  zone.color.withValues(alpha: 0.28),
+                  SiegePalette.navy,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: zone.color.withValues(alpha: 0.5)),
             ),
-            child: Row(
+            child: Icon(zone.icon, size: 16, color: zone.color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '${link.zoneNumber}',
-                    style: const TextStyle(color: Color(0xFFFCA5A5), fontWeight: FontWeight.w800),
-                  ),
+                Text(
+                  'Bölge ${zone.number} · ${zone.name}',
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(link.territoryName, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                      Text(
-                        '${link.ownerGuildName ?? 'Sahipsiz'}${link.siegeDungeonId != null ? ' · ${link.siegeDungeonId}' : ''}',
-                        style: const TextStyle(color: Colors.white38, fontSize: 10),
-                      ),
-                    ],
-                  ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: SiegePalette.titanium, fontSize: 10),
                 ),
-                if (onTap != null) const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 18),
               ],
             ),
           ),
-        ),
+          if (onAddDefense != null) ...<Widget>[
+            const SizedBox(width: 8),
+            SiegePressable(
+              onTap: onAddDefense,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: SiegePalette.neon.withValues(alpha: 0.45)),
+                  color: SiegePalette.neon.withValues(alpha: 0.12),
+                ),
+                child: const Text(
+                  '💎 Savun',
+                  style: TextStyle(color: SiegePalette.neon, fontSize: 10, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ] else if (isOwner && !siegeActive) ...<Widget>[
+            const SizedBox(width: 8),
+            const SiegeStatChip(emoji: '⏳', label: 'Prime bekle', accent: SiegePalette.titanium),
+          ],
+          if (onTap != null)
+            const Icon(Icons.chevron_right_rounded, color: SiegePalette.titanium, size: 18),
+        ],
       ),
     );
   }
@@ -500,39 +759,33 @@ class _LeaderboardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    final Color rankColor = entry.rank <= 3 ? SiegePalette.gold : SiegePalette.titanium;
+    return SiegeNeonCard(
+      accent: rankColor,
+      glow: entry.rank <= 3,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: <Widget>[
           SizedBox(
-            width: 24,
+            width: 28,
             child: Text(
               '#${entry.rank}',
-              style: TextStyle(
-                color: entry.rank <= 3 ? const Color(0xFFFBBF24) : Colors.white38,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: rankColor, fontWeight: FontWeight.w900, fontSize: 13),
             ),
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(entry.playerName, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                Text(entry.playerName, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w700)),
                 if (entry.guildName != null)
-                  Text(entry.guildName!, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                  Text(entry.guildName!, style: const TextStyle(color: SiegePalette.titanium, fontSize: 10)),
               ],
             ),
           ),
           Text(
             '${entry.points}p · ${entry.slotMinutes}dk',
-            style: const TextStyle(color: Color(0xFF86EFAC), fontWeight: FontWeight.w700, fontSize: 11),
+            style: const TextStyle(color: SiegePalette.neon, fontWeight: FontWeight.w800, fontSize: 11),
           ),
         ],
       ),
@@ -547,21 +800,29 @@ class _ChallengeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: challenge.youWereInvolved
-              ? const Color(0xFFEF4444).withValues(alpha: 0.35)
-              : const Color(0xFF1E293B),
-        ),
-      ),
-      child: Text(
-        '${challenge.challengerName} vs ${challenge.defenderName} · ${challenge.dungeonId} · kazanan: ${challenge.winnerName}',
-        style: const TextStyle(color: Colors.white70, fontSize: 11),
+    return SiegeNeonCard(
+      accent: challenge.youWereInvolved ? SiegePalette.fuchsia : SiegePalette.obsidian,
+      glow: challenge.youWereInvolved,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: <Widget>[
+          Text(challenge.youWereInvolved ? '⚔' : '🗡', style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${challenge.challengerName} vs ${challenge.defenderName}',
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+          ),
+          Text(
+            challenge.winnerName,
+            style: TextStyle(
+              color: challenge.youWereInvolved ? SiegePalette.gold : SiegePalette.titanium,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }

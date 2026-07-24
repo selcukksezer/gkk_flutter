@@ -50,8 +50,14 @@ class _DefenseSheetState extends State<_DefenseSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            '1 Elmas = 10 Savunma Gücü',
+            '1 Elmas = 10 Prime Savunması',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Yalnızca kuşatma prime time''ında. Prime bitince elmas savunması sıfırlanır. '
+            'Owner lonca slotları + kuşatma bonusu alır (1000 = +25%).',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
           ),
           const SizedBox(height: AppSpacing.base),
           Row(

@@ -191,6 +191,8 @@ class TerritoryData {
   final String? ownerGuildName;
   final int defensePower;
   final int baseDefensePower;
+  final int gemDefenseBoost;
+  final int effectiveDefensePower;
   final int defenseLineLevel;
   final String reward;
   final int tradeIncome;
@@ -203,6 +205,8 @@ class TerritoryData {
     this.ownerGuildName,
     this.defensePower = 0,
     this.baseDefensePower = 1000,
+    this.gemDefenseBoost = 0,
+    this.effectiveDefensePower = 0,
     this.defenseLineLevel = 0,
     this.reward = '',
     this.tradeIncome = 0,
@@ -212,14 +216,22 @@ class TerritoryData {
   bool get isUnclaimed =>
       ownerGuildId == null || ownerGuildName == null || ownerGuildName == 'Sahipsiz';
 
+  int get displayDefensePower =>
+      effectiveDefensePower > 0 ? effectiveDefensePower : defensePower + gemDefenseBoost;
+
   factory TerritoryData.fromJson(Map<String, dynamic> json) {
+    final int defensePower = _asInt(json['defense_power']);
+    final int gemBoost = _asInt(json['gem_defense_boost']);
+    final int effective = _asInt(json['effective_defense_power'], fallback: defensePower + gemBoost);
     return TerritoryData(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       ownerGuildId: json['owner_guild_id']?.toString(),
       ownerGuildName: json['owner_guild']?.toString(),
-      defensePower: _asInt(json['defense_power']),
+      defensePower: defensePower,
       baseDefensePower: _asInt(json['base_defense_power'], fallback: 1000),
+      gemDefenseBoost: gemBoost,
+      effectiveDefensePower: effective,
       defenseLineLevel: _asInt(json['defense_line_level']),
       reward: (json['reward'] ?? '').toString(),
       tradeIncome: _asInt(json['trade_income']),

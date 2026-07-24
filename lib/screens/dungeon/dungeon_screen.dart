@@ -78,7 +78,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       if (!mounted) return;
       final DungeonSiegeStatus status = ref.read(dungeonSiegeProvider).status;
       if (status.enabled) {
-        unawaited(ref.read(dungeonSiegeProvider.notifier).loadStatus());
+        unawaited(ref.read(dungeonSiegeProvider.notifier).loadStatus(silent: true));
       }
     });
   }
@@ -140,6 +140,13 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       return;
     }
 
+    final DungeonSiegeStatus siegeStatus = ref.read(dungeonSiegeProvider).status;
+    if (isSiegeDungeon(dungeon.dungeonId, status: siegeStatus) &&
+        siegeStatus.isBannedForDungeon(dungeon.dungeonId)) {
+      _showSnack('Kuşatma kaybı banı — bu zindana giremezsin.');
+      return;
+    }
+
     final int req = dungeon.powerRequirement ?? (dungeon.requiredLevel * 500);
     final PowerBreakdown powerBreakdown = calculateTotalPower(
       player: player,
@@ -166,12 +173,37 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       isFirstClear: !(dungeon.playerStats?.hasFirstClear ?? false),
     );
 
+    String? siegePrimeHint;
+    String? siegeNoSlotWarning;
+    if (isSiegeDungeon(dungeon.dungeonId, status: siegeStatus) && siegeStatus.siegeActive) {
+      final DungeonSiegeConfig siegeConfig = siegeStatus.config;
+      final DungeonSiegeSession? siegeSession =
+          siegeStatus.sessionForDungeon(dungeon.dungeonId);
+      final bool hasSlotHere =
+          siegeSession?.slots.any((DungeonSiegeSlot s) => s.isMine) ?? false;
+      final bool holdBonus = siegeSession?.hold != null &&
+          siegeSession!.hold!.holdId.isNotEmpty &&
+          player.guildId != null &&
+          siegeSession.hold!.guildId == player.guildId;
+
+      if (hasSlotHere) {
+        siegePrimeHint =
+            'Kuşatma slot bonusu: ${DungeonSiegeConfig.farmBonusSummary(siegeConfig, holdBonus: holdBonus)}';
+      } else {
+        siegeNoSlotWarning =
+            'Prime aktif — slotun yok: normal ödül alırsın. Slot al: '
+            '${DungeonSiegeConfig.farmBonusSummary(siegeConfig)}';
+      }
+    }
+
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => DungeonConfirmEntryDialog(
         dungeon: dungeon,
         hospitalRiskPct: hospitalRisk,
         rewardMultiplierPreview: farmPreview,
+        siegePrimeHint: siegePrimeHint,
+        siegeNoSlotWarning: siegeNoSlotWarning,
         onConfirmTap: () => TutorialTriggers.onAnchorTap(
           ref,
           TutorialAnchorId.dungeonConfirmOk,
@@ -202,7 +234,8 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
   Future<void> _openSiegePanel(DungeonData dungeon) async {
     await showDungeonSiegePanel(context: context, ref: ref, dungeon: dungeon);
     if (!mounted) return;
-    await ref.read(dungeonSiegeProvider.notifier).loadStatus();
+    ref.read(dungeonSiegeProvider.notifier).clearScopedDungeon();
+    await ref.read(dungeonSiegeProvider.notifier).loadStatus(silent: true);
   }
 
   ({bool active, int occupied, bool hasMine, int slotCount}) _siegeMetaFor(String dungeonId) {
@@ -222,6 +255,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
   Widget build(BuildContext context) {
     final dungeonState = ref.watch(dungeonProvider);
     ref.watch(dungeonSiegeProvider);
+    final DungeonSiegeConfig siegeConfig = ref.watch(dungeonSiegeProvider).status.config;
     final playerState = ref.watch(playerProvider);
     final inventoryState = ref.watch(inventoryProvider);
     final profile = playerState.profile;
@@ -320,12 +354,6 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                   child: DungeonZoneBanner(zone: currentZone, dungeonCount: filtered.length),
                 ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-                child: _SiegeHubEntry(
-                  onTap: () => context.push(AppRoutes.dungeonSiegeHub),
-                ),
-              ),
               const SizedBox(height: 8),
               Expanded(
                 child: dungeonState.status == DungeonStatus.loading
@@ -406,6 +434,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                         siegeOccupiedSlots: siegeMeta.occupied,
                                         siegeHasMySlot: siegeMeta.hasMine,
                                         siegeSlotCount: siegeMeta.slotCount,
+                                        siegeConfig: siegeDungeon ? siegeConfig : null,
                                         onSiegeTap: siegeDungeon ? () => _openSiegePanel(d) : null,
                                         onEnter: () => _enterDungeon(d),
                                         onLoot: () => showDialog<void>(
@@ -437,6 +466,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                       siegeOccupiedSlots: siegeMeta.occupied,
                                       siegeHasMySlot: siegeMeta.hasMine,
                                       siegeSlotCount: siegeMeta.slotCount,
+                                      siegeConfig: siegeDungeon ? siegeConfig : null,
                                       onSiegeTap: siegeDungeon
                                           ? () => _openSiegePanel(d)
                                           : null,
@@ -466,59 +496,6 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SiegeHubEntry extends StatelessWidget {
-  const _SiegeHubEntry({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFF111827),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.45)),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'KUŞATMA',
-                  style: TextStyle(
-                    color: Color(0xFFFCA5A5),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Kuşatma Merkezi — hold, sıralama, son düellolar',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
-            ],
-          ),
-        ),
       ),
     );
   }

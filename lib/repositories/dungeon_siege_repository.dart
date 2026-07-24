@@ -35,9 +35,13 @@ class SupabaseDungeonSiegeRepository implements DungeonSiegeRepository {
   @override
   Future<DungeonSiegeStatus> getStatus({String? dungeonId}) async {
     _ensureReady();
+    final Map<String, dynamic> params = <String, dynamic>{};
+    if (dungeonId != null && dungeonId.isNotEmpty) {
+      params['p_dungeon_id'] = dungeonId;
+    }
     final dynamic response = await SupabaseService.client.rpc(
       'get_dungeon_siege_status',
-      params: <String, dynamic>{'p_dungeon_id': dungeonId},
+      params: params,
     );
     return DungeonSiegeStatus.fromJson(_asMap(response));
   }

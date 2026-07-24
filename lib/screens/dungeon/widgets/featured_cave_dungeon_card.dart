@@ -3,11 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/gold_format.dart';
 import '../../../core/utils/power_formula.dart';
 import '../../../models/dungeon_model.dart';
+import '../../../models/dungeon_siege_model.dart';
 import 'dungeon_cave_theme.dart';
 import 'dungeon_progress_row.dart';
 import 'dungeon_siege_badge.dart';
+import 'dungeon_siege_prime_timer_chip.dart';
 
 const double _kCaveArtSize = 165.0;
 const Color _kCardText = Color(0xFFFFFFFF);
@@ -38,6 +41,7 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
     this.siegeOccupiedSlots = 0,
     this.siegeHasMySlot = false,
     this.siegeSlotCount = 5,
+    this.siegeConfig,
     this.onSiegeTap,
   });
 
@@ -63,6 +67,7 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
   final int siegeOccupiedSlots;
   final bool siegeHasMySlot;
   final int siegeSlotCount;
+  final DungeonSiegeConfig? siegeConfig;
   final VoidCallback? onSiegeTap;
 
   String get _threatLabel {
@@ -72,7 +77,7 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
     return 'ÖLÜMCÜL';
   }
 
-  String _fmt(int v) {
+  String _fmtPower(int v) {
     if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
     if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}K';
     return '$v';
@@ -161,14 +166,24 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                               ),
                               if (onSiegeTap != null) ...<Widget>[
                                 const SizedBox(width: 6),
-                                DungeonSiegeBadge(
-                                  siegeActive: siegeActive,
-                                  slotCount: siegeSlotCount,
-                                  occupiedSlots: siegeOccupiedSlots,
-                                  hasMySlot: siegeHasMySlot,
-                                  onTap: onSiegeTap,
-                                  compact: true,
-                                ),
+                                siegeConfig != null
+                                    ? DungeonSiegeBadgeWithTimer(
+                                        siegeActive: siegeActive,
+                                        slotCount: siegeSlotCount,
+                                        occupiedSlots: siegeOccupiedSlots,
+                                        hasMySlot: siegeHasMySlot,
+                                        config: siegeConfig!,
+                                        onTap: onSiegeTap,
+                                        compact: true,
+                                      )
+                                    : DungeonSiegeBadge(
+                                        siegeActive: siegeActive,
+                                        slotCount: siegeSlotCount,
+                                        occupiedSlots: siegeOccupiedSlots,
+                                        hasMySlot: siegeHasMySlot,
+                                        onTap: onSiegeTap,
+                                        compact: true,
+                                      ),
                               ],
                             ],
                           ),
@@ -218,7 +233,7 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                               ),
                               _CaveStatChip(
                                 icon: Icons.monetization_on_outlined,
-                                label: '${_fmt(minGold)}-${_fmt(maxGold)}G',
+                                label: formatCompactGoldRange(minGold, maxGold),
                                 color: theme.gold,
                                 panel: theme.panel,
                                 isGold: true,
@@ -226,7 +241,7 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                               if (powerRequirement > 0)
                                 _CaveStatChip(
                                   icon: Icons.security,
-                                  label: _fmt(powerRequirement),
+                                  label: _fmtPower(powerRequirement),
                                   color: _kCardText,
                                   panel: theme.panel,
                                 ),

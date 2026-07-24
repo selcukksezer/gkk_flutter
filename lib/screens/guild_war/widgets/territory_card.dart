@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/dungeon_siege_model.dart';
 import '../../../models/guild_war_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
@@ -74,9 +75,31 @@ class TerritoryCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           DefensePowerBar(
-            current: territory.defensePower,
-            max: territory.baseDefensePower,
+            current: territory.displayDefensePower,
+            max: territory.displayDefensePower > territory.baseDefensePower
+                ? territory.displayDefensePower
+                : territory.baseDefensePower,
+            height: 10,
           ),
+          if (territory.gemDefenseBoost > 0) ...<Widget>[
+            const SizedBox(height: 6),
+            WarStatChip(
+              emoji: '💎',
+              label: '+${territory.gemDefenseBoost} prime savunma',
+              accent: WarPalette.neon,
+            ),
+          ],
+          if (territory.zoneNumber != null &&
+              territory.displayDefensePower > 0 &&
+              DungeonSiegeConfig.territoryDefenseSiegeBonusPct(territory.displayDefensePower) > 0) ...<Widget>[
+            const SizedBox(height: 6),
+            WarStatChip(
+              emoji: '⚔',
+              label:
+                  'Kuşatma +${(DungeonSiegeConfig.territoryDefenseSiegeBonusPct(territory.displayDefensePower) * 100).round()}% (owner slot)',
+              accent: WarPalette.gold,
+            ),
+          ],
           if (territory.tradeIncome > 0) ...<Widget>[
             const SizedBox(height: 6),
             WarStatChip(

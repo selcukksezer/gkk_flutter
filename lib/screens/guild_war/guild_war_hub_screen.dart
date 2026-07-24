@@ -10,6 +10,7 @@ import '../../models/guild_war_model.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/guild_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/dungeon_siege_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -24,6 +25,7 @@ import 'widgets/ranking_podium.dart';
 import 'widgets/territory_card.dart';
 import 'widgets/territory_map_view.dart';
 import 'widgets/tournament_card.dart';
+import '../dungeon/widgets/dungeon_siege_design.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
 class GuildWarHubScreen extends ConsumerStatefulWidget {
@@ -49,6 +51,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
       unawaited(Future.wait<void>(<Future<void>>[
         ref.read(guildProvider.notifier).loadGuild(),
         ref.read(guildWarProvider.notifier).loadAll(),
+        ref.read(dungeonSiegeProvider.notifier).loadHub(silent: true),
       ]));
     });
   }
@@ -121,6 +124,8 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   @override
   Widget build(BuildContext context) {
     final GuildWarState warState = ref.watch(guildWarProvider);
+    final siegeState = ref.watch(dungeonSiegeProvider);
+    final siegeStatus = siegeState.status;
     final profile = ref.watch(playerProvider).profile;
     final guildState = ref.watch(guildProvider);
     final String? guildId = guildState.guild?.guildId ?? profile?.guildId;
@@ -154,6 +159,16 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
                     myRank: myRanking?.rank,
                     myPoints: myRanking?.points,
                     guildName: guildName,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
+                    child: SiegeHubEntryCard(
+                      siegeActive: siegeStatus.siegeActive,
+                      inPrimeWindow: siegeStatus.inPrimeWindow,
+                      sessionCount: siegeStatus.sessions.length,
+                      unreadNotifications: siegeState.unreadNotificationCount,
+                      onTap: () => context.push(AppRoutes.dungeonSiegeHub),
+                    ),
                   ),
                   if (guildId == null) _NoGuildBanner(onFindGuild: () => context.go(AppRoutes.guild)),
                   if (warState.error != null) _ErrorBanner(message: warState.error!),
