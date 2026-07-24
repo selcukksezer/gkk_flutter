@@ -63,16 +63,7 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
   }
 
   Future<void> _purchase(ReputationShopItem item) async {
-    String? factionId;
-    if (item.usesFactionRep) {
-      factionId = await _pickFactionForPurchase();
-      if (factionId == null) return;
-    }
-
-    final String? err = await ref.read(reputationProvider.notifier).purchase(
-          item: item,
-          factionId: factionId,
-        );
+    final String? err = await ref.read(reputationProvider.notifier).purchase(item: item);
     if (!mounted) return;
     if (err != null) {
       AppMessenger.showError(context, err);
@@ -81,49 +72,6 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
     await ref.read(playerProvider.notifier).loadProfile();
     if (!mounted) return;
     AppMessenger.showSuccess(context, '${item.name} satın alındı!');
-  }
-
-  Future<String?> _pickFactionForPurchase() async {
-    return showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext ctx) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: Container(
-            color: MekanPalette.navy,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const Text(
-                  'Fraksiyon seç',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: MekanPalette.textHi,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...kReputationFactions.map((ReputationFactionDef def) {
-                  final int rep = ref.read(reputationProvider.notifier).factionRep(def.id);
-                  return ListTile(
-                    leading: Text(def.icon, style: const TextStyle(fontSize: 22)),
-                    title: Text(def.name, style: const TextStyle(color: MekanPalette.textHi)),
-                    subtitle: Text(
-                      '$rep/100 itibar',
-                      style: TextStyle(color: factionTierColor(rep)),
-                    ),
-                    onTap: () => Navigator.pop(ctx, def.id),
-                  );
-                }),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -135,8 +83,6 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
     final (double progress, String nextTier) = _tierProgress(globalRep);
     final List<String> buffLabels =
         overview.activeBuffs.map((ReputationActiveBuff b) => b.label()).toList();
-
-    int factionRepFor(String id) => ref.read(reputationProvider.notifier).factionRep(id);
 
     return Scaffold(
       appBar: GameTopBar(
@@ -150,7 +96,7 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
       ),
       body: MekanBackdrop(
         accent: MekanPalette.gold,
-        child: state.loading && overview.factions.isEmpty
+        child: state.loading && overview.shopItems.isEmpty && overview.activity.isEmpty
             ? const Center(child: CircularProgressIndicator(color: MekanPalette.gold))
             : RefreshIndicator(
                 color: MekanPalette.gold,
@@ -175,18 +121,13 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
                     ],
                     if (_tab == 0) ...<Widget>[
                       ReputationEarnSection(),
-                      const SizedBox(height: 20),
-                      ReputationFactionStrip(factions: overview.factions),
                     ] else if (_tab == 1) ...<Widget>[
                       ReputationShopGrid(
                         items: overview.shopItems,
                         globalRep: globalRep,
-                        factionRepFor: factionRepFor,
                         purchasingId: state.purchasingId,
                         onPurchase: _purchase,
                       ),
-                      const SizedBox(height: 16),
-                      ReputationFactionStrip(factions: overview.factions),
                     ] else ...<Widget>[
                       ReputationActivityLog(entries: overview.activity),
                     ],

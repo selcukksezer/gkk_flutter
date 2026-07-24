@@ -5,14 +5,7 @@ import '../models/reputation_model.dart';
 abstract class ReputationRepository {
   Future<ReputationOverview> loadOverview();
   Future<List<ReputationShopItem>> loadShopItems();
-  Future<Map<String, dynamic>> purchaseItem({
-    required String itemId,
-    String? factionId,
-  });
-  Future<Map<String, dynamic>> donateToFaction({
-    required String factionId,
-    required int goldAmount,
-  });
+  Future<Map<String, dynamic>> purchaseItem({required String itemId});
 }
 
 class SupabaseReputationRepository implements ReputationRepository {
@@ -55,6 +48,7 @@ class SupabaseReputationRepository implements ReputationRepository {
       return raw
           .whereType<Map>()
           .map((Map e) => ReputationShopItem.fromJson(Map<String, dynamic>.from(e)))
+          .where((ReputationShopItem item) => item.costType == 'global')
           .toList();
     } catch (_) {
       return _fallbackShopItems();
@@ -62,33 +56,11 @@ class SupabaseReputationRepository implements ReputationRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> purchaseItem({
-    required String itemId,
-    String? factionId,
-  }) async {
+  Future<Map<String, dynamic>> purchaseItem({required String itemId}) async {
     _ensureReady();
     final dynamic res = await SupabaseService.client.rpc(
       'purchase_reputation_item',
-      params: <String, dynamic>{
-        'p_item_id': itemId,
-        if (factionId != null) 'p_faction_id': factionId,
-      },
-    );
-    return _asMap(res);
-  }
-
-  @override
-  Future<Map<String, dynamic>> donateToFaction({
-    required String factionId,
-    required int goldAmount,
-  }) async {
-    _ensureReady();
-    final dynamic res = await SupabaseService.client.rpc(
-      'donate_to_faction',
-      params: <String, dynamic>{
-        'p_faction_id': factionId,
-        'p_gold_amount': goldAmount,
-      },
+      params: <String, dynamic>{'p_item_id': itemId},
     );
     return _asMap(res);
   }
@@ -97,10 +69,10 @@ class SupabaseReputationRepository implements ReputationRepository {
         ReputationShopItem(
           id: 'energy_refill',
           name: 'Enerji Yenileme',
-          description: '+20 enerji — fraksiyon itibarı ile.',
+          description: '+20 enerji — global itibar ile.',
           iconKey: 'bolt',
-          costType: 'faction',
-          costAmount: 10,
+          costType: 'global',
+          costAmount: 500,
           rarity: 'uncommon',
           effectKey: 'energy_refill',
           effectValue: <String, dynamic>{'energy_gain': 20},

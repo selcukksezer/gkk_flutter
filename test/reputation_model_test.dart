@@ -21,23 +21,8 @@ void main() {
 
       expect(item.id, 'gold_boost_30');
       expect(item.costType, 'global');
-      expect(item.usesFactionRep, isFalse);
       expect(item.costAmount, 800);
       expect(item.durationMinutes, 30);
-    });
-
-    test('usesFactionRep true for faction cost type', () {
-      const ReputationShopItem item = ReputationShopItem(
-        id: 'energy_refill',
-        name: 'Enerji',
-        description: 'test',
-        iconKey: 'bolt',
-        costType: 'faction',
-        costAmount: 10,
-        rarity: 'uncommon',
-        effectKey: 'energy_refill',
-      );
-      expect(item.usesFactionRep, isTrue);
     });
   });
 
@@ -53,35 +38,13 @@ void main() {
       effectKey: 'drop_boost',
     );
 
-    const ReputationShopItem factionItem = ReputationShopItem(
-      id: 'energy_refill',
-      name: 'Enerji',
-      description: 'd',
-      iconKey: 'bolt',
-      costType: 'faction',
-      costAmount: 10,
-      rarity: 'uncommon',
-      effectKey: 'energy_refill',
-    );
-
     test('global rep affordability', () {
       expect(
-        canAffordShopItem(item: globalItem, globalRep: 999, factionRep: 100),
+        canAffordShopItem(item: globalItem, globalRep: 999),
         isFalse,
       );
       expect(
-        canAffordShopItem(item: globalItem, globalRep: 1000, factionRep: 0),
-        isTrue,
-      );
-    });
-
-    test('faction rep affordability', () {
-      expect(
-        canAffordShopItem(item: factionItem, globalRep: 99999, factionRep: 9),
-        isFalse,
-      );
-      expect(
-        canAffordShopItem(item: factionItem, globalRep: 0, factionRep: 10),
+        canAffordShopItem(item: globalItem, globalRep: 1000),
         isTrue,
       );
     });
@@ -100,11 +63,31 @@ void main() {
     });
   });
 
-  group('factionTierLabel', () {
-    test('maps rep bands to Turkish tiers', () {
-      expect(factionTierLabel(0), 'Düşman');
-      expect(factionTierLabel(45), 'Dostane');
-      expect(factionTierLabel(90), 'Onurlu');
+  group('ReputationOverview', () {
+    test('filters faction activity from overview json', () {
+      final ReputationOverview overview = ReputationOverview.fromOverviewJson(<String, dynamic>{
+        'global_reputation': 1200,
+        'activity': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'id': '1',
+            'activity_type': 'earn',
+            'source': 'pvp',
+            'amount': 50,
+            'currency': 'global',
+          },
+          <String, dynamic>{
+            'id': '2',
+            'activity_type': 'spend',
+            'source': 'donation',
+            'amount': 5,
+            'currency': 'faction',
+          },
+        ],
+      });
+
+      expect(overview.globalReputation, 1200);
+      expect(overview.activity, hasLength(1));
+      expect(overview.activity.first.source, 'pvp');
     });
   });
 

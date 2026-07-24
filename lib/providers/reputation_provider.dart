@@ -61,23 +61,10 @@ class ReputationNotifier extends Notifier<ReputationState> {
     }
   }
 
-  int factionRep(String factionId) {
-    for (final FactionReputation f in state.overview.factions) {
-      if (f.factionId == factionId) return f.reputation;
-    }
-    return 0;
-  }
-
-  Future<String?> purchase({
-    required ReputationShopItem item,
-    String? factionId,
-  }) async {
+  Future<String?> purchase({required ReputationShopItem item}) async {
     state = state.copyWith(purchasingId: item.id, clearError: true);
     try {
-      final Map<String, dynamic> res = await _repo.purchaseItem(
-        itemId: item.id,
-        factionId: factionId,
-      );
+      final Map<String, dynamic> res = await _repo.purchaseItem(itemId: item.id);
       if (res['success'] != true) {
         final String msg = userFacingErrorMessage(
           res['error'] ?? 'Satın alma başarısız.',
@@ -93,28 +80,6 @@ class ReputationNotifier extends Notifier<ReputationState> {
       final String msg = userFacingErrorMessage(e, fallback: 'Satın alma başarısız.');
       state = state.copyWith(clearPurchasing: true, error: msg);
       return msg;
-    }
-  }
-
-  Future<String?> donate({
-    required String factionId,
-    required int goldAmount,
-  }) async {
-    try {
-      final Map<String, dynamic> res = await _repo.donateToFaction(
-        factionId: factionId,
-        goldAmount: goldAmount,
-      );
-      if (res['success'] != true) {
-        return userFacingErrorMessage(
-          res['error'] ?? 'Bağış başarısız.',
-          fallback: 'Bağış başarısız.',
-        );
-      }
-      await load();
-      return null;
-    } catch (e) {
-      return userFacingErrorMessage(e, fallback: 'Bağış başarısız.');
     }
   }
 }

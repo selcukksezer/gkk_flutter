@@ -9,14 +9,12 @@ class ReputationShopGrid extends StatelessWidget {
     super.key,
     required this.items,
     required this.globalRep,
-    required this.factionRepFor,
     required this.purchasingId,
     required this.onPurchase,
   });
 
   final List<ReputationShopItem> items;
   final int globalRep;
-  final int Function(String factionId) factionRepFor;
   final String? purchasingId;
   final void Function(ReputationShopItem item) onPurchase;
 
@@ -33,14 +31,7 @@ class ReputationShopGrid extends StatelessWidget {
         ...List<Widget>.generate(items.length, (int i) {
           final ReputationShopItem item = items[i];
           final Color border = rarityBorderColor(item.rarity);
-          final int factionRep = item.usesFactionRep
-              ? factionRepFor('maceracilar')
-              : 0;
-          final bool affordable = canAffordShopItem(
-            item: item,
-            globalRep: globalRep,
-            factionRep: factionRep,
-          );
+          final bool affordable = canAffordShopItem(item: item, globalRep: globalRep);
           final bool loading = purchasingId == item.id;
 
           return Padding(
@@ -158,9 +149,7 @@ class ReputationShopGrid extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: <Widget>[
                                     Icon(
-                                      item.usesFactionRep
-                                          ? Icons.groups_rounded
-                                          : Icons.star_rounded,
+                                      Icons.star_rounded,
                                       size: 14,
                                       color: affordable ? MekanPalette.gold : MekanPalette.ruby,
                                     ),
@@ -176,9 +165,9 @@ class ReputationShopGrid extends StatelessWidget {
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  item.usesFactionRep ? 'Fraksiyon' : 'Global',
-                                  style: const TextStyle(fontSize: 9, color: MekanPalette.textLow),
+                                const Text(
+                                  'İtibar',
+                                  style: TextStyle(fontSize: 9, color: MekanPalette.textLow),
                                 ),
                               ],
                             ),
