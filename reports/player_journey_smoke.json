@@ -1,0 +1,44 @@
+{
+  "passed": 6,
+  "steps": [
+    {
+      "detail": {
+        "energy": 100
+      },
+      "pass": true,
+      "step": "energy_check"
+    },
+    {
+      "pass": true,
+      "step": "dungeon_list_shape"
+    },
+    {
+      "detail": {
+        "error": "insufficient_energy"
+      },
+      "pass": true,
+      "step": "dungeon_entry_validation"
+    },
+    {
+      "pass": true,
+      "step": "quest_list_shape"
+    },
+    {
+      "detail": {
+        "error": "Ödül alınabilir durumda değil.",
+        "success": false
+      },
+      "pass": true,
+      "step": "quest_claim_shape"
+    },
+    {
+      "detail": {
+        "global_reputation": 100
+      },
+      "pass": true,
+      "step": "reputation_overview"
+    }
+  ],
+  "total": 6,
+  "verdict": "PASS"
+}

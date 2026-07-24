@@ -52,6 +52,7 @@ class PlayerProfile {
     this.reputation,
     this.guildName,
     this.title,
+    this.cosmeticTitle,
     this.endurance,
     this.agility,
     this.intelligence,
@@ -108,6 +109,8 @@ class PlayerProfile {
   final int? reputation;
   final String? guildName;
   final String? title;
+  /// Reputation shop cosmetic title key (`users.cosmetic_title`), e.g. `onur_nisani`.
+  final String? cosmeticTitle;
   final int? endurance;
   final int? agility;
   final int? intelligence;
@@ -166,6 +169,7 @@ class PlayerProfile {
     int? reputation,
     String? guildName,
     String? title,
+    String? cosmeticTitle,
     int? endurance,
     int? agility,
     int? intelligence,
@@ -190,6 +194,7 @@ class PlayerProfile {
     bool clearLastLogin = false,
     bool clearGuildName = false,
     bool clearTitle = false,
+    bool clearCosmeticTitle = false,
     bool clearCharacterClass = false,
   }) {
     return PlayerProfile(
@@ -243,6 +248,8 @@ class PlayerProfile {
       reputation: reputation ?? this.reputation,
       guildName: clearGuildName ? null : (guildName ?? this.guildName),
       title: clearTitle ? null : (title ?? this.title),
+      cosmeticTitle:
+          clearCosmeticTitle ? null : (cosmeticTitle ?? this.cosmeticTitle),
       endurance: endurance ?? this.endurance,
       agility: agility ?? this.agility,
       intelligence: intelligence ?? this.intelligence,
@@ -303,6 +310,7 @@ class PlayerProfile {
       reputation: (json['reputation'] as num?)?.toInt(),
       guildName: json['guild_name'] as String?,
       title: json['title'] as String?,
+      cosmeticTitle: json['cosmetic_title'] as String?,
       endurance: (json['endurance'] as num?)?.toInt(),
       agility: (json['agility'] as num?)?.toInt(),
       intelligence: (json['intelligence'] as num?)?.toInt(),
@@ -361,6 +369,7 @@ class PlayerProfile {
       'reputation': reputation,
       'guild_name': guildName,
       'title': title,
+      'cosmetic_title': cosmeticTitle,
       'endurance': endurance,
       'agility': agility,
       'intelligence': intelligence,

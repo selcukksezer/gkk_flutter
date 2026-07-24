@@ -1,0 +1,696 @@
+{
+  "verdict": "FAIL",
+  "total": 350,
+  "covered": 92,
+  "missing": 258,
+  "pass": 76,
+  "fail": 14,
+  "skip": 4,
+  "auto_tap": 64,
+  "rpc": 26,
+  "actions": [
+    {
+      "action_id": "bank_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/bank",
+      "error": "Multiple exceptions (49) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "bank_screen.action_10",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/bank",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "bank_screen.action_15",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/bank",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "character_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "claim_alchemist_detox",
+      "status": "pass"
+    },
+    {
+      "action_id": "character_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/character",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "character_select_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_character_classes",
+      "status": "pass"
+    },
+    {
+      "action_id": "character_select_screen.action_02",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/onboarding/character-select",
+      "error": "Multiple exceptions (43) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "chat_screen.action_03",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/chat",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "chat_screen.action_08",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/chat",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "chat_screen.action_13",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/chat",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "chat_screen_new.action_03",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/chat",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "chat_screen_new.action_08",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/chat",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "chat_screen_new.action_13",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/chat",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "crafting_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/crafting",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "crafting_screen.action_10",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/crafting",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "dungeon_battle_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "attack_dungeon",
+      "status": "pass"
+    },
+    {
+      "action_id": "dungeon_battle_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "collect_dungeon_rewards",
+      "status": "pass"
+    },
+    {
+      "action_id": "dungeon_screen.action_01",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/dungeon",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "dungeon_screen.action_06",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/dungeon",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "dungeon_screen.action_11",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/dungeon",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "enhancement_screen.action_04",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/enhancement",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "facilities_screen.action_01",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/facilities",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "facilities_screen.action_06",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/facilities",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "facility_detail_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/facilities/farm",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "featured_cave_dungeon_card.action_03",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/dungeon",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "guild_monument_donate_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "donate_to_monument",
+      "status": "pass"
+    },
+    {
+      "action_id": "guild_monument_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "upgrade_monument",
+      "status": "pass"
+    },
+    {
+      "action_id": "guild_screen.action_01",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/guild",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "guild_screen.action_06",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/guild",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "guild_screen.action_11",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/guild",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "guild_screen.action_16",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/guild",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "guild_war_hub_screen.action_02",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/guild-war",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "guild_war_hub_screen.action_07",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/guild-war",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "home_screen.action_04",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/home",
+      "error": "Multiple exceptions (84) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "home_screen.action_09",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/home",
+      "error": "Multiple exceptions (99) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "home_screen.action_14",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/home",
+      "error": "Multiple exceptions (116) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "hospital_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "heal_with_gems",
+      "status": "pass"
+    },
+    {
+      "action_id": "hospital_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "attempt_hospital_escape",
+      "status": "pass"
+    },
+    {
+      "action_id": "hospital_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/hospital",
+      "error": "Multiple exceptions (137) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "hospital_screen.action_10",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/hospital",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "inventory_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/inventory",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "inventory_screen.action_10",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/inventory",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "inventory_screen.action_15",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/inventory",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "kingdom_election_panel.action_01",
+      "coverage": "rpc",
+      "rpc": "get_current_election",
+      "status": "pass"
+    },
+    {
+      "action_id": "kingdom_election_panel.action_02",
+      "coverage": "rpc",
+      "rpc": "vote_in_election",
+      "status": "pass"
+    },
+    {
+      "action_id": "leaderboard_screen.action_03",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/leaderboard",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "loot_chest_widgets.action_03",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/loot",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "loot_hub_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_loot_boxes_with_stats",
+      "status": "pass"
+    },
+    {
+      "action_id": "loot_hub_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "get_spin_wheels_with_stats",
+      "status": "pass"
+    },
+    {
+      "action_id": "loot_hub_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/loot",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "market_browse_tab.action_01",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/market",
+      "error": "Multiple exceptions (138) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "market_my_market_tab.action_02",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/market",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "market_price_edit_sheet.action_02",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/market",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "market_sell_tab.action_02",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/market",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "mekan_arena_screen.action_04",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/mekans/sample-id/arena",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "mekan_design.action_03",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/mekans/sample-id",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "mekan_detail_screen.action_02",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/mekans/sample-id",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "mekan_detail_screen.action_07",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/mekans/sample-id",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "mekans_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/mekans",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "my_mekan_screen.action_01",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/my-mekan",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "my_mekan_screen.action_06",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/my-mekan",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "my_mekan_screen.action_11",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/my-mekan",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "prison_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "release_from_prison",
+      "status": "pass"
+    },
+    {
+      "action_id": "prison_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "attempt_prison_escape",
+      "status": "pass"
+    },
+    {
+      "action_id": "pvp_screen.action_01",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/pvp",
+      "error": "Multiple exceptions (140) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "pvp_tournament_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_tournament_bracket",
+      "status": "pass"
+    },
+    {
+      "action_id": "pvp_tournament_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "join_pvp_tournament",
+      "status": "pass"
+    },
+    {
+      "action_id": "quests_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_available_quests",
+      "status": "pass"
+    },
+    {
+      "action_id": "quests_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "complete_quest",
+      "status": "pass"
+    },
+    {
+      "action_id": "quests_screen.action_03",
+      "coverage": "rpc",
+      "rpc": "claim_quest_reward",
+      "status": "pass"
+    },
+    {
+      "action_id": "quests_screen.action_05",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/quests",
+      "error": "Multiple exceptions (141) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "quests_screen.action_10",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/quests",
+      "error": "Multiple exceptions (142) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "register_screen.action_02",
+      "coverage": "skip",
+      "status": "skip",
+      "route": "/register",
+      "error": null,
+      "skip_reason": "auth_flow_manual"
+    },
+    {
+      "action_id": "reputation_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_reputation",
+      "status": "pass"
+    },
+    {
+      "action_id": "reputation_screen.action_03",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/reputation",
+      "error": "'package:flutter/src/widgets/framework.dart': Failed assertion: line 5340 pos 12: '_lifecycleState != _ElementLifecycle.defunct': is not true.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "season_screen.action_02",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/season",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "settings_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "update_user_profile",
+      "status": "pass"
+    },
+    {
+      "action_id": "settings_screen.action_03",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/settings",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "settings_screen.action_07",
+      "coverage": "skip",
+      "rpc": "delete_account",
+      "skip_reason": "destructive_rpc",
+      "status": "skip"
+    },
+    {
+      "action_id": "shop_screen.action_01",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/shop",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "shop_screen.action_06",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/shop",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "shop_screen.action_11",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/shop",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "sticky_action_bar.action_01",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/home",
+      "error": "Multiple exceptions (133) were detected during the running of the current test, and at least one was unexpected.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "territory_card.action_01",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/guild-war",
+      "error": "Bad state: Using \"ref\" when a widget is about to or has been unmounted is unsafe.\nRef relies on BuildContext, and BuildContext is unsafe to use when the widget is deactivated.\nTo safely refer to the state of providers inside State.dispose(), save the provider state in a field of your State class.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "tournament_card.action_01",
+      "coverage": "auto_tap",
+      "status": "fail",
+      "route": "/guild-war",
+      "error": "'package:flutter/src/widgets/framework.dart': Failed assertion: line 5340 pos 12: '_lifecycleState != _ElementLifecycle.defunct': is not true.",
+      "skip_reason": null
+    },
+    {
+      "action_id": "tournament_detail_screen.action_01",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/guild-war/tournament/sample-id",
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "action_id": "trade_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_trade_history",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "initiate_trade",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_03",
+      "coverage": "rpc",
+      "rpc": "add_trade_item",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_04",
+      "coverage": "rpc",
+      "rpc": "confirm_trade",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_05",
+      "coverage": "rpc",
+      "rpc": "cancel_trade",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_09",
+      "coverage": "auto_tap",
+      "status": "pass",
+      "route": "/trade",
+      "error": null,
+      "skip_reason": null
+    }
+  ]
+}

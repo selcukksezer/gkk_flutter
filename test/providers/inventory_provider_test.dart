@@ -53,6 +53,49 @@ class FakeInventoryRepository implements InventoryRepository {
     lastToSlot = toSlot;
     return true;
   }
+
+  @override
+  Future<bool> addItemToServer({required String itemId, required int quantity, int? slotPosition}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> moveItemToSlot({required String rowId, required int targetSlot}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> unequipItemToSlot({required String rowId, required String slot, required int targetSlot}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> swapEquipWithSlot({required String equipSlot, required int targetSlot}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> usePotion({required String rowId}) async => throw UnimplementedError();
+
+  @override
+  Future<OpenLootBoxResult> openLootBox({required String rowId}) async => throw UnimplementedError();
+
+  @override
+  Future<bool> useDetox({required String rowId}) async => throw UnimplementedError();
+
+  @override
+  Future<UseItemResult> useStatResetScroll({required String rowId}) async => throw UnimplementedError();
+
+  @override
+  Future<bool> splitStack({required String rowId, required int splitQuantity, required int targetSlot}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<SellItemResult> sellItemByRow({required String rowId, required int quantity}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> trashItem({required String rowId}) async => throw UnimplementedError();
+
+  @override
+  Future<bool> toggleFavorite({required String rowId, required bool isFavorite}) async =>
+      throw UnimplementedError();
 }
 
 InventoryItem _item({

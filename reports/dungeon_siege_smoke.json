@@ -1,0 +1,121 @@
+{
+  "passed": 11,
+  "tests": [
+    {
+      "area": "schema",
+      "pass": true,
+      "test": "siege_config_table_exists"
+    },
+    {
+      "area": "schema",
+      "pass": true,
+      "test": "siege_rpc_functions_exist"
+    },
+    {
+      "area": "rpc",
+      "detail": {
+        "ban_duration_minutes": 45,
+        "challenge_cooldown_minutes": 1,
+        "challenge_gold_cost": 100,
+        "gold_bonus_pct": 0.25,
+        "hold_bonus_pct": 0.15,
+        "hold_break_wins_required": 3,
+        "hold_min_members": 3,
+        "hold_rehold_cooldown_minutes": 15,
+        "in_prime_window": false,
+        "inactive_release_minutes": 10,
+        "is_enabled": true,
+        "loot_bonus_pct": 0.4,
+        "power_band_pct": 1,
+        "prime_windows": [
+          {
+            "end": "04:00",
+            "start": "03:00"
+          }
+        ],
+        "rep_bonus_pct": 0.25,
+        "session_duration_minutes": 180,
+        "siege_dungeon_ids": [
+          "dng_010",
+          "dng_020",
+          "dng_030",
+          "dng_040",
+          "dng_050",
+          "dng_060",
+          "dng_065"
+        ],
+        "slot_count": 5,
+        "slot_duration_minutes": 20,
+        "territory_reserve_slot_count": 1,
+        "timezone": "Europe/Istanbul"
+      },
+      "pass": true,
+      "test": "siege_config_rpc_shape"
+    },
+    {
+      "area": "rpc",
+      "pass": true,
+      "test": "siege_status_rpc_shape"
+    },
+    {
+      "area": "rpc",
+      "pass": true,
+      "test": "siege_hub_rpc_shape"
+    },
+    {
+      "area": "rpc",
+      "pass": true,
+      "test": "siege_leaderboard_rpc_shape"
+    },
+    {
+      "area": "gameplay",
+      "detail": {
+        "expires_at": "2026-07-24T17:04:10.30457+00:00",
+        "message": "Slot alındı! Bonus farm başladı.",
+        "slot_id": "31fb8af3-4cc0-40d1-b2c6-2299925c7f94",
+        "slot_number": 1,
+        "success": true,
+        "territory_reserved": false
+      },
+      "pass": true,
+      "test": "siege_claim_slot"
+    },
+    {
+      "area": "unified_defense",
+      "detail": {
+        "ban_minutes": 45,
+        "gold_spent": 50000,
+        "hold_break_progress": null,
+        "hold_broken": false,
+        "message": "Kazandın! Slot senin.",
+        "success": true,
+        "territory_defense_bonus_pct": 0,
+        "winner_id": "ac56161a-5dc2-4a0e-9e6a-64b666d96fc2",
+        "you_won": true
+      },
+      "pass": true,
+      "test": "siege_challenge_no_bonus_for_non_owner_guild"
+    },
+    {
+      "area": "rpc",
+      "pass": true,
+      "test": "siege_notifications_rpc"
+    },
+    {
+      "area": "gameplay",
+      "detail": {
+        "message": "Slot bırakıldı.",
+        "success": true
+      },
+      "pass": true,
+      "test": "siege_release_slot"
+    },
+    {
+      "area": "cleanup",
+      "pass": true,
+      "test": "siege_config_restored"
+    }
+  ],
+  "total": 11,
+  "verdict": "PASS"
+}

@@ -1,0 +1,172 @@
+{
+  "actions": [
+    {
+      "action_id": "character_select_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_character_classes",
+      "status": "pass"
+    },
+    {
+      "action_id": "quests_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_available_quests",
+      "status": "pass"
+    },
+    {
+      "action_id": "quests_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "complete_quest",
+      "status": "pass"
+    },
+    {
+      "action_id": "quests_screen.action_03",
+      "coverage": "rpc",
+      "rpc": "claim_quest_reward",
+      "status": "pass"
+    },
+    {
+      "action_id": "reputation_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_reputation",
+      "status": "pass"
+    },
+    {
+      "action_id": "character_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "claim_alchemist_detox",
+      "status": "pass"
+    },
+    {
+      "action_id": "loot_hub_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_loot_boxes_with_stats",
+      "status": "pass"
+    },
+    {
+      "action_id": "loot_hub_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "get_spin_wheels_with_stats",
+      "status": "pass"
+    },
+    {
+      "action_id": "hospital_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "heal_with_gems",
+      "status": "pass"
+    },
+    {
+      "action_id": "hospital_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "attempt_hospital_escape",
+      "status": "pass"
+    },
+    {
+      "action_id": "prison_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "release_from_prison",
+      "status": "pass"
+    },
+    {
+      "action_id": "prison_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "attempt_prison_escape",
+      "status": "pass"
+    },
+    {
+      "action_id": "pvp_tournament_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_tournament_bracket",
+      "status": "pass"
+    },
+    {
+      "action_id": "pvp_tournament_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "join_pvp_tournament",
+      "status": "pass"
+    },
+    {
+      "action_id": "guild_monument_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "upgrade_monument",
+      "status": "pass"
+    },
+    {
+      "action_id": "guild_monument_donate_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "donate_to_monument",
+      "status": "pass"
+    },
+    {
+      "action_id": "kingdom_election_panel.action_01",
+      "coverage": "rpc",
+      "rpc": "get_current_election",
+      "status": "pass"
+    },
+    {
+      "action_id": "kingdom_election_panel.action_02",
+      "coverage": "rpc",
+      "rpc": "vote_in_election",
+      "status": "pass"
+    },
+    {
+      "action_id": "dungeon_battle_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "attack_dungeon",
+      "status": "pass"
+    },
+    {
+      "action_id": "dungeon_battle_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "collect_dungeon_rewards",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "get_trade_history",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_02",
+      "coverage": "rpc",
+      "rpc": "initiate_trade",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_03",
+      "coverage": "rpc",
+      "rpc": "add_trade_item",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_04",
+      "coverage": "rpc",
+      "rpc": "confirm_trade",
+      "status": "pass"
+    },
+    {
+      "action_id": "trade_screen.action_05",
+      "coverage": "rpc",
+      "rpc": "cancel_trade",
+      "status": "pass"
+    },
+    {
+      "action_id": "settings_screen.action_01",
+      "coverage": "rpc",
+      "rpc": "update_user_profile",
+      "status": "pass"
+    },
+    {
+      "action_id": "settings_screen.action_07",
+      "coverage": "skip",
+      "rpc": "delete_account",
+      "skip_reason": "destructive_rpc",
+      "status": "skip"
+    }
+  ],
+  "fail": 0,
+  "pass": 26,
+  "skip": 1,
+  "total": 27,
+  "verdict": "PASS"
+}

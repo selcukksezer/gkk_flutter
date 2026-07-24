@@ -84,7 +84,7 @@ class _PvpTournamentScreenState extends ConsumerState<PvpTournamentScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${data.participantCount} katılımcı · ${_formatGold(data.prizePool)} altın ödül',
+                      '${data.participantCount}/${data.minParticipants} katılımcı · ${_formatGold(data.prizePool)} altın ödül',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white54, fontSize: 12),
                     ),
@@ -109,14 +109,28 @@ class _PvpTournamentScreenState extends ConsumerState<PvpTournamentScreen> {
                           border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
                         ),
                         child: Column(
-                          children: [
+                          children: <Widget>[
                             const Text('🏆', style: TextStyle(fontSize: 40)),
                             const SizedBox(height: 8),
-                            const Text(
-                              'Bracket henüz oluşmadı.\nKayıt ol — 2+ katılımcı olunca canlı bracket açılır.',
+                            Text(
+                              data.cancelReason == 'insufficient_players'
+                                  ? 'Bu hafta turnuva yapılamadı.\nEn az ${data.minParticipants} oyuncu gerekli — gelecek hafta tekrar dene.'
+                                  : 'Bracket henüz oluşmadı.\nKayıt ol — ${data.minParticipants}+ katılımcı olunca canlı bracket açılır.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.white70),
+                              style: const TextStyle(color: Colors.white70),
                             ),
+                            if (data.registrationOpen && data.participantCount < data.minParticipants) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Şu an ${data.participantCount}/${data.minParticipants} oyuncu kayıtlı.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.amber.withValues(alpha: 0.85),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       )

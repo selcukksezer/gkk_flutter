@@ -33,6 +33,8 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
 
   List<ArenaOpponent> _opponents = <ArenaOpponent>[];
   List<ArenaRankRow> _ranking = <ArenaRankRow>[];
+  ArenaWeeklyRewardStatus? _weeklyReward;
+  bool _claimingReward = false;
   bool _loading = true;
   String? _loadError;
   String? _blockedMessage;
@@ -87,15 +89,22 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
 
       final List<ArenaOpponent> opp = await _repo.fetchArenaOpponents();
       List<ArenaRankRow> rank = <ArenaRankRow>[];
+      ArenaWeeklyRewardStatus? weeklyReward;
       try {
         rank = await _repo.fetchArenaRanking(limit: 50);
       } catch (_) {
         // Sıralama RPC isteğe bağlı.
       }
+      try {
+        weeklyReward = await _repo.fetchArenaWeeklyRewardStatus();
+      } catch (_) {
+        // Haftalık ödül RPC isteğe bağlı.
+      }
       if (mounted) {
         setState(() {
           _opponents = opp;
           _ranking = rank;
+          _weeklyReward = weeklyReward;
           _loading = false;
         });
       }
@@ -398,6 +407,68 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
     );
   }
 
+  Future<void> _claimWeeklyReward() async {
+    if (_claimingReward) return;
+    setState(() => _claimingReward = true);
+    try {
+      final int gold = await _repo.claimArenaWeeklyReward();
+      if (!mounted) return;
+      await ref.read(playerProvider.notifier).loadProfile();
+      AppMessenger.show(context, '🏆 Haftalık arena ödülü: +$gold altın!');
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        AppMessenger.showError(
+          context,
+          userFacingErrorMessage(e, fallback: 'Ödül alınamadı.'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _claimingReward = false);
+    }
+  }
+
+  Widget _weeklyRewardBanner() {
+    final ArenaWeeklyRewardStatus? status = _weeklyReward;
+    if (status == null) return const SizedBox.shrink();
+    if (status.canClaim) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+        child: NeonPanel(
+          accent: MekanPalette.gold,
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.emoji_events_rounded, color: MekanPalette.gold),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '#${status.rank} sıra — ${status.rewardGold} altın ödülün hazır!',
+                  style: const TextStyle(color: MekanPalette.textHi, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+              TextButton(
+                onPressed: _claimingReward ? null : _claimWeeklyReward,
+                child: _claimingReward
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Al'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (status.claimOpen && status.rewardGold == 0) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+        child: Text(
+          'Haftalık ödül penceresi açık (Pzt–Çar). Top 50\'de değilsen ödül yok.',
+          style: TextStyle(color: MekanPalette.textMid.withValues(alpha: 0.9), fontSize: 11),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
   Widget _rankingTab() {
     final String myId = ref.read(playerProvider).profile?.authId ?? '';
     return RefreshIndicator(
@@ -406,9 +477,10 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
       onRefresh: _load,
       child: _ranking.isEmpty
           ? ListView(
-              children: const <Widget>[
-                SizedBox(height: 80),
-                MekanEmpty(
+              children: <Widget>[
+                _weeklyRewardBanner(),
+                const SizedBox(height: 80),
+                const MekanEmpty(
                   icon: Icons.leaderboard_outlined,
                   title: 'Sıralama boş',
                   message: 'Henüz arena sıralaması oluşmadı.',
@@ -419,9 +491,10 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
           : ListView.builder(
               padding: GameScrollLayout.fromLTRB(context, left: 14, top: 8, right: 14),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _ranking.length,
+              itemCount: _ranking.length + 1,
               itemBuilder: (BuildContext context, int i) {
-                final ArenaRankRow r = _ranking[i];
+                if (i == 0) return _weeklyRewardBanner();
+                final ArenaRankRow r = _ranking[i - 1];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: MekanArenaRankRow(row: r, isMe: r.authId == myId),

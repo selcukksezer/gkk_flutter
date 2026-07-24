@@ -10,6 +10,7 @@ import '../../components/layout/game_screen_background.dart';
 import '../../core/utils/power_formula.dart';
 import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
+import '../../models/dungeon_siege_prime_timer.dart';
 import '../../utils/logout_helper.dart';
 import '../../providers/dungeon_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
@@ -196,18 +197,33 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       }
     }
 
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => DungeonConfirmEntryDialog(
-        dungeon: dungeon,
-        hospitalRiskPct: hospitalRisk,
-        rewardMultiplierPreview: farmPreview,
-        siegePrimeHint: siegePrimeHint,
-        siegeNoSlotWarning: siegeNoSlotWarning,
-        onConfirmTap: () => TutorialTriggers.onAnchorTap(
-          ref,
-          TutorialAnchorId.dungeonConfirmOk,
-        ),
+    final bool siegeActiveForDialog = isSiegeDungeon(dungeon.dungeonId, status: siegeStatus) &&
+        siegeStatus.siegeActive;
+    String? primeTimerLabel;
+    if (siegeActiveForDialog) {
+      final snapshot = DungeonSiegePrimeSchedule.snapshot(
+        windows: siegeStatus.config.primeWindows,
+        timezone: siegeStatus.config.timezone,
+        isEnabled: siegeStatus.config.isEnabled,
+      );
+      if (snapshot.isVisible) {
+        primeTimerLabel = snapshot.formattedRemaining;
+      }
+    }
+
+    final bool? confirm = await DungeonConfirmEntryDialog.show(
+      context,
+      dungeon: dungeon,
+      hospitalRiskPct: hospitalRisk,
+      rewardMultiplierPreview: farmPreview,
+      siegePrimeHint: siegePrimeHint,
+      siegeNoSlotWarning: siegeNoSlotWarning,
+      currentEnergy: player.energy,
+      primeTimerLabel: primeTimerLabel,
+      siegeActive: siegeActiveForDialog,
+      onConfirmTap: () => TutorialTriggers.onAnchorTap(
+        ref,
+        TutorialAnchorId.dungeonConfirmOk,
       ),
     );
     if (confirm != true || !mounted) return;

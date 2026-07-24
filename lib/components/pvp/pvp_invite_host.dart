@@ -51,7 +51,61 @@ class _PvpInviteHostState extends ConsumerState<PvpInviteHost> {
     if (result != null) {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => _presentResult(result));
+      return;
     }
+
+    final PvpArenaResultNotice? arenaResult = state.nextArenaResult;
+    if (arenaResult != null) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _presentArenaResult(arenaResult));
+    }
+  }
+
+  Future<void> _presentArenaResult(PvpArenaResultNotice notice) async {
+    if (!mounted || _showing) return;
+    final BuildContext? ctx = appRootNavigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+
+    _showing = true;
+    await ref.read(pvpInviteProvider.notifier).markArenaResultSeen(notice.notificationId);
+
+    final BuildContext? showCtx = appRootNavigatorKey.currentContext;
+    if (showCtx != null && showCtx.mounted) {
+      final String title = notice.won ? '🏆 Arena Galibiyeti' : '💀 Arena Yenilgisi';
+      final Color accent = notice.won ? Colors.greenAccent : const Color(0xFFEF4444);
+      await showDialog<void>(
+        context: showCtx,
+        builder: (BuildContext dCtx) => AlertDialog(
+          backgroundColor: const Color(0xFF141B2A),
+          title: Text(title, textAlign: TextAlign.center, style: TextStyle(color: accent, fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                notice.won
+                    ? '${notice.opponentName} oyuncusunu yendin!'
+                    : '${notice.opponentName} seni arena\'da yendi.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70),
+              ),
+              if (notice.wager > 0) ...[
+                const SizedBox(height: 8),
+                Text('Bahis: ${notice.wager} altın', style: const TextStyle(color: Colors.amber, fontSize: 12)),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                'Rating: ${notice.ratingChange >= 0 ? '+' : ''}${notice.ratingChange}',
+                style: TextStyle(color: notice.ratingChange >= 0 ? Colors.greenAccent : Colors.redAccent, fontSize: 13),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            FilledButton(onPressed: () => Navigator.of(dCtx).pop(), child: const Text('Tamam')),
+          ],
+        ),
+      );
+    }
+    _showing = false;
   }
 
   Future<void> _presentResult(PvpDuelResultNotice notice) async {

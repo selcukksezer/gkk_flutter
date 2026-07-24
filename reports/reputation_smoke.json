@@ -1,0 +1,66 @@
+{
+  "passed": 7,
+  "tests": [
+    {
+      "area": "schema",
+      "pass": true,
+      "test": "rep_rpc_functions_exist"
+    },
+    {
+      "area": "rpc",
+      "detail": {
+        "global_reputation": 0
+      },
+      "pass": true,
+      "test": "rep_overview_rpc_shape"
+    },
+    {
+      "area": "rpc",
+      "detail": {
+        "item_count": 5
+      },
+      "pass": true,
+      "test": "rep_shop_rpc_shape"
+    },
+    {
+      "area": "rpc",
+      "detail": {
+        "global_item_count": 4
+      },
+      "pass": true,
+      "test": "rep_shop_has_global_items"
+    },
+    {
+      "area": "gameplay",
+      "detail": {
+        "error": "Yetersiz itibar",
+        "success": false
+      },
+      "pass": true,
+      "test": "rep_purchase_insufficient_funds"
+    },
+    {
+      "area": "gameplay",
+      "detail": {
+        "purchase": {
+          "buff_value": 15,
+          "effect": "gold_boost",
+          "expires_at": "2026-07-24T16:11:34.336058+00:00",
+          "item_id": "gold_boost_30",
+          "success": true
+        },
+        "rep_after": 4200,
+        "rep_before": 5000
+      },
+      "pass": true,
+      "test": "rep_purchase_success_shape"
+    },
+    {
+      "area": "rpc",
+      "pass": true,
+      "test": "rep_activity_logged_after_purchase"
+    }
+  ],
+  "total": 7,
+  "verdict": "PASS"
+}

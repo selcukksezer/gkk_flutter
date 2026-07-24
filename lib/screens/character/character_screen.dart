@@ -14,6 +14,7 @@ import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/character_class_abilities.dart';
+import '../../core/utils/cosmetic_title.dart';
 import '../../core/utils/reputation_tier.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../models/player_model.dart';
@@ -23,7 +24,8 @@ import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
-import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../../components/common/app_messenger.dart';
+import '../../components/common/cosmetic_title_badge.dart';
 import '../../utils/logout_helper.dart';
 
 // ─── Constants & Helpers ───────────────────────────────────────────────────
@@ -141,7 +143,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     final xpProgress = buildXpProgress(level: profileLevel, totalXp: xp);
     final level = xpProgress.level;
 
-    final repTier = reputationTierFor(profile?.reputation ?? 0);
+    final int reputation = (profile?.reputation ?? 0).clamp(0, 999999999);
 
     return GameScreenBackground(
       child: ListView(
@@ -149,7 +151,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
         children: <Widget>[
           GameScrollSection(
             leadingGap: false,
-            child: _buildIdentityCard(profile, level, repTier, xpProgress),
+            child: _buildIdentityCard(profile, level, xpProgress, reputation),
           ),
           const GameScrollSection(child: BadgeShowcasePanel()),
           GameScrollSection(child: _buildQuickResources(profile)),
@@ -162,7 +164,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                 ),
               ),
             ),
-          GameScrollSection(child: _buildCombatStats(profile, level)),
+          GameScrollSection(child: _buildCombatStats(profile, level, reputation)),
           GameScrollSection(child: _buildClassDetails(profile)),
           GameScrollSection(child: _buildExtraInfo(profile)),
         ],
@@ -385,9 +387,14 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   Widget _buildIdentityCard(
     PlayerProfile? profile,
     int level,
-    ReputationTier repTier,
     XpProgress xpProgress,
+    int reputation,
   ) {
+    final ReputationTier tier = reputationTierFor(reputation);
+    final ReputationTierProgress tierProgress =
+        reputationTierProgressFor(reputation);
+    final int tierProgressPct =
+        (tierProgress.progress.clamp(0.0, 1.0) * 100).round();
     final name = profile?.displayName ?? profile?.username ?? 'Oyuncu';
     final guild = (profile?.guildName != null && profile!.guildName!.isNotEmpty)
         ? '🏰 ${profile.guildName}'
@@ -471,60 +478,40 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                     ),
                   ],
                 ),
+                if (hasCosmeticTitle(profile?.cosmeticTitle)) ...<Widget>[
+                  const SizedBox(height: 6),
+                  CosmeticTitleBadge(titleKey: profile!.cosmeticTitle),
+                ],
                 const SizedBox(height: 4),
                 Text(
                   'Seviye $level • $guild',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 GestureDetector(
                   onTap: () => context.push(AppRoutes.reputation),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.liquidGold.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.liquidGold.withValues(alpha: 0.35),
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const Icon(
+                        Icons.military_tech_rounded,
+                        size: 12,
+                        color: AppColors.liquidGold,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        const Icon(
-                          Icons.military_tech_rounded,
-                          size: 14,
+                      const SizedBox(width: 4),
+                      Text(
+                        '${tier.title} · %$tierProgressPct',
+                        style: const TextStyle(
                           color: AppColors.liquidGold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _fmtCompact(profile?.reputation ?? 0),
-                          style: const TextStyle(
-                            color: AppColors.liquidGold,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          repTier.title,
-                          style: TextStyle(
-                            color: repTier.color,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          size: 14,
-                          color: Colors.white38,
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(3),
                   child: SizedBox(
@@ -649,7 +636,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     );
   }
 
-  Widget _buildCombatStats(PlayerProfile? profile, int level) {
+  Widget _buildCombatStats(PlayerProfile? profile, int level, int reputation) {
     final winRate = (profile?.pvpWins ?? 0) + (profile?.pvpLosses ?? 0) > 0
         ? (((profile?.pvpWins ?? 0) /
                       ((profile?.pvpWins ?? 0) + (profile?.pvpLosses ?? 0))) *
@@ -666,6 +653,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
         luck: '${profile?.luck ?? 0}',
         pvpWinRate: '%$winRate',
         pvpRating: '${profile?.pvpRating ?? 0}',
+        reputation: reputation,
         highlightPowerAnchor: true,
       ),
     );

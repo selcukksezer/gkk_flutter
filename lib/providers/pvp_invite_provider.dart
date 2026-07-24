@@ -98,16 +98,43 @@ class PvpDuelResultNotice {
   }
 }
 
+/// Arena saldırısı / savunma sonucu (uygulama kapalıyken gelen maç).
+class PvpArenaResultNotice {
+  const PvpArenaResultNotice({
+    required this.notificationId,
+    required this.opponentName,
+    required this.wager,
+    required this.ratingChange,
+    required this.won,
+  });
+
+  final String notificationId;
+  final String opponentName;
+  final int wager;
+  final int ratingChange;
+  final bool won;
+
+  factory PvpArenaResultNotice.fromJson(Map<String, dynamic> json) => PvpArenaResultNotice(
+        notificationId: (json['notification_id'] ?? '').toString(),
+        opponentName: (json['opponent_name'] ?? 'Rakip').toString(),
+        wager: (json['wager'] as num?)?.toInt() ?? 0,
+        ratingChange: (json['rating_change'] as num?)?.toInt() ?? 0,
+        won: json['won'] == true,
+      );
+}
+
 class PvpInviteState {
   const PvpInviteState({
     this.pending = const <PvpInvite>[],
     this.dismissedIds = const <String>{},
     this.unseenResults = const <PvpDuelResultNotice>[],
+    this.unseenArenaResults = const <PvpArenaResultNotice>[],
   });
 
   final List<PvpInvite> pending;
   final Set<String> dismissedIds;
   final List<PvpDuelResultNotice> unseenResults;
+  final List<PvpArenaResultNotice> unseenArenaResults;
 
   PvpInvite? get nextPopup {
     for (final PvpInvite invite in pending) {
@@ -123,15 +150,24 @@ class PvpInviteState {
     return null;
   }
 
+  PvpArenaResultNotice? get nextArenaResult {
+    for (final PvpArenaResultNotice r in unseenArenaResults) {
+      if (!dismissedIds.contains(r.notificationId)) return r;
+    }
+    return null;
+  }
+
   PvpInviteState copyWith({
     List<PvpInvite>? pending,
     Set<String>? dismissedIds,
     List<PvpDuelResultNotice>? unseenResults,
+    List<PvpArenaResultNotice>? unseenArenaResults,
   }) {
     return PvpInviteState(
       pending: pending ?? this.pending,
       dismissedIds: dismissedIds ?? this.dismissedIds,
       unseenResults: unseenResults ?? this.unseenResults,
+      unseenArenaResults: unseenArenaResults ?? this.unseenArenaResults,
     );
   }
 }
@@ -197,9 +233,11 @@ class PvpInviteNotifier extends Notifier<PvpInviteState> {
       final List<dynamic> results = await Future.wait(<Future<dynamic>>[
         SupabaseService.client.rpc('get_pending_pvp_invites'),
         SupabaseService.client.rpc('get_unseen_pvp_results'),
+        SupabaseService.client.rpc('get_unseen_arena_pvp_results'),
       ]);
       final dynamic rawInvites = results[0];
       final dynamic rawResults = results[1];
+      final dynamic rawArena = results[2];
       state = state.copyWith(
         pending: rawInvites is List
             ? rawInvites
@@ -215,6 +253,13 @@ class PvpInviteNotifier extends Notifier<PvpInviteState> {
                     Map<String, dynamic>.from(e)))
                 .toList(growable: false)
             : state.unseenResults,
+        unseenArenaResults: rawArena is List
+            ? rawArena
+                .whereType<Map>()
+                .map((Map e) => PvpArenaResultNotice.fromJson(
+                    Map<String, dynamic>.from(e)))
+                .toList(growable: false)
+            : state.unseenArenaResults,
       );
     } catch (_) {
       // Sessiz — sonraki poll dener.
@@ -237,6 +282,21 @@ class PvpInviteNotifier extends Notifier<PvpInviteState> {
     } catch (_) {
       // Sessiz — sonraki poll'de tekrar gelirse dismissedIds engeller.
     }
+  }
+
+  Future<void> markArenaResultSeen(String notificationId) async {
+    dismiss(notificationId);
+    state = state.copyWith(
+      unseenArenaResults: state.unseenArenaResults
+          .where((PvpArenaResultNotice r) => r.notificationId != notificationId)
+          .toList(growable: false),
+    );
+    try {
+      await SupabaseService.client.rpc(
+        'mark_arena_pvp_result_seen',
+        params: <String, dynamic>{'p_notification_id': notificationId},
+      );
+    } catch (_) {}
   }
 
   void dismiss(String inviteId) {

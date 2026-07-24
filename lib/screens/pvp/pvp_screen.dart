@@ -8,6 +8,7 @@ import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
+import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/pvp_provider.dart';
@@ -376,7 +377,11 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   child: CircularProgressIndicator(),
                 ))
               else if (_onlinePlayers.isEmpty)
-                _emptyCard('Şu anda online oyuncu yok.')
+                _emptyStateCard(
+                  message: 'Şu anda online oyuncu yok.',
+                  ctaLabel: 'Arenaya git',
+                  onPressed: () => _goToFirstArena(dashboard.arenas),
+                )
               else
                 ..._onlinePlayers.map((OnlinePlayer p) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -401,7 +406,11 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
               else if (dashboard.error != null)
                 _errorCard('Arenalar yüklenemedi: ${dashboard.error}')
               else if (dashboard.arenas.isEmpty)
-                _emptyCard('Şu anda açık arena yok.')
+                _emptyStateCard(
+                  message: 'Şu anda açık arena yok.',
+                  ctaLabel: 'Mekanları keşfet',
+                  onPressed: () => context.go(AppRoutes.mekans),
+                )
               else
                 ...dashboard.arenas.map((arena) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -424,7 +433,11 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 10),
               if (!dashboard.isLoading && dashboard.recentMatches.isEmpty)
-                _emptyCard('Henüz maç yok.')
+                _emptyStateCard(
+                  message: 'Henüz maç yok.',
+                  ctaLabel: 'İlk düellonu başlat',
+                  onPressed: () => _goToFirstArena(dashboard.arenas),
+                )
               else
                 ...dashboard.recentMatches.map((match) {
                   final isAttacker = match.attackerId == currentUserId;
@@ -489,7 +502,31 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     );
   }
 
-  Widget _emptyCard(String message) {
+  void _goToFirstArena(List<PvpArena> arenas) {
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    final bool hospitalized = _isRestricted(profile?.hospitalUntil);
+    final bool imprisoned = _isRestricted(profile?.prisonUntil);
+    if (hospitalized || imprisoned) {
+      AppMessenger.showError(
+        context,
+        hospitalized
+            ? '🏥 Hastanedeyken arenaya giremezsiniz!'
+            : '👮 Cezaevindeyken arenaya giremezsiniz!',
+      );
+      return;
+    }
+    if (arenas.isEmpty) {
+      context.go(AppRoutes.mekans);
+      return;
+    }
+    context.go(AppRoutes.mekanArena(arenas.first.id));
+  }
+
+  Widget _emptyStateCard({
+    required String message,
+    required String ctaLabel,
+    required VoidCallback onPressed,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -497,7 +534,21 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
         color: Colors.white.withValues(alpha: 0.03),
         border: Border.all(color: Colors.white12),
       ),
-      child: Center(child: Text(message, style: const TextStyle(color: Colors.white54))),
+      child: Column(
+        children: <Widget>[
+          Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54)),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(Icons.sports_mma_rounded, size: 18),
+            label: Text(ctaLabel),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,0 +1,3 @@
+INSERT INTO public.dungeon_siege_config (id)
+VALUES ('00000000-0000-0000-0000-000000000001'::uuid)
+ON CONFLICT (id) DO NOTHING;

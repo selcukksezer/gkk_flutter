@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/core/utils/cosmetic_title.dart';
 import 'package:gkk_flutter/models/player_model.dart';
 
 void main() {
@@ -10,6 +11,71 @@ void main() {
       'email': 's@example.com',
       'display_name': null,
       'avatar_url': null,
+      'avatar_frame': null,
+      'level': 10,
+      'xp': 200,
+      'gold': 500,
+      'gems': 20.0,
+      'energy': 70,
+      'max_energy': 100,
+      'attack': 15,
+      'defense': 12,
+      'health': 100,
+      'max_health': 120,
+      'power': 30,
+      'is_online': true,
+      'is_banned': false,
+      'tutorial_completed': true,
+      'guild_id': null,
+      'guild_role': null,
+      'referral_code': null,
+      'referred_by': null,
+      'pvp_rating': 1000,
+      'pvp_wins': 11,
+      'pvp_losses': 8,
+      'addiction_level': 2,
+      'tolerance': 5,
+      'last_potion_used_at': null,
+      'warrior_bloodlust_until': null,
+      'hospital_until': null,
+      'hospital_reason': null,
+      'hospital_lifetime_count': 0,
+      'prison_until': null,
+      'prison_reason': null,
+      'global_suspicion_level': 0,
+      'last_bribe_at': null,
+      'last_login_at': null,
+      'last_login': null,
+      'created_at': '2026-03-27T00:00:00Z',
+      'updated_at': '2026-03-27T00:00:00Z',
+      'reputation': 1,
+      'guild_name': null,
+      'title': null,
+      'cosmetic_title': null,
+      'endurance': 7,
+      'agility': 8,
+      'intelligence': 9,
+      'luck': 10,
+      'character_class': 'warrior',
+      'hp': 88,
+      'stat_points': 0,
+    };
+
+    final PlayerProfile model = PlayerProfile.fromJson(json);
+    expect(model.characterClass, CharacterClass.warrior);
+    expect(model.cosmeticTitle, isNull);
+    expect(model.toJson(), json);
+  });
+
+  test('PlayerProfile parses cosmetic_title from JSON', () {
+    final Map<String, dynamic> json = <String, dynamic>{
+      'id': 'p1',
+      'auth_id': 'a1',
+      'username': 'selcuk',
+      'email': 's@example.com',
+      'display_name': 'Selçuk',
+      'avatar_url': null,
+      'avatar_frame': null,
       'level': 10,
       'xp': 200,
       'gold': 500,
@@ -46,20 +112,26 @@ void main() {
       'last_login': null,
       'created_at': '2026-03-27T00:00:00Z',
       'updated_at': '2026-03-27T00:00:00Z',
-      'reputation': 1,
+      'reputation': 50,
       'guild_name': null,
       'title': null,
+      'cosmetic_title': 'onur_nisani',
       'endurance': 7,
       'agility': 8,
       'intelligence': 9,
       'luck': 10,
       'character_class': 'warrior',
       'hp': 88,
+      'stat_points': 0,
     };
 
     final PlayerProfile model = PlayerProfile.fromJson(json);
-    expect(model.characterClass, CharacterClass.warrior);
-    expect(model.toJson(), json);
+
+    expect(model.cosmeticTitle, 'onur_nisani');
+    expect(cosmeticTitleDisplayLabel(model.cosmeticTitle), 'Onur Nişanı');
+    expect(hasCosmeticTitle(model.cosmeticTitle), isTrue);
+    expect(hasCosmeticTitle(null), isFalse);
+    expect(hasCosmeticTitle(''), isFalse);
   });
 
   test('PlayerStats fromJson/toJson works', () {

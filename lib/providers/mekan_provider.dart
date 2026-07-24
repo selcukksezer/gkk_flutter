@@ -233,6 +233,16 @@ class MekanRepository {
         'p_defender_id': defenderId,
         'p_wager': wager,
       });
+
+  Future<ArenaWeeklyRewardStatus> fetchArenaWeeklyRewardStatus() async {
+    final Map<String, dynamic> res = await _rpc('get_arena_weekly_reward_status');
+    return ArenaWeeklyRewardStatus.fromJson(res);
+  }
+
+  Future<int> claimArenaWeeklyReward() async {
+    final Map<String, dynamic> res = await _rpc('claim_arena_weekly_reward');
+    return _toInt(res['reward_gold']);
+  }
 }
 
 class MekanStockPeek {
@@ -441,6 +451,33 @@ class MekanLeaderboardRow {
         isOpen: json['is_open'] == true,
         ownerName: (json['owner_name'] ?? '???').toString(),
         rank: _toInt(json['rank']),
+      );
+}
+
+class ArenaWeeklyRewardStatus {
+  const ArenaWeeklyRewardStatus({
+    required this.claimOpen,
+    required this.rewardGold,
+    required this.rank,
+    required this.alreadyClaimed,
+    this.weekStart,
+  });
+
+  final bool claimOpen;
+  final int rewardGold;
+  final int rank;
+  final bool alreadyClaimed;
+  final String? weekStart;
+
+  bool get canClaim => claimOpen && rewardGold > 0 && !alreadyClaimed;
+
+  factory ArenaWeeklyRewardStatus.fromJson(Map<String, dynamic> json) =>
+      ArenaWeeklyRewardStatus(
+        claimOpen: json['claim_open'] == true,
+        rewardGold: _toInt(json['reward_gold']),
+        rank: _toInt(json['rank']),
+        alreadyClaimed: json['already_claimed'] == true,
+        weekStart: json['week_start']?.toString(),
       );
 }
 

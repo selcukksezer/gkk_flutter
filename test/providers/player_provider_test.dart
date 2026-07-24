@@ -27,6 +27,7 @@ PlayerProfile _sampleProfile() {
     email: 's@example.com',
     displayName: null,
     avatarUrl: null,
+    avatarFrame: null,
     level: 10,
     xp: 100,
     gold: 500,

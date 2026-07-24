@@ -136,6 +136,8 @@ class PvpTournamentData {
     required this.prizePool,
     required this.rounds,
     required this.status,
+    this.minParticipants = 2,
+    this.cancelReason,
   });
 
   final String title;
@@ -145,6 +147,8 @@ class PvpTournamentData {
   final int prizePool;
   final List<PvpTournamentRound> rounds;
   final String status;
+  final int minParticipants;
+  final String? cancelReason;
 
   factory PvpTournamentData.empty() => const PvpTournamentData(
         title: 'Haftalık PvP Turnuvası',
@@ -339,6 +343,8 @@ class PvpTournamentNotifier extends Notifier<PvpTournamentState> {
           prizePool: _asInt(data['prize_pool'], fallback: 10000),
           rounds: rounds,
           status: data['status'] as String? ?? 'registration',
+          minParticipants: _asInt(data['min_participants'], fallback: 2),
+          cancelReason: data['cancel_reason']?.toString(),
         ),
       );
     } catch (e) {

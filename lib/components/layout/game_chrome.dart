@@ -9,6 +9,7 @@ import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_controller.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/services/app_foreground_service.dart';
+import '../../core/utils/cosmetic_title.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../l10n/l10n.dart';
@@ -19,6 +20,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../screens/chat/chat_screen.dart';
 import '../common/profile_avatar.dart';
+import '../common/cosmetic_title_badge.dart';
 import 'game_quick_menu.dart';
 import 'live_ticker.dart';
 import '../notifications/notification_inbox_ui.dart';
@@ -211,6 +213,13 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
+                                  if (hasCosmeticTitle(profile?.cosmeticTitle)) ...<Widget>[
+                                    const SizedBox(height: 2),
+                                    CosmeticTitleBadge(
+                                      titleKey: profile!.cosmeticTitle,
+                                      compact: true,
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),

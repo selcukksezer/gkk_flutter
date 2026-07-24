@@ -1,6 +1,6 @@
 {
   "failed": 0,
-  "generated_at": "2026-07-21T17:29:07.657015+00:00",
+  "generated_at": "2026-07-24T15:41:30.066251+00:00",
   "passed": 12,
   "tests": [
     {
@@ -115,7 +115,7 @@
     {
       "area": "equip",
       "detail": {
-        "row_id": "d82898be-401d-4b6c-bba7-6c12f7894b86",
+        "row_id": "321c3de4-2a75-4a15-aacc-5be60d3d8290",
         "slot": "weapon",
         "success": true
       },
@@ -127,8 +127,8 @@
       "detail": {
         "first": {
           "gems_spent": 1,
-          "opening_id": "18211783-03b6-4e3d-b7dd-55a43ee6a1d8",
-          "opens_at": "2026-07-21T17:29:07.657015+00:00",
+          "opening_id": "fe49c2a4-b776-45e5-bd63-97b020324724",
+          "opens_at": "2026-07-24T15:41:30.066251+00:00",
           "success": true
         },
         "second": {
