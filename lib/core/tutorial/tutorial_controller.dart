@@ -161,6 +161,8 @@ class TutorialController extends Notifier<TutorialState> {
       return;
     }
 
+    if (_maybeStartDailyChain(route)) return;
+
     // Soft-paused different track: don't replace until that track resumes
     // or completes — except when paused track != route track and route track
     // is incomplete (user left mid-flow intentionally).
@@ -319,6 +321,28 @@ class TutorialController extends Notifier<TutorialState> {
       completedStepIds: state.progress.stepsForTrack(trackId),
       playerLevel: _playerLevelHint,
     );
+  }
+
+  bool _maybeStartDailyChain(String route) {
+    if (state.progress.skippedAll) return false;
+    if (!state.progress.coreCompleted) return false;
+    if (isTrackComplete(TutorialTrackId.dailyChain)) return false;
+    if (hasActiveTrack && !state.overlayPaused) return false;
+
+    final TutorialStepV2? next = TutorialTrackRegistry.nextDailyChainStep(
+      state.progress.stepsForTrack(TutorialTrackId.dailyChain),
+    );
+    if (next == null) {
+      _completeTrack(TutorialTrackId.dailyChain);
+      return false;
+    }
+    if (!_routeAllowed(route, next.allowedRoutes)) return false;
+
+    if (hasActiveTrack && state.overlayPaused) {
+      state = state.copyWith(clearActive: true);
+    }
+    _startTrack(TutorialTrackId.dailyChain, force: true);
+    return true;
   }
 
   bool allowsNavTab(int tabIndex) {

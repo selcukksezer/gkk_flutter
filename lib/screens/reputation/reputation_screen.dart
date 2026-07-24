@@ -340,6 +340,38 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
     );
   }
 
+  Future<void> _spendReputation(_Faction faction) async {
+    if (faction.rep < 10) return;
+    try {
+      final dynamic result = await SupabaseService.client.rpc(
+        'spend_faction_reputation',
+        params: <String, dynamic>{
+          'p_faction_id': faction.id,
+          'p_rep_cost': 10,
+          'p_perk_key': 'energy_refill',
+        },
+      );
+      if (result is Map && result['success'] == false) {
+        if (mounted) {
+          AppMessenger.showError(
+            context,
+            result['error']?.toString() ?? 'İtibar harcanamadı',
+          );
+        }
+        return;
+      }
+      setState(() => faction.rep = (faction.rep - 10).clamp(0, 100));
+      await ref.read(playerProvider.notifier).loadProfile();
+      if (mounted) {
+        AppMessenger.showSuccess(context, '+20 enerji! (-10 ${faction.name} itibarı)');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppMessenger.showError(context, 'İtibar harcanamadı: $e');
+      }
+    }
+  }
+
   Future<void> _donate(_Faction faction, int goldAmount) async {
     try {
       await SupabaseService.client.rpc(
@@ -463,6 +495,20 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
                     const SizedBox(height: 8),
                     ...faction.tasks.map((_FactionTask t) => _buildTask(t)),
                     const SizedBox(height: 8),
+                    if (faction.rep >= 10)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _spendReputation(faction),
+                          icon: const Icon(Icons.bolt_outlined, size: 16),
+                          label: const Text('İtibar Harca — +20 Enerji (10 rep)'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF60A5FA),
+                            side: const BorderSide(color: Color(0xFF60A5FA)),
+                          ),
+                        ),
+                      ),
+                    if (faction.rep >= 10) const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(

@@ -1362,7 +1362,7 @@ class AppLocalizationsTr extends AppLocalizations {
       'Polis baskini nedeniyle gecici olarak kapali.';
 
   @override
-  String get mekani_yonet => 'Mekani Yonet';
+  String get mekani_yonet => 'Mekanı Yönet';
 
   @override
   String get toplam => 'Toplam';
@@ -1377,26 +1377,26 @@ class AppLocalizationsTr extends AppLocalizations {
   String get mekan_yok => 'Mekan yok';
 
   @override
-  String get canli_ekonomi => 'CANLI EKONOMI';
+  String get canli_ekonomi => 'CANLI EKONOMİ';
 
   @override
-  String get han_ticaret_agi => 'HAN TICARET AGI';
+  String get han_ticaret_agi => 'HAN TİCARET AĞI';
 
   @override
   String get mekan_ac_iksir_sat_sohret_kazan_arenada_dovus_kaca =>
-      'Mekan ac, iksir sat, sohret kazan. Arenada dövüş, kaçak ticaretle imparatorluk kur.';
+      'Mekan aç, iksir sat, şöhret kazan. Arenada dövüş, kaçak ticaretle imparatorluk kur.';
 
   @override
-  String get benim_mekanim => 'Benim Mekanim';
+  String get benim_mekanim => 'Benim Mekanım';
 
   @override
-  String get sohret_siralamasi => 'Şöhret Sıralamasi';
+  String get sohret_siralamasi => 'Şöhret Sıralaması';
 
   @override
-  String get en_unlu_mekanlar => 'En unlu mekanlar';
+  String get en_unlu_mekanlar => 'En ünlü mekanlar';
 
   @override
-  String get mekanin_yok => 'Mekanin yok';
+  String get mekanin_yok => 'Mekanın yok';
 
   @override
   String get the_vault => 'THE VAULT';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/l10n.dart';
 import '../../models/mekan_model.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_screen_background.dart';
@@ -24,6 +25,9 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
   Map<String, List<MekanStockPeek>> _stockPreviews =
       <String, List<MekanStockPeek>>{};
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _offset = 0;
   String? _error;
   String _filter = 'all';
 
@@ -33,46 +37,70 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool reset = true}) async {
     if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (reset) {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _offset = 0;
+        _hasMore = true;
+      });
+    }
     try {
       final MekanRepository repo = ref.read(mekanRepositoryProvider);
-      final List<Mekan> mekans = await repo.fetchAllMekans();
-      List<MekanLeaderboardRow> lb = <MekanLeaderboardRow>[];
-      try {
-        lb = await repo.fetchFameLeaderboard(limit: 10);
-      } catch (_) {
-        // leaderboard RPC optional; ignore if not yet applied
+      final int pageSize = MekanRepository.defaultPageSize;
+      final List<Mekan> page = await repo.fetchAllMekans(
+        limit: pageSize,
+        offset: reset ? 0 : _offset,
+      );
+      List<MekanLeaderboardRow> lb = _leaderboard;
+      if (reset) {
+        try {
+          lb = await repo.fetchFameLeaderboard(limit: 10);
+        } catch (_) {
+          // leaderboard RPC optional; ignore if not yet applied
+        }
       }
-      Map<String, List<MekanStockPeek>> previews =
-          <String, List<MekanStockPeek>>{};
-      try {
-        previews = await repo.fetchStockPreviews(
-          mekans.map((Mekan m) => m.id).toList(growable: false),
-        );
-      } catch (_) {
-        // önizleme opsiyonel; hata olursa kartlar ikonsuz kalır
+      final List<Mekan> merged = reset ? page : <Mekan>[..._mekans, ...page];
+      Map<String, List<MekanStockPeek>> previews = _stockPreviews;
+      if (page.isNotEmpty) {
+        try {
+          final Map<String, List<MekanStockPeek>> newPreviews =
+              await repo.fetchStockPreviews(page.map((Mekan m) => m.id).toList(growable: false));
+          previews = reset
+              ? newPreviews
+              : <String, List<MekanStockPeek>>{...previews, ...newPreviews};
+        } catch (_) {
+          // önizleme opsiyonel
+        }
       }
       if (mounted) {
         setState(() {
-          _mekans = mekans;
+          _mekans = merged;
           _leaderboard = lb;
           _stockPreviews = previews;
+          _offset = merged.length;
+          _hasMore = page.length >= pageSize;
           _loading = false;
+          _loadingMore = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _loading = false;
+          _loadingMore = false;
           _error = e.toString();
         });
       }
     }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _loading) return;
+    setState(() => _loadingMore = true);
+    await _load(reset: false);
   }
 
   List<Mekan> get _filtered =>
@@ -80,6 +108,7 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     ref.listen<int>(mekanHubRefreshProvider, (int? prev, int next) {
       if (prev != null && next != prev) {
         _load();
@@ -89,11 +118,11 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
     final int openCount = _mekans.where((Mekan m) => m.isOpen).length;
 
     return MekanHubScaffold(
-      title: 'Han Agi',
+      title: l10n.mekanlar,
       body: RefreshIndicator(
         color: MekanPalette.aqua,
         backgroundColor: MekanPalette.navy,
-        onRefresh: _load,
+        onRefresh: () => _load(reset: true),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: <Widget>[
@@ -111,10 +140,10 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
                 hasScrollBody: false,
                 child: MekanEmpty(
                   icon: Icons.cloud_off_rounded,
-                  title: 'Yuklenemedi',
+                  title: l10n.mekan_bulunamadi,
                   message: _error!,
                   accent: MekanPalette.ruby,
-                  action: NeonButton(label: 'Tekrar Dene', icon: Icons.refresh_rounded, onPressed: _load, expand: false),
+                  action: NeonButton(label: l10n.commonRetry, icon: Icons.refresh_rounded, onPressed: () => _load(reset: true), expand: false),
                 ),
               )
             else if (_filtered.isEmpty)
@@ -122,17 +151,17 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
                 hasScrollBody: false,
                 child: MekanEmpty(
                   icon: Icons.storefront_rounded,
-                  title: 'Mekan yok',
-                  message: 'Bu turde acik mekan bulunamadi. Ilk mekani sen ac.',
+                  title: l10n.mekan_yok,
+                  message: l10n.mekan_ac_iksir_sat_sohret_kazan_arenada_dovus_kaca,
                   action: NeonButton(
-                    label: 'Mekan Ac',
+                    label: l10n.mekan_ac,
                     icon: Icons.add_business_rounded,
                     onPressed: () => context.go(AppRoutes.mekanCreate),
                     expand: false,
                   ),
                 ),
               )
-            else
+            else ...<Widget>[
               SliverPadding(
                 padding: GameScrollLayout.fromLTRB(context, left: 14, top: 4, right: 14),
                 sliver: SliverList.separated(
@@ -151,6 +180,19 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
                   },
                 ),
               ),
+              if (_hasMore && _filter == 'all')
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
+                    child: NeonButton(
+                      label: _loadingMore ? '...' : 'Daha fazla yükle',
+                      icon: Icons.expand_more_rounded,
+                      onPressed: _loadingMore ? null : _loadMore,
+                      expand: true,
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
       ),

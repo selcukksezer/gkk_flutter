@@ -40,4 +40,7 @@ abstract final class TutorialRoutes {
   static const String crafting = '/crafting';
   static const String facilities = '/facilities';
   static const String pvp = '/pvp';
+  static const String guild = '/guild';
+  static const String guildWar = '/guild-war';
+  static const String dungeonSiegeHub = '/dungeon/siege';
 }

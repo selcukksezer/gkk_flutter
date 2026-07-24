@@ -308,6 +308,90 @@ abstract final class TutorialTrackRegistry {
         ),
       ],
     ),
+    TutorialTrack(
+      id: TutorialTrackId.dailyChain,
+      steps: <TutorialStepV2>[
+        TutorialStepV2(
+          id: 'daily_d1_dungeon',
+          trackId: TutorialTrackId.dailyChain,
+          title: 'Gün 1 — Zindan',
+          body: 'Günlük hedef: zindana gir, loot topla, güçlen.',
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Anladım',
+          allowedRoutes: <String>[TutorialRoutes.dungeon],
+        ),
+        TutorialStepV2(
+          id: 'daily_d2_inventory',
+          trackId: TutorialTrackId.dailyChain,
+          title: 'Gün 2 — Envanter',
+          body: 'Eşyalarını düzenle, silahını kuşan, gücünü kontrol et.',
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Devam',
+          allowedRoutes: <String>[TutorialRoutes.inventory],
+          requiresPrior: <String>['daily_d1_dungeon'],
+        ),
+        TutorialStepV2(
+          id: 'daily_d3_craft',
+          trackId: TutorialTrackId.dailyChain,
+          title: 'Gün 3 — Craft',
+          body: 'Üretim yaparak kaynak dönüştür. Altın maliyetini kontrol et.',
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Devam',
+          allowedRoutes: <String>[TutorialRoutes.crafting],
+          requiresPrior: <String>['daily_d2_inventory'],
+        ),
+        TutorialStepV2(
+          id: 'daily_d4_guild',
+          trackId: TutorialTrackId.dailyChain,
+          title: 'Gün 4 — Lonca',
+          body: 'Loncana katıl veya lonca panelini keşfet. Takım bonusları güç verir.',
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Devam',
+          allowedRoutes: <String>[TutorialRoutes.guild],
+          requiresPrior: <String>['daily_d3_craft'],
+        ),
+        TutorialStepV2(
+          id: 'daily_d5_pvp',
+          trackId: TutorialTrackId.dailyChain,
+          title: 'Gün 5 — PvP',
+          body: 'Arena\'da rakiplerine meydan oku. Benzer güçte eşleş.',
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Devam',
+          allowedRoutes: <String>[TutorialRoutes.pvp],
+          requiresPrior: <String>['daily_d4_guild'],
+        ),
+        TutorialStepV2(
+          id: 'daily_d6_market',
+          trackId: TutorialTrackId.dailyChain,
+          title: 'Gün 6 — Pazar',
+          body: 'Pazarda al-sat yap. Ekonominin kalbi burada atar.',
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Devam',
+          allowedRoutes: <String>[TutorialRoutes.market],
+          requiresPrior: <String>['daily_d5_pvp'],
+        ),
+        TutorialStepV2(
+          id: 'daily_d7_siege',
+          trackId: TutorialTrackId.dailyChain,
+          title: 'Gün 7 — Kuşatma',
+          body: 'Kuşatma slotu tut veya lonca savaşına katıl. Prime saatlerde bonus.',
+          mode: TutorialMode.narrative,
+          completion: TutorialCompletion.onManualDismiss,
+          primaryLabel: 'Tamamla',
+          allowedRoutes: <String>[
+            TutorialRoutes.dungeonSiegeHub,
+            TutorialRoutes.guildWar,
+          ],
+          requiresPrior: <String>['daily_d6_market'],
+        ),
+      ],
+    ),
   ];
 
   static TutorialTrack? trackById(String id) {
@@ -341,5 +425,14 @@ abstract final class TutorialTrackRegistry {
       out.add(step);
     }
     return out;
+  }
+
+  /// Next D1–D7 step if daily chain is in progress.
+  static TutorialStepV2? nextDailyChainStep(Set<String> completedStepIds) {
+    final List<TutorialStepV2> eligible = eligibleSteps(
+      trackId: TutorialTrackId.dailyChain,
+      completedStepIds: completedStepIds,
+    );
+    return eligible.isEmpty ? null : eligible.first;
   }
 }

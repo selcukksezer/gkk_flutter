@@ -12,11 +12,22 @@ abstract final class TutorialTrackId {
   static const String shop = 'shop';
   static const String season = 'season';
   static const String quests = 'quests';
+  static const String dailyChain = 'daily_chain';
 
   static const List<String> coreTracks = <String>[
     onboarding,
     dungeon,
     inventory,
+  ];
+
+  static const List<String> dailyChainStepIds = <String>[
+    'daily_d1_dungeon',
+    'daily_d2_inventory',
+    'daily_d3_craft',
+    'daily_d4_guild',
+    'daily_d5_pvp',
+    'daily_d6_market',
+    'daily_d7_siege',
   ];
 }
 

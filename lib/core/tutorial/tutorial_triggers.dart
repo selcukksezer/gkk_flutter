@@ -48,49 +48,22 @@ abstract final class TutorialTriggers {
     await controller.startTrack(TutorialTrackId.shop);
   }
 
-  static Future<void> onInventoryFull(BuildContext context, WidgetRef ref) async {
+  /// Banka öğreticisini hazırla — dialog göstermez.
+  static Future<void> prepareBankTutorialForInventoryFull(WidgetRef ref) async {
     final TutorialController controller = ref.read(tutorialProvider.notifier);
-    if (!controller.isTrackComplete(TutorialTrackId.onboarding)) {
-      if (context.mounted) await _legacyBankDialog(context);
-      return;
-    }
-    if (controller.hasActiveTrack) {
-      if (context.mounted) await _legacyBankDialog(context);
-      return;
-    }
+    if (!controller.isTrackComplete(TutorialTrackId.onboarding)) return;
+    if (controller.hasActiveTrack) return;
     if (!controller.isTrackComplete(TutorialTrackId.bank)) {
       await controller.startTrack(TutorialTrackId.bank);
     }
-    if (!context.mounted) return;
-    final String? activeTrack = ref.read(tutorialProvider).activeTrackId;
-    if (activeTrack == TutorialTrackId.bank) return;
-    await _legacyBankDialog(context);
+  }
+
+  @Deprecated('Use BankTutorial.maybeShowInventoryFullDialog')
+  static Future<void> onInventoryFull(BuildContext context, WidgetRef ref) async {
+    await prepareBankTutorialForInventoryFull(ref);
   }
 
   static Future<void> onAnchorTap(WidgetRef ref, String anchorId) async {
     await ref.read(tutorialProvider.notifier).onAnchorTap(anchorId);
-  }
-
-  static Future<void> _legacyBankDialog(BuildContext context) async {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141B2A),
-        title: const Text(
-          'Envanterin Dolu',
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        content: const Text(
-          'Bankaya eşya koyarak yer açabilirsin.',
-          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Tamam'),
-          ),
-        ],
-      ),
-    );
   }
 }

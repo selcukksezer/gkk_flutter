@@ -65,13 +65,11 @@ void main() {
       expect(TutorialRouteTracks.trackForRoute('/unknown'), isNull);
     });
 
-    test('no daily retention tracks in v2', () {
-      for (final TutorialTrack track in TutorialTrackRegistry.tracks) {
-        expect(track.id.startsWith('daily'), isFalse);
-        for (final TutorialStepV2 step in track.steps) {
-          expect(step.id.startsWith('d_day'), isFalse);
-        }
-      }
+    test('daily chain track registered', () {
+      final TutorialTrack? daily =
+          TutorialTrackRegistry.trackById(TutorialTrackId.dailyChain);
+      expect(daily, isNotNull);
+      expect(daily!.steps.length, 7);
     });
   });
 }

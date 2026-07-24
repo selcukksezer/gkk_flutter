@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../components/common/item_icon_view.dart';
 import '../../../components/layout/game_screen_background.dart';
+import '../../../core/utils/craft_gold.dart';
 import '../../../models/crafting_model.dart';
 import '../../../providers/crafting_provider.dart';
 import '../crafting_utils.dart';
@@ -16,6 +17,8 @@ class CraftingPreviewPanel extends StatelessWidget {
     required this.isCrafting,
     required this.hasEnoughMaterials,
     required this.canAffordGems,
+    required this.canAffordGold,
+    required this.playerGold,
     required this.ownedQuantities,
     required this.onCraft,
     required this.onClose,
@@ -30,6 +33,8 @@ class CraftingPreviewPanel extends StatelessWidget {
   final bool isCrafting;
   final bool hasEnoughMaterials;
   final bool canAffordGems;
+  final bool canAffordGold;
+  final int playerGold;
   final Map<String, int> ownedQuantities;
   final VoidCallback onCraft;
   final VoidCallback onClose;
@@ -67,6 +72,8 @@ class CraftingPreviewPanel extends StatelessWidget {
 
     final bool showGemError = !canAffordGems && gemCost > 0;
     final bool showMatError = !hasEnoughMaterials;
+    final int totalGoldCost = totalCraftGoldCost(recipe!, batchCount);
+    final bool showGoldError = recipe!.goldCost > 0 && !canAffordGold;
 
     return Container(
       width: double.infinity,
@@ -237,8 +244,8 @@ class CraftingPreviewPanel extends StatelessWidget {
               if (recipe!.goldCost > 0)
                 _CraftingInfoChip(
                   icon: Icons.paid_rounded,
-                  label: '${recipe!.goldCost} 🪙',
-                  color: const Color(0xFFFDE68A),
+                  label: '$totalGoldCost 🪙',
+                  color: showGoldError ? Colors.redAccent : const Color(0xFFFDE68A),
                 ),
               _CraftingInfoChip(
                 icon: Icons.auto_awesome_rounded,
@@ -313,6 +320,7 @@ class CraftingPreviewPanel extends StatelessWidget {
             ),
           ),
           if (showGemError) _buildErrorBox('⚠️ Elmas yetersiz'),
+          if (showGoldError) _buildErrorBox('⚠️ Altın yetersiz ($playerGold / $totalGoldCost)'),
           if (showMatError) _buildErrorBox('⚠️ Malzeme yetersiz'),
           const SizedBox(height: 10),
           Row(

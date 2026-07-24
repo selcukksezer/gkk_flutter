@@ -122,9 +122,10 @@ class MekanRepository {
     return list;
   }
 
-  /// Sayfalı çekim: tüm mekanları client'a yüklemek 1000+ ölçekte OOM/jank
-  /// yapıyordu (QA bulgusu). Varsayılan 100 satır, fame'e göre sıralı.
-  Future<List<Mekan>> fetchAllMekans({int limit = 100, int offset = 0}) async {
+  /// Sayfalı çekim — varsayılan 20 satır; fame'e göre sıralı.
+  static const int defaultPageSize = 20;
+
+  Future<List<Mekan>> fetchAllMekans({int limit = defaultPageSize, int offset = 0}) async {
     final dynamic res = await SupabaseService.client
         .from('mekans')
         .select('*')

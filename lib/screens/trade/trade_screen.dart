@@ -29,7 +29,7 @@ class TradeScreen extends ConsumerStatefulWidget {
   ConsumerState<TradeScreen> createState() => _TradeScreenState();
 }
 
-class _TradeScreenState extends ConsumerState<TradeScreen> {
+class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingObserver {
   int _tabIndex = 0;
   String _tradeStatus = 'idle';
   String _partnerName = '';
@@ -70,9 +70,12 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
   bool _canDirectTradeItem(InventoryItem item) =>
       item.isTradeable && (item.isDirectTradeable ?? true);
 
+  static const Duration _sessionPollInterval = Duration(seconds: 5);
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     ref.listenManual<TradeInviteState>(
       tradeInviteProvider,
       (TradeInviteState? previous, TradeInviteState next) {
@@ -94,14 +97,22 @@ class _TradeScreenState extends ConsumerState<TradeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stopSessionPolling();
     _searchController.dispose();
     _goldController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _sessionId != null) {
+      unawaited(_refreshTradeSession());
+    }
+  }
+
   void _startSessionPolling() {
-    _sessionPollTimer ??= Timer.periodic(const Duration(seconds: 2), (_) {
+    _sessionPollTimer ??= Timer.periodic(_sessionPollInterval, (_) {
       unawaited(_refreshTradeSession());
     });
   }

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/craft_gold.dart';
 import '../../../models/crafting_model.dart';
 import '../../../providers/crafting_provider.dart';
 import '../../../providers/inventory_provider.dart';
@@ -57,14 +58,21 @@ Future<void> showCraftingRecipePreviewDialog({
                   }
 
                   final double playerGems = playerState.profile?.gems ?? 0;
+                  final int playerGold = playerState.profile?.gold ?? 0;
                   final int gemCost = (craftState.selectedBatchCount - 1).clamp(0, craftingBatchLimit);
                   final bool canAffordGems = playerGems >= gemCost;
+                  final bool canAffordGold = canAffordCraftGold(
+                    playerGold: playerGold,
+                    recipe: selectedRecipe,
+                    batchCount: craftState.selectedBatchCount,
+                  );
                   final bool hasEnoughMaterials = hasMaterials(
                     selectedRecipe,
                     batchCount: craftState.selectedBatchCount,
                   );
                   final bool canCraft = hasEnoughMaterials &&
                       canAffordGems &&
+                      canAffordGold &&
                       !craftState.isCrafting &&
                       craftState.queue.length < craftingQueueLimit;
 
@@ -83,6 +91,8 @@ Future<void> showCraftingRecipePreviewDialog({
                       isCrafting: craftState.isCrafting,
                       hasEnoughMaterials: hasEnoughMaterials,
                       canAffordGems: canAffordGems,
+                      canAffordGold: canAffordGold,
+                      playerGold: playerGold,
                       ownedQuantities: ownedQuantities,
                       onCraft: () async {
                         final bool ok = await onCraft();

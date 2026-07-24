@@ -207,15 +207,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     }
                   },
                 ),
-                SwitchListTile(
+                ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text('${context.l10n.otomatik_sava} (yakında)'),
+                  title: Text(context.l10n.otomatik_sava),
                   subtitle: const Text(
                     'PvP ve zindan otomatik savaş henüz bağlı değil',
                     style: TextStyle(color: Colors.white38, fontSize: 12),
                   ),
-                  value: false,
-                  onChanged: null,
+                  leading: const Icon(Icons.smart_toy_outlined, color: Colors.white38),
                 ),
               ],
             ),
