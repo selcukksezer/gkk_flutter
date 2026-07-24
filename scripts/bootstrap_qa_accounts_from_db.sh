@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Export top QA accounts from Supabase for multi-account action audit.
 # Passwords are NOT stored in DB — uses known QA password pattern from create script.
+#
+# Requires one of:
+#   - supabase CLI linked to project: supabase db query --linked
+#   - DATABASE_URL + psql (direct Postgres connection string)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,10 +26,9 @@ echo "==> Bootstrap QA accounts (limit=${LIMIT})"
 SQL="
 SELECT email, id::text AS auth_id
 FROM auth.users
-WHERE email ILIKE '%qa%'
-   OR email ILIKE '%test%'
-   OR email ILIKE '%smoke%'
-   OR email ILIKE '%bot%'
+WHERE email ILIKE '%@gkk.test'
+   OR email ILIKE '%@sim.local'
+   OR email ILIKE 'qa_%@%'
 ORDER BY
   CASE
     WHEN email LIKE 'qa_smoke_%@gkk.test' THEN 0
@@ -61,30 +64,61 @@ EOF
   exit 0
 fi
 
-python3 - <<'PY' "${OUT_JSON}.raw" "${OUT_JSON}" "${OUT_ENV}" "${PRIMARY_PASS}" "${BOT_PASS}"
-import json, re, sys
-raw_path, out_json, out_env, primary_pass, bot_pass = sys.argv[1:6]
+python3 - <<'PY' "${OUT_JSON}.raw" "${OUT_JSON}" "${OUT_ENV}" "${PRIMARY_PASS}" "${BOT_PASS}" "${P0_PASS}"
+import json, sys
+raw_path, out_json, out_env, primary_pass, bot_pass, p0_pass = sys.argv[1:7]
 raw = open(raw_path, encoding='utf-8').read().strip()
-rows = []
-if '"rows"' in raw:
-    try:
-        wrapper = json.loads(raw[raw.find('{'):raw.rfind('}')+1])
-        rows = wrapper.get('rows') or []
-    except json.JSONDecodeError:
-        pass
-if not rows:
-    for line in raw.splitlines():
-        if '|' in line:
+
+def parse_rows(text: str) -> list:
+    if not text:
+        return []
+    if '|' in text and not text.lstrip().startswith(('[', '{')):
+        rows = []
+        for line in text.splitlines():
+            if '|' not in line:
+                continue
             email, auth_id = line.split('|', 1)
             rows.append({'email': email.strip(), 'auth_id': auth_id.strip()})
+        return rows
+    start = text.find('[') if '[' in text else text.find('{')
+    if start < 0:
+        return []
+    end_char = ']' if text[start] == '[' else '}'
+    end = text.rfind(end_char)
+    if end < start:
+        return []
+    try:
+        parsed = json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return []
+    if isinstance(parsed, list):
+        return parsed
+    if isinstance(parsed, dict):
+        return parsed.get('rows') or []
+    return []
+
+rows = parse_rows(raw)
 
 pairs = []
 for row in rows:
     email = row.get('email') or row.get('Email')
     if not email:
         continue
-    pwd = bot_pass if '@sim.local' in email else primary_pass
+    if email.endswith('@sim.local'):
+        pwd = bot_pass
+    elif email == 'qa_smoke_p0@gkk.test':
+        pwd = p0_pass
+    else:
+        pwd = primary_pass
     pairs.append((email, pwd))
+
+if not pairs:
+    pairs = [
+        ('qa_smoke_primary@gkk.test', primary_pass),
+        ('qa_smoke_secondary@gkk.test', primary_pass),
+        ('qa_smoke_p0@gkk.test', p0_pass),
+    ]
+    print('WARN: parsed 0 rows — using create_qa_integration_accounts.sh defaults', file=sys.stderr)
 
 with open(out_json, 'w', encoding='utf-8') as f:
     json.dump({'count': len(pairs), 'accounts': [{'email': e, 'auth_id': r.get('auth_id')} for e, r in zip([p[0] for p in pairs], rows)]}, f, indent=2)

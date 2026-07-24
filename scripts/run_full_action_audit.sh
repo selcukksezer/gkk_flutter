@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # Full 350-action QA audit — DB RPC layer + sharded integration taps.
+#
+# Requires one of:
+#   - supabase CLI linked to project: supabase db query --linked
+#   - DATABASE_URL + psql (direct Postgres connection string)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -36,7 +40,16 @@ if command -v supabase >/dev/null 2>&1; then
 fi
 
 if [[ "$RPC_OK" == "0" ]] && [[ -n "${DATABASE_URL:-}" ]] && command -v psql >/dev/null 2>&1; then
-  psql "${DATABASE_URL}" -At -c "$SQL" > "${RPC_RAW}" && RPC_OK=1
+  if psql "${DATABASE_URL}" -At -c "$SQL" > "${RPC_RAW}"; then
+    RPC_OK=1
+  fi
+fi
+
+if [[ "$RPC_OK" == "0" ]]; then
+  echo "ERROR: RPC audit query failed."
+  echo "  Set DATABASE_URL (Postgres) or run: supabase link && supabase db query --linked"
+  echo "  Migration required: supabase/migrations/20260725_030000_qa_full_action_audit.sql"
+  exit 1
 fi
 
 if [[ "$RPC_OK" == "1" ]]; then
@@ -44,28 +57,57 @@ if [[ "$RPC_OK" == "1" ]]; then
 import json, re, sys
 raw_path, out_path = sys.argv[1], sys.argv[2]
 raw = open(raw_path, encoding='utf-8').read().strip()
-data = None
-if '"rows"' in raw:
+
+def parse_payload(text: str):
+    if not text:
+        return None
+    if '|' in text and not text.lstrip().startswith(('[', '{')):
+        line = text.splitlines()[0].strip()
+        if line.startswith('{') or line.startswith('['):
+            text = line
+    start = text.find('[') if '[' in text else text.find('{')
+    if start < 0:
+        return None
+    end_char = ']' if text[start] == '[' else '}'
+    end = text.rfind(end_char)
+    if end < start:
+        return None
     try:
-        wrapper = json.loads(raw[raw.find('{'):raw.rfind('}')+1])
-        if wrapper.get('rows'):
-            row = wrapper['rows'][0]
-            data = row.get('qa_full_action_audit') or next(iter(row.values()))
+        parsed = json.loads(text[start:end + 1])
     except json.JSONDecodeError:
-        pass
+        return None
+    if isinstance(parsed, dict) and parsed.get('rows'):
+        parsed = parsed['rows'][0]
+    if isinstance(parsed, list) and parsed:
+        parsed = parsed[0]
+    if isinstance(parsed, dict):
+        data = parsed.get('qa_full_action_audit') or next(iter(parsed.values()), None)
+        if isinstance(data, str):
+            data = json.loads(data)
+        return data
+    return None
+
+data = parse_payload(raw)
 if data is None:
     m = re.search(r'\{.*\}', raw, re.S)
     if m:
-        data = json.loads(m.group(0))
-if isinstance(data, str):
-    data = json.loads(data)
+        try:
+            data = json.loads(m.group(0))
+            if isinstance(data, dict) and 'qa_full_action_audit' in data:
+                data = data['qa_full_action_audit']
+                if isinstance(data, str):
+                    data = json.loads(data)
+        except json.JSONDecodeError:
+            data = None
+
+if not isinstance(data, dict):
+    print('ERROR: could not parse qa_full_action_audit payload', file=sys.stderr)
+    sys.exit(1)
+
 with open(out_path, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 print('RPC audit verdict:', data.get('verdict'))
 PY
-else
-  echo "WARN: RPC audit skipped — apply migration 20260725_030000_qa_full_action_audit.sql"
-fi
 
 echo "==> Step 3: Integration auto_tap shards (${SHARD_TOTAL} jobs)"
 INTEGRATION_OK=1
