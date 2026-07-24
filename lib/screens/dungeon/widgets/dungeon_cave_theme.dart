@@ -456,7 +456,7 @@ class CaveCardTheme {
   }
 }
 
-/// Carved/inset text — layered offset, no TextStyle shadows.
+/// Carved/inset text — plain face, no stacked shadow layers.
 class DungeonInsetText extends StatelessWidget {
   const DungeonInsetText(
     this.text, {
@@ -480,38 +480,19 @@ class DungeonInsetText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color faceColor = color ?? const Color(0xFFE8EEF7);
-    final TextStyle base = (style ?? const TextStyle()).copyWith(
+    final TextStyle face = (style ?? const TextStyle()).copyWith(
       shadows: null,
+      decoration: TextDecoration.none,
+      decorationThickness: 0,
       color: faceColor,
     );
-    final TextStyle depth = base.copyWith(
-      color: Colors.black.withValues(alpha: 0.72),
-    );
-    final TextStyle face = base.copyWith(
-      color: faceColor.withValues(alpha: 0.9),
-    );
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: <Widget>[
-        Transform.translate(
-          offset: depthOffset,
-          child: Text(
-            text,
-            style: depth,
-            maxLines: maxLines,
-            overflow: overflow,
-            textAlign: textAlign,
-          ),
-        ),
-        Text(
-          text,
-          style: face,
-          maxLines: maxLines,
-          overflow: overflow,
-          textAlign: textAlign,
-        ),
-      ],
+    return Text(
+      text,
+      style: face,
+      maxLines: maxLines,
+      overflow: overflow,
+      textAlign: textAlign,
     );
   }
 }
@@ -527,6 +508,8 @@ abstract final class CaveTextStyle {
         fontWeight: FontWeight.w800,
         color: color,
         height: 1.1,
+        decoration: TextDecoration.none,
+        decorationThickness: 0,
       );
 
   static TextStyle body({
@@ -538,6 +521,8 @@ abstract final class CaveTextStyle {
         fontWeight: FontWeight.w500,
         color: color,
         height: 1.3,
+        decoration: TextDecoration.none,
+        decorationThickness: 0,
       );
 
   static TextStyle label({
@@ -549,6 +534,8 @@ abstract final class CaveTextStyle {
         fontWeight: FontWeight.w700,
         color: color,
         letterSpacing: 0.7,
+        decoration: TextDecoration.none,
+        decorationThickness: 0,
       );
 }
 

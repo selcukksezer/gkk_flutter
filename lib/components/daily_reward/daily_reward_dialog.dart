@@ -228,7 +228,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                     )
                   : Text(
                       'Gün ${status.cycleDay} Ödülünü Al',
-                      style: GoogleFonts.exo2(
+                      style: GoogleFonts.urbanist(
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
                       ),
@@ -250,7 +250,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                 status.claimedToday
                     ? 'Yarın tekrar gel — Gün ${status.cycleDay >= status.cycleLength ? 1 : status.cycleDay + 1}'
                     : 'Kapat',
-                style: GoogleFonts.exo2(fontWeight: FontWeight.w600),
+                style: GoogleFonts.urbanist(fontWeight: FontWeight.w600),
               ),
             ),
           const SizedBox(height: 8),
@@ -312,7 +312,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
             children: <Widget>[
               Text(
                 '20 Günlük Ödül Yolu',
-                style: GoogleFonts.exo2(
+                style: GoogleFonts.urbanist(
                   color: AppColors.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -348,7 +348,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                   status.canClaim
                       ? '${status.streakLength + 1} gün'
                       : '${status.streakLength} gün',
-                  style: GoogleFonts.exo2(
+                  style: GoogleFonts.urbanist(
                     color: _DailyRewardTheme.gold,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
@@ -407,7 +407,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
             ),
             child: Text(
               '${day.cycleDay}',
-              style: GoogleFonts.exo2(
+              style: GoogleFonts.urbanist(
                 color: accent,
                 fontWeight: FontWeight.w900,
                 fontSize: 13,
@@ -416,7 +416,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
           )
         : Text(
             '${day.cycleDay}',
-            style: GoogleFonts.exo2(
+            style: GoogleFonts.urbanist(
               color: isCompleted
                   ? AppColors.success
                   : (isEpic ? accent : AppColors.textSecondary),
@@ -511,7 +511,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                 ),
                 child: Text(
                   day.cycleDay == 20 ? 'EFS' : '★',
-                  style: GoogleFonts.exo2(
+                  style: GoogleFonts.urbanist(
                     color: Colors.white,
                     fontSize: 7,
                     fontWeight: FontWeight.w900,
@@ -595,7 +595,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
             children: <Widget>[
               Text(
                 'Bugünün Ödülü',
-                style: GoogleFonts.exo2(
+                style: GoogleFonts.urbanist(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
@@ -623,7 +623,7 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                   ),
                   child: Text(
                     grant.cycleDay == 20 ? 'EFSANE' : 'BONUS',
-                    style: GoogleFonts.exo2(
+                    style: GoogleFonts.urbanist(
                       color: accent,
                       fontSize: 9,
                       fontWeight: FontWeight.w900,

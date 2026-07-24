@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../components/common/universal_game_dialog.dart';
 import '../../../core/utils/gold_format.dart';
 import '../../../theme/app_colors.dart';
+import '../../../theme/app_text_styles.dart';
 
 class InventoryQuantityActionDialog extends StatefulWidget {
   const InventoryQuantityActionDialog({
@@ -57,27 +58,18 @@ class _InventoryQuantityActionDialogState
               children: <Widget>[
                 Text(
                   widget.title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppTextStyles.dialogTitle,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   widget.subtitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: AppColors.mutedTitanium,
-                  ),
+                  style: AppTextStyles.dialogBody,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Miktar: $_quantity / ${widget.maxQuantity}',
-                  style: const TextStyle(
+                  style: AppTextStyles.bodyBold.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 Slider(
@@ -97,9 +89,8 @@ class _InventoryQuantityActionDialogState
                 if (widget.showTotalValue)
                   Text(
                     '${formatCompactGold(total)} altin alacaksin',
-                    style: const TextStyle(
+                    style: AppTextStyles.bodyBold.copyWith(
                       color: AppColors.liquidGold,
-                      fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
                   ),

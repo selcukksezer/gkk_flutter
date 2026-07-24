@@ -3,8 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../theme/app_text_styles.dart';
 
-/// Evrensel oyun diyalogu — blur, dot pattern, Liquid Gold onay, Obsidian iptal.
+/// Evrensel oyun diyalogu — blur, opak panel, Liquid Gold onay, Obsidian iptal.
 abstract final class UniversalGameDialog {
   static Future<bool?> show(
     BuildContext context, {
@@ -150,23 +151,9 @@ abstract final class UniversalGameDialog {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
+                        Text(title, style: AppTextStyles.dialogTitle),
                         const SizedBox(height: 10),
-                        Text(
-                          message,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 1.45,
-                            color: AppColors.mutedTitanium,
-                          ),
-                        ),
+                        Text(message, style: AppTextStyles.dialogBody),
                         const SizedBox(height: 14),
                         ...choices.map(
                           (UniversalDialogChoice<T> choice) => Padding(
@@ -241,26 +228,12 @@ class _DialogShell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          Text(title, style: AppTextStyles.dialogTitle),
           const SizedBox(height: 10),
           if (body != null)
             body!
           else if (message.isNotEmpty)
-            Text(
-              message,
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.45,
-                color: AppColors.mutedTitanium,
-              ),
-            ),
+            Text(message, style: AppTextStyles.dialogBody),
           const SizedBox(height: 16),
           if (cancelLabel != null && onCancel != null)
             Row(
@@ -302,63 +275,35 @@ class UniversalDialogPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            AppColors.spaceNavy.withValues(alpha: 0.97),
-            AppColors.carbonVoid.withValues(alpha: 0.99),
+    return DefaultTextStyle(
+      style: AppTextStyles.dialogBody,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              AppColors.spaceNavy.withValues(alpha: 0.97),
+              AppColors.carbonVoid.withValues(alpha: 0.99),
+            ],
+          ),
+          border: Border.all(color: borderColor),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: borderColor.withValues(alpha: 0.22),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
-        border: Border.all(color: borderColor),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: borderColor.withValues(alpha: 0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: Stack(
-          children: <Widget>[
-            const Positioned.fill(
-              child: CustomPaint(painter: _DotPainter(spacing: 13, opacity: 0.07)),
-            ),
-            Padding(padding: padding, child: child),
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Padding(padding: padding, child: child),
         ),
       ),
     );
   }
-}
-
-class _DotPainter extends CustomPainter {
-  const _DotPainter({required this.spacing, required this.opacity});
-
-  final double spacing;
-  final double opacity;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = AppColors.mutedTitanium.withValues(alpha: opacity)
-      ..style = PaintingStyle.fill;
-
-    for (double x = spacing / 2; x < size.width; x += spacing) {
-      for (double y = spacing / 2; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.0, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DotPainter oldDelegate) =>
-      spacing != oldDelegate.spacing || opacity != oldDelegate.opacity;
 }
 
 class _GoldButton extends StatelessWidget {
@@ -391,11 +336,7 @@ class _GoldButton extends StatelessWidget {
             child: Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.carbonVoid,
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-              ),
+              style: AppTextStyles.dialogButton,
             ),
           ),
         ),
@@ -430,11 +371,7 @@ class _ObsidianButton extends StatelessWidget {
             child: Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.mutedTitanium,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-              ),
+              style: AppTextStyles.dialogButtonMuted,
             ),
           ),
         ),

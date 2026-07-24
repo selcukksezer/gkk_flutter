@@ -96,18 +96,26 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
             GlobalCupertinoLocalizations.delegate,
           ],
           builder: (BuildContext context, Widget? child) {
-            return TutorialHost(
-              child: LevelUpHost(
-                child: ConnectivityGate(
-                  child: child ??
-                      const ColoredBox(
-                        color: AppColors.carbonVoid,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.liquidGold,
+            final TextStyle baseText = Theme.of(context).textTheme.bodyMedium ??
+                AppTheme.dark.textTheme.bodyMedium!;
+            return DefaultTextStyle(
+              style: baseText.copyWith(
+                decoration: TextDecoration.none,
+                decorationThickness: 0,
+              ),
+              child: TutorialHost(
+                child: LevelUpHost(
+                  child: ConnectivityGate(
+                    child: child ??
+                        const ColoredBox(
+                          color: AppColors.carbonVoid,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.liquidGold,
+                            ),
                           ),
                         ),
-                      ),
+                  ),
                 ),
               ),
             );

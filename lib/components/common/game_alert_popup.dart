@@ -1,10 +1,9 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_colors.dart';
-import '../layout/game_screen_background.dart';
+import '../../theme/app_text_styles.dart';
 
 /// Accent variant for [GameAlertPopup].
 enum GameAlertVariant { success, error, warning, info }
@@ -150,15 +149,6 @@ class _GameAlertPopupState extends State<GameAlertPopup>
                     ),
                     child: Stack(
                       children: <Widget>[
-                        const Positioned.fill(
-                          child: CustomPaint(
-                            painter: DotGridPainter(
-                              spacing: 18,
-                              dotRadius: 1.0,
-                              dotOpacity: 0.06,
-                            ),
-                          ),
-                        ),
                         Positioned(
                           top: 0,
                           left: 0,
@@ -205,22 +195,16 @@ class _GameAlertPopupState extends State<GameAlertPopup>
                               Text(
                                 title,
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.urbanist(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
+                                style: AppTextStyles.dialogTitle.copyWith(
                                   letterSpacing: 2.4,
-                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 10),
                               Text(
                                 widget.message,
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.urbanist(
+                                style: AppTextStyles.dialogBody.copyWith(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.45,
-                                  color: AppColors.mutedTitanium,
                                 ),
                               ),
                               const SizedBox(height: 22),
@@ -347,9 +331,10 @@ class _AlertButton extends StatelessWidget {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.urbanist(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
+            style: (filled
+                    ? AppTextStyles.dialogButton
+                    : AppTextStyles.dialogButtonMuted)
+                .copyWith(
               letterSpacing: 1.4,
               color: filled ? AppColors.carbonVoid : accent,
             ),
