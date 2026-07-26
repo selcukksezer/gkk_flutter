@@ -320,7 +320,9 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_inserted BOOLEAN := false;
-  v_row RECORD;
+  v_display_name TEXT;
+  v_rarity TEXT;
+  v_zone TEXT;
 BEGIN
   IF p_player_id IS NULL OR p_type IS NULL OR p_key IS NULL THEN
     RETURN jsonb_build_object('discovered', false);
@@ -329,23 +331,22 @@ BEGIN
   INSERT INTO public.player_codex_entries (player_id, entry_type, entry_key)
   VALUES (p_player_id, p_type, p_key)
   ON CONFLICT DO NOTHING
-  RETURNING * INTO v_row;
+  RETURNING true INTO v_inserted;
 
-  v_inserted := FOUND;
+  v_inserted := COALESCE(v_inserted, false);
 
-  IF v_inserted THEN
-    SELECT cc.display_name, cc.rarity, cc.zone INTO v_row
-    FROM public.codex_catalog cc
-    WHERE cc.entry_type = p_type AND cc.entry_key = p_key;
-  END IF;
+  SELECT cc.display_name, cc.rarity, cc.zone
+  INTO v_display_name, v_rarity, v_zone
+  FROM public.codex_catalog cc
+  WHERE cc.entry_type = p_type AND cc.entry_key = p_key;
 
   RETURN jsonb_build_object(
     'discovered', v_inserted,
     'entry_type', p_type,
     'entry_key', p_key,
-    'display_name', COALESCE(v_row.display_name, p_key),
-    'rarity', v_row.rarity,
-    'zone', v_row.zone
+    'display_name', COALESCE(v_display_name, p_key),
+    'rarity', v_rarity,
+    'zone', v_zone
   );
 END;
 $$;

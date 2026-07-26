@@ -71,9 +71,13 @@ void main() {
         <String, dynamic>{
           'completed_steps': <String>[
             'onboarding_welcome',
+            'onboarding_game_loop',
+            'onboarding_home_promo',
+            'onboarding_home_hero',
             'onboarding_hud_energy',
             'onboarding_hud_gold',
             'onboarding_hud_gems',
+            'onboarding_nav_intro',
             'onboarding_tap_dungeon_tab',
           ],
         },
@@ -81,7 +85,7 @@ void main() {
       );
       expect(
         merged.stepsForTrack(TutorialTrackId.onboarding).length,
-        greaterThanOrEqualTo(5),
+        greaterThanOrEqualTo(9),
       );
       expect(merged.isTrackComplete(TutorialTrackId.onboarding), isTrue);
     });
@@ -101,7 +105,7 @@ void main() {
         restored.stepsForTrack(TutorialTrackId.inventory),
         original.stepsForTrack(TutorialTrackId.inventory),
       );
-      expect(restored.version, 2);
+      expect(restored.version, 3);
     });
 
     test('skipAll sets skipped flag and all tracks', () {

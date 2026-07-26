@@ -53,6 +53,8 @@ class UseItemResult {
 bool isInventoryLootBox(String itemId) => itemId.startsWith('box_');
 const String kStatResetScrollItemId = 'scroll_stat_reset';
 bool isStatResetScroll(String itemId) => itemId == kStatResetScrollItemId;
+const String kNameChangeScrollItemId = 'scroll_name_change';
+bool isNameChangeScroll(String itemId) => itemId == kNameChangeScrollItemId;
 
 abstract class InventoryRepository {
   Future<InventorySnapshot> fetchInventory();
@@ -67,6 +69,10 @@ abstract class InventoryRepository {
   Future<OpenLootBoxResult> openLootBox({required String rowId});
   Future<bool> useDetox({required String rowId});
   Future<UseItemResult> useStatResetScroll({required String rowId});
+  Future<UseItemResult> useNameChangeScroll({
+    required String rowId,
+    required String newDisplayName,
+  });
   Future<bool> splitStack({required String rowId, required int splitQuantity, required int targetSlot});
   Future<SellItemResult> sellItemByRow({required String rowId, required int quantity});
   Future<bool> trashItem({required String rowId});
@@ -445,6 +451,59 @@ class SupabaseInventoryRepository implements InventoryRepository {
       throw AppException(
         'Stat sifirlama basarisiz.',
         code: 'INVENTORY_USE_STAT_RESET_FAILED',
+      );
+    }
+  }
+
+  @override
+  Future<UseItemResult> useNameChangeScroll({
+    required String rowId,
+    required String newDisplayName,
+  }) async {
+    if (!SupabaseService.isConfigured || !SupabaseService.isInitialized) {
+      throw AppException(
+        'Supabase baglantisi hazir degil. Once app_constants.dart degerlerini guncelleyin.',
+        code: 'SUPABASE_NOT_CONFIGURED',
+      );
+    }
+
+    try {
+      final String? userId = SupabaseService.client.auth.currentUser?.id;
+      if (userId == null) {
+        throw AppException('Oturum bulunamadi.', code: 'NOT_AUTHENTICATED');
+      }
+
+      final dynamic result = await SupabaseService.client.rpc(
+        'use_name_change_scroll',
+        params: <String, dynamic>{
+          'p_row_id': rowId,
+          'p_new_display_name': newDisplayName,
+          'p_user_id': userId,
+        },
+      );
+
+      if (result is! Map) {
+        return const UseItemResult(success: false, message: 'Gecersiz yanit');
+      }
+
+      final Map<String, dynamic> data = Map<String, dynamic>.from(result);
+      if (data['success'] == true) {
+        return UseItemResult(
+          success: true,
+          message: data['message']?.toString() ?? 'Görünen isim güncellendi',
+        );
+      }
+
+      return UseItemResult(
+        success: false,
+        message: data['error']?.toString() ?? 'İsim değiştirilemedi.',
+      );
+    } on AppException {
+      rethrow;
+    } catch (_) {
+      throw AppException(
+        'İsim değiştirilemedi.',
+        code: 'INVENTORY_USE_NAME_CHANGE_FAILED',
       );
     }
   }

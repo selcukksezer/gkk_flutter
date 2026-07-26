@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/player_model.dart';
 import '../../providers/daily_reward_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/staff_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -380,7 +381,17 @@ class _MenuGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<GameMenuItem> menuItems = buildGameMenuItems(context.l10n);
+    final bool isStaff = ref.watch(staffProvider).profile.isStaff;
+    final List<GameMenuItem> menuItems = <GameMenuItem>[
+      ...buildGameMenuItems(context.l10n),
+      if (isStaff)
+        const GameMenuItem(
+          label: 'Staff',
+          icon: Icons.admin_panel_settings,
+          route: AppRoutes.staffHub,
+          accentColor: AppColors.gold,
+        ),
+    ];
     return GameFixedGrid(
       crossAxisCount: 4,
       spacing: 8,

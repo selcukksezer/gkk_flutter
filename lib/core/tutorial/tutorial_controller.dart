@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../qa/qa_flags.dart';
+import 'home_live_flags.dart';
 import 'tutorial_anchor_registry.dart';
+import 'tutorial_navigation.dart';
 import 'tutorial_persistence.dart';
 import 'tutorial_step.dart';
 import 'tutorial_track.dart';
@@ -84,6 +86,7 @@ class TutorialController extends Notifier<TutorialState> {
       );
       return;
     }
+    await HomeLiveFlags.load();
     final TutorialProgressState progress = await TutorialPersistence.load();
     state = state.copyWith(loaded: true, progress: progress);
     _maybeForceTrack();
@@ -174,6 +177,14 @@ class TutorialController extends Notifier<TutorialState> {
       state = state.copyWith(clearActive: true);
     }
 
+    // Shop complete → optional night market coach on same route.
+    if (trackId == TutorialTrackId.shop && isTrackComplete(trackId)) {
+      if (!isTrackComplete(TutorialTrackId.nightMarket) && !hasActiveTrack) {
+        _startTrack(TutorialTrackId.nightMarket);
+      }
+      return;
+    }
+
     if (isTrackComplete(trackId)) return;
     if (hasActiveTrack) return;
     _startTrack(trackId);
@@ -201,6 +212,12 @@ class TutorialController extends Notifier<TutorialState> {
       overlayPaused: false,
     );
     TutorialAnchorRegistry.instance.scheduleRefresh();
+    if (_lastRoute != null &&
+        step.allowedRoutes.isNotEmpty &&
+        !_routeAllowed(_lastRoute!, step.allowedRoutes)) {
+      state = state.copyWith(overlayPaused: true);
+      _maybeAutoNavigate(step);
+    }
   }
 
   Future<void> onAnchorTap(String anchorId) async {
@@ -253,6 +270,7 @@ class TutorialController extends Notifier<TutorialState> {
         trackId: trackId,
         completedStepIds: next.stepsForTrack(trackId),
         playerLevel: _playerLevelHint,
+        homeLive: HomeLiveFlags.livelinessHome,
       );
 
       if (remaining.isEmpty) {
@@ -275,8 +293,11 @@ class TutorialController extends Notifier<TutorialState> {
         activeStep: nextStep,
         overlayPaused: pauseForRoute,
       );
-      await TutorialPersistence.save(next);
+      await TutorialPersistence.save(next.clearHardResetFlag());
       TutorialAnchorRegistry.instance.scheduleRefresh();
+      if (pauseForRoute) {
+        _maybeAutoNavigate(nextStep);
+      }
     } finally {
       _completing = false;
     }
@@ -303,6 +324,70 @@ class TutorialController extends Notifier<TutorialState> {
     await TutorialPersistence.save(next);
   }
 
+  /// Clears progress and restarts onboarding (settings replay).
+  Future<void> resetAndReplay({String trackId = TutorialTrackId.onboarding}) async {
+    await TutorialPersistence.hardReset();
+    await HomeLiveFlags.load();
+    final TutorialProgressState next =
+        TutorialProgressState.initial(hardReset: true);
+    _lastRoute = TutorialRoutes.home;
+    state = state.copyWith(
+      progress: next,
+      clearActive: true,
+      loaded: true,
+      overlayPaused: false,
+    );
+    _startTrack(trackId, force: true);
+    await TutorialPersistence.save(state.progress.clearHardResetFlag());
+  }
+
+  /// Call after navigating home from settings replay.
+  Future<void> ensureVisibleOnRoute(String route) async {
+    _lastRoute = route;
+    if (state.progress.skippedAll) return;
+    if (!hasActiveTrack) {
+      _startTrack(TutorialTrackId.onboarding, force: true);
+    }
+    state = state.copyWith(overlayPaused: false);
+    TutorialAnchorRegistry.instance.scheduleRefresh();
+    await onRouteEnter(route);
+  }
+
+  Future<void> navigateToActiveStepRoute() async {
+    final TutorialStepV2? step = state.activeStep;
+    if (step == null) return;
+    final String? route = step.navigateToRoute ?? step.preferredRoute;
+    if (route == null) return;
+    await TutorialNavigationBridge.go(route);
+    await onRouteEnter(route);
+  }
+
+  String? get pausedRouteHint {
+    if (!state.overlayPaused || state.activeStep == null) return null;
+    final String? route =
+        state.activeStep!.navigateToRoute ?? state.activeStep!.preferredRoute;
+    if (route == null) return null;
+    return TutorialRouteLabels.labelFor(route);
+  }
+
+  void _maybeAutoNavigate(TutorialStepV2 step) {
+    if (!step.autoNavigateWhenPaused) return;
+    final String? route = step.navigateToRoute ?? step.preferredRoute;
+    if (route == null || _lastRoute == null) return;
+    if (_routeAllowed(_lastRoute!, <String>[route])) return;
+    TutorialNavigationBridge.go(route);
+  }
+
+  /// Marks a progress flag (e.g. bank full dialog) without completing a step.
+  Future<void> setProgressFlag(String flag) async {
+    if (state.progress.hasFlag(flag)) return;
+    final TutorialProgressState next = state.progress.withFlag(flag);
+    state = state.copyWith(progress: next);
+    await TutorialPersistence.save(next);
+  }
+
+  bool hasProgressFlag(String flag) => state.progress.hasFlag(flag);
+
   /// Starts a track only when nothing else is active (or same track).
   /// Does not interrupt onboarding / mid-flow coaching.
   Future<void> startTrack(String trackId) async {
@@ -320,6 +405,7 @@ class TutorialController extends Notifier<TutorialState> {
       trackId: trackId,
       completedStepIds: state.progress.stepsForTrack(trackId),
       playerLevel: _playerLevelHint,
+      homeLive: HomeLiveFlags.livelinessHome,
     );
   }
 
@@ -349,12 +435,17 @@ class TutorialController extends Notifier<TutorialState> {
     final TutorialStepV2? step = state.activeStep;
     if (step == null || state.overlayPaused) return true;
 
-    // Spotlight on a nav tab → only that tab is tappable.
     if (step.anchorId != null && step.anchorId!.startsWith('nav.')) {
       return anchorForNavIndex(tabIndex) == step.anchorId;
     }
 
     if (step.trackId != TutorialTrackId.onboarding) return true;
+
+    // Narrative onboarding steps: allow nav so player can follow coach marks.
+    if (step.mode == TutorialMode.narrative ||
+        step.mode == TutorialMode.waitEvent) {
+      return true;
+    }
     return false;
   }
 

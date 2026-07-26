@@ -1,91 +1,187 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LiveTicker extends StatefulWidget {
+import '../../models/live_ticker_model.dart';
+import '../../providers/live_ticker_provider.dart';
+import 'ticker_design.dart';
+
+/// Single-line announcement strip.
+/// One notice at a time → slides ~8s → after 3 global server passes, retired for everyone.
+class LiveTicker extends ConsumerStatefulWidget {
   const LiveTicker({super.key});
 
   @override
-  State<LiveTicker> createState() => _LiveTickerState();
+  ConsumerState<LiveTicker> createState() => _LiveTickerState();
 }
 
-class _LiveTickerState extends State<LiveTicker> with SingleTickerProviderStateMixin {
-  late AnimationController _scrollController;
+class _LiveTickerState extends ConsumerState<LiveTicker>
+    with SingleTickerProviderStateMixin {
+  static const Duration _passDuration = Duration(milliseconds: 8000);
 
-  final List<String> _feedItems = [
-    "🔥 Ahmet Efsanevi Kılıç düşürdü!",
-    "⚔️ Klan X Zindanı temizledi",
-    "📈 Pazarda Altın fiyatları arttı",
-    "💀 Shadow23 arenada namağlup",
-  ];
+  late final AnimationController _ctrl;
+  String? _playingId;
+  String _playingText = '';
+  LiveTickerVisual _playingVisual = LiveTickerVisual.forType('ambient');
+  double _textWidth = 0;
+  bool _kickStarted = false;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = AnimationController(
-       vsync: this,
-       duration: const Duration(seconds: 15),
-    )..repeat();
+    _ctrl = AnimationController(vsync: this, duration: _passDuration);
+    _ctrl.addStatusListener(_onStatus);
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _ctrl.removeStatusListener(_onStatus);
+    _ctrl.dispose();
     super.dispose();
+  }
+
+  void _onStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed || !mounted) return;
+    ref.read(liveTickerProvider.notifier).onPassComplete();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncAndPlay(forceRestart: true);
+    });
+  }
+
+  void _measureText(String text) {
+    final TextPainter painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    _textWidth = painter.width + 8;
+  }
+
+  void _syncAndPlay({bool forceRestart = false}) {
+    final LiveTickerItem? head = ref.read(liveTickerProvider).current;
+    final String nextId = head?.id ?? 'fallback:quiet';
+    final String nextText =
+        head?.text ?? '🌌 Kamp sessiz… yeni efsaneler yazılıyor.';
+    final LiveTickerVisual nextVisual =
+        head?.visual ?? LiveTickerVisual.forType('ambient');
+
+    final bool changed = nextId != _playingId || nextText != _playingText;
+    if (!changed && !forceRestart && _ctrl.isAnimating) return;
+
+    _playingId = nextId;
+    _playingText = nextText;
+    _playingVisual = nextVisual;
+    _measureText(nextText);
+    _ctrl
+      ..duration = _passDuration
+      ..forward(from: 0);
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    // A glassmorphism horizontal bar
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF161E34).withOpacity(0.4),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return ExcludeSemantics(
-                child: Stack(
-                  children: [
-                    AnimatedBuilder(
-                      animation: _scrollController,
-                      builder: (context, child) {
-                        // Move from right to left
-                        final offset = (1.0 - _scrollController.value) * constraints.maxWidth * 2 - constraints.maxWidth;
-                        return Positioned(
-                          left: offset,
-                          top: 6,
-                          child: child!,
-                        );
-                      },
-                      child: Row(
-                        children: _feedItems.map((item) => Padding(
-                          padding: const EdgeInsets.only(right: 40),
+    final LiveTickerItem? current = ref.watch(
+      liveTickerProvider.select((LiveTickerState s) => s.current),
+    );
+
+    final String headId = current?.id ?? 'fallback:quiet';
+    final String text =
+        current?.text ?? '🌌 Kamp sessiz… yeni efsaneler yazılıyor.';
+    final LiveTickerVisual visual =
+        current?.visual ?? LiveTickerVisual.forType('ambient');
+
+    if (!_kickStarted) {
+      _kickStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncAndPlay(forceRestart: true);
+      });
+    } else if (headId != _playingId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncAndPlay();
+      });
+    }
+
+    if (visual.icon != _playingVisual.icon && headId == _playingId) {
+      _playingVisual = visual;
+    }
+
+    return TickerGlassShell(
+      accent: _playingVisual.accent,
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        height: 32,
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double viewW = constraints.maxWidth;
+            final double tw = _textWidth > 0 ? _textWidth : viewW * 0.75;
+
+            return Row(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    _playingVisual.icon,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                Expanded(
+                  child: ExcludeSemantics(
+                    child: ClipRect(
+                      child: AnimatedBuilder(
+                        animation: _ctrl,
+                        builder: (BuildContext context, Widget? child) {
+                          final double start = viewW * 0.95;
+                          final double end = -tw;
+                          final double left = start +
+                              (end - start) *
+                                  Curves.linear.transform(_ctrl.value);
+                          return Stack(
+                            clipBehavior: Clip.hardEdge,
+                            children: <Widget>[
+                              Positioned(
+                                left: left,
+                                top: 0,
+                                bottom: 0,
+                                child: child!,
+                              ),
+                            ],
+                          );
+                        },
+                        child: Align(
+                          alignment: Alignment.centerLeft,
                           child: ShaderMask(
-                            shaderCallback: (bounds) => const LinearGradient(
-                              colors: [Colors.white, Color(0xFFFFD700), Colors.white],
-                              stops: [0.0, 0.5, 1.0],
+                            shaderCallback: (Rect bounds) => LinearGradient(
+                              colors: <Color>[
+                                TickerPalette.textHi,
+                                _playingVisual.accent,
+                                TickerPalette.textHi,
+                              ],
+                              stops: const <double>[0.0, 0.5, 1.0],
                             ).createShader(bounds),
                             child: Text(
-                              item,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                              text,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Colors.white,
+                                height: 1.1,
+                              ),
                             ),
                           ),
-                        )).toList(),
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              );
-            }
-          ),
+                const SizedBox(width: 8),
+              ],
+            );
+          },
         ),
       ),
     );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../components/player/player_name_label.dart';
+import '../../../core/tutorial/tutorial_anchor.dart';
+import '../../../core/tutorial/tutorial_track.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/guild_model.dart';
 import '../guild_helpers.dart';
@@ -12,10 +15,12 @@ class GuildMemberView extends StatelessWidget {
     required this.myRole,
     required this.memberActionLoading,
     required this.onMemberTap,
+    this.onStaffMemberAction,
     required this.onLeave,
     required this.leaveLabel,
     required this.onGuildWar,
     required this.onMonument,
+    required this.onVault,
     required this.onRefresh,
     this.onEditMinJoinPower,
   });
@@ -25,10 +30,12 @@ class GuildMemberView extends StatelessWidget {
   final GuildRole myRole;
   final bool memberActionLoading;
   final Future<void> Function(GuildMemberData) onMemberTap;
+  final void Function(GuildMemberData)? onStaffMemberAction;
   final VoidCallback onLeave;
   final String leaveLabel;
   final VoidCallback onGuildWar;
   final VoidCallback onMonument;
+  final VoidCallback onVault;
   final Future<void> Function() onRefresh;
   final VoidCallback? onEditMinJoinPower;
 
@@ -46,7 +53,9 @@ class GuildMemberView extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: <Widget>[
-            Container(
+            TutorialAnchorScope(
+              id: TutorialAnchorId.guildHeader,
+              child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.black26,
@@ -114,10 +123,16 @@ class GuildMemberView extends StatelessWidget {
                 ],
               ),
             ),
+            ),
             const SizedBox(height: 14),
-            Row(
+            TutorialAnchorScope(
+              id: TutorialAnchorId.guildJoinBtn,
+              child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: <Widget>[
-                Expanded(
+                SizedBox(
+                  width: 160,
                   child: OutlinedButton.icon(
                     onPressed: onGuildWar,
                     icon: const Icon(Icons.flag_rounded, size: 16),
@@ -127,8 +142,8 @@ class GuildMemberView extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
+                SizedBox(
+                  width: 160,
                   child: OutlinedButton.icon(
                     onPressed: onMonument,
                     icon: const Icon(Icons.account_balance_rounded, size: 16),
@@ -138,16 +153,31 @@ class GuildMemberView extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: onLeave,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
-                    foregroundColor: Colors.red,
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton.icon(
+                    onPressed: onVault,
+                    icon: const Icon(Icons.savings_rounded, size: 16),
+                    label: const Text('Lonca Kasası'),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFFFB800)),
+                      foregroundColor: const Color(0xFFFFB800),
+                    ),
                   ),
-                  child: Text(leaveLabel),
                 ),
               ],
+            ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton(
+                onPressed: onLeave,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  foregroundColor: Colors.red,
+                ),
+                child: Text(leaveLabel),
+              ),
             ),
             const SizedBox(height: 18),
             Row(
@@ -179,6 +209,15 @@ class GuildMemberView extends StatelessWidget {
                   isMe: member.playerId == myPlayerId,
                   canAct: myRole != GuildRole.member && member.playerId != myPlayerId,
                   onTap: () => onMemberTap(member),
+                  onLongPress: onStaffMemberAction != null && member.userId != null
+                      ? () => onStaffMemberAction!(member)
+                      : null,
+                  onStaffTap: onStaffMemberAction != null &&
+                          member.userId != null &&
+                          member.userId!.isNotEmpty &&
+                          member.playerId != myPlayerId
+                      ? () => onStaffMemberAction!(member)
+                      : null,
                 ),
               ),
           ],
@@ -195,18 +234,23 @@ class GuildMemberTile extends StatelessWidget {
     required this.isMe,
     required this.canAct,
     required this.onTap,
+    this.onLongPress,
+    this.onStaffTap,
   });
 
   final GuildMemberData member;
   final bool isMe;
   final bool canAct;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onStaffTap;
 
   @override
   Widget build(BuildContext context) {
     final bool online = member.isOnline == true;
     return GestureDetector(
       onTap: canAct ? onTap : null,
+      onLongPress: onLongPress,
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -239,13 +283,17 @@ class GuildMemberTile extends StatelessWidget {
                         style: const TextStyle(fontSize: 13),
                       ),
                       const SizedBox(width: 5),
-                      Text(
-                        member.username,
+                      PlayerNameLabel(
+                        username: member.username,
+                        staffBadge: member.staffBadge,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                           color: isMe ? const Color(0xFF8BAEFF) : Colors.white,
                         ),
+                        compactBadge: true,
+                        showUsername: false,
+                        onTap: onStaffTap,
                       ),
                       if (isMe)
                         const Text(

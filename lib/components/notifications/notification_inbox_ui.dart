@@ -26,6 +26,8 @@ Future<void> handleNotificationTap(
       await showDailyRewardDialog(context, ref, viewOnly: false);
     case NotificationKind.chatMessage:
       await showChatModal(context);
+    case NotificationKind.bugReportUpdate:
+      context.push(AppRoutes.myBugReports);
     default:
       final String? path = item.routePath;
       if (path != null && path.isNotEmpty) {

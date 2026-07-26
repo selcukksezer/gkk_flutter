@@ -81,6 +81,7 @@ class GuildMemberData {
     required this.power,
     this.isOnline,
     this.contribution,
+    this.staffBadge,
   });
 
   final String playerId;
@@ -91,6 +92,7 @@ class GuildMemberData {
   final int power;
   final bool? isOnline;
   final int? contribution;
+  final String? staffBadge;
 
   factory GuildMemberData.fromJson(Map<String, dynamic> json) {
     return GuildMemberData(
@@ -104,6 +106,7 @@ class GuildMemberData {
       contribution: json['contribution'] == null
           ? null
           : _asInt(json['contribution']),
+      staffBadge: json['staff_badge']?.toString(),
     );
   }
 

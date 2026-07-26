@@ -26,6 +26,8 @@ class ChatDmPanel extends StatelessWidget {
     required this.onMutePeer,
     required this.onLeaveConversation,
     required this.onMuteSender,
+    this.canModerateMessages = false,
+    this.onModerateMessage,
   });
 
   final ChatUserSummary? activePeer;
@@ -46,6 +48,8 @@ class ChatDmPanel extends StatelessWidget {
   final VoidCallback onMutePeer;
   final VoidCallback onLeaveConversation;
   final void Function(String senderId, String senderName) onMuteSender;
+  final bool canModerateMessages;
+  final void Function(ChatMessage message, String action)? onModerateMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +110,7 @@ class ChatDmPanel extends StatelessWidget {
                           borderRadius: BorderRadius.circular(ChatDesignSystem.radiusLg),
                         ),
                         child: ListView(
+                          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: EdgeInsets.zero,
                           shrinkWrap: true,
                           children: <Widget>[
@@ -205,6 +210,7 @@ class ChatDmPanel extends StatelessWidget {
                                   ),
                                 )
                               : ListView.separated(
+                                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                                   padding: const EdgeInsets.all(ChatDesignSystem.spaceMd),
                                   itemCount: dmConversations.length,
                                   separatorBuilder: (BuildContext context, int index) => const SizedBox(height: ChatDesignSystem.spaceSm),
@@ -310,6 +316,8 @@ class ChatDmPanel extends StatelessWidget {
             isOwnSender: isOwnSender,
             isUserOnline: isUserOnline,
             onMuteSender: onMuteSender,
+            canModerateMessages: canModerateMessages,
+            onModerateMessage: onModerateMessage,
           ),
         ),
       ],

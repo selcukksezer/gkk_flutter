@@ -302,6 +302,7 @@ class InventoryItemDetailPanel extends StatelessWidget {
     final bool canEquip = item.equipSlot != EquipSlot.none;
     final bool canUse =
         isStatResetScroll(item.itemId) ||
+        isNameChangeScroll(item.itemId) ||
         item.itemType == ItemType.potion ||
         item.itemType == ItemType.consumable ||
         item.potionType != PotionType.none ||

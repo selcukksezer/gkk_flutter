@@ -213,6 +213,7 @@ class GameNotificationScheduler {
       NotificationKind.nightMarketOpen ||
       NotificationKind.nightMarketEnding =>
         notif.isNightMarketEnabled,
+      NotificationKind.bugReportUpdate => true,
     };
   }
 

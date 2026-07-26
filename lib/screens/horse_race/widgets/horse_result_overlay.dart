@@ -82,7 +82,9 @@ class _HorseResultOverlayState extends ConsumerState<HorseResultOverlay> {
   @override
   Widget build(BuildContext context) {
     final HorseRaceState raceState = ref.watch(horseRaceProvider);
-    final String? winnerId = raceState.round.winnerHorseId;
+    final String? winnerId = raceState.round.raceScript.winnerId.isNotEmpty
+        ? raceState.round.raceScript.winnerId
+        : raceState.round.winnerHorseId;
     HorseRaceEntry? winner;
     for (final HorseRaceEntry h in raceState.horses) {
       if (h.horseId == winnerId) {

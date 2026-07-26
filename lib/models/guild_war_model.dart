@@ -189,6 +189,7 @@ class TerritoryData {
   final String name;
   final String? ownerGuildId;
   final String? ownerGuildName;
+  final String? ownerGuildTag;
   final int defensePower;
   final int baseDefensePower;
   final int gemDefenseBoost;
@@ -197,12 +198,19 @@ class TerritoryData {
   final String reward;
   final int tradeIncome;
   final int? zoneNumber;
+  final String? siegeDungeonId;
+  final String? siegeDungeonName;
+  final bool hasActiveSiegeSession;
+  final int attackGoldCost;
+  final int minDefenseGems;
+  final TerritoryVaultSummary? vaultSummary;
 
   const TerritoryData({
     required this.id,
     required this.name,
     this.ownerGuildId,
     this.ownerGuildName,
+    this.ownerGuildTag,
     this.defensePower = 0,
     this.baseDefensePower = 1000,
     this.gemDefenseBoost = 0,
@@ -211,6 +219,12 @@ class TerritoryData {
     this.reward = '',
     this.tradeIncome = 0,
     this.zoneNumber,
+    this.siegeDungeonId,
+    this.siegeDungeonName,
+    this.hasActiveSiegeSession = false,
+    this.attackGoldCost = 0,
+    this.minDefenseGems = 5,
+    this.vaultSummary,
   });
 
   bool get isUnclaimed =>
@@ -228,6 +242,7 @@ class TerritoryData {
       name: (json['name'] ?? '').toString(),
       ownerGuildId: json['owner_guild_id']?.toString(),
       ownerGuildName: json['owner_guild']?.toString(),
+      ownerGuildTag: json['owner_guild_tag']?.toString(),
       defensePower: defensePower,
       baseDefensePower: _asInt(json['base_defense_power'], fallback: 1000),
       gemDefenseBoost: gemBoost,
@@ -236,6 +251,16 @@ class TerritoryData {
       reward: (json['reward'] ?? '').toString(),
       tradeIncome: _asInt(json['trade_income']),
       zoneNumber: json['zone_number'] != null ? _asInt(json['zone_number']) : null,
+      siegeDungeonId: json['siege_dungeon_id']?.toString(),
+      siegeDungeonName: json['siege_dungeon_name']?.toString(),
+      hasActiveSiegeSession: json['has_active_siege_session'] == true,
+      attackGoldCost: _asInt(json['attack_gold_cost']),
+      minDefenseGems: _asInt(json['min_defense_gems'], fallback: 5),
+      vaultSummary: json['vault_summary'] is Map
+          ? TerritoryVaultSummary.fromJson(
+              Map<String, dynamic>.from(json['vault_summary'] as Map),
+            )
+          : null,
     );
   }
 }
@@ -347,7 +372,9 @@ class GuildWarAttackResult {
   final int pointsGained;
   final int attackPower;
   final int defensePower;
+  final int goldSpent;
   final String? territoryName;
+  final String? defenderGuildName;
   final String? error;
 
   const GuildWarAttackResult({
@@ -356,7 +383,9 @@ class GuildWarAttackResult {
     this.pointsGained = 0,
     this.attackPower = 0,
     this.defensePower = 0,
+    this.goldSpent = 0,
     this.territoryName,
+    this.defenderGuildName,
     this.error,
   });
 
@@ -367,8 +396,141 @@ class GuildWarAttackResult {
       pointsGained: _asInt(json['points_gained']),
       attackPower: _asInt(json['attack_power']),
       defensePower: _asInt(json['defense_power']),
+      goldSpent: _asInt(json['gold_spent']),
       territoryName: json['territory_name']?.toString(),
+      defenderGuildName: json['defender_guild_name']?.toString(),
       error: json['error']?.toString(),
+    );
+  }
+}
+
+class GuildWarGuildBrief {
+  const GuildWarGuildBrief({
+    required this.id,
+    required this.name,
+    this.tag,
+  });
+
+  final String id;
+  final String name;
+  final String? tag;
+
+  String get displayLabel {
+    final String? visibleTag = _visibleGuildTag(tag);
+    if (visibleTag != null) return '[$visibleTag] $name';
+    return name;
+  }
+
+  /// Skips color-like junk stored in `guilds.tag` (e.g. `d712bf59`).
+  static String? _visibleGuildTag(String? raw) {
+    if (raw == null) return null;
+    final String tag = raw.trim();
+    if (tag.isEmpty || tag.length > 6) return null;
+    if (RegExp(r'^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(tag)) return null;
+    if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(tag)) return null;
+    return tag.toUpperCase();
+  }
+
+  factory GuildWarGuildBrief.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const GuildWarGuildBrief(id: '', name: 'Sahipsiz');
+    }
+    return GuildWarGuildBrief(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '—').toString(),
+      tag: json['tag']?.toString(),
+    );
+  }
+}
+
+class TerritoryVaultSummary {
+  const TerritoryVaultSummary({
+    this.vaultGold = 0,
+    this.vaultGoldPending = 0,
+    this.isLeader = false,
+    this.canCollect = false,
+  });
+
+  final int vaultGold;
+  final int vaultGoldPending;
+  final bool isLeader;
+  final bool canCollect;
+
+  factory TerritoryVaultSummary.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const TerritoryVaultSummary();
+    return TerritoryVaultSummary(
+      vaultGold: _asInt(json['vault_gold']),
+      vaultGoldPending: _asInt(json['vault_gold_pending']),
+      isLeader: json['is_leader'] == true,
+      canCollect: json['can_collect'] == true,
+    );
+  }
+}
+
+class TerritoryAttackPreview {
+  const TerritoryAttackPreview({
+    required this.territoryId,
+    required this.territoryName,
+    this.tradeIncome = 0,
+    this.attackGoldCost = 0,
+    this.roiDays,
+    this.attackPower = 0,
+    this.defensePower = 0,
+    this.winChancePct = 0,
+    this.vaultGold = 0,
+    this.vaultGoldPending = 0,
+    this.canAfford = false,
+    this.attackerGuild = const GuildWarGuildBrief(id: '', name: '—'),
+    this.defenderGuild,
+    this.error,
+  });
+
+  final String territoryId;
+  final String territoryName;
+  final int tradeIncome;
+  final int attackGoldCost;
+  final double? roiDays;
+  final int attackPower;
+  final int defensePower;
+  final double winChancePct;
+  final int vaultGold;
+  final int vaultGoldPending;
+  final bool canAfford;
+  final GuildWarGuildBrief attackerGuild;
+  final GuildWarGuildBrief? defenderGuild;
+  final String? error;
+
+  factory TerritoryAttackPreview.fromJson(Map<String, dynamic> json) {
+    if (json['success'] == false) {
+      return TerritoryAttackPreview(
+        territoryId: '',
+        territoryName: '',
+        error: json['error']?.toString(),
+      );
+    }
+    final Map<String, dynamic>? defenderMap = json['defender_guild'] is Map
+        ? Map<String, dynamic>.from(json['defender_guild'] as Map)
+        : null;
+    return TerritoryAttackPreview(
+      territoryId: (json['territory_id'] ?? '').toString(),
+      territoryName: (json['territory_name'] ?? '').toString(),
+      tradeIncome: _asInt(json['trade_income']),
+      attackGoldCost: _asInt(json['attack_gold_cost']),
+      roiDays: json['roi_days'] is num ? (json['roi_days'] as num).toDouble() : null,
+      attackPower: _asInt(json['attack_power']),
+      defensePower: _asInt(json['defense_power']),
+      winChancePct: json['win_chance_pct'] is num
+          ? (json['win_chance_pct'] as num).toDouble()
+          : 0,
+      vaultGold: _asInt(json['vault_gold']),
+      vaultGoldPending: _asInt(json['vault_gold_pending']),
+      canAfford: json['can_afford'] == true,
+      attackerGuild: GuildWarGuildBrief.fromJson(
+        json['attacker_guild'] is Map
+            ? Map<String, dynamic>.from(json['attacker_guild'] as Map)
+            : null,
+      ),
+      defenderGuild: defenderMap != null ? GuildWarGuildBrief.fromJson(defenderMap) : null,
     );
   }
 }

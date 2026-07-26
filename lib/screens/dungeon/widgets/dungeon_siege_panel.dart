@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/user_facing_error.dart';
+import '../../../core/utils/combat_restriction.dart';
 import '../../../components/common/app_messenger.dart';
 import '../../../core/utils/gold_format.dart';
 import '../../../models/dungeon_model.dart';
@@ -89,14 +90,23 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
     final DungeonSiegeSession? session = status.sessionForDungeon(dungeon.dungeonId);
     final List<DungeonSiegeSlot> slots = session?.slots ?? const <DungeonSiegeSlot>[];
     final DungeonSiegeConfig config = status.config;
-    final String? myGuildId = ref.watch(playerProvider).profile?.guildId;
+    final profile = ref.watch(playerProvider).profile;
+    final String? myGuildId = profile?.guildId;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    final bool combatLocked = combatBlock != null;
     final bool hasSlotHere = session?.slots.any((DungeonSiegeSlot s) => s.isMine) ?? false;
     final bool holdsSlotElsewhere = status.mySlotGlobalDungeonId != null &&
         status.mySlotGlobalDungeonId!.isNotEmpty &&
         status.mySlotGlobalDungeonId != dungeon.dungeonId;
     final bool isBannedHere = status.isBannedForDungeon(dungeon.dungeonId);
-    final bool canClaimHere =
-        status.siegeActive && !isBannedHere && !hasSlotHere && !holdsSlotElsewhere;
+    final bool canClaimHere = status.siegeActive &&
+        !isBannedHere &&
+        !hasSlotHere &&
+        !holdsSlotElsewhere &&
+        !combatLocked;
     final int challengeGoldCost = DungeonSiegeEconomy.challengeGoldForDungeon(dungeon);
     final bool showInitialLoader = siegeState.loading && slots.isEmpty;
 
@@ -149,7 +159,9 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
                   actionLoading: siegeState.actionLoading || _holdDialogOpen,
                   myGuildId: myGuildId,
                   hasMySlot: hasSlotHere,
-                  onStartHold: status.siegeActive && hasSlotHere ? () => _startHold(context, ref) : null,
+                  onStartHold: status.siegeActive && hasSlotHere && !combatLocked
+                      ? () => _startHold(context, ref)
+                      : null,
                 ),
               ],
               if (isBannedHere) ...<Widget>[
@@ -157,6 +169,13 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
                 _SiegeWarningBanner(
                   text: 'Bu zindandan kuşatma kaybı banındasın — meydan okuyamazsın.',
                   color: SiegePalette.solar,
+                ),
+              ],
+              if (combatLocked) ...<Widget>[
+                const SizedBox(height: 10),
+                _SiegeWarningBanner(
+                  text: combatBlock ?? 'Hastane/hapisteyken savaşamazsın.',
+                  color: SiegePalette.ruby,
                 ),
               ],
               if (holdsSlotElsewhere) ...<Widget>[
@@ -237,7 +256,8 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
                               siegeActive: status.siegeActive,
                               isBanned: isBannedHere,
                               reservedBlocked: reservedBlocked,
-                              onChallenge: status.canChallengeSlot(dungeon.dungeonId, slot)
+                              onChallenge: !combatLocked &&
+                                      status.canChallengeSlot(dungeon.dungeonId, slot)
                                   ? () => _challenge(context, ref, slot)
                                   : null,
                               onRelease: slot.isMine ? () => _release(context, ref, slot) : null,
@@ -274,6 +294,15 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
   }
 
   Future<void> _claim(BuildContext context, WidgetRef ref) async {
+    final profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.show(context, combatBlock);
+      return;
+    }
     final DungeonSiegeActionResult? result =
         await ref.read(dungeonSiegeProvider.notifier).claimSlot(dungeon.dungeonId);
     if (!context.mounted) return;
@@ -291,6 +320,16 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
   }
 
   Future<void> _challenge(BuildContext context, WidgetRef ref, DungeonSiegeSlot slot) async {
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.show(context, combatBlock);
+      return;
+    }
+
     final DungeonSiegeStatus status = ref.read(dungeonSiegeProvider).status;
     if (!status.canChallengeSlot(dungeon.dungeonId, slot)) {
       AppMessenger.show(
@@ -304,7 +343,6 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
 
     final DungeonSiegeConfig config = status.config;
     final int challengeCost = DungeonSiegeEconomy.challengeGoldForDungeon(dungeon);
-    final PlayerProfile? profile = ref.read(playerProvider).profile;
     final int playerGold = profile?.gold ?? 0;
     if (playerGold < challengeCost) {
       AppMessenger.showError(
@@ -390,10 +428,20 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
   Future<void> _startHold(BuildContext context, WidgetRef ref) async {
     if (_holdDialogOpen || ref.read(dungeonSiegeProvider).actionLoading) return;
 
+    final profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.show(context, combatBlock);
+      return;
+    }
+
     final DungeonSiegeStatus status = ref.read(dungeonSiegeProvider).status;
     final DungeonSiegeConfig config = status.config;
     final DungeonSiegeSession? session = status.sessionForDungeon(dungeon.dungeonId);
-    final String? myGuildId = ref.read(playerProvider).profile?.guildId;
+    final String? myGuildId = profile?.guildId;
 
     if (session == null || !session.canStartHold(config, myGuildId: myGuildId)) {
       final int holdMin = session?.holdMinRequired(config, myGuildId: myGuildId) ?? config.holdMinMembers;

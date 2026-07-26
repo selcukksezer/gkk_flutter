@@ -3338,18 +3338,6 @@ abstract class AppLocalizations {
   /// **'Bildirimler'**
   String get bildirimler;
 
-  /// No description provided for @otomatik_sava.
-  ///
-  /// In en, this message translates to:
-  /// **'⚔️ Otomatik Savaş'**
-  String get otomatik_sava;
-
-  /// No description provided for @pvp_ve_zindan_sava_lar_n_otomatik_y_net.
-  ///
-  /// In en, this message translates to:
-  /// **'PvP ve zindan savaşlarını otomatik yönet'**
-  String get pvp_ve_zindan_sava_lar_n_otomatik_y_net;
-
   /// No description provided for @dil_language.
   ///
   /// In en, this message translates to:
@@ -3989,8 +3977,26 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDeleteAccountConfirm.
   ///
   /// In en, this message translates to:
-  /// **'This cannot be undone! Your account and all data will be permanently deleted. Are you sure?'**
+  /// **'This cannot be undone! Your account and all data will be permanently deleted.'**
   String get settingsDeleteAccountConfirm;
+
+  /// No description provided for @settingsDeleteUsernamePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your username to confirm: {username}'**
+  String settingsDeleteUsernamePrompt(String username);
+
+  /// No description provided for @settingsDeleteUsernameMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Username does not match.'**
+  String get settingsDeleteUsernameMismatch;
+
+  /// No description provided for @settingsDeleteUsernameMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Username not found. Please sign in again.'**
+  String get settingsDeleteUsernameMissing;
 
   /// No description provided for @settingsNameUpdated.
   ///
@@ -4010,11 +4016,1001 @@ abstract class AppLocalizations {
   /// **'Display Name'**
   String get settingsDisplayNameLabel;
 
+  /// No description provided for @settingsSectionAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get settingsSectionAudio;
+
+  /// No description provided for @settingsSectionAudioHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Music and SFX levels are stored on this device'**
+  String get settingsSectionAudioHint;
+
+  /// No description provided for @settingsMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get settingsMusic;
+
+  /// No description provided for @settingsSfx.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound effects'**
+  String get settingsSfx;
+
+  /// No description provided for @settingsMuteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute music and effects completely'**
+  String get settingsMuteHint;
+
+  /// No description provided for @settingsSectionGameplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Gameplay'**
+  String get settingsSectionGameplay;
+
+  /// No description provided for @settingsSectionGameplayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Haptics, motion, and battle preferences'**
+  String get settingsSectionGameplayHint;
+
+  /// No description provided for @settingsHaptic.
+  ///
+  /// In en, this message translates to:
+  /// **'Haptics'**
+  String get settingsHaptic;
+
+  /// No description provided for @settingsHapticHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Touch and combat feedback'**
+  String get settingsHapticHint;
+
+  /// No description provided for @settingsReduceMotion.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduce motion'**
+  String get settingsReduceMotion;
+
+  /// No description provided for @settingsReduceMotionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable entrance animations'**
+  String get settingsReduceMotionHint;
+
+  /// No description provided for @settingsSectionNotif.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsSectionNotif;
+
+  /// No description provided for @settingsSectionNotifHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone alerts and reminders'**
+  String get settingsSectionNotifHint;
+
+  /// No description provided for @settingsNotifMasterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle all local notifications'**
+  String get settingsNotifMasterHint;
+
+  /// No description provided for @settingsNotifNightMarket.
+  ///
+  /// In en, this message translates to:
+  /// **'Night Market'**
+  String get settingsNotifNightMarket;
+
+  /// No description provided for @settingsNotifNightMarketHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open / close reminders'**
+  String get settingsNotifNightMarketHint;
+
+  /// No description provided for @settingsNotifNemesis.
+  ///
+  /// In en, this message translates to:
+  /// **'Nemesis'**
+  String get settingsNotifNemesis;
+
+  /// No description provided for @settingsNotifNemesisHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Online / revenge alerts'**
+  String get settingsNotifNemesisHint;
+
+  /// No description provided for @settingsSectionLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsSectionLanguage;
+
+  /// No description provided for @settingsSectionLanguageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'UI language — persisted'**
+  String get settingsSectionLanguageHint;
+
+  /// No description provided for @settingsSectionProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get settingsSectionProfile;
+
+  /// No description provided for @settingsSectionProfileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name is saved to the server'**
+  String get settingsSectionProfileHint;
+
+  /// No description provided for @settingsSectionAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get settingsSectionAccount;
+
+  /// No description provided for @settingsSectionAccountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Session and account management'**
+  String get settingsSectionAccountHint;
+
+  /// No description provided for @settingsSectionAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settingsSectionAbout;
+
+  /// No description provided for @settingsSectionAboutHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Version and persistence info'**
+  String get settingsSectionAboutHint;
+
+  /// No description provided for @settingsAppName.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get settingsAppName;
+
+  /// No description provided for @settingsVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get settingsVersion;
+
+  /// No description provided for @settingsPersistNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings persistence'**
+  String get settingsPersistNote;
+
+  /// No description provided for @settingsPersistNoteValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio, language, haptics, and notification prefs use SharedPreferences on device. flutter run does not wipe them; uninstalling the app or resetting the simulator does. Game progress (gold, items) lives on your Supabase account.'**
+  String get settingsPersistNoteValue;
+
+  /// No description provided for @settingsReferralCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral'**
+  String get settingsReferralCode;
+
+  /// No description provided for @settingsReferralCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral code copied.'**
+  String get settingsReferralCopied;
+
   /// No description provided for @errorWithDetail.
   ///
   /// In en, this message translates to:
   /// **'Error: {detail}'**
   String errorWithDetail(String detail);
+
+  /// No description provided for @tutContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get tutContinue;
+
+  /// No description provided for @tutDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get tutDone;
+
+  /// No description provided for @tutSkipAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip all'**
+  String get tutSkipAll;
+
+  /// No description provided for @settingsSectionTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial'**
+  String get settingsSectionTutorial;
+
+  /// No description provided for @settingsSectionTutorialHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay or skip onboarding progress'**
+  String get settingsSectionTutorialHint;
+
+  /// No description provided for @settingsTutorialReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart tutorial'**
+  String get settingsTutorialReplay;
+
+  /// No description provided for @settingsTutorialReplayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Clears progress and opens home coaching'**
+  String get settingsTutorialReplayHint;
+
+  /// No description provided for @settingsTutorialSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip tutorial'**
+  String get settingsTutorialSkip;
+
+  /// No description provided for @settingsTutorialSkipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all tutorial steps complete'**
+  String get settingsTutorialSkipHint;
+
+  /// No description provided for @settingsTutorialReplayConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial progress will be cleared and restarted. Continue?'**
+  String get settingsTutorialReplayConfirm;
+
+  /// No description provided for @settingsTutorialSkipConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'All tutorial steps will be skipped. Continue?'**
+  String get settingsTutorialSkipConfirm;
+
+  /// No description provided for @settingsTutorialReplayDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial restarted.'**
+  String get settingsTutorialReplayDone;
+
+  /// No description provided for @settingsTutorialSkipDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial skipped.'**
+  String get settingsTutorialSkipDone;
+
+  /// No description provided for @tut_onboarding_welcome_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gölge Krallığı\'na hoş geldin'**
+  String get tut_onboarding_welcome_title;
+
+  /// No description provided for @tut_onboarding_welcome_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Kısa rehber seni ilk hedefe götürecek. Devam et.'**
+  String get tut_onboarding_welcome_body;
+
+  /// No description provided for @tut_onboarding_home_promo_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Kamp duyuruları'**
+  String get tut_onboarding_home_promo_title;
+
+  /// No description provided for @tut_onboarding_home_promo_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Burada Gece Pazarı, Nemesis ve sezon fırsatları döner.'**
+  String get tut_onboarding_home_promo_body;
+
+  /// No description provided for @tut_onboarding_home_hero_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Kahraman vitrini'**
+  String get tut_onboarding_home_hero_title;
+
+  /// No description provided for @tut_onboarding_home_hero_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Kuşandığın ekipman ve güç buradan görünür.'**
+  String get tut_onboarding_home_hero_body;
+
+  /// No description provided for @tut_onboarding_hud_energy_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Enerji'**
+  String get tut_onboarding_hud_energy_title;
+
+  /// No description provided for @tut_onboarding_hud_energy_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Zindan ve aktiviteler enerji harcar. Dokunarak devam et.'**
+  String get tut_onboarding_hud_energy_body;
+
+  /// No description provided for @tut_onboarding_hud_gold_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Altın'**
+  String get tut_onboarding_hud_gold_title;
+
+  /// No description provided for @tut_onboarding_hud_gold_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Pazar, craft ve güçlendirme için altın kullanılır.'**
+  String get tut_onboarding_hud_gold_body;
+
+  /// No description provided for @tut_onboarding_hud_gems_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Elmas (Gem)'**
+  String get tut_onboarding_hud_gems_title;
+
+  /// No description provided for @tut_onboarding_hud_gems_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium hızlandırma ve özel eşyalar için.'**
+  String get tut_onboarding_hud_gems_body;
+
+  /// No description provided for @tut_onboarding_tap_dungeon_tab_title.
+  ///
+  /// In en, this message translates to:
+  /// **'İlk hedef: Zindan'**
+  String get tut_onboarding_tap_dungeon_tab_title;
+
+  /// No description provided for @tut_onboarding_tap_dungeon_tab_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Zindan sekmesine dokun.'**
+  String get tut_onboarding_tap_dungeon_tab_body;
+
+  /// No description provided for @tut_dungeon_pick_zone_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Bölge seç'**
+  String get tut_dungeon_pick_zone_title;
+
+  /// No description provided for @tut_dungeon_pick_zone_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Zone 1 ile başla — düşük risk, iyi loot.'**
+  String get tut_dungeon_pick_zone_body;
+
+  /// No description provided for @tut_dungeon_enter_btn_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gir'**
+  String get tut_dungeon_enter_btn_title;
+
+  /// No description provided for @tut_dungeon_enter_btn_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Seçili zindana girmek için dokun.'**
+  String get tut_dungeon_enter_btn_body;
+
+  /// No description provided for @tut_dungeon_confirm_enter_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Onayla'**
+  String get tut_dungeon_confirm_enter_title;
+
+  /// No description provided for @tut_dungeon_confirm_enter_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Enerji maliyetini kontrol et, onayla.'**
+  String get tut_dungeon_confirm_enter_body;
+
+  /// No description provided for @tut_dungeon_tap_attack_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Saldır'**
+  String get tut_dungeon_tap_attack_title;
+
+  /// No description provided for @tut_dungeon_tap_attack_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Saldır butonuna dokun.'**
+  String get tut_dungeon_tap_attack_body;
+
+  /// No description provided for @tut_dungeon_first_win_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Zafer!'**
+  String get tut_dungeon_first_win_title;
+
+  /// No description provided for @tut_dungeon_first_win_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Loot düştü. Envantere bak.'**
+  String get tut_dungeon_first_win_body;
+
+  /// No description provided for @tut_dungeon_to_inventory_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Envanter'**
+  String get tut_dungeon_to_inventory_title;
+
+  /// No description provided for @tut_dungeon_to_inventory_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Envanter sekmesine git.'**
+  String get tut_dungeon_to_inventory_body;
+
+  /// No description provided for @tut_inventory_first_item_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Eşyana dokun'**
+  String get tut_inventory_first_item_title;
+
+  /// No description provided for @tut_inventory_first_item_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Silahına dokunarak detayı aç.'**
+  String get tut_inventory_first_item_body;
+
+  /// No description provided for @tut_inventory_equip_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Kuşan'**
+  String get tut_inventory_equip_title;
+
+  /// No description provided for @tut_inventory_equip_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Kuşan butonuna bas.'**
+  String get tut_inventory_equip_body;
+
+  /// No description provided for @tut_inventory_to_character_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Karakter'**
+  String get tut_inventory_to_character_title;
+
+  /// No description provided for @tut_inventory_to_character_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Gücünü görmek için Karakter sekmesine dokun.'**
+  String get tut_inventory_to_character_body;
+
+  /// No description provided for @tut_character_check_power_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Güç arttı'**
+  String get tut_character_check_power_title;
+
+  /// No description provided for @tut_character_check_power_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Power skorun savaşlarda belirleyici.'**
+  String get tut_character_check_power_body;
+
+  /// No description provided for @tut_character_stat_panel_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Stat puanı'**
+  String get tut_character_stat_panel_title;
+
+  /// No description provided for @tut_character_stat_panel_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Level atladıkça puan dağıt.'**
+  String get tut_character_stat_panel_body;
+
+  /// No description provided for @tut_character_to_enhance_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Geliştirme ocağı'**
+  String get tut_character_to_enhance_title;
+
+  /// No description provided for @tut_character_to_enhance_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Menü → Geliştirme ile eşyanı +1 yükselt.'**
+  String get tut_character_to_enhance_body;
+
+  /// No description provided for @tut_enhance_pick_item_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Eşya seç'**
+  String get tut_enhance_pick_item_title;
+
+  /// No description provided for @tut_enhance_pick_item_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Kuşandığın silahı seç.'**
+  String get tut_enhance_pick_item_body;
+
+  /// No description provided for @tut_enhance_tap_forge_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Geliştir'**
+  String get tut_enhance_tap_forge_title;
+
+  /// No description provided for @tut_enhance_tap_forge_body.
+  ///
+  /// In en, this message translates to:
+  /// **'+1 dene — parşömen otomatik seçilir.'**
+  String get tut_enhance_tap_forge_body;
+
+  /// No description provided for @tut_enhance_result_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sonuç'**
+  String get tut_enhance_result_title;
+
+  /// No description provided for @tut_enhance_result_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Başarı veya yanma normal.'**
+  String get tut_enhance_result_body;
+
+  /// No description provided for @tut_enhance_season_cta_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sezon ve görevler'**
+  String get tut_enhance_season_cta_title;
+
+  /// No description provided for @tut_enhance_season_cta_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Battle Pass ve günlük görevler seni bekliyor — Sezon / Görevler menüsünden aç.'**
+  String get tut_enhance_season_cta_body;
+
+  /// No description provided for @tut_bank_deposit_coach_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Bankaya yatır'**
+  String get tut_bank_deposit_coach_title;
+
+  /// No description provided for @tut_bank_deposit_coach_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Eşya seç → Yatır ile aktar.'**
+  String get tut_bank_deposit_coach_body;
+
+  /// No description provided for @tut_bank_deposit_done_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Tamam'**
+  String get tut_bank_deposit_done_title;
+
+  /// No description provided for @tut_bank_deposit_done_body.
+  ///
+  /// In en, this message translates to:
+  /// **'İlk yatırma tamamlandı.'**
+  String get tut_bank_deposit_done_body;
+
+  /// No description provided for @tut_market_browse_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pazar'**
+  String get tut_market_browse_intro_title;
+
+  /// No description provided for @tut_market_browse_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Alım-satım ekonominin kalbi.'**
+  String get tut_market_browse_intro_body;
+
+  /// No description provided for @tut_shop_energy_potion_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Enerji iksiri'**
+  String get tut_shop_energy_potion_title;
+
+  /// No description provided for @tut_shop_energy_potion_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Enerji bittiğinde iksir al.'**
+  String get tut_shop_energy_potion_body;
+
+  /// No description provided for @tut_season_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Battle Pass'**
+  String get tut_season_intro_title;
+
+  /// No description provided for @tut_season_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Her sezon ~14 gün. BPP kazan, ödül claim et.'**
+  String get tut_season_intro_body;
+
+  /// No description provided for @tut_season_bpp_title.
+  ///
+  /// In en, this message translates to:
+  /// **'BPP'**
+  String get tut_season_bpp_title;
+
+  /// No description provided for @tut_season_bpp_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Zindan, PvP, görevler BPP verir.'**
+  String get tut_season_bpp_body;
+
+  /// No description provided for @tut_season_quests_tab_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Görevler'**
+  String get tut_season_quests_tab_title;
+
+  /// No description provided for @tut_season_quests_tab_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Sezon görevlerini buradan takip et.'**
+  String get tut_season_quests_tab_body;
+
+  /// No description provided for @tut_season_l20_badge_title.
+  ///
+  /// In en, this message translates to:
+  /// **'L20 Rozeti'**
+  String get tut_season_l20_badge_title;
+
+  /// No description provided for @tut_season_l20_badge_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Free track L20 — claim etmeyi unutma!'**
+  String get tut_season_l20_badge_body;
+
+  /// No description provided for @tut_quests_claim_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Görevler'**
+  String get tut_quests_claim_intro_title;
+
+  /// No description provided for @tut_quests_claim_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Tamamlanan görev ödülünü al.'**
+  String get tut_quests_claim_intro_body;
+
+  /// No description provided for @tut_craft_browse_recipes_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Tarifler'**
+  String get tut_craft_browse_recipes_title;
+
+  /// No description provided for @tut_craft_browse_recipes_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Üretebileceğin eşyalar burada listelenir.'**
+  String get tut_craft_browse_recipes_body;
+
+  /// No description provided for @tut_craft_start_hint_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Üret'**
+  String get tut_craft_start_hint_title;
+
+  /// No description provided for @tut_craft_start_hint_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Malzeme + altın yeterliyse üretimi başlat.'**
+  String get tut_craft_start_hint_body;
+
+  /// No description provided for @tut_guild_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Lonca'**
+  String get tut_guild_intro_title;
+
+  /// No description provided for @tut_guild_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Lonca bonusları ve savaşlar takım gücü verir.'**
+  String get tut_guild_intro_body;
+
+  /// No description provided for @tut_guild_join_or_panel_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Katıl / panel'**
+  String get tut_guild_join_or_panel_title;
+
+  /// No description provided for @tut_guild_join_or_panel_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Önerilen loncaya katıl veya kendi loncanı yönet.'**
+  String get tut_guild_join_or_panel_body;
+
+  /// No description provided for @tut_pvp_find_match_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Arena'**
+  String get tut_pvp_find_match_title;
+
+  /// No description provided for @tut_pvp_find_match_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Benzer güçte rakiplere meydan oku.'**
+  String get tut_pvp_find_match_body;
+
+  /// No description provided for @tut_pvp_nemesis_hint_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Nemesis'**
+  String get tut_pvp_nemesis_hint_title;
+
+  /// No description provided for @tut_pvp_nemesis_hint_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Rakibini izle — intikam düellosu ve bonus.'**
+  String get tut_pvp_nemesis_hint_body;
+
+  /// No description provided for @tut_siege_hub_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Kuşatma'**
+  String get tut_siege_hub_intro_title;
+
+  /// No description provided for @tut_siege_hub_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Slot tut veya lonca savaşına katıl. Prime saatlerde bonus.'**
+  String get tut_siege_hub_intro_body;
+
+  /// No description provided for @tut_daily_d1_dungeon_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gün 1 — Zindan'**
+  String get tut_daily_d1_dungeon_title;
+
+  /// No description provided for @tut_daily_d1_dungeon_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Günlük hedef: zindana gir, loot topla.'**
+  String get tut_daily_d1_dungeon_body;
+
+  /// No description provided for @tut_daily_d2_inventory_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gün 2 — Envanter'**
+  String get tut_daily_d2_inventory_title;
+
+  /// No description provided for @tut_daily_d2_inventory_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Eşyalarını düzenle, silahını kuşan.'**
+  String get tut_daily_d2_inventory_body;
+
+  /// No description provided for @tut_daily_d3_craft_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gün 3 — Craft'**
+  String get tut_daily_d3_craft_title;
+
+  /// No description provided for @tut_daily_d3_craft_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Bir tarif seçip üretimi dene.'**
+  String get tut_daily_d3_craft_body;
+
+  /// No description provided for @tut_daily_d4_guild_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gün 4 — Lonca'**
+  String get tut_daily_d4_guild_title;
+
+  /// No description provided for @tut_daily_d4_guild_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Lonca panelini aç veya katıl.'**
+  String get tut_daily_d4_guild_body;
+
+  /// No description provided for @tut_daily_d5_pvp_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gün 5 — PvP'**
+  String get tut_daily_d5_pvp_title;
+
+  /// No description provided for @tut_daily_d5_pvp_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Arena\'da eşleşmeye bak.'**
+  String get tut_daily_d5_pvp_body;
+
+  /// No description provided for @tut_daily_d6_market_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gün 6 — Pazar'**
+  String get tut_daily_d6_market_title;
+
+  /// No description provided for @tut_daily_d6_market_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Pazarı gez — alım satım burada.'**
+  String get tut_daily_d6_market_body;
+
+  /// No description provided for @tut_daily_d7_siege_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gün 7 — Kuşatma'**
+  String get tut_daily_d7_siege_title;
+
+  /// No description provided for @tut_daily_d7_siege_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Kuşatma hub veya lonca savaşını incele.'**
+  String get tut_daily_d7_siege_body;
+
+  /// No description provided for @tut_retention_codex_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Kodex'**
+  String get tut_retention_codex_title;
+
+  /// No description provided for @tut_retention_codex_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Keşifleri Kodex’te topla. Kilometre taşı ödülleri seni bekliyor.'**
+  String get tut_retention_codex_body;
+
+  /// No description provided for @tut_retention_nemesis_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Nemesis'**
+  String get tut_retention_nemesis_title;
+
+  /// No description provided for @tut_retention_nemesis_body.
+  ///
+  /// In en, this message translates to:
+  /// **'PvP’de rakibini izle — intikam düellosu ve bonus altın.'**
+  String get tut_retention_nemesis_body;
+
+  /// No description provided for @tut_retention_night_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gece Pazarı'**
+  String get tut_retention_night_title;
+
+  /// No description provided for @tut_retention_night_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Her gün 20:00–22:00 TR — sınırlı gem teklifleri.'**
+  String get tut_retention_night_body;
+
+  /// No description provided for @tut_horse_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'At yarışı'**
+  String get tut_horse_intro_title;
+
+  /// No description provided for @tut_horse_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Bahis paneli: para birimi ve miktar seç.'**
+  String get tut_horse_intro_body;
+
+  /// No description provided for @tut_horse_pick_horse_title.
+  ///
+  /// In en, this message translates to:
+  /// **'At seç'**
+  String get tut_horse_pick_horse_title;
+
+  /// No description provided for @tut_horse_pick_horse_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Çarpanı yüksek veya güvendiğin ata dokun.'**
+  String get tut_horse_pick_horse_body;
+
+  /// No description provided for @tut_horse_place_bet_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Bahis koy'**
+  String get tut_horse_place_bet_title;
+
+  /// No description provided for @tut_horse_place_bet_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Bahisini onayla — canlı yarış otomatik başlar.'**
+  String get tut_horse_place_bet_body;
+
+  /// No description provided for @tut_horse_result_tip_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sonuç'**
+  String get tut_horse_result_tip_title;
+
+  /// No description provided for @tut_horse_result_tip_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Kazanç/kayıp bilette görünür. Sonraki turda tekrar bahis açılır.'**
+  String get tut_horse_result_tip_body;
+
+  /// No description provided for @tut_mekans_browse_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mekanlar'**
+  String get tut_mekans_browse_title;
+
+  /// No description provided for @tut_mekans_browse_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Han ve arena mekanlarını keşfet — vitrin ve şöhret burada.'**
+  String get tut_mekans_browse_body;
+
+  /// No description provided for @tut_mekans_my_cta_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Benim mekanım'**
+  String get tut_mekans_my_cta_title;
+
+  /// No description provided for @tut_mekans_my_cta_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Kendi mekanını yönet veya yeni aç.'**
+  String get tut_mekans_my_cta_body;
+
+  /// No description provided for @tut_mekans_arena_hint_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Arena düellosu'**
+  String get tut_mekans_arena_hint_title;
+
+  /// No description provided for @tut_mekans_arena_hint_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Arena from a PvP venue detail — duel local rivals.'**
+  String get tut_mekans_arena_hint_body;
+
+  /// No description provided for @tut_mekans_fame_tip_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Şöhret'**
+  String get tut_mekans_fame_tip_title;
+
+  /// No description provided for @tut_mekans_fame_tip_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Satış ve arena şöhret kazandırır — liderlikte yüksel.'**
+  String get tut_mekans_fame_tip_body;
+
+  /// No description provided for @tut_night_tab_open_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gece Pazarı'**
+  String get tut_night_tab_open_title;
+
+  /// No description provided for @tut_night_tab_open_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Mağazada 🌙 Gece sekmesine geç.'**
+  String get tut_night_tab_open_body;
+
+  /// No description provided for @tut_night_window_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Saat penceresi'**
+  String get tut_night_window_title;
+
+  /// No description provided for @tut_night_window_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Her gün 20:00–22:00 TR açık. Dışında teklifler kilitli.'**
+  String get tut_night_window_body;
+
+  /// No description provided for @tut_night_offer_browse_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sınırlı teklifler'**
+  String get tut_night_offer_browse_title;
+
+  /// No description provided for @tut_night_offer_browse_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Gem ile özel paketler — stok bitince gider.'**
+  String get tut_night_offer_browse_body;
 }
 
 class _AppLocalizationsDelegate

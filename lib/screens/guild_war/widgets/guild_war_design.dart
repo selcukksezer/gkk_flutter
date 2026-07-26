@@ -806,29 +806,47 @@ class WarEmptyTab extends StatelessWidget {
     super.key,
     required this.icon,
     required this.message,
+    this.actionLabel,
+    this.onAction,
   });
 
   final String icon;
   final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     return WarDottedPanel(
       borderColor: WarPalette.titanium.withValues(alpha: 0.25),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(icon, style: const TextStyle(fontSize: 32)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 13,
-                color: WarPalette.titanium,
-                height: 1.35,
+          Row(
+            children: <Widget>[
+              Text(icon, style: const TextStyle(fontSize: 32)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: WarPalette.titanium,
+                    height: 1.35,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          if (actionLabel != null && onAction != null) ...<Widget>[
+            const SizedBox(height: 10),
+            WarGoldButton(
+              label: actionLabel!,
+              onPressed: onAction,
+              expand: false,
+              icon: Icons.refresh_rounded,
+            ),
+          ],
         ],
       ),
     );

@@ -1,29 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../l10n/l10n.dart';
+import '../../routing/app_router.dart';
 import 'tutorial_anchor_registry.dart';
 import 'tutorial_controller.dart';
 import 'tutorial_hand.dart';
 import 'tutorial_input_gate.dart';
+import 'tutorial_l10n.dart';
+import 'tutorial_navigation.dart';
 import 'tutorial_spotlight_layer.dart';
 import 'tutorial_tooltip.dart';
 import 'tutorial_track.dart';
 import 'tutorial_track_registry.dart';
 
-/// Global spotlight tutorial overlay host.
+/// Global spotlight tutorial overlay host (v3).
 class TutorialHost extends ConsumerStatefulWidget {
-  const TutorialHost({super.key, required this.child});
+  const TutorialHost({
+    super.key,
+    required this.child,
+    required this.router,
+  });
 
   final Widget child;
+  final GoRouter router;
 
   @override
   ConsumerState<TutorialHost> createState() => _TutorialHostState();
 }
 
 class _TutorialHostState extends ConsumerState<TutorialHost> {
+  String? _syncedRoute;
+
   @override
   void initState() {
     super.initState();
+    TutorialNavigationBridge.register(_navigateToRoute);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(tutorialProvider.notifier).initialize();
     });
@@ -32,43 +45,94 @@ class _TutorialHostState extends ConsumerState<TutorialHost> {
 
   @override
   void dispose() {
+    TutorialNavigationBridge.register(null);
     TutorialAnchorRegistry.instance.removeListener(_onAnchorsChanged);
     super.dispose();
+  }
+
+  Future<void> _navigateToRoute(String route) async {
+    if (!mounted) return;
+    if (route == AppRoutes.home) {
+      context.go(route);
+    } else {
+      context.push(route);
+    }
   }
 
   void _onAnchorsChanged() {
     if (mounted) setState(() {});
   }
 
+  void _syncRoute(String route) {
+    if (_syncedRoute == route) return;
+    _syncedRoute = route;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(tutorialProvider.notifier).onRouteEnter(route);
+    });
+  }
+
+  /// GoRouter.state throws before the first match exists (startup).
+  String? _activeRoutePath() {
+    final RouteMatchList config = widget.router.routerDelegate.currentConfiguration;
+    if (config.isEmpty) return null;
+    final String path = config.fullPath;
+    if (path.isEmpty) return AppRoutes.splash;
+    return path;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final TutorialState tutorial = ref.watch(tutorialProvider);
-    final TutorialStepV2? step = tutorial.activeStep;
-    final String? trackId = tutorial.activeTrackId;
+    return ListenableBuilder(
+      listenable: widget.router.routerDelegate,
+      builder: (BuildContext context, Widget? _) {
+        final String? route = _activeRoutePath();
+        if (route != null) {
+          _syncRoute(route);
+        }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        widget.child,
-        if (step != null && trackId != null && !tutorial.overlayPaused)
-          _SpotlightOverlay(
-            step: step,
-            trackId: trackId,
-            wrongTapShake: tutorial.wrongTapShake,
-            onSkipAll: () => ref.read(tutorialProvider.notifier).skipAll(),
-            onDismiss: () =>
-                ref.read(tutorialProvider.notifier).completeActiveManual(),
-            onWrongTap: () =>
-                ref.read(tutorialProvider.notifier).registerWrongTap(),
-            onPrimary: () =>
-                ref.read(tutorialProvider.notifier).completeActiveManual(),
-            onHighlightTap: () {
-              final String? anchorId = step.anchorId;
-              if (anchorId == null) return;
-              ref.read(tutorialProvider.notifier).onAnchorTap(anchorId);
-            },
-          ),
-      ],
+        final TutorialState tutorial = ref.watch(tutorialProvider);
+        final TutorialStepV2? step = tutorial.activeStep;
+        final String? trackId = tutorial.activeTrackId;
+        final String? pausedHint =
+            ref.read(tutorialProvider.notifier).pausedRouteHint;
+
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            widget.child,
+            if (tutorial.overlayPaused &&
+                step != null &&
+                pausedHint != null)
+              TutorialPausedBanner(
+                routeLabel: pausedHint,
+                onNavigate: () => ref
+                    .read(tutorialProvider.notifier)
+                    .navigateToActiveStepRoute(),
+                onSkipAll: () => ref.read(tutorialProvider.notifier).skipAll(),
+                skipAllLabel: context.l10n.tutSkipAll,
+              ),
+            if (step != null && trackId != null && !tutorial.overlayPaused)
+              _SpotlightOverlay(
+                step: step,
+                trackId: trackId,
+                wrongTapShake: tutorial.wrongTapShake,
+                onSkipAll: () => ref.read(tutorialProvider.notifier).skipAll(),
+                onDismiss: () =>
+                    ref.read(tutorialProvider.notifier).completeActiveManual(),
+                onWrongTap: () =>
+                    ref.read(tutorialProvider.notifier).registerWrongTap(),
+                onPrimary: () =>
+                    ref.read(tutorialProvider.notifier).completeActiveManual(),
+                onHighlightTap: () {
+                  final String? anchorId = step.anchorId;
+                  if (anchorId == null) return;
+                  ref.read(tutorialProvider.notifier).onAnchorTap(anchorId);
+                },
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -98,8 +162,13 @@ class _SpotlightOverlay extends StatefulWidget {
   State<_SpotlightOverlay> createState() => _SpotlightOverlayState();
 }
 
-class _SpotlightOverlayState extends State<_SpotlightOverlay> {
+class _SpotlightOverlayState extends State<_SpotlightOverlay>
+    with SingleTickerProviderStateMixin {
   int _waitFrames = 0;
+  late final AnimationController _enterCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  )..forward();
 
   @override
   void initState() {
@@ -108,11 +177,18 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay> {
   }
 
   @override
+  void dispose() {
+    _enterCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(covariant _SpotlightOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.step.id != widget.step.id ||
         oldWidget.step.anchorId != widget.step.anchorId) {
       _waitFrames = 0;
+      _enterCtrl.forward(from: 0);
       _kickAnchorWait();
     }
   }
@@ -131,9 +207,7 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay> {
         if (_waitFrames != 0) setState(() => _waitFrames = 0);
         return;
       }
-      // Anchor not laid out yet (dialog / list / route transition). Keep polling
-      // briefly so we never flash a fake narrative "Devam" card.
-      if (_waitFrames < 45) {
+      if (_waitFrames < 60) {
         _waitFrames++;
         TutorialAnchorRegistry.instance.scheduleRefresh();
         setState(() {});
@@ -152,35 +226,54 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay> {
             0) +
         1;
 
+    final String title = TutorialL10n.title(context, widget.step);
+    final String body = TutorialL10n.body(context, widget.step);
+    final String? primaryLabel =
+        TutorialL10n.primaryLabel(context, widget.step);
+    final String skipAllLabel = context.l10n.tutSkipAll;
+
     final bool narrative = widget.step.mode == TutorialMode.narrative ||
         widget.step.mode == TutorialMode.waitEvent;
 
+    final Widget card = FadeTransition(
+      opacity: CurvedAnimation(parent: _enterCtrl, curve: Curves.easeOutCubic),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.08),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: _enterCtrl, curve: Curves.easeOutCubic)),
+        child: TutorialTooltipCard(
+          title: title,
+          body: body,
+          stepIndex: index,
+          stepTotal: total,
+          onSkipAll: widget.onSkipAll,
+          skipAllLabel: skipAllLabel,
+          onDismiss: widget.step.mode == TutorialMode.waitEvent
+              ? null
+              : widget.onDismiss,
+          showLater: widget.step.mode != TutorialMode.waitEvent,
+          primaryLabel: primaryLabel ??
+              (widget.step.mode == TutorialMode.waitEvent
+                  ? null
+                  : context.l10n.tutContinue),
+          onPrimary: widget.step.mode == TutorialMode.waitEvent
+              ? null
+              : widget.onPrimary,
+          accent: narrative ? const Color(0xFFE01E5A) : const Color(0xFFFFB800),
+        ),
+      ),
+    );
+
     if (narrative) {
       return Material(
-        color: Colors.black.withValues(alpha: 0.55),
+        color: Colors.black.withValues(alpha: 0.62),
         child: SafeArea(
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: TutorialTooltipCard(
-                title: widget.step.title,
-                body: widget.step.body,
-                stepIndex: index,
-                stepTotal: total,
-                onSkipAll: widget.onSkipAll,
-                onDismiss: widget.step.mode == TutorialMode.waitEvent
-                    ? null
-                    : widget.onDismiss,
-                showLater: widget.step.mode != TutorialMode.waitEvent,
-                primaryLabel: widget.step.primaryLabel ??
-                    (widget.step.mode == TutorialMode.waitEvent
-                        ? null
-                        : 'Devam'),
-                onPrimary: widget.step.mode == TutorialMode.waitEvent
-                    ? null
-                    : widget.onPrimary,
-              ),
+              child: card,
             ),
           ),
         ),
@@ -194,27 +287,15 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay> {
             padding: const EdgeInsets.all(4),
           );
 
-    // Anchor missing → wait overlay (NOT narrative dismiss). Prevents messy
-    // "Devam" spam while dialogs / lists mount.
     if (hole == null) {
       return Material(
-        color: Colors.black.withValues(alpha: 0.55),
+        color: Colors.black.withValues(alpha: 0.62),
         child: SafeArea(
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: TutorialTooltipCard(
-                title: widget.step.title,
-                body: widget.step.body,
-                stepIndex: index,
-                stepTotal: total,
-                onSkipAll: widget.onSkipAll,
-                onDismiss: null,
-                showLater: false,
-                primaryLabel: null,
-                onPrimary: null,
-              ),
+              child: card,
             ),
           ),
         ),
@@ -233,8 +314,6 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay> {
             top: hole.center.dy - 28,
             child: const TutorialHandHint(),
           ),
-          // highlightOnly: complete on hole tap (no screen hook required).
-          // spotlightTap: hole passes through to UI; screens call onAnchorTap.
           if (widget.step.mode == TutorialMode.highlightOnly)
             Positioned.fromRect(
               rect: hole,
@@ -244,20 +323,7 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay> {
                 child: const ColoredBox(color: Colors.transparent),
               ),
             ),
-          TutorialTooltipPositioned(
-            anchorRect: hole,
-            child: TutorialTooltipCard(
-              title: widget.step.title,
-              body: widget.step.body,
-              stepIndex: index,
-              stepTotal: total,
-              onSkipAll: widget.onSkipAll,
-              onDismiss: null,
-              showLater: false,
-              primaryLabel: null,
-              onPrimary: null,
-            ),
-          ),
+          TutorialTooltipPositioned(anchorRect: hole, child: card),
         ],
       ),
     );

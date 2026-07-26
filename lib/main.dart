@@ -5,6 +5,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'widgets/session_enforcement_gate.dart';
+import 'widgets/ban_enforcement_gate.dart';
+import 'widgets/policy_acceptance_gate.dart';
 import 'components/common/connectivity_gate.dart';
 import 'components/common/level_up_host.dart';
 import 'core/tutorial/tutorial_host.dart';
@@ -13,9 +16,12 @@ import 'components/notifications/phone_notification_sync.dart';
 import 'components/pvp/pvp_invite_host.dart';
 import 'components/trade/trade_invite_host.dart';
 import 'core/services/app_foreground_service.dart';
+import 'core/services/app_settings_service.dart';
+import 'core/services/local_notification_service.dart';
 import 'core/services/music_service.dart';
 import 'core/services/presence_service.dart';
 import 'core/services/supabase_service.dart';
+import 'core/utils/keyboard_dismiss.dart';
 import 'l10n/l10n.dart';
 import 'providers/locale_provider.dart';
 import 'routing/app_router.dart';
@@ -26,6 +32,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   AppForegroundService.instance.start();
   await SupabaseService.initialize();
+  // Prefs race: settings UI MusicService/AppSettings yüklenmeden okumasın.
+  await Future.wait<void>(<Future<void>>[
+    AppSettingsService.instance.load(),
+    MusicService.instance.start(),
+    LocalNotificationService.instance.initialize(),
+  ]);
 
   runApp(const ProviderScope(child: GkkMobileApp()));
 }
@@ -49,14 +61,11 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
         ? SupabaseService.client.auth.onAuthStateChange
         : const Stream<dynamic>.empty();
     _routerRefreshNotifier = _RouterRefreshNotifier(authRefreshStream);
-    _router = createAppRouter(
-      refreshListenable: _routerRefreshNotifier,
-    );
+    _router = createAppRouter(refreshListenable: _routerRefreshNotifier);
     if (SupabaseService.isInitialized &&
         SupabaseService.client.auth.currentSession != null) {
       PresenceService.instance.start();
     }
-    unawaited(MusicService.instance.start());
     _presenceAuthSub = authRefreshStream.listen((_) {
       if (!SupabaseService.isInitialized) return;
       if (SupabaseService.client.auth.currentSession != null) {
@@ -84,43 +93,54 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
         child: PvpInviteHost(
           child: TradeInviteHost(
             child: MaterialApp.router(
-          title: 'GKK Mobile',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.dark,
-          locale: locale,
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          builder: (BuildContext context, Widget? child) {
-            final TextStyle baseText = Theme.of(context).textTheme.bodyMedium ??
-                AppTheme.dark.textTheme.bodyMedium!;
-            return DefaultTextStyle(
-              style: baseText.copyWith(
-                decoration: TextDecoration.none,
-                decorationThickness: 0,
-              ),
-              child: TutorialHost(
-                child: LevelUpHost(
-                  child: ConnectivityGate(
-                    child: child ??
-                        const ColoredBox(
-                          color: AppColors.carbonVoid,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.liquidGold,
+              title: 'GKK Mobile',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.dark,
+              locale: locale,
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              builder: (BuildContext context, Widget? child) {
+                final TextStyle baseText =
+                    Theme.of(context).textTheme.bodyMedium ??
+                    AppTheme.dark.textTheme.bodyMedium!;
+                return DismissKeyboard(
+                  child: DefaultTextStyle(
+                    style: baseText.copyWith(
+                      decoration: TextDecoration.none,
+                      decorationThickness: 0,
+                    ),
+                    child: TutorialHost(
+                      router: _router,
+                      child: LevelUpHost(
+                        child: ConnectivityGate(
+                          child: BanEnforcementGate(
+                            child: SessionEnforcementGate(
+                              child: PolicyAcceptanceGate(
+                                child:
+                                    child ??
+                                    const ColoredBox(
+                                      color: AppColors.carbonVoid,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.liquidGold,
+                                        ),
+                                      ),
+                                    ),
+                              ),
                             ),
                           ),
                         ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
-          routerConfig: _router,
+                );
+              },
+              routerConfig: _router,
             ),
           ),
         ),
@@ -135,7 +155,10 @@ class _RouterRefreshNotifier extends ChangeNotifier {
       // Coalesce rapid token refresh events so GoRouter redirect does not
       // restart the home page transition mid-animation (black screen).
       _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(milliseconds: 250), notifyListeners);
+      _debounceTimer = Timer(
+        const Duration(milliseconds: 250),
+        notifyListeners,
+      );
     });
   }
 

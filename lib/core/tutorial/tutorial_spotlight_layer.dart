@@ -55,7 +55,7 @@ class _SpotlightPainter extends CustomPainter {
     final Paint border = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
-      ..color = const Color(0xFFF5C842).withValues(alpha: 0.85);
+      ..color = const Color(0xFFFFB800).withValues(alpha: 0.85);
     canvas.drawRRect(holeRRect, border);
   }
 

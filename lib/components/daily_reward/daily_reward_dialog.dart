@@ -90,7 +90,12 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
 
     if (ok) {
       setState(() => _celebrating = true);
-      AppMessenger.showSuccess(context, 'Günlük ödül alındı!');
+      final String? warning = ref.read(dailyRewardProvider).lastClaimWarning;
+      if (warning != null && warning.isNotEmpty) {
+        AppMessenger.show(context, warning);
+      } else {
+        AppMessenger.showSuccess(context, 'Günlük ödül alındı!');
+      }
       await Future<void>.delayed(const Duration(milliseconds: 1200));
       if (mounted) Navigator.of(context).pop();
       return;
@@ -554,12 +559,18 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
   }
 
   String _rewardShortLabel(DailyRewardGrant reward) {
+    // Item günlerinde eşyayı gizleme — yoksa "sadece gold/elmas" sanılır.
+    if (reward.hasItem) {
+      final String name = reward.itemName ?? reward.itemId ?? 'Eşya';
+      final String short =
+          name.length > 10 ? '${name.substring(0, 9)}…' : name;
+      return 'x${reward.itemQuantity} $short';
+    }
     if (reward.gems > 0 && reward.gold > 0) {
       return '${_fmt(reward.gold)} + ${reward.gems}💎';
     }
     if (reward.gems > 0) return '${reward.gems} Elmas';
     if (reward.gold > 0) return '${_fmt(reward.gold)} Altın';
-    if (reward.hasItem) return 'x${reward.itemQuantity} Eşya';
     if (reward.energy > 0) return '${reward.energy} Enerji';
     return reward.displayLabel;
   }

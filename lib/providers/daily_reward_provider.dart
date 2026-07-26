@@ -10,26 +10,33 @@ class DailyRewardState {
     this.claimInProgress = false,
     this.status,
     this.error,
+    this.lastClaimWarning,
   });
 
   final bool isLoading;
   final bool claimInProgress;
   final DailyRewardStatus? status;
   final String? error;
+  final String? lastClaimWarning;
 
   DailyRewardState copyWith({
     bool? isLoading,
     bool? claimInProgress,
     DailyRewardStatus? status,
     String? error,
+    String? lastClaimWarning,
     bool clearError = false,
     bool clearStatus = false,
+    bool clearWarning = false,
   }) {
     return DailyRewardState(
       isLoading: isLoading ?? this.isLoading,
       claimInProgress: claimInProgress ?? this.claimInProgress,
       status: clearStatus ? null : (status ?? this.status),
       error: clearError ? null : (error ?? this.error),
+      lastClaimWarning: clearWarning
+          ? null
+          : (lastClaimWarning ?? this.lastClaimWarning),
     );
   }
 }
@@ -55,7 +62,11 @@ class DailyRewardNotifier extends Notifier<DailyRewardState> {
   }
 
   Future<bool> claim() async {
-    state = state.copyWith(claimInProgress: true, clearError: true);
+    state = state.copyWith(
+      claimInProgress: true,
+      clearError: true,
+      clearWarning: true,
+    );
     try {
       final result = await _repository.claim();
       if (!result.success) {
@@ -68,7 +79,11 @@ class DailyRewardNotifier extends Notifier<DailyRewardState> {
 
       await loadStatus();
       await ref.read(playerProvider.notifier).loadProfile();
-      state = state.copyWith(claimInProgress: false);
+      state = state.copyWith(
+        claimInProgress: false,
+        lastClaimWarning: result.warning ??
+            (result.itemSkipped ? result.message : null),
+      );
       return true;
     } catch (e) {
       state = state.copyWith(claimInProgress: false, error: e.toString());

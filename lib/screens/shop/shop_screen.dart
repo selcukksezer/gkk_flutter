@@ -18,6 +18,9 @@ import '../../l10n/l10n.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../components/kingdom/kingdom_market_blessing_banner.dart';
+import '../../models/kingdom_market_blessing_model.dart';
+import '../../providers/kingdom_market_blessing_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import 'widgets/battle_pass_shop_tab.dart';
@@ -99,6 +102,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       initialIndex: initial.clamp(0, _tabCount - 1),
     );
     _loadShopData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(kingdomMarketBlessingProvider.notifier).load();
+    });
   }
 
   void _ensureTabControllerIntegrity() {
@@ -232,7 +238,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     final id = item['id']?.toString() ?? '';
     final itemId = item['item_id']?.toString() ?? id;
     final String currency = item['currency']?.toString() ?? 'gold';
-    final int unitPrice = ((item['price'] as num?) ?? 0).toInt();
+    final int baseUnitPrice = ((item['price'] as num?) ?? 0).toInt();
+    final KingdomMarketBlessingStatus blessing = ref.read(kingdomMarketBlessingProvider);
+    final int unitPrice = blessing.applyDiscount(baseUnitPrice, currency);
     final int totalPrice = unitPrice * qty;
 
     setState(() => _buyingId = id);
@@ -447,6 +455,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       body: GameScreenBackground(
         child: Column(
           children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 8, 14, 0),
+              child: KingdomMarketBlessingBanner(locationLabel: 'Mağaza'),
+            ),
             GkkTabBar(
               controller: _tabController,
               isScrollable: true,
@@ -1121,7 +1133,7 @@ class _ShopScaleButtonState extends State<_ShopScaleButton> {
 
 // ── Items tab ──────────────────────────────────────────────────────────────
 
-class _ItemsTab extends StatelessWidget {
+class _ItemsTab extends ConsumerWidget {
   const _ItemsTab({
     required this.items,
     required this.loading,
@@ -1145,8 +1157,10 @@ class _ItemsTab extends StatelessWidget {
   final Widget Function(Map<String, dynamic>) buildItemIcon;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (loading) return const Center(child: CircularProgressIndicator());
+
+    final KingdomMarketBlessingStatus blessing = ref.watch(kingdomMarketBlessingProvider);
 
     final q = searchQuery.trim().toLowerCase();
     final filtered = q.isEmpty ? items : items.where((it) => (it['name']?.toString() ?? '').toLowerCase().contains(q)).toList();
@@ -1257,7 +1271,9 @@ class _ItemsTab extends StatelessWidget {
                     final rarity = item['rarity']?.toString();
                     final rc = rarityColor(rarity);
                     final currency = item['currency']?.toString() ?? 'gold';
-                    final price = item['price'] ?? 0;
+                    final int basePrice = ((item['price'] as num?) ?? 0).toInt();
+                    final int price = blessing.applyDiscount(basePrice, currency);
+                    final bool hasKingDiscount = blessing.hasDiscountForCurrency(currency) && price < basePrice;
                     final isGem = currency == 'gems';
                     final String? energySubtitle =
                         shopEnergyPotionSubtitle(item, playerTolerance);
@@ -1366,12 +1382,25 @@ class _ItemsTab extends StatelessWidget {
                                   children: <Widget>[
                                     Text(isGem ? '💎' : '🪙', style: const TextStyle(fontSize: 9)),
                                     const SizedBox(width: 2),
+                                    if (hasKingDiscount) ...<Widget>[
+                                      Text(
+                                        '$basePrice',
+                                        style: TextStyle(
+                                          fontSize: 8.5,
+                                          decoration: TextDecoration.lineThrough,
+                                          color: AppColors.mutedTitanium.withValues(alpha: 0.75),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 3),
+                                    ],
                                     Text(
                                       isBuying ? '...' : '$price',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: isGem ? const Color(0xFF7DD3FC) : const Color(0xFFFDE68A),
+                                        color: hasKingDiscount
+                                            ? AppColors.liquidGold
+                                            : (isGem ? const Color(0xFF7DD3FC) : const Color(0xFFFDE68A)),
                                       ),
                                     ),
                                   ],

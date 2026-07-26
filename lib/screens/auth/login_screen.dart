@@ -62,6 +62,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (next.status == AuthStatus.error && next.errorMessage != null) {
         AppMessenger.showError(context, next.errorMessage!);
+        return;
+      }
+
+      if (next.status == AuthStatus.unauthenticated &&
+          next.errorMessage != null &&
+          next.errorMessage!.isNotEmpty) {
+        AppMessenger.showError(context, next.errorMessage!);
       }
     });
   }

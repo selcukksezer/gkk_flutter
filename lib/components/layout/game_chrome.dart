@@ -13,14 +13,18 @@ import '../../core/utils/cosmetic_title.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../l10n/l10n.dart';
+import '../../models/staff_model.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/staff_provider.dart';
 import '../../routing/app_router.dart';
+import '../../core/utils/keyboard_dismiss.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../screens/chat/chat_screen.dart';
 import '../common/profile_avatar.dart';
 import '../common/cosmetic_title_badge.dart';
+import '../player/staff_badge.dart';
 import 'game_quick_menu.dart';
 import 'live_ticker.dart';
 import '../notifications/notification_inbox_ui.dart';
@@ -48,6 +52,7 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final playerState = ref.watch(playerProvider);
+    final StaffProfile staffProfile = ref.watch(staffProvider).profile;
     final profile = playerState.profile;
 
     final String displayName = profile == null
@@ -206,16 +211,24 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    displayName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                children: <Widget>[
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      Flexible(
+                                        child: Text(
+                                          displayName,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      StaffBadge(badge: staffProfile.badge, compact: true),
+                                    ],
                                   ),
                                   if (usernameStr.isNotEmpty)
                                     Text(
@@ -687,7 +700,7 @@ class GameSubScreenScaffold extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             GameBackBar(onBack: goBack),
-            Expanded(child: body),
+            Expanded(child: DismissKeyboard(child: body)),
           ],
         ),
       ),

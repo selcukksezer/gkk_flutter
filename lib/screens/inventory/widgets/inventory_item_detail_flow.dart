@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,30 +30,6 @@ class InventoryItemDetailFlow {
   final String source;
   final VoidCallback? onEquipSuccess;
 
-  static const String _logPath =
-      '/Users/selcuk/Documents/gkk-web/gkk_flutter/.cursor/debug-02eb2a.log';
-
-  void _agentLog(String hypothesisId, String message, Map<String, Object?> data) {
-    // #region agent log
-    try {
-      final Map<String, Object?> payload = <String, Object?>{
-        'sessionId': '02eb2a',
-        'runId': 'item-popup',
-        'hypothesisId': hypothesisId,
-        'location': 'inventory_item_detail_flow.dart',
-        'message': message,
-        'data': data,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      };
-      File(_logPath).writeAsStringSync(
-        '${jsonEncode(payload)}\n',
-        mode: FileMode.append,
-        flush: true,
-      );
-    } catch (_) {}
-    // #endregion
-  }
-
   void _showSnack(String message) {
     if (!context.mounted) return;
     AppMessenger.show(context, message);
@@ -85,13 +58,6 @@ class InventoryItemDetailFlow {
 
   Future<void> open(InventoryItem item) async {
     if (!context.mounted) return;
-
-    _agentLog('H1', 'item detail open', <String, Object?>{
-      'source': source,
-      'itemId': item.itemId,
-      'rowId': item.rowId,
-      'isEquipped': item.isEquipped,
-    });
 
     final BoxOpening? opening =
         ref.read(boxOpeningProvider.notifier).openingForRow(item.rowId);
@@ -292,6 +258,11 @@ class InventoryItemDetailFlow {
       return;
     }
 
+    if (isNameChangeScroll(item.itemId)) {
+      await _handleNameChangeFlow(item);
+      return;
+    }
+
     final bool canUse =
         isStatResetScroll(item.itemId) ||
         item.itemType == ItemType.potion ||
@@ -326,6 +297,43 @@ class InventoryItemDetailFlow {
       return;
     }
     _showSnack(result.message ?? '${item.name} kullanildi.');
+  }
+
+  Future<void> _handleNameChangeFlow(InventoryItem item) async {
+    final String current = ref.read(playerProvider).profile?.displayName ??
+        ref.read(playerProvider).profile?.username ??
+        '';
+    final String? newName = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => _NameChangeScrollDialog(initialName: current),
+    );
+
+    if (newName == null || newName.length < 3) {
+      if (newName != null && newName.isNotEmpty) {
+        _showSnack('İsim en az 3 karakter olmalı.');
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    final bool? confirm = await UniversalGameDialog.show(
+      context,
+      title: 'İsim Değiştirme Kağıdı',
+      message: 'Görünen ismin "$newName" olacak.\nKağıt tüketilir.\n\nDevam?',
+      confirmLabel: 'Değiştir',
+      cancelLabel: 'İptal',
+    );
+    if (confirm != true || !context.mounted) return;
+
+    final UseItemResult result = await ref
+        .read(inventoryProvider.notifier)
+        .useNameChangeScroll(item: item, newDisplayName: newName);
+    if (!result.success) {
+      _showSnack(result.message ?? 'İsim değiştirilemedi.');
+      return;
+    }
+    _showSnack(result.message ?? 'Görünen isim güncellendi.');
   }
 
   Future<void> _handleBoxOpenFlow(InventoryItem item) async {
@@ -628,5 +636,52 @@ class InventoryItemDetailFlow {
       return;
     }
     _showSnack(target ? 'Favorilere eklendi.' : 'Favorilerden cikarildi.');
+  }
+}
+
+class _NameChangeScrollDialog extends StatefulWidget {
+  const _NameChangeScrollDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_NameChangeScrollDialog> createState() => _NameChangeScrollDialogState();
+}
+
+class _NameChangeScrollDialogState extends State<_NameChangeScrollDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialName);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.bgCard,
+      title: const Text('Yeni görünen isim'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 24,
+        decoration: const InputDecoration(
+          hintText: 'En az 3 karakter',
+          counterText: '',
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('İptal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: const Text('Değiştir'),
+        ),
+      ],
+    );
   }
 }

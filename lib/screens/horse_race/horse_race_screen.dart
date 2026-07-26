@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
@@ -21,6 +22,14 @@ class HorseRaceScreen extends ConsumerStatefulWidget {
 }
 
 class _HorseRaceScreenState extends ConsumerState<HorseRaceScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      TutorialTriggers.onRouteEnter(ref, AppRoutes.horseRace);
+    });
+  }
+
   Future<void> _confirmExitLiveRace() async {
     final bool? leave = await showDialog<bool>(
       context: context,

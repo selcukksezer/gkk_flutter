@@ -106,13 +106,11 @@ class _GkkTabPill extends StatelessWidget {
     required this.active,
     required this.onTap,
     required this.child,
-    this.expanded = false,
   });
 
   final bool active;
   final VoidCallback onTap;
   final Widget child;
-  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +139,7 @@ class _GkkTabPill extends StatelessWidget {
       ),
     );
 
-    final Widget column = Column(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
@@ -167,11 +165,6 @@ class _GkkTabPill extends StatelessWidget {
         ),
       ],
     );
-
-    if (expanded) {
-      return Expanded(child: column);
-    }
-    return column;
   }
 }
 
@@ -226,7 +219,6 @@ class GkkTabBar extends StatelessWidget {
             final List<Widget> pills = List<Widget>.generate(tabs.length, (int index) {
               final Widget pill = _GkkTabPill(
                 active: controller.index == index,
-                expanded: !_scrollable,
                 onTap: () {
                   if (controller.index != index) {
                     controller.animateTo(index);
@@ -242,9 +234,12 @@ class GkkTabBar extends StatelessWidget {
                 );
               }
 
-              return Padding(
-                padding: EdgeInsets.only(left: index > 0 ? 4 : 0),
-                child: pill,
+              // Expanded must be direct Row child — not under Padding.
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: index > 0 ? 4 : 0),
+                  child: Center(child: pill),
+                ),
               );
             });
 
@@ -300,7 +295,6 @@ class GkkSegmentedTabBar extends StatelessWidget {
     final List<Widget> pills = List<Widget>.generate(labels.length, (int index) {
       final Widget pill = _GkkTabPill(
         active: index == activeIndex,
-        expanded: !_scrollable,
         onTap: () => onChanged(index),
         child: Text(
           labels[index],
@@ -315,9 +309,12 @@ class GkkSegmentedTabBar extends StatelessWidget {
         );
       }
 
-      return Padding(
-        padding: EdgeInsets.only(left: index > 0 ? 4 : 0),
-        child: pill,
+      // Expanded must be direct Row child — not under Padding.
+      return Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(left: index > 0 ? 4 : 0),
+          child: Center(child: pill),
+        ),
       );
     });
 

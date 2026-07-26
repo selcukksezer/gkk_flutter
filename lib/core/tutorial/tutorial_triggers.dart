@@ -63,18 +63,6 @@ abstract final class TutorialTriggers {
     await prepareBankTutorialForInventoryFull(ref);
   }
 
-  static Future<void> maybeStartRetentionIntro(
-    WidgetRef ref, {
-    required int level,
-  }) async {
-    if (level < 5) return;
-    final TutorialController controller = ref.read(tutorialProvider.notifier);
-    if (!controller.isTrackComplete(TutorialTrackId.onboarding)) return;
-    if (controller.hasActiveTrack) return;
-    if (controller.isTrackComplete(TutorialTrackId.retentionIntro)) return;
-    await controller.startTrack(TutorialTrackId.retentionIntro);
-  }
-
   static Future<void> onAnchorTap(WidgetRef ref, String anchorId) async {
     await ref.read(tutorialProvider.notifier).onAnchorTap(anchorId);
   }

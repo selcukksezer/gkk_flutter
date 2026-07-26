@@ -16,20 +16,47 @@ class MusicService with WidgetsBindingObserver {
 
   final AudioPlayer _player = AudioPlayer();
   bool _started = false;
+  bool _prefsLoaded = false;
+  Future<void>? _startInflight;
   double _volume = 0.7;
   bool _muted = false;
 
   double get volume => _volume;
   bool get muted => _muted;
+  bool get prefsLoaded => _prefsLoaded;
+
+  /// Prefs + player hazır olana kadar bekle (settings race fix).
+  Future<void> ensureReady() async {
+    if (_prefsLoaded && _started) return;
+    await start();
+  }
 
   Future<void> start() async {
-    if (_started) return;
-    _started = true;
+    if (_startInflight != null) return _startInflight!;
+    if (_started && _prefsLoaded) return;
+    _startInflight = _startInternal();
+    try {
+      await _startInflight;
+    } finally {
+      _startInflight = null;
+    }
+  }
+
+  Future<void> _startInternal() async {
     WidgetsBinding.instance.addObserver(this);
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     _volume = prefs.getDouble(_volumeKey) ?? 0.7;
     _muted = prefs.getBool(_muteKey) ?? false;
+    _prefsLoaded = true;
+
+    if (_started) {
+      try {
+        await _player.setVolume(_muted ? 0 : _volume);
+      } catch (_) {}
+      return;
+    }
+    _started = true;
 
     try {
       // iOS: sessiz anahtar müziği kesmesin (playback kategorisi).

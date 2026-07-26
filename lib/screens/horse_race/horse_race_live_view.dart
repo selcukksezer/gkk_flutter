@@ -37,12 +37,19 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
   late final AnimationController _controller;
   late final AnimationController _pulseController;
   late final AnimationController _tickerController;
-  late final Animation<double> _raceAnim;
   late final Animation<double> _pulseAnim;
   int _countdown = 3;
   Timer? _countdownTimer;
   bool _raceStarted = false;
   bool _finished = false;
+
+  /// Prefer script winner — matches live positions + result overlay.
+  String? get _effectiveWinnerId {
+    if (widget.raceScript.winnerId.isNotEmpty) {
+      return widget.raceScript.winnerId;
+    }
+    return widget.winnerHorseId;
+  }
 
   @override
   void initState() {
@@ -59,10 +66,7 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
       vsync: this,
       duration: const Duration(seconds: 12),
     )..repeat();
-    _raceAnim = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOutCubic,
-    );
+    // Linear: keyframe `t` maps 1:1 (curve → leader ≠ server winner).
     _pulseAnim = Tween<double>(begin: 0.92, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
@@ -119,12 +123,13 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
   }
 
   String _winnerCommentary() {
-    final HorseRaceEntry? winner = _horseById(widget.winnerHorseId);
+    final HorseRaceEntry? winner = _horseById(_effectiveWinnerId);
     if (winner == null) return 'Yarış bitti!';
     return 'Finiş! Kazanan: ${winner.name} ${winner.emoji}';
   }
 
   String? _leaderId(double progress) {
+    if (_finished || progress >= 0.98) return _effectiveWinnerId;
     String? leader;
     double best = -1;
     for (final HorseRaceEntry horse in widget.horses) {
@@ -145,6 +150,16 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
           .positionAt(b.horseId, progress)
           .compareTo(widget.raceScript.positionAt(a.horseId, progress)),
     );
+    final String? winnerId = _effectiveWinnerId;
+    if ((_finished || progress >= 0.98) && winnerId != null) {
+      ranked.sort((HorseRaceEntry a, HorseRaceEntry b) {
+        if (a.horseId == winnerId) return -1;
+        if (b.horseId == winnerId) return 1;
+        return widget.raceScript
+            .positionAt(b.horseId, progress)
+            .compareTo(widget.raceScript.positionAt(a.horseId, progress));
+      });
+    }
     return ranked;
   }
 
@@ -171,17 +186,18 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
       color: HorseRaceDesign.void_,
       child: AnimatedBuilder(
         animation: Listenable.merge(<Listenable>[
-          _raceAnim,
+          _controller,
           _pulseAnim,
           _tickerController,
         ]),
         builder: (BuildContext context, Widget? child) {
-          final double progress = _raceStarted ? _raceAnim.value : 0;
+          final double progress = _raceStarted ? _controller.value : 0;
           final String? leaderId = _raceStarted ? _leaderId(progress) : null;
           final String commentary = _commentaryFor(progress, leaderId);
           final double scroll = progress * 420;
           final bool finalStretch = progress >= 0.78 && !_finished;
           final List<HorseRaceEntry> ranked = _rankedHorses(progress);
+          final String? effectiveWinner = _effectiveWinnerId;
 
           return Stack(
             fit: StackFit.expand,
@@ -222,8 +238,7 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                           isMine: myHorseId == widget.horses[i].horseId,
                           isWinner:
                               _finished &&
-                              widget.winnerHorseId ==
-                                  widget.horses[i].horseId,
+                              effectiveWinner == widget.horses[i].horseId,
                           raceScript: widget.raceScript,
                           size: size,
                           horseSize: horseSize,
@@ -272,6 +287,18 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                     ),
                   ),
                 ),
+              if (widget.myBet != null)
+                Positioned(
+                  top: safe.top + 118,
+                  left: 10,
+                  right: 148,
+                  child: _MyBetLiveStrip(
+                    bet: widget.myBet!,
+                    horse: _horseById(widget.myBet!.horseId),
+                    rank: _rankOf(myHorseId, ranked),
+                    raceStarted: _raceStarted,
+                  ),
+                ),
               Positioned(
                 top: safe.top + 118,
                 right: 8,
@@ -281,31 +308,19 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                   raceStarted: _raceStarted,
                   myHorseId: myHorseId,
                   finished: _finished,
-                  winnerHorseId: widget.winnerHorseId,
+                  winnerHorseId: effectiveWinner,
                 ),
               ),
               Positioned(
                 left: 10,
                 right: 10,
-                bottom: safe.bottom + (widget.myBet != null ? 72 : 10),
+                bottom: safe.bottom + 10,
                 child: _CommentaryTicker(
                   text: commentary,
                   pulse: _pulseAnim.value,
                   active: _raceStarted && !_finished,
                 ),
               ),
-              if (widget.myBet != null)
-                Positioned(
-                  left: 10,
-                  right: 10,
-                  bottom: safe.bottom + 8,
-                  child: _MyBetLiveStrip(
-                    bet: widget.myBet!,
-                    horse: _horseById(widget.myBet!.horseId),
-                    rank: _rankOf(myHorseId, ranked),
-                    raceStarted: _raceStarted,
-                  ),
-                ),
               if (!_raceStarted)
                 _StartingGateOverlay(
                   countdown: _countdown,
@@ -318,7 +333,7 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: RadialGradient(
-                          center: const Alignment(0.85, 0.35),
+                          center: const Alignment(0.0, -0.55),
                           radius: 1.1,
                           colors: <Color>[
                             HorseRaceDesign.gold.withValues(alpha: 0.28),
@@ -385,12 +400,12 @@ class _TrackHorseSprite extends StatelessWidget {
       horseId: horse.horseId,
     );
     final double pos = raceScript.positionAt(horse.horseId, progress);
-    final double x = HorseRaceTrackLayout.horseX(size, pos) - horseSize * 0.5;
-    final double centerY = HorseRaceTrackLayout.laneCenterY(
+    final double centerX = HorseRaceTrackLayout.laneCenterX(
       size,
       index,
       laneCount,
     );
+    final double y = HorseRaceTrackLayout.horseY(size, pos) - horseSize * 0.55;
     final double bob = raceStarted && !finished
         ? math.sin(bobPhase * math.pi * 2) * 2.5
         : 0;
@@ -401,8 +416,8 @@ class _TrackHorseSprite extends StatelessWidget {
         : silk;
 
     return Positioned(
-      left: x.clamp(4.0, size.width - horseSize - 4),
-      top: centerY - horseSize * 0.55 + bob,
+      left: (centerX - horseSize * 0.5).clamp(4.0, size.width - horseSize - 4),
+      top: y.clamp(4.0, size.height - horseSize - 4) + bob,
       child: AnimatedScale(
         scale: isWinner ? 1.28 : (isLeader ? 1.12 : 1.0),
         duration: const Duration(milliseconds: 260),
@@ -433,8 +448,8 @@ class _TrackHorseSprite extends StatelessWidget {
               children: <Widget>[
                 if (raceStarted && !finished)
                   Positioned(
-                    right: horseSize * 0.55,
-                    top: horseSize * 0.35,
+                    left: horseSize * 0.3,
+                    top: horseSize * 0.55,
                     child: _DustPuff(size: horseSize * 0.35),
                   ),
                 Container(
@@ -519,7 +534,7 @@ class _TrackHorseSprite extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Container(
-              constraints: BoxConstraints(maxWidth: horseSize + 24),
+              constraints: BoxConstraints(maxWidth: horseSize + 8),
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
                 color: HorseRaceDesign.void_.withValues(alpha: 0.72),
@@ -551,13 +566,13 @@ class _DustPuff extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: List<Widget>.generate(3, (int i) {
         return Container(
           width: size * (0.35 + i * 0.12),
           height: size * (0.35 + i * 0.12),
-          margin: const EdgeInsets.only(right: 2),
+          margin: const EdgeInsets.only(bottom: 2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withValues(alpha: 0.12 - i * 0.03),

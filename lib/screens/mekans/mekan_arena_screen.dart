@@ -9,19 +9,18 @@ import '../../components/common/gkk_tab_bar.dart';
 import '../../components/common/gkk_tab_page_shell.dart';
 import '../../components/common/inline_error_retry.dart';
 import '../../core/errors/user_facing_error.dart';
-import '../../core/utils/captcha_guard.dart';
+import '../../core/matchmaking/matchmaking_offer.dart';
+import '../../core/utils/combat_restriction.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../models/mekan_model.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
-import '../../routing/app_router.dart';
-import '../../theme/app_colors.dart';
-import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/mekan_arena_bet_sheet.dart';
 import 'widgets/mekan_arena_fighter_card.dart';
 import 'widgets/mekan_arena_rank_row.dart';
 import 'widgets/mekan_design.dart';
 import 'widgets/mekan_scaffold.dart';
+import 'mekan_arena_battle_screen.dart';
 
 class MekanArenaScreen extends ConsumerStatefulWidget {
   const MekanArenaScreen({super.key, required this.mekanId});
@@ -39,6 +38,9 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
   ArenaWeeklyRewardStatus? _weeklyReward;
   bool _claimingReward = false;
   bool _loading = true;
+  bool _refreshingOffers = false;
+  int _refreshInSec = 0;
+  Timer? _refreshTicker;
   String? _loadError;
   String? _blockedMessage;
   late TabController _tab;
@@ -52,82 +54,162 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
 
   @override
   void dispose() {
+    _refreshTicker?.cancel();
     _tab.dispose();
     super.dispose();
   }
 
   MekanRepository get _repo => ref.read(mekanRepositoryProvider);
 
-  Future<void> _load() async {
+  void _armRefreshCooldown(int seconds) {
+    _refreshTicker?.cancel();
+    _refreshInSec = seconds < 0 ? 0 : seconds;
+    if (_refreshInSec <= 0) return;
+    _refreshTicker = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _refreshInSec -= 1;
+        if (_refreshInSec <= 0) {
+          _refreshInSec = 0;
+          t.cancel();
+        }
+      });
+    });
+  }
+
+  List<ArenaOpponent> _mapOffers(MatchmakingOffersResult result) {
+    return result.offers
+        .map(
+          (MatchmakingOffer o) => ArenaOpponent(
+            offerId: o.offerId,
+            authId: o.authId,
+            username: o.username,
+            level: o.level,
+            pvpRating: o.pvpRating,
+            power: o.power > 0 ? o.power : (o.attack + o.defense),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> _load({bool offersOnly = false}) async {
     if (!mounted) return;
     setState(() {
-      _loading = true;
-      _loadError = null;
-      _blockedMessage = null;
+      if (!offersOnly) {
+        _loading = true;
+        _loadError = null;
+        _blockedMessage = null;
+      } else {
+        _refreshingOffers = true;
+      }
     });
     try {
-      final Mekan? mekan = await _repo.fetchMekan(widget.mekanId);
-      if (!mounted) return;
-      if (mekan == null) {
-        setState(() {
-          _loading = false;
-          _blockedMessage = 'Mekân bulunamadı.';
-        });
-        return;
-      }
-      if (mekan.raidClosed) {
-        setState(() {
-          _loading = false;
-          _blockedMessage = 'Polis baskını nedeniyle arena geçici olarak kapalı.';
-        });
-        return;
-      }
-      if (!mekan.isOpen) {
-        setState(() {
-          _loading = false;
-          _blockedMessage = 'Mekân kapalı — arena şu an kullanılamıyor.';
-        });
-        return;
+      if (!offersOnly) {
+        final Mekan? mekan = await _repo.fetchMekan(widget.mekanId);
+        if (!mounted) return;
+        if (mekan == null) {
+          setState(() {
+            _loading = false;
+            _blockedMessage = 'Mekân bulunamadı.';
+          });
+          return;
+        }
+        if (mekan.raidClosed) {
+          setState(() {
+            _loading = false;
+            _blockedMessage = 'Polis baskını nedeniyle arena geçici olarak kapalı.';
+          });
+          return;
+        }
+        if (!mekan.isOpen) {
+          setState(() {
+            _loading = false;
+            _blockedMessage = 'Mekân kapalı — arena şu an kullanılamıyor.';
+          });
+          return;
+        }
       }
 
-      final List<ArenaOpponent> opp = await _repo.fetchArenaOpponents();
-      List<ArenaRankRow> rank = <ArenaRankRow>[];
-      ArenaWeeklyRewardStatus? weeklyReward;
-      try {
-        rank = await _repo.fetchArenaRanking(limit: 50);
-      } catch (_) {
-        // Sıralama RPC isteğe bağlı.
-      }
-      try {
-        weeklyReward = await _repo.fetchArenaWeeklyRewardStatus();
-      } catch (_) {
-        // Haftalık ödül RPC isteğe bağlı.
+      final MatchmakingOffersResult offerRes = await _repo.fetchArenaOpponentOffers();
+      List<ArenaRankRow> rank = _ranking;
+      ArenaWeeklyRewardStatus? weeklyReward = _weeklyReward;
+      if (!offersOnly) {
+        try {
+          rank = await _repo.fetchArenaRanking(limit: 50);
+        } catch (_) {}
+        try {
+          weeklyReward = await _repo.fetchArenaWeeklyRewardStatus();
+        } catch (_) {}
       }
       if (mounted) {
         setState(() {
-          _opponents = opp;
-          _ranking = rank;
-          _weeklyReward = weeklyReward;
+          _opponents = _mapOffers(offerRes);
+          if (!offersOnly) {
+            _ranking = rank;
+            _weeklyReward = weeklyReward;
+          }
           _loading = false;
+          _refreshingOffers = false;
         });
+        _armRefreshCooldown(offerRes.refreshInSec);
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _loading = false;
-          _loadError = userFacingErrorMessage(e, fallback: 'Arena yüklenemedi.');
+          _refreshingOffers = false;
+          if (!offersOnly) {
+            _loadError = userFacingErrorMessage(e, fallback: 'Arena yüklenemedi.');
+          }
         });
+        if (offersOnly) {
+          AppMessenger.showError(
+            context,
+            userFacingErrorMessage(e, fallback: 'Rakip listesi yenilenemedi.'),
+          );
+        }
       }
     }
   }
 
+  Future<void> _refreshOffers() async {
+    if (_refreshInSec > 0 || _refreshingOffers) {
+      if (_refreshInSec > 0) {
+        AppMessenger.showError(context, 'Yenileme $_refreshInSec sn sonra.');
+      }
+      return;
+    }
+    final profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.showError(context, combatBlock);
+      return;
+    }
+    await _load(offersOnly: true);
+  }
+
   Future<void> _openBetSheet(ArenaOpponent opp) async {
-    final int energy = ref.read(playerProvider).profile?.energy ?? 0;
+    final profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.showError(context, combatBlock);
+      return;
+    }
+    final int energy = profile?.energy ?? 0;
     if (energy < _energyCost) {
       AppMessenger.showError(context, 'Enerji yetersiz ($_energyCost gerekli)');
       return;
     }
-    final int gold = ref.read(playerProvider).profile?.gold ?? 0;
+    final int gold = profile?.gold ?? 0;
     final int? wager = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
@@ -135,141 +217,20 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
       builder: (_) => MekanArenaBetSheet(opponent: opp, myGold: gold),
     );
     if (!mounted || wager == null) return;
-    await _fight(opp, wager);
-  }
 
-  Future<void> _fight(ArenaOpponent opp, int wager) async {
-    try {
-      final Map<String, dynamic> res =
-          await _repo.pvpBet(mekanId: widget.mekanId, defenderId: opp.authId, wager: wager);
-      if (!mounted) return;
-      await ref.read(playerProvider.notifier).loadProfile();
-      final bool won = res['won'] == true;
-      final int net = (res['net_win'] as num?)?.toInt() ?? 0;
-      final int repDelta = (res['rep_change'] as num?)?.toInt() ?? 0;
-      final bool hospital = res['hospitalized'] == true;
-      final int nemesisGold = (res['nemesis_revenge_gold'] as num?)?.toInt() ?? 0;
-      final bool nemesisGranted = res['nemesis_revenge_granted'] == true;
-      await _showResult(
-        won: won,
-        net: net,
-        hospital: hospital,
-        opp: opp,
-        repDelta: repDelta,
-        nemesisRevengeGold: nemesisGranted ? nemesisGold : 0,
-      );
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      if (CaptchaGuard.isCaptchaRequired(e)) {
-        final bool solved = await CaptchaGuard.solve(context, 'arena');
-        if (solved && mounted) {
-          unawaited(_fight(opp, wager));
-        }
-        return;
-      }
-      AppMessenger.showError(
-        context,
-        userFacingErrorMessage(e, fallback: 'Düello başlatılamadı.'),
-      );
-    }
-  }
-
-  Future<void> _showResult({
-    required bool won,
-    required int net,
-    required bool hospital,
-    required ArenaOpponent opp,
-    int repDelta = 0,
-    int nemesisRevengeGold = 0,
-  }) async {
-    final Color c = won ? MekanPalette.neon : MekanPalette.ruby;
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
-            ),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: c, width: 1.6),
-            boxShadow: <BoxShadow>[BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 26)],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(
-                won ? Icons.emoji_events_rounded : Icons.sentiment_very_dissatisfied_rounded,
-                color: c,
-                size: 64,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                won ? 'ZAFER!' : 'YENİLGİ',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: c, letterSpacing: 1.5),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${opp.username} ile maç',
-                style: const TextStyle(fontSize: 13, color: MekanPalette.textMid),
-              ),
-              const SizedBox(height: 16),
-              if (won)
-                GoldPriceBadge(amount: net)
-              else
-                const Text(
-                  'Bahsi kaybettin',
-                  style: TextStyle(fontSize: 14, color: MekanPalette.textMid, fontWeight: FontWeight.w700),
-                ),
-              if (won && nemesisRevengeGold > 0) ...<Widget>[
-                const SizedBox(height: 10),
-                GlowChip(
-                  icon: Icons.sports_mma_rounded,
-                  label: 'Nemesis intikam bonusu: +$nemesisRevengeGold g',
-                  color: AppColors.liquidGold,
-                ),
-              ],
-              if (repDelta != 0) ...<Widget>[
-                const SizedBox(height: 10),
-                ReputationGainBanner(
-                  amount: repDelta.abs(),
-                  label: repDelta > 0 ? 'İtibar kazanıldı' : 'İtibar kaybedildi',
-                ),
-              ],
-              if (hospital) ...<Widget>[
-                const SizedBox(height: 12),
-                const GlowChip(
-                  icon: Icons.local_hospital_rounded,
-                  label: 'Hastaneye kaldırıldın',
-                  color: MekanPalette.ruby,
-                ),
-                const SizedBox(height: 12),
-                NeonButton(
-                  label: 'Hastaneye Git',
-                  icon: Icons.local_hospital_rounded,
-                  accent: MekanPalette.ruby,
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    context.go(AppRoutes.hospital);
-                  },
-                ),
-              ],
-              const SizedBox(height: 20),
-              NeonButton(
-                label: 'Devam',
-                accent: c,
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ],
-          ),
-        ),
+    final bool? finished = await MekanArenaBattleScreen.open(
+      context,
+      args: MekanArenaBattleArgs(
+        mekanId: widget.mekanId,
+        opponent: opp,
+        wager: wager,
       ),
     );
+    if (!mounted) return;
+    if (finished == true) {
+      await ref.read(playerProvider.notifier).loadProfile();
+      await _load();
+    }
   }
 
   Widget _blockedView() {
@@ -295,7 +256,12 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    final int energy = ref.watch(playerProvider).profile?.energy ?? 0;
+    final profile = ref.watch(playerProvider).profile;
+    final int energy = profile?.energy ?? 0;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
 
     return MekanSubScaffold(
       title: 'PvP Arena',
@@ -344,7 +310,7 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
                                 tabIndex: 0,
                                 sectionTitle: 'Arena Dövüşleri',
                                 sectionAccent: MekanPalette.ruby,
-                                child: _fightTab(energy),
+                                child: _fightTab(energy, combatBlock),
                               ),
                               GkkTabPageShell(
                                 tabIndex: 1,
@@ -409,34 +375,107 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
     );
   }
 
-  Widget _fightTab(int energy) {
+  Widget _fightTab(int energy, String? combatBlock) {
     final bool hasEnergy = energy >= _energyCost;
+    final bool canFight = hasEnergy && combatBlock == null;
     return RefreshIndicator(
       color: MekanPalette.ruby,
       backgroundColor: MekanPalette.navy,
-      onRefresh: _load,
+      onRefresh: () => _refreshOffers(),
       child: _opponents.isEmpty
           ? ListView(
-              children: const <Widget>[
-                SizedBox(height: 80),
+              children: <Widget>[
+                if (combatBlock != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Text(
+                      combatBlock,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: MekanPalette.ruby, fontSize: 13),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 40),
                 MekanEmpty(
                   icon: Icons.person_off_outlined,
                   title: 'Rakip yok',
-                  message: 'Şu an dövüşülebilecek oyuncu bulunamadı.',
+                  message: combatBlock ??
+                      (_refreshInSec > 0
+                          ? 'Yeni teklifler $_refreshInSec sn sonra.'
+                          : 'Şu an dövüşülebilecek oyuncu bulunamadı.'),
                   accent: MekanPalette.ruby,
+                  action: NeonButton(
+                    label: _refreshInSec > 0
+                        ? 'Bekle ($_refreshInSec)'
+                        : 'Yenile',
+                    icon: Icons.refresh_rounded,
+                    accent: MekanPalette.ruby,
+                    expand: false,
+                    onPressed: combatBlock != null ||
+                            _refreshInSec > 0 ||
+                            _refreshingOffers
+                        ? null
+                        : _refreshOffers,
+                  ),
                 ),
               ],
             )
           : ListView.separated(
               padding: GameScrollLayout.fromLTRB(context, left: 14, top: 8, right: 14),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _opponents.length,
+              itemCount: _opponents.length + 1 + (combatBlock != null ? 1 : 0),
               separatorBuilder: (BuildContext context, int index) => const SizedBox(height: 10),
               itemBuilder: (BuildContext context, int i) {
-                final ArenaOpponent o = _opponents[i];
+                int idx = i;
+                if (combatBlock != null) {
+                  if (idx == 0) {
+                    return Text(
+                      combatBlock,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: MekanPalette.ruby, fontSize: 13),
+                    );
+                  }
+                  idx -= 1;
+                }
+                if (idx == 0) {
+                  return Row(
+                    children: <Widget>[
+                      const Expanded(
+                        child: Text(
+                          'Rastgele rakipler',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: MekanPalette.textMid,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: combatBlock != null ||
+                                _refreshInSec > 0 ||
+                                _refreshingOffers
+                            ? null
+                            : _refreshOffers,
+                        icon: _refreshingOffers
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.refresh_rounded, size: 16),
+                        label: Text(
+                          _refreshInSec > 0 ? '$_refreshInSec sn' : 'Yenile',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                final ArenaOpponent o = _opponents[idx - 1];
                 return MekanArenaFighterCard(
                   opponent: o,
-                  enabled: hasEnergy,
+                  enabled: canFight && o.offerId.isNotEmpty,
                   onFight: () => _openBetSheet(o),
                 );
               },

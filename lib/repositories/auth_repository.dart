@@ -1,4 +1,8 @@
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthResponse, AuthUser;
+
 import '../core/errors/app_exception.dart';
+import '../core/services/device_identity_service.dart';
+import '../core/services/device_session_service.dart';
 import '../core/services/supabase_service.dart';
 import '../models/auth_model.dart';
 
@@ -43,6 +47,8 @@ class SupabaseAuthRepository implements AuthRepository {
     if (session == null || user == null) {
       throw AppException('Giris basarisiz. Oturum olusturulamadi.', code: 'AUTH_LOGIN_FAILED');
     }
+
+    await _enforceSingleDeviceSession(request.deviceId);
 
     return AuthResponse(
       session: AuthSession(
@@ -94,6 +100,10 @@ class SupabaseAuthRepository implements AuthRepository {
       throw AppException('Kayit basarisiz. Kullanici olusturulamadi.', code: 'AUTH_REGISTER_FAILED');
     }
 
+    if (session != null) {
+      await _enforceSingleDeviceSession(request.deviceId);
+    }
+
     return AuthResponse(
       session: AuthSession(
         accessToken: session?.accessToken ?? '',
@@ -123,6 +133,20 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> logout() async {
     if (!SupabaseService.isConfigured) return;
+    await DeviceSessionService.clearEpoch();
     await SupabaseService.client.auth.signOut();
+  }
+
+  Future<void> _enforceSingleDeviceSession(String deviceId) async {
+    if (deviceId.trim().length < 8) {
+      throw AppException('Gecersiz cihaz kimligi.', code: 'INVALID_DEVICE_ID');
+    }
+    final String currentId = await DeviceIdentityService.currentId();
+    if (deviceId.trim() != currentId) {
+      throw AppException('Cihaz kimligi eslesmiyor.', code: 'DEVICE_ID_MISMATCH');
+    }
+    await DeviceSessionService.claimActiveDevice();
+    await DeviceSessionService.syncRequestHeaders();
+    await SupabaseService.client.auth.signOut(scope: SignOutScope.others);
   }
 }

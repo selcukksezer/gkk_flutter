@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/matchmaking/matchmaking_offer.dart';
+import '../core/matchmaking/matchmaking_service.dart';
 import '../core/services/supabase_service.dart';
 import '../models/mekan_model.dart';
 
@@ -157,19 +159,31 @@ class MekanRepository {
         .toList();
   }
 
+  /// Server-issued random offers (N≈6) + refresh cooldown metadata.
+  Future<MatchmakingOffersResult> fetchArenaOpponentOffers() async {
+    const MatchmakingService svc = MatchmakingService();
+    try {
+      return await svc.fetchOffers(MatchmakingService.modeArena);
+    } on MatchmakingException catch (e) {
+      throw MekanException(e.message);
+    }
+  }
+
   /// Bracket matchmaking: server RPC level/rating bandı + newbie shield uygular.
   /// Eski top-15-global sorgusu newbie crush'a yol açıyordu (QA bulgusu).
   Future<List<ArenaOpponent>> fetchArenaOpponents() async {
-    final dynamic res =
-        await SupabaseService.client.rpc('get_arena_opponents', params: <String, dynamic>{'p_limit': 15});
-    if (res is Map && res['success'] == false) {
-      throw MekanException(res['error']?.toString() ?? 'Rakip listesi alinamadi');
-    }
-    final List<dynamic> rows = res is Map
-        ? ((res['opponents'] as List?) ?? <dynamic>[])
-        : (res is List ? res : <dynamic>[]);
-    return rows
-        .map((dynamic e) => ArenaOpponent.fromJson(Map<String, dynamic>.from(e as Map)))
+    final MatchmakingOffersResult result = await fetchArenaOpponentOffers();
+    return result.offers
+        .map(
+          (MatchmakingOffer o) => ArenaOpponent(
+            offerId: o.offerId,
+            authId: o.authId,
+            username: o.username,
+            level: o.level,
+            pvpRating: o.pvpRating,
+            power: o.power > 0 ? o.power : (o.attack + o.defense),
+          ),
+        )
         .toList();
   }
 
@@ -227,11 +241,13 @@ class MekanRepository {
     required String mekanId,
     required String defenderId,
     required int wager,
+    required String offerId,
   }) =>
       _rpc('mekan_pvp_bet', <String, dynamic>{
         'p_mekan_id': mekanId,
         'p_defender_id': defenderId,
         'p_wager': wager,
+        'p_offer_id': offerId,
       });
 
   Future<ArenaWeeklyRewardStatus> fetchArenaWeeklyRewardStatus() async {
@@ -516,6 +532,7 @@ class ArenaRankRow {
 
 class ArenaOpponent {
   const ArenaOpponent({
+    required this.offerId,
     required this.authId,
     required this.username,
     required this.level,
@@ -523,6 +540,7 @@ class ArenaOpponent {
     required this.power,
   });
 
+  final String offerId;
   final String authId;
   final String username;
   final int level;
@@ -530,10 +548,13 @@ class ArenaOpponent {
   final int power;
 
   factory ArenaOpponent.fromJson(Map<String, dynamic> json) => ArenaOpponent(
+        offerId: (json['offer_id'] ?? '').toString(),
         authId: (json['auth_id'] ?? '').toString(),
         username: (json['username'] ?? '?').toString(),
         level: _toInt(json['level']),
         pvpRating: _toInt(json['pvp_rating'], fallback: 1000),
-        power: _toInt(json['attack']) + _toInt(json['defense']),
+        power: _toInt(json['power']) > 0
+            ? _toInt(json['power'])
+            : _toInt(json['attack']) + _toInt(json['defense']),
       );
 }

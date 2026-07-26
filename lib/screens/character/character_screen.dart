@@ -21,6 +21,7 @@ import '../../core/utils/reputation_tier.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../models/player_model.dart';
 import '../../providers/inventory_provider.dart';
+import '../../providers/player_badges_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
@@ -60,6 +61,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(playerProvider.notifier).loadProfile();
       ref.read(inventoryProvider.notifier).loadInventory();
+      ref.read(playerBadgesProvider.notifier).load();
       await TutorialTriggers.onRouteEnter(ref, AppRoutes.character);
     });
   }

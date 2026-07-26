@@ -226,6 +226,20 @@ class HorseRaceScript {
   }
 
   double positionAt(String horseId, double progress) {
+    final double raw = _rawPositionAt(horseId, progress);
+    if (winnerId.isEmpty || progress < 0.82) return raw;
+
+    // Final stretch: winner always uniquely ahead (old scripts tie at 1.0).
+    final double surge = ((progress - 0.82) / 0.18).clamp(0.0, 1.0);
+    final double winnerFloor = 0.70 + surge * 0.30;
+    if (horseId == winnerId) {
+      return raw > winnerFloor ? raw.clamp(0.0, 1.0) : winnerFloor;
+    }
+    return (raw < winnerFloor - 0.04 ? raw : winnerFloor - 0.04)
+        .clamp(0.0, 0.96);
+  }
+
+  double _rawPositionAt(String horseId, double progress) {
     if (keyframes.isEmpty) return progress;
     HorseRaceKeyframe? prev;
     HorseRaceKeyframe? next;

@@ -9,6 +9,8 @@ import '../../../components/common/gkk_tab_page_shell.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../../core/services/retention_analytics.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/tutorial/tutorial_anchor.dart';
+import '../../../core/tutorial/tutorial_track.dart';
 import '../../../models/night_market_model.dart';
 import '../../../qa/qa_flags.dart';
 import '../../../theme/app_colors.dart';
@@ -197,15 +199,22 @@ class _NightMarketTabState extends State<NightMarketTab> with SingleTickerProvid
             _buildClosedState()
           else
             ..._status.offers.asMap().entries.map(
-              (MapEntry<int, NightMarketOffer> entry) => GkkTabStaggerItem(
-                index: entry.key,
-                child: _NightMarketOfferCard(
-                  offer: entry.value,
-                  active: _status.active,
-                  buyingId: _buyingId,
-                  onBuy: () => _buy(entry.value, 1),
-                ),
-              ),
+              (MapEntry<int, NightMarketOffer> entry) {
+                final Widget card = GkkTabStaggerItem(
+                  index: entry.key,
+                  child: _NightMarketOfferCard(
+                    offer: entry.value,
+                    active: _status.active,
+                    buyingId: _buyingId,
+                    onBuy: () => _buy(entry.value, 1),
+                  ),
+                );
+                if (entry.key != 0) return card;
+                return TutorialAnchorScope(
+                  id: TutorialAnchorId.shopNightOffer,
+                  child: card,
+                );
+              },
             ),
         ],
       ),

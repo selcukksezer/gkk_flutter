@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/services/supabase_service.dart';
 import '../qa/qa_flags.dart';
 // Removed achievements_screen.dart
+import '../screens/auth/banned_screen.dart';
 import '../screens/auth/character_select_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
@@ -25,7 +27,10 @@ import '../screens/facilities/facilities_screen.dart';
 import '../screens/guild/guild_screen.dart';
 import '../screens/guild_war/guild_war_hub_screen.dart';
 import '../screens/guild_war/tournament_detail_screen.dart';
+import '../screens/guild_war/guild_war_attack_screen.dart';
 import '../screens/guild_war/territory_detail_screen.dart';
+import '../screens/guild/guild_vault_screen.dart';
+import '../screens/announcements/announcements_screen.dart';
 import '../screens/guild_war/battle_result_screen.dart';
 import '../screens/guild_war/war_logs_screen.dart';
 import '../models/guild_war_model.dart';
@@ -41,6 +46,7 @@ import '../screens/market/market_screen.dart';
 import '../screens/mekans/mekans_screen.dart';
 import '../screens/mekans/mekan_detail_screen.dart';
 import '../screens/mekans/mekan_arena_screen.dart';
+import '../screens/mekans/mekan_arena_battle_screen.dart';
 import '../screens/mekans/mekan_create_screen.dart';
 import '../screens/mekans/my_mekan_screen.dart';
 import '../screens/friends/friends_screen.dart';
@@ -54,6 +60,16 @@ import '../screens/quests/quests_screen.dart';
 import '../screens/reputation/reputation_screen.dart';
 import '../screens/season/season_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/legal/legal_document_screen.dart';
+import '../screens/support/bug_report_detail_screen.dart';
+import '../screens/support/support_screens.dart';
+import '../screens/support/ticket_detail_screen.dart';
+import '../screens/staff/staff_gem_reward_approvals_screen.dart';
+import '../screens/staff/staff_hub_screen.dart';
+import '../screens/staff/staff_liveops_screen.dart';
+import '../screens/staff/staff_route_guard.dart';
+import '../providers/policy_provider.dart';
+import '../models/policy_model.dart';
 import '../screens/shop/shop_screen.dart';
 import '../screens/trade/trade_screen.dart';
 import 'game_page_transition.dart';
@@ -91,6 +107,9 @@ class AppRoutes {
   static const String guildWarLogs = '/guild-war/logs';
   static const String guildMonument = '/guild/monument';
   static const String guildMonumentDonate = '/guild/monument/donate';
+  static const String guildVault = '/guild/vault';
+  static const String guildWarAttack = '/guild-war/territory';
+  static const String announcements = '/announcements';
   static const String leaderboard = '/leaderboard';
   static const String loot = '/loot';
   static const String mekans = '/mekans';
@@ -100,6 +119,8 @@ class AppRoutes {
   static String mekanDetail(String id) => '$mekans/$id';
 
   static String mekanArena(String id) => '$mekans/$id/arena';
+  static const String mekanArenaBattle = '/mekans/arena/battle';
+  static const String banned = '/banned';
   static const String characterSelect = '/onboarding/character-select';
   static const String prison = '/prison';
   static const String pvp = '/pvp';
@@ -109,6 +130,14 @@ class AppRoutes {
   static const String reputation = '/reputation';
   static const String season = '/season';
   static const String settings = '/settings';
+  static const String supportTickets = '/support/tickets';
+  static const String createTicket = '/support/tickets/new';
+  static const String bugReport = '/support/bug-report';
+  static const String myBugReports = '/support/my-bug-reports';
+  static const String legal = '/legal';
+  static const String staffHub = '/staff';
+  static const String staffLiveOps = '/staff/liveops';
+  static const String staffGemRewards = '/staff/gem-rewards';
   static const String shop = '/shop';
   static const String trade = '/trade';
   static const String friends = '/friends';
@@ -124,7 +153,7 @@ Future<Map<String, dynamic>?> _fetchRedirectUserProfile(String authId) {
   _redirectProfileUserId = authId;
   _redirectProfileInflight = SupabaseService.client
       .from('users')
-      .select('character_class, is_banned')
+      .select('character_class, is_banned, ban_reason, banned_until')
       .eq('auth_id', authId)
       .maybeSingle()
       .timeout(const Duration(seconds: 12))
@@ -143,6 +172,15 @@ Future<Map<String, dynamic>?> _fetchRedirectUserProfile(String authId) {
 
 Future<Map<String, dynamic>?>? _redirectProfileInflight;
 String? _redirectProfileUserId;
+
+bool _isActiveAccountBan(Map<String, dynamic>? profile) {
+  if (profile == null || profile['is_banned'] != true) return false;
+  final dynamic untilRaw = profile['banned_until'];
+  if (untilRaw == null) return true;
+  final DateTime? until = DateTime.tryParse(untilRaw.toString());
+  if (until == null) return true;
+  return until.isAfter(DateTime.now().toUtc());
+}
 
 final GlobalKey<NavigatorState> appRootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -176,10 +214,15 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
         try {
           final Map<String, dynamic>? profile =
               await _fetchRedirectUserProfile(currentUser.id);
-          final bool isBanned = profile?['is_banned'] == true;
-          if (isBanned) {
-            await SupabaseService.client.auth.signOut();
-            return AppRoutes.login;
+          if (_isActiveAccountBan(profile)) {
+            if (path != AppRoutes.banned) {
+              return AppRoutes.banned;
+            }
+            return null;
+          }
+
+          if (path == AppRoutes.banned) {
+            return AppRoutes.home;
           }
 
           final String? characterClass = profile?['character_class'] as String?;
@@ -215,6 +258,11 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     gameRoute(
       path: AppRoutes.login,
       build: (BuildContext context, GoRouterState state) => const LoginScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.banned,
+      instant: true,
+      build: (BuildContext context, GoRouterState state) => const BannedScreen(),
     ),
     gameRoute(
       path: AppRoutes.register,
@@ -315,6 +363,21 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
       },
     ),
     gameRoute(
+      path: '${AppRoutes.guildWar}/territory/:id/attack',
+      build: (BuildContext context, GoRouterState state) {
+        final String id = state.pathParameters['id'] ?? '';
+        return GuildWarAttackScreen(territoryId: id);
+      },
+    ),
+    gameRoute(
+      path: AppRoutes.guildVault,
+      build: (BuildContext context, GoRouterState state) => const GuildVaultScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.announcements,
+      build: (BuildContext context, GoRouterState state) => const AnnouncementsScreen(),
+    ),
+    gameRoute(
       path: '${AppRoutes.guildWar}/territory/:id',
       build: (BuildContext context, GoRouterState state) {
         final String id = state.pathParameters['id'] ?? '';
@@ -378,6 +441,16 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
       },
     ),
     gameRoute(
+      path: AppRoutes.mekanArenaBattle,
+      build: (BuildContext context, GoRouterState state) {
+        final Object? extra = state.extra;
+        if (extra is MekanArenaBattleArgs) {
+          return MekanArenaBattleScreen(args: extra);
+        }
+        return const MekansScreen();
+      },
+    ),
+    gameRoute(
       path: AppRoutes.myMekan,
       build: (BuildContext context, GoRouterState state) => const MyMekanScreen(),
     ),
@@ -426,6 +499,71 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     gameRoute(
       path: AppRoutes.settings,
       build: (BuildContext context, GoRouterState state) => const SettingsScreen(),
+    ),
+    gameRoute(
+      path: '${AppRoutes.supportTickets}/:id',
+      build: (BuildContext context, GoRouterState state) =>
+          TicketDetailScreen(ticketId: state.pathParameters['id'] ?? ''),
+    ),
+    gameRoute(
+      path: AppRoutes.supportTickets,
+      build: (BuildContext context, GoRouterState state) => const SupportTicketListScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.createTicket,
+      build: (BuildContext context, GoRouterState state) => const CreateTicketScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.bugReport,
+      build: (BuildContext context, GoRouterState state) => const BugReportScreen(),
+    ),
+    gameRoute(
+      path: '${AppRoutes.myBugReports}/:id',
+      build: (BuildContext context, GoRouterState state) =>
+          PlayerBugReportDetailScreen(reportId: state.pathParameters['id'] ?? ''),
+    ),
+    gameRoute(
+      path: AppRoutes.myBugReports,
+      build: (BuildContext context, GoRouterState state) => const MyBugReportsScreen(),
+    ),
+    gameRoute(
+      path: '${AppRoutes.legal}/:type',
+      build: (BuildContext context, GoRouterState state) {
+        final String type = state.pathParameters['type'] ?? 'terms';
+        return Consumer(
+          builder: (BuildContext context, WidgetRef ref, _) {
+            final PolicyState policy = ref.watch(policyProvider);
+            LegalDocument? doc;
+            for (final LegalDocument d in policy.documents) {
+              if (d.type == type) {
+                doc = d;
+                break;
+              }
+            }
+            if (doc == null) {
+              return const Scaffold(body: Center(child: Text('Belge yükleniyor…')));
+            }
+            return LegalDocumentScreen(document: doc);
+          },
+        );
+      },
+    ),
+    gameRoute(
+      path: AppRoutes.staffHub,
+      build: (BuildContext context, GoRouterState state) =>
+          const StaffRouteGuard(child: StaffHubScreen()),
+    ),
+    gameRoute(
+      path: AppRoutes.staffLiveOps,
+      build: (BuildContext context, GoRouterState state) =>
+          const StaffRouteGuard(requireLiveOps: true, child: StaffLiveOpsScreen()),
+    ),
+    gameRoute(
+      path: AppRoutes.staffGemRewards,
+      build: (BuildContext context, GoRouterState state) => const StaffRouteGuard(
+        requireAdmin: true,
+        child: StaffGemRewardApprovalsScreen(),
+      ),
     ),
     gameRoute(
       path: AppRoutes.shop,

@@ -25,7 +25,7 @@ void main() {
         trackId: TutorialTrackId.onboarding,
         completedStepIds: <String>{'onboarding_welcome'},
       );
-      expect(afterWelcome.first.id, 'onboarding_hud_energy');
+      expect(afterWelcome.first.id, 'onboarding_game_loop');
     });
 
     test('season L20 step gated by playerLevel < 18', () {
@@ -62,7 +62,42 @@ void main() {
         TutorialRouteTracks.trackForRoute(TutorialRoutes.dungeon),
         TutorialTrackId.dungeon,
       );
+      expect(
+        TutorialRouteTracks.trackForRoute(TutorialRoutes.crafting),
+        TutorialTrackId.craft,
+      );
+      expect(
+        TutorialRouteTracks.trackForRoute(TutorialRoutes.guild),
+        TutorialTrackId.guild,
+      );
+      expect(
+        TutorialRouteTracks.trackForRoute(TutorialRoutes.pvp),
+        TutorialTrackId.pvp,
+      );
+      expect(
+        TutorialRouteTracks.trackForRoute(TutorialRoutes.horseRace),
+        TutorialTrackId.horseRace,
+      );
+      expect(
+        TutorialRouteTracks.trackForRoute(TutorialRoutes.mekans),
+        TutorialTrackId.mekans,
+      );
       expect(TutorialRouteTracks.trackForRoute('/unknown'), isNull);
+    });
+
+    test('coreCompleted requires enhancement track', () {
+      expect(
+        TutorialTrackId.coreTracks,
+        containsAll(<String>[
+          TutorialTrackId.onboarding,
+          TutorialTrackId.dungeon,
+          TutorialTrackId.inventory,
+          TutorialTrackId.character,
+          TutorialTrackId.enhancement,
+        ]),
+      );
+      expect(TutorialTrackRegistry.stepById('enhance_season_cta'), isNotNull);
+      expect(TutorialTrackRegistry.stepById('inventory_to_character'), isNotNull);
     });
 
     test('daily chain track registered', () {

@@ -201,10 +201,8 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
         id: 'codex',
         title: 'KODEX',
         subtitle: claimable
-            ? '${promos.codex.claimableMilestones} ödül bekliyor.\nKoleksiyonunu tamamla.'
-            : promos.codex.newEntries24h > 0
-                ? '${promos.codex.newEntries24h} yeni keşif.\nKodex\'ine göz at.'
-                : '${promos.codex.discovered}/${promos.codex.total} keşif.\nBoss, eşya, zindan topla.',
+            ? '${promos.codex.discovered}/${promos.codex.total} keşif · ${promos.codex.claimableMilestones} ödül bekliyor.'
+            : '${promos.codex.discovered}/${promos.codex.total} keşif.\nBoss, eşya, zindan topla.',
         ctaLabel: claimable ? 'Ödülleri Al' : 'Kodex\'i Aç',
         route: claimable ? '${AppRoutes.codex}?claim=1' : AppRoutes.codex,
         artAsset: 'assets/menuitems/karakter.png',

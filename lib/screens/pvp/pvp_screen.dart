@@ -7,7 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
+import '../../core/utils/combat_restriction.dart';
 import '../../core/utils/provider_scheduling.dart';
+import '../../core/matchmaking/matchmaking_offer.dart';
+import '../../core/matchmaking/matchmaking_service.dart';
 import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/common/gkk_tab_page_shell.dart';
@@ -18,6 +21,7 @@ import '../../core/services/supabase_service.dart';
 import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/pvp_invite_provider.dart';
 import '../../providers/pvp_provider.dart';
 import '../../models/nemesis_model.dart';
 import '../../routing/app_router.dart';
@@ -27,6 +31,7 @@ import 'widgets/nemesis_rival_panel.dart';
 
 class OnlinePlayer {
   const OnlinePlayer({
+    required this.offerId,
     required this.authId,
     required this.username,
     required this.displayName,
@@ -36,6 +41,7 @@ class OnlinePlayer {
     required this.pvpRating,
   });
 
+  final String offerId;
   final String authId;
   final String username;
   final String displayName;
@@ -47,6 +53,7 @@ class OnlinePlayer {
   factory OnlinePlayer.fromJson(Map<String, dynamic> json) {
     final String username = (json['username'] ?? '').toString();
     return OnlinePlayer(
+      offerId: (json['offer_id'] ?? '').toString(),
       authId: (json['auth_id'] ?? '').toString(),
       username: username,
       displayName: (json['display_name'] ?? '').toString().isNotEmpty
@@ -58,6 +65,17 @@ class OnlinePlayer {
       pvpRating: (json['pvp_rating'] as num?)?.toInt() ?? 1000,
     );
   }
+
+  factory OnlinePlayer.fromOffer(MatchmakingOffer o) => OnlinePlayer(
+        offerId: o.offerId,
+        authId: o.authId,
+        username: o.username,
+        displayName: o.displayName,
+        avatarUrl: o.avatarUrl,
+        level: o.level,
+        power: o.power,
+        pvpRating: o.pvpRating,
+      );
 }
 
 class PvpScreen extends ConsumerStatefulWidget {
@@ -72,7 +90,13 @@ class PvpScreen extends ConsumerStatefulWidget {
 class _PvpScreenState extends ConsumerState<PvpScreen> {
   List<OnlinePlayer> _onlinePlayers = const <OnlinePlayer>[];
   bool _loadingOnline = false;
+  final ValueNotifier<int> _refreshInSec = ValueNotifier<int>(0);
+  Timer? _refreshTicker;
   String? _invitingId;
+  /// Local spam guard: targets with pending/open invite until expiry / result seen.
+  final Set<String> _openInviteTargets = <String>{};
+  final Map<String, Timer> _openInviteTimers = <String, Timer>{};
+  static const Duration _inviteHold = Duration(minutes: 2);
   NemesisRival _nemesis = NemesisRival.none;
   bool _dismissLoading = false;
   bool _revengeHandled = false;
@@ -80,13 +104,64 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
   @override
   void initState() {
     super.initState();
-    deferProviderUpdate(() {
+    deferProviderUpdate(() async {
       ref.read(playerProvider.notifier).loadProfile();
       ref.read(pvpDashboardProvider.notifier).load();
+      if (mounted) {
+        await TutorialTriggers.onRouteEnter(ref, AppRoutes.pvp);
+      }
     });
     _loadOnlinePlayers();
     _loadNemesis();
   }
+
+  @override
+  void dispose() {
+    _refreshTicker?.cancel();
+    _refreshInSec.dispose();
+    for (final Timer t in _openInviteTimers.values) {
+      t.cancel();
+    }
+    _openInviteTimers.clear();
+    super.dispose();
+  }
+
+  void _armRefreshCooldown(int seconds) {
+    _refreshTicker?.cancel();
+    final int sec = seconds < 0 ? 0 : seconds;
+    _refreshInSec.value = sec;
+    if (sec <= 0) return;
+    _refreshTicker = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      final int next = _refreshInSec.value - 1;
+      if (next <= 0) {
+        _refreshInSec.value = 0;
+        t.cancel();
+      } else {
+        _refreshInSec.value = next;
+      }
+    });
+  }
+
+  void _blockInviteTarget(String authId, {Duration hold = _inviteHold}) {
+    if (authId.isEmpty) return;
+    _openInviteTimers[authId]?.cancel();
+    _openInviteTargets.add(authId);
+    _openInviteTimers[authId] = Timer(hold, () {
+      if (!mounted) return;
+      setState(() {
+        _openInviteTargets.remove(authId);
+        _openInviteTimers.remove(authId);
+      });
+    });
+    if (mounted) setState(() {});
+  }
+
+  bool _isInviteBlocked(String authId) =>
+      _openInviteTargets.contains(authId) || _invitingId == authId;
 
   @override
   void activate() {
@@ -131,6 +206,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     }
 
     target ??= OnlinePlayer(
+      offerId: '',
       authId: targetId,
       username: _nemesis.rivalUsername ?? 'Rakip',
       displayName: _nemesis.rivalUsername ?? 'Rakip',
@@ -141,7 +217,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _sendDuelInvite(target!);
+      if (mounted) _sendDuelInvite(target!, source: 'revenge');
     });
   }
 
@@ -155,6 +231,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       }
     }
     target ??= OnlinePlayer(
+      offerId: '',
       authId: rivalId,
       username: _nemesis.rivalUsername ?? 'Rakip',
       displayName: _nemesis.rivalUsername ?? 'Rakip',
@@ -163,56 +240,111 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       power: _nemesis.power,
       pvpRating: _nemesis.pvpRating,
     );
-    await _sendDuelInvite(target);
+    await _sendDuelInvite(target, source: 'revenge');
   }
 
-  Future<void> _loadOnlinePlayers() async {
+  Future<void> _loadOnlinePlayers({bool userInitiated = false}) async {
     if (_loadingOnline) return;
+    if (userInitiated && _refreshInSec.value > 0) {
+      AppMessenger.showError(
+        context,
+        'Yenileme ${_refreshInSec.value} sn sonra.',
+      );
+      return;
+    }
     setState(() => _loadingOnline = true);
     try {
-      final dynamic res = await SupabaseService.client
-          .rpc('get_online_players', params: <String, dynamic>{'p_limit': 30});
+      const MatchmakingService svc = MatchmakingService();
+      final MatchmakingOffersResult result =
+          await svc.fetchOffers(MatchmakingService.modeDuel);
       if (!mounted) return;
       setState(() {
         _loadingOnline = false;
-        if (res is List) {
-          _onlinePlayers = res
-              .whereType<Map>()
-              .map((Map e) => OnlinePlayer.fromJson(Map<String, dynamic>.from(e)))
-              .toList(growable: false);
-        }
+        _onlinePlayers = result.offers
+            .map(OnlinePlayer.fromOffer)
+            .toList(growable: false);
       });
+      _armRefreshCooldown(result.refreshInSec);
       _maybeOpenRevengeInvite();
-    } catch (_) {
-      if (mounted) setState(() => _loadingOnline = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingOnline = false);
+        AppMessenger.showError(
+          context,
+          e is MatchmakingException ? e.message : 'Rakip listesi alınamadı.',
+        );
+      }
     }
   }
 
-  Future<void> _sendDuelInvite(OnlinePlayer player) async {
+  Future<void> _sendDuelInvite(
+    OnlinePlayer player, {
+    String source = 'discovery',
+  }) async {
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.showError(context, combatBlock);
+      return;
+    }
+
+    if (_isInviteBlocked(player.authId)) {
+      AppMessenger.showError(
+        context,
+        'Bu rakiple zaten açık düello / davet var.',
+      );
+      return;
+    }
+
+    if (source == 'discovery' && player.offerId.isEmpty) {
+      AppMessenger.showError(context, 'Eşleşme teklifi yok. Listeyi yenile.');
+      return;
+    }
+
     final int? wager = await _askWager(player);
     if (wager == null || !mounted) return;
+    if (_isInviteBlocked(player.authId)) return;
 
     setState(() => _invitingId = player.authId);
     try {
+      final Map<String, dynamic> params = <String, dynamic>{
+        'p_target': player.authId,
+        'p_wager': wager,
+        'p_source': source,
+      };
+      if (source == 'discovery') {
+        params['p_offer_id'] = player.offerId;
+      }
       final dynamic res = await SupabaseService.client.rpc(
         'send_pvp_invite',
-        params: <String, dynamic>{
-          'p_target': player.authId,
-          'p_wager': wager,
-        },
+        params: params,
       );
       if (!mounted) return;
       if (res is Map && res['success'] == true) {
+        _blockInviteTarget(player.authId);
         AppMessenger.show(
           context,
           '⚔️ ${player.displayName} oyuncusuna düello daveti gönderildi!',
         );
+        if (source == 'discovery') {
+          // Offer consumed server-side — drop from local list
+          setState(() {
+            _onlinePlayers = _onlinePlayers
+                .where((OnlinePlayer p) => p.offerId != player.offerId)
+                .toList(growable: false);
+          });
+        }
       } else {
-        AppMessenger.showError(
-          context,
-          (res is Map ? res['error']?.toString() : null) ??
-              'Davet gönderilemedi.',
-        );
+        final String err = (res is Map ? res['error']?.toString() : null) ??
+            'Davet gönderilemedi.';
+        final String lower = err.toLowerCase();
+        if (lower.contains('bekleyen') || lower.contains('devam')) {
+          _blockInviteTarget(player.authId);
+        }
+        AppMessenger.showError(context, err);
       }
     } catch (_) {
       if (mounted) AppMessenger.showError(context, 'Davet gönderilemedi.');
@@ -327,6 +459,34 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<PvpInviteState>(pvpInviteProvider, (
+      PvpInviteState? prev,
+      PvpInviteState next,
+    ) {
+      final Set<String> acceptedUnseen = next.unseenResults
+          .where((PvpDuelResultNotice r) => !r.declined)
+          .map((PvpDuelResultNotice r) => r.opponentId)
+          .where((String id) => id.isNotEmpty)
+          .toSet();
+      final Set<String> prevAccepted = prev?.unseenResults
+              .where((PvpDuelResultNotice r) => !r.declined)
+              .map((PvpDuelResultNotice r) => r.opponentId)
+              .where((String id) => id.isNotEmpty)
+              .toSet() ??
+          <String>{};
+
+      for (final String id in acceptedUnseen) {
+        _blockInviteTarget(id, hold: const Duration(hours: 6));
+      }
+      for (final String id in prevAccepted.difference(acceptedUnseen)) {
+        _openInviteTimers[id]?.cancel();
+        _openInviteTimers.remove(id);
+        if (_openInviteTargets.remove(id) && mounted) {
+          setState(() {});
+        }
+      }
+    });
+
     final profile = ref.watch(playerProvider).profile;
     final dashboard = ref.watch(pvpDashboardProvider);
     final pvpRating = profile?.pvpRating ?? 1000;
@@ -363,15 +523,17 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                     rival: _nemesis,
                     dismissLoading: _dismissLoading,
                     onDismiss: _dismissNemesisBanner,
-                    onRevenge: (String rivalId) {
-                      unawaited(
-                        TutorialTriggers.onAnchorTap(
-                          ref,
-                          TutorialAnchorId.pvpNemesisPanel,
-                        ),
-                      );
-                      _sendRevengeInvite(rivalId);
-                    },
+                    onRevenge: (isHospitalized || isImprisoned)
+                        ? null
+                        : (String rivalId) {
+                            unawaited(
+                              TutorialTriggers.onAnchorTap(
+                                ref,
+                                TutorialAnchorId.pvpNemesisPanel,
+                              ),
+                            );
+                            _sendRevengeInvite(rivalId);
+                          },
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -453,15 +615,51 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                 ),
               ],
               const SizedBox(height: 20),
-              const GkkTabSectionTitle('Online Oyuncular', accent: AppColors.toxicNeon),
+              TutorialAnchorScope(
+                id: TutorialAnchorId.pvpFindMatch,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+              const GkkTabSectionTitle('Rakip Teklifleri', accent: AppColors.toxicNeon),
               Row(
                 children: <Widget>[
-                  const Spacer(),
-                  IconButton(
-                    onPressed: _loadingOnline ? null : _loadOnlinePlayers,
-                    icon: const Icon(Icons.refresh_rounded,
-                        color: Colors.white54, size: 20),
-                    tooltip: 'Yenile',
+                  const Expanded(
+                    child: Text(
+                      'Sunucu rastgele eşleşme · tam liste yok',
+                      style: TextStyle(color: Colors.white38, fontSize: 11),
+                    ),
+                  ),
+                  ListenableBuilder(
+                    listenable: _refreshInSec,
+                    builder: (BuildContext context, Widget? _) {
+                      final int cd = _refreshInSec.value;
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: (_loadingOnline || cd > 0)
+                                ? null
+                                : () => _loadOnlinePlayers(userInitiated: true),
+                            icon: _loadingOnline
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.refresh_rounded,
+                                    color: Colors.white54, size: 20),
+                            tooltip: cd > 0 ? 'Yenile ($cd sn)' : 'Yenile',
+                          ),
+                          if (cd > 0)
+                            Text(
+                              '$cd sn',
+                              style: const TextStyle(
+                                  color: Colors.white38, fontSize: 11),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -473,10 +671,18 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   child: CircularProgressIndicator(),
                 ))
               else if (_onlinePlayers.isEmpty)
-                _emptyStateCard(
-                  message: 'Şu anda online oyuncu yok.',
-                  ctaLabel: 'Arenaya git',
-                  onPressed: () => _goToFirstArena(dashboard.arenas),
+                ListenableBuilder(
+                  listenable: _refreshInSec,
+                  builder: (BuildContext context, Widget? _) {
+                    final int cd = _refreshInSec.value;
+                    return _emptyStateCard(
+                      message: cd > 0
+                          ? 'Yeni teklifler $cd sn sonra.'
+                          : 'Şu anda uygun rakip teklifi yok.',
+                      ctaLabel: 'Arenaya git',
+                      onPressed: () => _goToFirstArena(dashboard.arenas),
+                    );
+                  },
                 )
               else
                 ..._onlinePlayers.asMap().entries.map((MapEntry<int, OnlinePlayer> entry) {
@@ -488,13 +694,27 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                       child: _OnlinePlayerCard(
                         player: p,
                         inviting: _invitingId == p.authId,
-                        onInvite: (isHospitalized || isImprisoned)
+                        inviteOpen: _openInviteTargets.contains(p.authId),
+                        onInvite: (isHospitalized ||
+                                isImprisoned ||
+                                _isInviteBlocked(p.authId))
                             ? null
-                            : () => _sendDuelInvite(p),
+                            : () {
+                                unawaited(
+                                  TutorialTriggers.onAnchorTap(
+                                    ref,
+                                    TutorialAnchorId.pvpFindMatch,
+                                  ),
+                                );
+                                _sendDuelInvite(p);
+                              },
                       ),
                     ),
                   );
                 }),
+                  ],
+                ),
+              ),
               const SizedBox(height: 20),
               const GkkTabSectionTitle('Açık Arenalar', accent: AppColors.coralFlare),
               const SizedBox(height: 10),
@@ -698,11 +918,13 @@ class _OnlinePlayerCard extends StatelessWidget {
   const _OnlinePlayerCard({
     required this.player,
     required this.inviting,
+    required this.inviteOpen,
     required this.onInvite,
   });
 
   final OnlinePlayer player;
   final bool inviting;
+  final bool inviteOpen;
   final VoidCallback? onInvite;
 
   @override
@@ -755,7 +977,7 @@ class _OnlinePlayerCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           FilledButton(
-            onPressed: inviting ? null : onInvite,
+            onPressed: (inviting || inviteOpen) ? null : onInvite,
             style: FilledButton.styleFrom(
               backgroundColor: Colors.redAccent,
               padding:
@@ -763,7 +985,13 @@ class _OnlinePlayerCard extends StatelessWidget {
               textStyle:
                   const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
             ),
-            child: Text(inviting ? '...' : '⚔️ Düello'),
+            child: Text(
+              inviting
+                  ? '...'
+                  : inviteOpen
+                      ? 'Bekliyor'
+                      : '⚔️ Düello',
+            ),
           ),
         ],
       ),

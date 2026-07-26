@@ -22,6 +22,13 @@ class SupabasePlayerRepository implements PlayerRepository {
     }
 
     try {
+      // Passiveive regen: empty → max_energy over 24h (server-side).
+      try {
+        await SupabaseService.client.rpc('apply_energy_regen');
+      } catch (_) {
+        // Presence heartbeat also applies regen; profile load still works.
+      }
+
       final response = await SupabaseService.client
           .from('users')
           .select()

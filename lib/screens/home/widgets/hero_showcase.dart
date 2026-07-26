@@ -74,120 +74,125 @@ class _HeroShowcaseState extends State<HeroShowcase>
 
     return RepaintBoundary(
       child: LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double showcaseHeight = (constraints.maxWidth * 1.05).clamp(320.0, 450.0);
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double showcaseHeight = (constraints.maxWidth * 1.05).clamp(
+            320.0,
+            450.0,
+          );
 
-        return SizedBox(
-          height: showcaseHeight,
-          width: double.infinity,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              AnimatedBuilder(
-                animation: _breathingController,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: 1.0 + (_breathingController.value * 0.05),
-                    child: Container(
-                      width: 290,
-                      height: 290,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFF00B4FF).withValues(alpha: 0.2),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.2, 1.0],
+          return SizedBox(
+            height: showcaseHeight,
+            width: double.infinity,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                AnimatedBuilder(
+                  animation: _breathingController,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: 1.0 + (_breathingController.value * 0.05),
+                      child: Container(
+                        width: 290,
+                        height: 290,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              const Color(0xFF00B4FF).withValues(alpha: 0.2),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.2, 1.0],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              AnimatedBuilder(
-                animation: _breathingController,
-                builder: (context, child) {
-                  String imageAsset = 'assets/characters/savasci.png';
-                  if (widget.profile.characterClass == CharacterClass.shadow) {
-                    imageAsset = 'assets/characters/golge.png';
-                  } else if (widget.profile.characterClass ==
-                      CharacterClass.alchemist) {
-                    imageAsset = 'assets/characters/simyaci.png';
-                  }
+                    );
+                  },
+                ),
+                AnimatedBuilder(
+                  animation: _breathingController,
+                  builder: (context, child) {
+                    String imageAsset = 'assets/characters/savasci.png';
+                    if (widget.profile.characterClass ==
+                        CharacterClass.shadow) {
+                      imageAsset = 'assets/characters/golge.png';
+                    } else if (widget.profile.characterClass ==
+                        CharacterClass.alchemist) {
+                      imageAsset = 'assets/characters/simyaci.png';
+                    }
 
-                  return Transform.translate(
-                    offset: Offset(0, -8 * _breathingController.value),
-                    child: Image.asset(
-                      imageAsset,
-                      height: showcaseHeight * 0.78,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.person_pin,
-                        size: 200,
-                        color: Color(0xFF00B4FF),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              Positioned(
-                left: 8,
-                top: 72,
-                child: Column(
-                  children: leftSlots.map((slot) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildEquipSlot(
-                        widget.inventoryState.equippedItems[slot.key],
-                        slot.icon,
-                        slot.label,
+                    return Transform.translate(
+                      offset: Offset(0, -8 * _breathingController.value),
+                      child: Image.asset(
+                        imageAsset,
+                        height: showcaseHeight * 0.78,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                              Icons.person_pin,
+                              size: 200,
+                              color: Color(0xFF00B4FF),
+                            ),
                       ),
                     );
-                  }).toList(),
+                  },
                 ),
-              ),
-              Positioned(
-                right: 8,
-                top: 72,
-                child: Column(
-                  children: rightSlots.map((slot) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildEquipSlot(
-                        widget.inventoryState.equippedItems[slot.key],
-                        slot.icon,
-                        slot.label,
-                      ),
-                    );
-                  }).toList(),
+                Positioned(
+                  left: 8,
+                  top: 72,
+                  child: Column(
+                    children: leftSlots.map((slot) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildEquipSlot(
+                          widget.inventoryState.equippedItems[slot.key],
+                          slot.icon,
+                          slot.label,
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-              Positioned(
-                bottom: 14,
-                child: _buildLevelBadge(widget.profile.level),
-              ),
-              Positioned(
-                top: 6,
-                left: 2,
-                child: HomeStatBadge.power(
-                  value: _compact(widget.totalPower),
-                  compact: true,
+                Positioned(
+                  right: 8,
+                  top: 72,
+                  child: Column(
+                    children: rightSlots.map((slot) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildEquipSlot(
+                          widget.inventoryState.equippedItems[slot.key],
+                          slot.icon,
+                          slot.label,
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-              Positioned(
-                top: 6,
-                right: 2,
-                child: HomeStatBadge.reputation(
-                  reputation: widget.reputation,
-                  compact: true,
+                Positioned(
+                  bottom: 14,
+                  child: _buildLevelBadge(widget.profile.level),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    ),
+                Positioned(
+                  top: 6,
+                  left: 2,
+                  child: HomeStatBadge.power(
+                    value: _compact(widget.totalPower),
+                    compact: true,
+                  ),
+                ),
+                Positioned(
+                  top: 6,
+                  right: 2,
+                  child: HomeStatBadge.reputation(
+                    reputation: widget.reputation,
+                    compact: true,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 

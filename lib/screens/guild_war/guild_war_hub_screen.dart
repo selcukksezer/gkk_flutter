@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../models/guild_war_model.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/guild_provider.dart';
@@ -14,9 +15,11 @@ import '../../providers/dungeon_siege_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../core/utils/combat_restriction.dart';
 import '../../utils/logout_helper.dart';
 import 'guild_war_defense_sheet.dart';
 import '../../components/common/gkk_tab_page_shell.dart';
+import '../../components/layout/game_screen_background.dart';
 import 'widgets/guild_war_design.dart';
 import 'widgets/guild_war_season_header.dart';
 import 'widgets/guild_war_skeleton.dart';
@@ -54,17 +57,27 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(Future.wait<void>(<Future<void>>[
+    _tabController.addListener(_onTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.wait<void>(<Future<void>>[
         ref.read(guildProvider.notifier).loadGuild(),
         ref.read(guildWarProvider.notifier).loadAll(),
         ref.read(dungeonSiegeProvider.notifier).loadHub(silent: true),
-      ]));
+      ]);
+      if (mounted) {
+        await TutorialTriggers.onRouteEnter(ref, AppRoutes.guildWar);
+      }
     });
+  }
+
+  void _onTabChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -74,10 +87,20 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     await ref.read(guildWarProvider.notifier).loadAll();
   }
 
-  GuildWarRanking? _findMyRanking(List<GuildWarRanking> rankings, String? guildName) {
-    if (guildName == null) return null;
-    for (final GuildWarRanking entry in rankings) {
-      if (entry.guildName == guildName) return entry;
+  GuildWarRanking? _findMyRanking(
+    List<GuildWarRanking> rankings,
+    String? guildId,
+    String? guildName,
+  ) {
+    if (guildId != null) {
+      for (final GuildWarRanking entry in rankings) {
+        if (entry.guildId == guildId) return entry;
+      }
+    }
+    if (guildName != null) {
+      for (final GuildWarRanking entry in rankings) {
+        if (entry.guildName == guildName) return entry;
+      }
     }
     return null;
   }
@@ -94,36 +117,35 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
   }
 
   Future<void> _attackTerritory(TerritoryData territory) async {
-    final bool? confirmed = await WarDialog.confirm(
-      context: context,
-      title: '⚔ Bölge Saldırısı',
-      message: '${territory.name} bölgesine saldırmak istediğine emin misin?',
-      confirmLabel: 'Saldır',
-      accent: WarPalette.ruby,
+    final profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
     );
-    if (confirmed != true) return;
-    if (!mounted) return;
-
-    final GuildWarAttackResult? result =
-        await ref.read(guildWarProvider.notifier).attackTerritory(territory.id);
-    if (!mounted || result == null) return;
-
-    if (result.error != null) {
-      AppMessenger.showError(context, result.error!);
+    if (combatBlock != null) {
+      AppMessenger.showError(context, combatBlock);
       return;
     }
 
-    await context.push(AppRoutes.guildWarBattleResult, extra: result);
+    await context.push('${AppRoutes.guildWar}/territory/${territory.id}/attack');
     if (!mounted) return;
     await _refresh();
   }
 
   Future<void> _addDefense(TerritoryData territory) async {
-    final int? gems = await showGuildWarDefenseSheet(context);
-    if (gems == null || gems <= 0) return;
+    final profile = ref.read(playerProvider).profile;
+    final GuildWarDefenseRequest? req = await showGuildWarDefenseSheet(
+      context,
+      minDefenseGems: territory.minDefenseGems,
+      vaultGold: territory.vaultSummary?.vaultGold,
+      playerGems: profile?.gems,
+    );
+    if (req == null || req.amount <= 0) return;
     if (!mounted) return;
 
-    final String? error = await ref.read(guildWarProvider.notifier).addDefense(territory.id, gems);
+    final String? error = req.mode == GuildWarDefenseMode.gems
+        ? await ref.read(guildWarProvider.notifier).addDefense(territory.id, req.amount)
+        : await ref.read(guildWarProvider.notifier).addDefenseGold(territory.id, req.amount);
     if (!mounted) return;
     if (error != null) {
       AppMessenger.showError(context, error);
@@ -141,7 +163,11 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     final guildState = ref.watch(guildProvider);
     final String? guildId = guildState.guild?.guildId ?? profile?.guildId;
     final String? guildName = guildState.guild?.name ?? profile?.guildName;
-    final GuildWarRanking? myRanking = _findMyRanking(warState.rankings, guildName);
+    final GuildWarRanking? myRanking = _findMyRanking(warState.rankings, guildId, guildName);
+    final bool combatLocked = isCombatRestricted(
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
 
     Future<void> logout() async => performLogout(ref);
 
@@ -162,76 +188,110 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
       body: WarBackdrop(
         child: warState.isLoading
             ? const GuildWarSkeleton()
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  GuildWarSeasonHeader(
-                    season: warState.season,
-                    myRank: myRanking?.rank,
-                    myPoints: myRanking?.points,
-                    guildName: guildName,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
-                    child: SiegeHubEntryCard(
-                      siegeActive: siegeStatus.siegeActive,
-                      inPrimeWindow: siegeStatus.inPrimeWindow,
-                      sessionCount: siegeStatus.sessions.length,
-                      unreadNotifications: siegeState.unreadNotificationCount,
-                      onTap: () => context.push(AppRoutes.dungeonSiegeHub),
+            : RefreshIndicator(
+                color: WarPalette.gold,
+                onRefresh: _refresh,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: <Widget>[
+                    SliverToBoxAdapter(
+                      child: GuildWarSeasonHeader(
+                        season: warState.season,
+                        myRank: myRanking?.rank,
+                        myPoints: myRanking?.points,
+                        guildName: guildName,
+                      ),
                     ),
-                  ),
-                  if (guildId == null) _NoGuildBanner(onFindGuild: () => context.go(AppRoutes.guild)),
-                  if (warState.error != null) _ErrorBanner(message: warState.error!),
-                  GuildWarTabBar(
-                    controller: _tabController,
-                    tabs: _tabLabels,
-                    icons: _tabIcons,
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: <Widget>[
-                        _scrollTab(
-                          index: 0,
-                          title: _tabSectionTitles[0],
-                          child: RankingPodium(rankings: warState.rankings, highlightGuildName: guildName),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
+                        child: SiegeHubEntryCard(
+                          siegeActive: siegeStatus.siegeActive,
+                          inPrimeWindow: siegeStatus.inPrimeWindow,
+                          sessionCount: siegeStatus.sessions.length,
+                          unreadNotifications: siegeState.unreadNotificationCount,
+                          onTap: () => context.push(AppRoutes.dungeonSiegeHub),
                         ),
-                        _scrollTab(
-                          index: 1,
-                          title: _tabSectionTitles[1],
-                          child: _buildTournamentsList(warState.tournaments, guildId),
-                        ),
-                        _scrollTab(
-                          index: 2,
-                          title: _tabSectionTitles[2],
-                          child: _buildTerritoriesContent(warState.territories, guildId),
-                        ),
-                        _scrollTab(
-                          index: 3,
-                          title: _tabSectionTitles[3],
-                          child: const KingdomElectionPanel(),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    if (guildId == null)
+                      SliverToBoxAdapter(
+                        child: _NoGuildBanner(onFindGuild: () => context.go(AppRoutes.guild)),
+                      ),
+                    if (warState.error != null)
+                      SliverToBoxAdapter(child: _ErrorBanner(message: warState.error!)),
+                    SliverToBoxAdapter(
+                      child: GuildWarTabBar(
+                        controller: _tabController,
+                        tabs: _tabLabels,
+                        icons: _tabIcons,
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                        child: GkkTabSectionTitle(
+                          _tabSectionTitles[_tabController.index],
+                          accent: WarPalette.gold,
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+                        child: _buildActiveTabContent(
+                          warState: warState,
+                          guildId: guildId,
+                          guildName: guildName,
+                          combatLocked: combatLocked,
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(child: GameScrollLayout.bottomSpacer(context)),
+                  ],
+                ),
               ),
       ),
     );
   }
 
-  Widget _scrollTab({required int index, required String title, required Widget child}) {
-    return GkkTabScrollShell(
-      tabIndex: index,
-      sectionTitle: title,
-      sectionAccent: WarPalette.gold,
-      onRefresh: _refresh,
-      child: child,
-    );
+  Widget _buildActiveTabContent({
+    required GuildWarState warState,
+    required String? guildId,
+    required String? guildName,
+    required bool combatLocked,
+  }) {
+    switch (_tabController.index) {
+      case 0:
+        return RankingPodium(
+          rankings: warState.rankings,
+          highlightGuildName: guildName,
+          highlightGuildId: guildId,
+          onRefresh: _refresh,
+        );
+      case 1:
+        return _buildTournamentsList(
+          warState.tournaments,
+          guildId,
+          combatLocked: combatLocked,
+        );
+      case 2:
+        return _buildTerritoriesContent(
+          warState.territories,
+          guildId,
+          combatLocked: combatLocked,
+        );
+      case 3:
+      default:
+        return const KingdomElectionPanel();
+    }
   }
 
-  Widget _buildTournamentsList(List<GuildWarTournament> tournaments, String? guildId) {
+  Widget _buildTournamentsList(
+    List<GuildWarTournament> tournaments,
+    String? guildId, {
+    required bool combatLocked,
+  }) {
     if (tournaments.isEmpty) {
       return const WarEmptyTab(
         icon: '🏆',
@@ -242,6 +302,15 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (combatLocked)
+          const Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text(
+              'Hastane/hapisteyken turnuvaya katılamazsın.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: WarPalette.ruby, fontSize: 12),
+            ),
+          ),
         const WarSectionHeader(
           title: 'Aktif Turnuvalar',
           subtitle: 'Loncanı kaydet, ödül havuzundan pay al',
@@ -252,7 +321,9 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
             index: i,
             child: TournamentCard(
               tournament: tournaments[i],
-              onJoin: guildId != null && tournaments[i].isActive
+              onJoin: !combatLocked &&
+                      guildId != null &&
+                      tournaments[i].isActive
                   ? () => _joinTournament(tournaments[i].id)
                   : null,
               onDetail: () => context.push('${AppRoutes.guildWar}/tournament/${tournaments[i].id}'),
@@ -262,10 +333,23 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     );
   }
 
-  Widget _buildTerritoriesContent(List<TerritoryData> territories, String? guildId) {
+  Widget _buildTerritoriesContent(
+    List<TerritoryData> territories,
+    String? guildId, {
+    required bool combatLocked,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (combatLocked)
+          const Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text(
+              'Hastane/hapisteyken bölgeye saldıramazsın.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: WarPalette.ruby, fontSize: 12),
+            ),
+          ),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: <Widget>[
@@ -312,7 +396,9 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
                       territory: t,
                       isOwner: isOwner,
                       onTap: () => context.push('${AppRoutes.guildWar}/territory/${t.id}'),
-                      onAttack: !isOwner && guildId != null ? () => _attackTerritory(t) : null,
+                      onAttack: !combatLocked && !isOwner && guildId != null
+                          ? () => _attackTerritory(t)
+                          : null,
                       onAddDefense: isOwner ? () => _addDefense(t) : null,
                     );
                   },
@@ -380,7 +466,7 @@ class _ErrorBanner extends StatelessWidget {
       child: WarDottedPanel(
         borderColor: WarPalette.ruby.withValues(alpha: 0.4),
         child: Text(
-          'Veri yüklenemedi. Aşağı çekerek yenile.',
+          message,
           style: const TextStyle(color: WarPalette.ruby, fontSize: 12, fontWeight: FontWeight.w700),
         ),
       ),

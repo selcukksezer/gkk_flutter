@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/utils/keyboard_dismiss.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import 'game_chrome.dart';
@@ -273,7 +274,7 @@ class GameScreenBackground extends StatelessWidget {
             ),
           ),
         ],
-        child,
+        DismissKeyboard(child: child),
       ],
     );
   }

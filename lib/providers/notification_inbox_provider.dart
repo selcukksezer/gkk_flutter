@@ -164,6 +164,17 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
     if (id.startsWith('pvp_result:')) {
       final String inviteId = id.substring('pvp_result:'.length);
       unawaited(ref.read(pvpInviteProvider.notifier).markResultSeen(inviteId));
+      return;
+    }
+    if (id.startsWith('player_inbox:')) {
+      final String notificationId = id.substring('player_inbox:'.length);
+      if (notificationId.isEmpty) return;
+      unawaited(
+        SupabaseService.client.rpc(
+          'mark_inbox_notification_read',
+          params: <String, dynamic>{'p_notification_id': notificationId},
+        ),
+      );
     }
   }
 
@@ -235,6 +246,7 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
     _markDismissedOnServer(id);
     state = state.copyWith(dismissedIds: <String>{...state.dismissedIds, id});
     unawaited(_persistDismissedIds());
+    unawaited(_clearStickyOnDismiss(id));
   }
 
   void dismissAll() {
@@ -246,6 +258,7 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
       if (!state.dismissedIds.contains(id)) {
         _markDismissedOnServer(id);
       }
+      unawaited(_clearStickyOnDismiss(id));
     }
     state = state.copyWith(dismissedIds: merged);
     unawaited(_persistDismissedIds());
@@ -587,14 +600,15 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
     final int claimable = (codex['claimable_milestones'] as num?)?.toInt() ?? 0;
 
     if (newEntries > 0) {
-      final int? slot = await _tryConsumeCodexDiscoverySlot(newEntries);
-      if (slot != null) {
+      final CodexDiscoverySticky? sticky =
+          await _resolveCodexDiscoverySticky(newEntries);
+      if (sticky != null) {
         out.add(
           GameNotificationItem(
-            id: 'codex:new:${now.day}:$slot',
+            id: sticky.noticeId,
             kind: NotificationKind.codexNewEntry,
             title: 'Yeni Kodex keşfi',
-            body: '$newEntries yeni kayıt keşfedildi.',
+            body: '${sticky.entries} yeni kayıt keşfedildi.',
             createdAt: now,
             routePath: AppRoutes.codex,
             priority: 72,
@@ -643,20 +657,24 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
       final bool hasRevengeNotice = out.any(
         (GameNotificationItem item) => item.kind == NotificationKind.nemesisRevenge,
       );
-      if (!hasRevengeNotice &&
-          nemesis['should_notify_online'] == true &&
-          rivalId.isNotEmpty) {
-        out.add(
-          GameNotificationItem(
-            id: 'nemesis:online:${now.day}:$rivalId',
-            kind: NotificationKind.nemesisOnline,
-            title: 'Nemesis çevrimiçi',
-            body: '$rivalName şu an online.',
-            createdAt: now,
-            routePath: '${AppRoutes.pvp}?revenge=$rivalId',
-            priority: 76,
-          ),
+      if (!hasRevengeNotice && rivalId.isNotEmpty) {
+        final String? onlineId = await _resolveNemesisOnlineSticky(
+          rivalId: rivalId,
+          serverSaysNotify: nemesis['should_notify_online'] == true,
         );
+        if (onlineId != null) {
+          out.add(
+            GameNotificationItem(
+              id: onlineId,
+              kind: NotificationKind.nemesisOnline,
+              title: 'Nemesis çevrimiçi',
+              body: '$rivalName şu an online.',
+              createdAt: now,
+              routePath: '${AppRoutes.pvp}?revenge=$rivalId',
+              priority: 76,
+            ),
+          );
+        }
       }
     }
 
@@ -691,11 +709,45 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
       }
     }
 
+    try {
+      final dynamic inboxRaw =
+          await SupabaseService.client.rpc('get_my_inbox_notifications');
+      if (inboxRaw is Map && inboxRaw['items'] is List) {
+        for (final dynamic row in inboxRaw['items'] as List) {
+          if (row is! Map) continue;
+          final Map<String, dynamic> map = Map<String, dynamic>.from(row);
+          if (map['read_at'] != null) continue;
+          final String id = (map['id'] ?? '').toString();
+          if (id.isEmpty) continue;
+          DateTime createdAt = now;
+          if (map['created_at'] is String) {
+            createdAt = DateTime.tryParse(map['created_at'] as String) ?? now;
+          }
+          out.add(
+            GameNotificationItem(
+              id: 'player_inbox:$id',
+              kind: NotificationKind.bugReportUpdate,
+              title: (map['title'] ?? 'Bug bildirimi').toString(),
+              body: (map['body'] ?? '').toString(),
+              createdAt: createdAt,
+              routePath: AppRoutes.myBugReports,
+              priority: 86,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      // Opsiyonel — eski DB sürümünde sessiz geç.
+    }
+
     return out;
   }
 
-  /// Max 3 `codexNewEntry` inbox emits / user / day when discovery count rises.
-  Future<int?> _tryConsumeCodexDiscoverySlot(int newEntries) async {
+  /// Sticky until [dismiss]: refresh must NOT wipe flash notices.
+  /// Max 3 new-entry notices / user / day when discovery count rises.
+  Future<CodexDiscoverySticky?> _resolveCodexDiscoverySticky(
+    int newEntries,
+  ) async {
     final String? uid = SupabaseService.client.auth.currentUser?.id;
     if (uid == null || uid.isEmpty) return null;
     final DateTime now = DateTime.now();
@@ -703,14 +755,97 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final String countKey = 'codex_discovery_notices_${uid}_$day';
     final String lastKey = 'codex_discovery_last_${uid}_$day';
+    final String stickyKey = 'codex_discovery_active_${uid}_$day';
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    final String? stickyRaw = prefs.getString(stickyKey);
+    if (stickyRaw != null && stickyRaw.isNotEmpty) {
+      final List<String> parts = stickyRaw.split('|');
+      if (parts.length == 2) {
+        final int slot = int.tryParse(parts[0]) ?? 0;
+        final int prevEntries = int.tryParse(parts[1]) ?? newEntries;
+        final int shown = newEntries > prevEntries ? newEntries : prevEntries;
+        if (shown != prevEntries) {
+          await prefs.setString(stickyKey, '$slot|$shown');
+          await prefs.setInt(lastKey, shown);
+        }
+        final String noticeId = 'codex:new:$day:$slot';
+        if (state.dismissedIds.contains(noticeId)) {
+          await prefs.remove(stickyKey);
+        } else {
+          return CodexDiscoverySticky(
+            slot: slot,
+            entries: shown,
+            noticeId: noticeId,
+          );
+        }
+      }
+    }
+
     final int count = prefs.getInt(countKey) ?? 0;
     final int lastSeen = prefs.getInt(lastKey) ?? 0;
     if (newEntries <= lastSeen) return null;
     if (count >= 3) return null;
+
+    final int slot = count;
+    final String noticeId = 'codex:new:$day:$slot';
+    if (state.dismissedIds.contains(noticeId)) return null;
+
     await prefs.setInt(lastKey, newEntries);
     await prefs.setInt(countKey, count + 1);
-    return count;
+    await prefs.setString(stickyKey, '$slot|$newEntries');
+    return CodexDiscoverySticky(
+      slot: slot,
+      entries: newEntries,
+      noticeId: noticeId,
+    );
+  }
+
+  Future<String?> _resolveNemesisOnlineSticky({
+    required String rivalId,
+    required bool serverSaysNotify,
+  }) async {
+    final String? uid = SupabaseService.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return null;
+    final DateTime now = DateTime.now();
+    final String day =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final String stickyKey = 'nemesis_online_active_${uid}_${day}_$rivalId';
+    final String noticeId = 'nemesis:online:$day:$rivalId';
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    if (state.dismissedIds.contains(noticeId)) {
+      await prefs.remove(stickyKey);
+      return null;
+    }
+
+    if (serverSaysNotify) {
+      await prefs.setBool(stickyKey, true);
+      return noticeId;
+    }
+    if (prefs.getBool(stickyKey) == true) return noticeId;
+    return null;
+  }
+
+  Future<void> _clearStickyOnDismiss(String id) async {
+    final String? uid = SupabaseService.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final DateTime now = DateTime.now();
+    final String day =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    if (id.startsWith('codex:new:')) {
+      await prefs.remove('codex_discovery_active_${uid}_$day');
+      return;
+    }
+    if (id.startsWith('nemesis:online:')) {
+      final List<String> parts = id.split(':');
+      final String rivalId = parts.length >= 4 ? parts.last : '';
+      if (rivalId.isNotEmpty) {
+        await prefs.remove('nemesis_online_active_${uid}_${day}_$rivalId');
+      }
+    }
   }
 
   bool _isFuture(String? iso) {
@@ -816,6 +951,18 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
       // Sonraki poll'de dismissedIds engeller.
     }
   }
+}
+
+class CodexDiscoverySticky {
+  const CodexDiscoverySticky({
+    required this.slot,
+    required this.entries,
+    required this.noticeId,
+  });
+
+  final int slot;
+  final int entries;
+  final String noticeId;
 }
 
 final NotifierProvider<NotificationInboxNotifier, NotificationInboxState>

@@ -130,6 +130,8 @@ class DailyRewardClaimResult {
     this.streakLength,
     this.rewardsGranted,
     this.newBalances,
+    this.itemSkipped = false,
+    this.warning,
   });
 
   final bool success;
@@ -139,6 +141,8 @@ class DailyRewardClaimResult {
   final int? streakLength;
   final DailyRewardGrant? rewardsGranted;
   final Map<String, int>? newBalances;
+  final bool itemSkipped;
+  final String? warning;
 
   factory DailyRewardClaimResult.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic>? balances = json['new_balances'] as Map<String, dynamic>?;
@@ -156,6 +160,8 @@ class DailyRewardClaimResult {
       newBalances: balances?.map(
         (String k, dynamic v) => MapEntry(k, (v as num).toInt()),
       ),
+      itemSkipped: json['item_skipped'] as bool? ?? false,
+      warning: json['warning'] as String?,
     );
   }
 }

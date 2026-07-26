@@ -10,6 +10,9 @@ import '../../components/layout/game_screen_background.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/presence_service.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../models/mekan_model.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/mekan_detail_provider.dart';
@@ -435,11 +438,20 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                 onPressed: () => context.go(AppRoutes.myMekan),
               )
             else if (mekanSupportsPvp(typeKey) && !mekan.raidClosed)
-              NeonButton(
-                label: 'PvP Arena',
-                icon: Icons.sports_mma_rounded,
-                accent: MekanPalette.ruby,
-                onPressed: () => context.go(AppRoutes.mekanArena(mekan.id)),
+              TutorialAnchorScope(
+                id: TutorialAnchorId.mekansArenaCta,
+                child: NeonButton(
+                  label: 'PvP Arena',
+                  icon: Icons.sports_mma_rounded,
+                  accent: MekanPalette.ruby,
+                  onPressed: () {
+                    TutorialTriggers.onAnchorTap(
+                      ref,
+                      TutorialAnchorId.mekansArenaCta,
+                    );
+                    context.go(AppRoutes.mekanArena(mekan.id));
+                  },
+                ),
               ),
           ],
         ),

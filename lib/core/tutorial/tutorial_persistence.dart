@@ -54,6 +54,21 @@ class TutorialPersistence {
     await _syncServer(state);
   }
 
+  /// Clears local + server tutorial progress (settings replay).
+  static Future<void> hardReset() async {
+    final TutorialProgressState cleared =
+        TutorialProgressState.initial(hardReset: true);
+    await _saveLocal(cleared);
+    if (SupabaseService.isInitialized &&
+        SupabaseService.client.auth.currentUser != null) {
+      try {
+        await SupabaseService.client.rpc('reset_tutorial_progress');
+      } catch (_) {
+        await _syncServer(cleared);
+      }
+    }
+  }
+
   static Future<void> _saveLocal(TutorialProgressState state) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsKey, jsonEncode(state.toJson()));
@@ -80,20 +95,30 @@ class TutorialProgressState {
     required this.stepsByTrack,
     required this.skippedAll,
     this.coreCompletedAt,
+    this.flags = const <String>{},
+    this.hardReset = false,
   });
 
-  factory TutorialProgressState.initial() => TutorialProgressState(
+  factory TutorialProgressState.initial({bool hardReset = false}) =>
+      TutorialProgressState(
         version: TutorialTrackRegistry.version,
         completedTracks: <String>{},
         stepsByTrack: <String, Set<String>>{},
         skippedAll: false,
+        hardReset: hardReset,
       );
+
+  /// Progress flags (bank full prompt, etc.) — avoids dual SharedPreferences.
+  static const String flagBankFullPrompted = 'bank_full_prompted';
+  static const String flagBankDepositCoachShown = 'bank_deposit_coach_shown';
 
   final int version;
   final Set<String> completedTracks;
   final Map<String, Set<String>> stepsByTrack;
   final bool skippedAll;
   final String? coreCompletedAt;
+  final Set<String> flags;
+  final bool hardReset;
 
   Set<String> stepsForTrack(String trackId) =>
       stepsByTrack[trackId] ?? <String>{};
@@ -103,10 +128,63 @@ class TutorialProgressState {
   bool get coreCompleted =>
       TutorialTrackId.coreTracks.every(completedTracks.contains);
 
+  bool hasFlag(String flag) => flags.contains(flag);
+
+  TutorialProgressState clearHardResetFlag() {
+    if (!hardReset) return this;
+    return TutorialProgressState(
+      version: version,
+      completedTracks: completedTracks,
+      stepsByTrack: stepsByTrack,
+      skippedAll: skippedAll,
+      coreCompletedAt: coreCompletedAt,
+      flags: flags,
+      hardReset: false,
+    );
+  }
+
+  TutorialProgressState withFlag(String flag) {
+    if (flags.contains(flag)) return this;
+    return TutorialProgressState(
+      version: version,
+      completedTracks: completedTracks,
+      stepsByTrack: stepsByTrack,
+      skippedAll: skippedAll,
+      coreCompletedAt: coreCompletedAt,
+      flags: <String>{...flags, flag},
+      hardReset: hardReset,
+    );
+  }
+
   TutorialProgressState mergeServer(
     Map<String, dynamic> server, {
     required bool tutorialCompleted,
   }) {
+    if (hardReset) {
+      return TutorialProgressState(
+        version: version,
+        completedTracks: completedTracks,
+        stepsByTrack: stepsByTrack,
+        skippedAll: skippedAll,
+        coreCompletedAt: coreCompletedAt,
+        flags: flags,
+        hardReset: true,
+      );
+    }
+
+    final bool serverHardReset = server['hard_reset'] == true;
+    if (serverHardReset && completedTracks.isEmpty && !skippedAll) {
+      return TutorialProgressState(
+        version: TutorialTrackRegistry.version,
+        completedTracks: _stringSet(server['completed_tracks']),
+        stepsByTrack: _stepsMapFromServer(server['steps']),
+        skippedAll: server['skipped_all'] == true,
+        coreCompletedAt: server['core_completed_at']?.toString(),
+        flags: _stringSet(server['flags']),
+        hardReset: false,
+      );
+    }
+
     final Set<String> mergedTracks = <String>{
       ...completedTracks,
       ..._stringSet(server['completed_tracks']),
@@ -135,7 +213,15 @@ class TutorialProgressState {
             ...?mergedSteps[track.id],
             ...matched,
           };
-          if (matched.length >= track.steps.length) {
+          final Set<String> allForTrack = <String>{
+            ...?mergedSteps[track.id],
+          };
+          final bool allRequiredDone = track.steps.every(
+            (TutorialStepV2 s) =>
+                TutorialTrackRegistry.isHomeLiveOnlyStep(s.id) ||
+                allForTrack.contains(s.id),
+          );
+          if (allRequiredDone) {
             mergedTracks.add(track.id);
           }
         }
@@ -146,9 +232,23 @@ class TutorialProgressState {
       version: TutorialTrackRegistry.version,
       completedTracks: mergedTracks,
       stepsByTrack: mergedSteps,
-      skippedAll: skippedAll || server['skipped_all'] == true || tutorialCompleted,
+      skippedAll: skippedAll ||
+          server['skipped_all'] == true ||
+          (tutorialCompleted && mergedTracks.isEmpty && stepsByTrack.isEmpty),
       coreCompletedAt: coreCompletedAt ?? server['core_completed_at']?.toString(),
+      flags: <String>{...flags, ..._stringSet(server['flags'])},
+      hardReset: false,
     );
+  }
+
+  static Map<String, Set<String>> _stepsMapFromServer(dynamic stepsRaw) {
+    final Map<String, Set<String>> steps = <String, Set<String>>{};
+    if (stepsRaw is Map) {
+      for (final MapEntry<dynamic, dynamic> entry in stepsRaw.entries) {
+        steps[entry.key.toString()] = _stringSet(entry.value);
+      }
+    }
+    return steps;
   }
 
   TutorialProgressState completeStep({
@@ -164,6 +264,8 @@ class TutorialProgressState {
       stepsByTrack: nextSteps,
       skippedAll: skippedAll,
       coreCompletedAt: coreCompletedAt,
+      flags: flags,
+      hardReset: false,
     );
   }
 
@@ -178,6 +280,8 @@ class TutorialProgressState {
       coreCompletedAt: coreDone && coreCompletedAt == null
           ? DateTime.now().toUtc().toIso8601String()
           : coreCompletedAt,
+      flags: flags,
+      hardReset: false,
     );
   }
 
@@ -190,6 +294,8 @@ class TutorialProgressState {
       stepsByTrack: stepsByTrack,
       skippedAll: true,
       coreCompletedAt: coreCompletedAt ?? DateTime.now().toUtc().toIso8601String(),
+      flags: flags,
+      hardReset: false,
     );
   }
 
@@ -203,19 +309,15 @@ class TutorialProgressState {
         'skipped_all': skippedAll,
         'core_completed': coreCompleted,
         if (coreCompletedAt != null) 'core_completed_at': coreCompletedAt,
+        'flags': flags.toList(),
+        if (hardReset) 'hard_reset': true,
         'completed_steps': stepsByTrack.values
             .expand((Set<String> s) => s)
             .toList(growable: false),
       };
 
   factory TutorialProgressState.fromJson(Map<String, dynamic> json) {
-    final Map<String, Set<String>> steps = <String, Set<String>>{};
-    if (json['steps'] is Map) {
-      for (final MapEntry<dynamic, dynamic> entry
-          in (json['steps'] as Map).entries) {
-        steps[entry.key.toString()] = _stringSet(entry.value);
-      }
-    }
+    final Map<String, Set<String>> steps = _stepsMapFromServer(json['steps']);
     return TutorialProgressState(
       version:
           (json['tutorial_version'] as num?)?.toInt() ?? TutorialTrackRegistry.version,
@@ -223,6 +325,8 @@ class TutorialProgressState {
       stepsByTrack: steps,
       skippedAll: json['skipped_all'] == true,
       coreCompletedAt: json['core_completed_at']?.toString(),
+      flags: _stringSet(json['flags']),
+      hardReset: json['hard_reset'] == true,
     );
   }
 
@@ -233,3 +337,4 @@ class TutorialProgressState {
     return <String>{};
   }
 }
+

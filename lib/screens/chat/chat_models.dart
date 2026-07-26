@@ -85,6 +85,11 @@ class ChatMessage {
     this.guildId,
     this.deletedAt,
     this.senderIsOnline,
+    this.senderStaffBadge,
+    this.senderKingBadge,
+    this.senderGuildName,
+    this.senderAuthId,
+    this.systemTone,
   });
 
   final String id;
@@ -98,6 +103,14 @@ class ChatMessage {
   final String? guildId;
   final String? deletedAt;
   final bool? senderIsOnline;
+  final String? senderStaffBadge;
+  final String? senderKingBadge;
+  final String? senderGuildName;
+  final String? senderAuthId;
+  /// System announcement styling: `success` | `danger` | `warning` | null (info).
+  final String? systemTone;
+
+  bool get isDeleted => deletedAt != null && deletedAt!.isNotEmpty;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     final String rawChannel = (json['channel']?.toString() ?? 'global').toLowerCase();
@@ -115,7 +128,32 @@ class ChatMessage {
       guildId: json['guild_id']?.toString(),
       deletedAt: json['deleted_at']?.toString(),
       senderIsOnline: json['sender_is_online'] as bool?,
+      senderStaffBadge: json['sender_staff_badge']?.toString(),
+      senderKingBadge: json['sender_king_badge']?.toString(),
+      senderGuildName: _parseSenderGuildName(json),
+      senderAuthId: json['sender_auth_id']?.toString(),
+      systemTone: _parseSystemTone(json),
     );
+  }
+
+  static String? _parseSystemTone(Map<String, dynamic> json) {
+    final dynamic metadata = json['metadata'];
+    if (metadata is Map) {
+      final String? tone = metadata['tone']?.toString();
+      if (tone == 'success' || tone == 'danger' || tone == 'warning') return tone;
+    }
+    return null;
+  }
+
+  static String? _parseSenderGuildName(Map<String, dynamic> json) {
+    final String? direct = json['sender_guild_name']?.toString();
+    if (direct != null && direct.trim().isNotEmpty) return direct.trim();
+    final dynamic metadata = json['metadata'];
+    if (metadata is Map) {
+      final String? fromMeta = metadata['sender_guild_name']?.toString();
+      if (fromMeta != null && fromMeta.trim().isNotEmpty) return fromMeta.trim();
+    }
+    return null;
   }
 }
 

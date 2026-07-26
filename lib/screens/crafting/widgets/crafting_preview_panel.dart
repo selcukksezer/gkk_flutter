@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../components/common/item_icon_view.dart';
 import '../../../components/layout/game_screen_background.dart';
+import '../../../core/tutorial/tutorial_anchor.dart';
+import '../../../core/tutorial/tutorial_track.dart';
 import '../../../core/utils/craft_gold.dart';
 import '../../../models/crafting_model.dart';
 import '../../../providers/crafting_provider.dart';
@@ -337,15 +339,20 @@ class CraftingPreviewPanel extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: FilledButton(
-                  onPressed: canCraft ? onCraft : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFB45309),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text(
-                    isCrafting ? 'Üretiliyor...' : '🔨 Üretimi Başlat (${batchCount}x)',
-                    textAlign: TextAlign.center,
+                child: TutorialAnchorScope(
+                  id: TutorialAnchorId.craftStartBtn,
+                  child: FilledButton(
+                    onPressed: canCraft ? onCraft : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFB45309),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text(
+                      isCrafting
+                          ? 'Üretiliyor...'
+                          : '🔨 Üretimi Başlat (${batchCount}x)',
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ),

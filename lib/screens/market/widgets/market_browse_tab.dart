@@ -5,10 +5,13 @@ import '../../../components/layout/game_screen_background.dart';
 import '../../../theme/app_colors.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
+import '../../../core/tutorial/tutorial_triggers.dart';
 import '../../../models/inventory_model.dart';
 import '../../../models/market_model.dart';
+import '../../../models/kingdom_market_blessing_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/inventory_provider.dart';
+import '../../../providers/kingdom_market_blessing_provider.dart';
 import '../../../providers/market_provider.dart';
 import '../../../providers/player_provider.dart';
 import 'market_design.dart';
@@ -32,6 +35,7 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
   @override
   Widget build(BuildContext context) {
     final marketState = ref.watch(marketProvider);
+    final KingdomMarketBlessingStatus blessing = ref.watch(kingdomMarketBlessingProvider);
     final int gold = ref.watch(playerProvider).profile?.gold ?? 0;
     final String? currentUserId = ref.watch(authProvider).user?.id;
     final List<InventoryItem> inventoryItems = ref.watch(inventoryProvider).items;
@@ -64,7 +68,15 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                MarketSearchField(onChanged: (String value) => setState(() => _search = value)),
+                MarketSearchField(
+                  onChanged: (String value) {
+                    TutorialTriggers.onAnchorTap(
+                      ref,
+                      TutorialAnchorId.marketBrowseTab,
+                    );
+                    setState(() => _search = value);
+                  },
+                ),
                 const SizedBox(height: 10),
                 MarketPillStrip(
                   options: marketCategoryPillOptions(allTickers),
@@ -110,12 +122,14 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
                 final InventoryItem? refItem = _findInventoryRef(inventoryItems, ticker.itemId);
                 final bool canBuy =
                     ticker.cheapestOrderId != null && !ownListing;
+                final int basePrice = ticker.lowestPrice;
+                final int displayPrice = blessing.applyDiscount(basePrice, 'gold');
 
                 return MarketBrowseGridCard(
                   index: index,
                   itemName: ticker.itemName,
                   rarity: ticker.rarity,
-                  price: ticker.lowestPrice,
+                  price: displayPrice,
                   priceChangeBps: ticker.priceChange,
                   stockLabel:
                       '${marketRarityLabel(ticker.rarity)} • ${ticker.volume} stok',
@@ -127,7 +141,12 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
                   ownListing: ownListing,
                   canBuy: canBuy,
                   onBuy: canBuy
-                      ? () => _openBuySheet(context, ticker: ticker, gold: gold)
+                      ? () => _openBuySheet(
+                            context,
+                            ticker: ticker,
+                            gold: gold,
+                            unitPrice: displayPrice,
+                          )
                       : null,
                 );
               },
@@ -148,12 +167,13 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
     BuildContext context, {
     required MarketTicker ticker,
     required int gold,
+    required int unitPrice,
   }) async {
     final MarketQuantityResult? result = await MarketQuantitySheet.show(
       context,
       title: ticker.itemName,
       subtitle: '${marketRarityLabel(ticker.rarity)} • Stok: ${ticker.maxAvailableQty}',
-      unitPrice: ticker.lowestPrice,
+      unitPrice: unitPrice,
       maxQuantity: ticker.maxAvailableQty.clamp(1, ticker.volume),
       isStackable: ticker.isStackable,
       mode: MarketQuantityMode.buy,

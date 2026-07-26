@@ -25,6 +25,7 @@ enum NotificationKind {
   nemesisOnline,
   nightMarketOpen,
   nightMarketEnding,
+  bugReportUpdate,
 }
 
 extension NotificationKindX on NotificationKind {
@@ -50,6 +51,7 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.nemesisOnline => Icons.visibility_rounded,
         NotificationKind.nightMarketOpen => Icons.nights_stay_rounded,
         NotificationKind.nightMarketEnding => Icons.timer_rounded,
+        NotificationKind.bugReportUpdate => Icons.bug_report_rounded,
       };
 
   Color get accentColor => switch (this) {
@@ -74,6 +76,7 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.nemesisOnline => AppColors.coralFlare,
         NotificationKind.nightMarketOpen => AppColors.warningSolar,
         NotificationKind.nightMarketEnding => AppColors.warningSolar,
+        NotificationKind.bugReportUpdate => AppColors.accentBlue,
       };
 
   String get sectionLabel => switch (this) {
@@ -98,6 +101,7 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.nemesisOnline => 'PvP',
         NotificationKind.nightMarketOpen => 'Mağaza',
         NotificationKind.nightMarketEnding => 'Mağaza',
+        NotificationKind.bugReportUpdate => 'Bug / Destek',
       };
 }
 

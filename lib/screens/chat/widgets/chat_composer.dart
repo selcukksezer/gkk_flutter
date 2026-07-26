@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/keyboard_dismiss.dart';
 import '../../../components/layout/game_chrome.dart';
 import '../chat_design_system.dart';
 import '../chat_models.dart';
@@ -80,7 +81,11 @@ class ChatComposer extends StatelessWidget {
                         enabled: activeBan == null,
                         maxLength: maxMessageLength,
                         maxLines: 1,
-                        onSubmitted: (_) => onSend(),
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) {
+                          dismissKeyboard(context);
+                          onSend();
+                        },
                         style: const TextStyle(fontSize: 13, color: ChatDesignSystem.colorTextPrimary),
                         decoration: InputDecoration(
                           hintText: activeBan != null

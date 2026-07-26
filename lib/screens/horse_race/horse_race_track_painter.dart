@@ -5,43 +5,50 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 
-/// Shared track geometry for painter + live horse overlays.
+/// Vertical track geometry — start bottom, finish top; lanes left→right.
 abstract final class HorseRaceTrackLayout {
-  static const double grandstandFraction = 0.14;
-  static const double railFraction = 0.06;
-  static const double trackStartX = 0.07;
-  static const double trackEndX = 0.88;
-  static const double finishLineX = 0.88;
+  static const double leftRailFraction = 0.04;
+  static const double rightRailFraction = 0.04;
+  static const double trackStartY = 0.90;
+  static const double trackEndY = 0.14;
+  static const double finishLineY = 0.14;
 
   static Rect trackRect(Size size) {
-    final double top = size.height * grandstandFraction;
-    final double bottom = size.height * railFraction;
-    return Rect.fromLTWH(0, top, size.width, size.height - top - bottom);
+    final double left = size.width * leftRailFraction;
+    final double right = size.width * rightRailFraction;
+    return Rect.fromLTWH(
+      left,
+      0,
+      size.width - left - right,
+      size.height,
+    );
   }
 
-  static double laneCenterY(Size size, int laneIndex, int laneCount) {
+  static double laneCenterX(Size size, int laneIndex, int laneCount) {
     final Rect track = trackRect(size);
-    final double laneHeight = track.height / math.max(laneCount, 1);
-    return track.top + laneHeight * (laneIndex + 0.5);
+    final double laneWidth = track.width / math.max(laneCount, 1);
+    return track.left + laneWidth * (laneIndex + 0.5);
   }
 
-  static double laneHeight(Size size, int laneCount) {
-    return trackRect(size).height / math.max(laneCount, 1);
+  static double laneWidth(Size size, int laneCount) {
+    return trackRect(size).width / math.max(laneCount, 1);
   }
 
-  static double horseX(Size size, double position) {
-    final double span = trackEndX - trackStartX;
-    return size.width * (trackStartX + position.clamp(0.0, 1.0) * span);
+  /// Progress 0 = start (bottom), 1 = finish (top).
+  static double horseY(Size size, double position) {
+    final double startY = size.height * trackStartY;
+    final double endY = size.height * trackEndY;
+    return startY + (endY - startY) * position.clamp(0.0, 1.0);
   }
 
   static double horseSize(int laneCount) {
-    if (laneCount <= 3) return 54;
-    if (laneCount <= 5) return 46;
-    return 40;
+    if (laneCount <= 3) return 52;
+    if (laneCount <= 5) return 44;
+    return 38;
   }
 }
 
-/// Premium hipodrom pisti — turf, grandstand, rails, start gate, finish.
+/// Vertical hipodrom — turf lanes, start gate bottom, finish top.
 class HorseRaceTrackPainter extends CustomPainter {
   HorseRaceTrackPainter({
     required this.laneCount,
@@ -62,7 +69,6 @@ class HorseRaceTrackPainter extends CustomPainter {
   final bool showSpeedLines;
 
   static const Color _carbon = AppColors.carbonVoid;
-  static const Color _navy = AppColors.spaceNavy;
   static const Color _turfDark = Color(0xFF1A4D2E);
   static const Color _turfMid = Color(0xFF256B3A);
   static const Color _turfLight = Color(0xFF2E8448);
@@ -74,9 +80,8 @@ class HorseRaceTrackPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final Rect bounds = Offset.zero & size;
     _drawSky(canvas, bounds, size);
-    _drawGrandstand(canvas, size);
+    _drawSideRails(canvas, size);
     _drawTrack(canvas, size);
-    _drawRails(canvas, size);
     _drawDistanceMarkers(canvas, size);
     if (showSpeedLines) _drawSpeedLines(canvas, size);
     _drawStartGate(canvas, size);
@@ -100,77 +105,73 @@ class HorseRaceTrackPainter extends CustomPainter {
 
     final Paint sunset = _paint()
       ..shader = ui.Gradient.radial(
-        Offset(size.width * 0.75, size.height * 0.08),
-        size.width * 0.55,
+        Offset(size.width * 0.5, size.height * 0.06),
+        size.width * 0.7,
         <Color>[
-          AppColors.liquidGold.withValues(alpha: 0.18),
+          AppColors.liquidGold.withValues(alpha: 0.16),
           AppColors.cyberFuchsia.withValues(alpha: 0.04),
           Colors.transparent,
         ],
+        <double>[0.0, 0.45, 1.0],
       );
     canvas.drawRect(bounds, sunset);
   }
 
-  void _drawGrandstand(Canvas canvas, Size size) {
-    final double h = size.height * HorseRaceTrackLayout.grandstandFraction;
-    final Path stand = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, h * 0.55)
-      ..lineTo(size.width * 0.92, h)
-      ..lineTo(size.width * 0.08, h)
-      ..lineTo(0, h * 0.55)
-      ..close();
-
-    final Paint standPaint = _paint()
+  void _drawSideRails(Canvas canvas, Size size) {
+    final Rect track = HorseRaceTrackLayout.trackRect(size);
+    final Paint dirt = _paint()
       ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: <Color>[
-          _navy.withValues(alpha: 0.98),
-          _carbon.withValues(alpha: 0.94),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, h));
-    canvas.drawPath(stand, standPaint);
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: <Color>[_dirt.withValues(alpha: 0.95), _carbon],
+      ).createShader(Rect.fromLTWH(0, 0, track.left, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, track.left, size.height), dirt);
+    canvas.drawRect(
+      Rect.fromLTWH(track.right, 0, size.width - track.right, size.height),
+      dirt,
+    );
 
-    final Paint railTop = _paint()
-      ..color = Colors.white.withValues(alpha: 0.12)
+    final Paint fence = _paint()
+      ..color = Colors.white.withValues(alpha: 0.35)
       ..strokeWidth = 1.5;
-    canvas.drawLine(Offset(0, h), Offset(size.width, h), railTop);
-
-    final Paint crowd = _paint()..strokeWidth = 2;
-    final math.Random rng = math.Random(42);
-    for (int i = 0; i < 120; i++) {
-      final double x = rng.nextDouble() * size.width;
-      final double y = h * 0.15 + rng.nextDouble() * h * 0.55;
-      crowd.color = <Color>[
-        AppColors.liquidGold,
-        AppColors.accentCyan,
-        AppColors.cyberFuchsia,
-        Colors.white,
-      ][i % 4].withValues(alpha: 0.25 + rng.nextDouble() * 0.35);
-      canvas.drawCircle(Offset(x, y), 1.2 + rng.nextDouble(), crowd);
+    for (double y = 0; y < size.height; y += 18) {
+      canvas.drawLine(Offset(track.left, y), Offset(track.left + 10, y), fence);
+      canvas.drawLine(
+        Offset(track.right - 10, y),
+        Offset(track.right, y),
+        fence,
+      );
     }
+    canvas.drawLine(
+      Offset(track.left, 0),
+      Offset(track.left, size.height),
+      fence,
+    );
+    canvas.drawLine(
+      Offset(track.right, 0),
+      Offset(track.right, size.height),
+      fence,
+    );
   }
 
   void _drawTrack(Canvas canvas, Size size) {
     final Rect track = HorseRaceTrackLayout.trackRect(size);
-    final double laneH = HorseRaceTrackLayout.laneHeight(size, laneCount);
+    final double laneW = HorseRaceTrackLayout.laneWidth(size, laneCount);
 
     final Paint turfBase = _paint()
       ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
         colors: <Color>[_turfLight, _turfMid, _turfDark],
       ).createShader(track);
     canvas.drawRect(track, turfBase);
 
     for (int i = 0; i < laneCount; i++) {
-      final double top = track.top + i * laneH;
+      final double left = track.left + i * laneW;
       final Color laneColor = i < laneColors.length
           ? laneColors[i]
           : AppColors.mutedTitanium;
-      final Rect laneRect = Rect.fromLTWH(track.left, top, track.width, laneH);
+      final Rect laneRect = Rect.fromLTWH(left, track.top, laneW, track.height);
 
       if (i.isOdd) {
         final Paint alt = _paint()
@@ -180,8 +181,8 @@ class HorseRaceTrackPainter extends CustomPainter {
 
       final Paint silk = _paint()
         ..shader = LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
           colors: <Color>[
             laneColor.withValues(alpha: 0.04),
             laneColor.withValues(alpha: 0.14),
@@ -192,10 +193,10 @@ class HorseRaceTrackPainter extends CustomPainter {
 
       final Paint stripePaint = _paint()
         ..color = Colors.white.withValues(alpha: 0.045);
-      for (double x = -scrollOffset % 56; x < track.width; x += 56) {
+      for (double y = -scrollOffset % 56; y < track.height; y += 56) {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(track.left + x, top + 6, 26, laneH - 12),
+            Rect.fromLTWH(left + 6, track.top + y, laneW - 12, 26),
             const Radius.circular(2),
           ),
           stripePaint,
@@ -207,33 +208,31 @@ class HorseRaceTrackPainter extends CustomPainter {
           ..color = Colors.white.withValues(alpha: 0.14)
           ..strokeWidth = 1;
         canvas.drawLine(
-          Offset(track.left, top),
-          Offset(track.right, top),
+          Offset(left, track.top),
+          Offset(left, track.bottom),
           divider,
         );
       }
 
-      _drawLaneNumber(canvas, i, top, laneH, laneColor);
+      _drawLaneNumber(canvas, i, left, laneW, laneColor, size);
     }
-
-    final Paint innerRail = _paint()
-      ..color = Colors.white.withValues(alpha: 0.22)
-      ..strokeWidth = 2;
-    canvas.drawLine(
-      Offset(track.left + 4, track.top + 2),
-      Offset(track.left + 4, track.bottom - 2),
-      innerRail,
-    );
   }
 
   void _drawLaneNumber(
     Canvas canvas,
     int index,
-    double top,
-    double laneH,
+    double left,
+    double laneW,
     Color laneColor,
+    Size size,
   ) {
-    final Rect badge = Rect.fromLTWH(8, top + laneH * 0.5 - 11, 22, 22);
+    final double badgeY = size.height * HorseRaceTrackLayout.trackStartY + 8;
+    final Rect badge = Rect.fromLTWH(
+      left + laneW * 0.5 - 11,
+      badgeY,
+      22,
+      22,
+    );
     final Paint bg = _paint()..color = laneColor.withValues(alpha: 0.85);
     canvas.drawRRect(
       RRect.fromRectAndRadius(badge, const Radius.circular(5)),
@@ -256,43 +255,25 @@ class HorseRaceTrackPainter extends CustomPainter {
     );
   }
 
-  void _drawRails(Canvas canvas, Size size) {
-    final double railTop =
-        size.height - size.height * HorseRaceTrackLayout.railFraction;
-    final Rect railRect = Rect.fromLTWH(0, railTop, size.width, size.height - railTop);
-
-    final Paint dirt = _paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: <Color>[_dirt.withValues(alpha: 0.9), _carbon],
-      ).createShader(railRect);
-    canvas.drawRect(railRect, dirt);
-
-    final Paint fence = _paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
-      ..strokeWidth = 1.5;
-    for (double x = 0; x < size.width; x += 18) {
-      canvas.drawLine(Offset(x, railTop), Offset(x, railTop + 14), fence);
-    }
-    canvas.drawLine(Offset(0, railTop), Offset(size.width, railTop), fence);
-  }
-
   void _drawDistanceMarkers(Canvas canvas, Size size) {
     final Rect track = HorseRaceTrackLayout.trackRect(size);
     final List<int> distances = <int>[200, 400, 600, 800];
     final Paint postPaint = _paint()
       ..color = Colors.white.withValues(alpha: 0.55)
       ..strokeWidth = 2;
+    final double startY = size.height * HorseRaceTrackLayout.trackStartY;
+    final double endY = size.height * HorseRaceTrackLayout.trackEndY;
+    final double span = startY - endY;
 
     for (int i = 0; i < distances.length; i++) {
-      final double baseX = track.right * (0.25 + i * 0.18);
-      final double x = baseX - (scrollOffset * 0.35) % (track.width * 0.5);
-      if (x < track.left + 30 || x > track.right - 20) continue;
+      final double frac = 0.2 + i * 0.18;
+      final double y =
+          startY - span * frac - (scrollOffset * 0.2) % (span * 0.3);
+      if (y < endY + 24 || y > startY - 20) continue;
 
       canvas.drawLine(
-        Offset(x, track.top + 4),
-        Offset(x, track.bottom - 4),
+        Offset(track.left + 4, y),
+        Offset(track.right - 4, y),
         postPaint,
       );
 
@@ -303,7 +284,7 @@ class HorseRaceTrackPainter extends CustomPainter {
         ..addText('${distances[i]}m');
       final ui.Paragraph p = builder.build()
         ..layout(const ui.ParagraphConstraints(width: 40));
-      canvas.drawParagraph(p, Offset(x - 12, track.top - 14));
+      canvas.drawParagraph(p, Offset(track.left + 6, y - 12));
     }
   }
 
@@ -314,94 +295,71 @@ class HorseRaceTrackPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     final math.Random rng = math.Random(7);
     for (int i = 0; i < 28; i++) {
-      final double y = track.top + rng.nextDouble() * track.height;
+      final double x = track.left + rng.nextDouble() * track.width;
       final double len = 30 + rng.nextDouble() * 70;
-      final double x = (rng.nextDouble() * size.width - scrollOffset * 1.4) %
-          size.width;
+      final double y =
+          (rng.nextDouble() * size.height + scrollOffset * 1.4) % size.height;
       line.color = Colors.white.withValues(
         alpha: 0.04 + rng.nextDouble() * 0.08,
       );
-      canvas.drawLine(Offset(x, y), Offset(x + len, y - 2), line);
+      canvas.drawLine(Offset(x, y), Offset(x + 2, y - len), line);
     }
   }
 
   void _drawStartGate(Canvas canvas, Size size) {
     final Rect track = HorseRaceTrackLayout.trackRect(size);
-    final double gateX = size.width * HorseRaceTrackLayout.trackStartX;
+    final double gateY = size.height * HorseRaceTrackLayout.trackStartY;
     const int bars = 5;
-    final double barW = 5;
-    final double gap = (8 - bars * barW) / (bars + 1);
+    const double barH = 5;
+    final double gap = 4.0;
 
     for (int i = 0; i < bars; i++) {
-      final double x = gateX - 14 + gap + i * (barW + gap);
-      final double openOffset = gateOpen ? -track.height * 0.35 : 0;
+      final double y = gateY + gap + i * (barH + gap);
+      final double openOffset = gateOpen ? track.width * 0.45 : 0;
       final Paint bar = _paint()
         ..color = Color.lerp(
           AppColors.mysticRuby,
           AppColors.mysticRuby.withValues(alpha: 0.15),
           gateOpen ? 1.0 : 0.0,
         )!
-        ..strokeWidth = barW
+        ..strokeWidth = barH
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(
-        Offset(x, track.top + openOffset),
-        Offset(x, track.bottom + openOffset),
+        Offset(track.left + openOffset, y),
+        Offset(track.right - openOffset, y),
         bar,
       );
     }
 
     final ui.ParagraphBuilder builder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(fontSize: 8, fontWeight: FontWeight.w900),
+      ui.ParagraphStyle(fontSize: 9, fontWeight: FontWeight.w900),
     )
-      ..pushStyle(ui.TextStyle(color: Colors.white.withValues(alpha: 0.65)))
+      ..pushStyle(ui.TextStyle(color: Colors.white.withValues(alpha: 0.75)))
       ..addText('START');
     final ui.Paragraph p = builder.build()
-      ..layout(const ui.ParagraphConstraints(width: 40));
-    canvas.drawParagraph(p, Offset(gateX - 22, track.top - 12));
+      ..layout(const ui.ParagraphConstraints(width: 50));
+    canvas.drawParagraph(
+      p,
+      Offset(track.left + track.width * 0.5 - 18, gateY + 28),
+    );
   }
 
   void _drawFinishLine(Canvas canvas, Size size) {
     final Rect track = HorseRaceTrackLayout.trackRect(size);
-    final double finishX = size.width * HorseRaceTrackLayout.finishLineX;
-    const double lineWidth = 18.0;
-    const int checkerRows = 14;
-    final double rowHeight = track.height / checkerRows;
+    final double finishY = size.height * HorseRaceTrackLayout.finishLineY;
+    const double lineHeight = 22.0;
+    const int checkerCols = 16;
+    final double colWidth = track.width / checkerCols;
 
-    final RRect clip = RRect.fromRectAndRadius(
-      Rect.fromLTWH(finishX - lineWidth / 2, track.top, lineWidth, track.height),
-      const Radius.circular(2),
-    );
-    canvas.save();
-    canvas.clipRRect(clip);
-
-    for (int row = 0; row < checkerRows; row++) {
-      for (int col = 0; col < 2; col++) {
-        final bool light = (row + col) % 2 == 0;
-        final Paint checker = _paint()
-          ..color = (light ? AppColors.liquidGold : _carbon).withValues(
-            alpha: 0.25 + raceProgress * 0.35,
-          );
-        canvas.drawRect(
-          Rect.fromLTWH(
-            finishX - lineWidth / 2 + col * (lineWidth / 2),
-            track.top + row * rowHeight,
-            lineWidth / 2,
-            rowHeight + 0.5,
-          ),
-          checker,
-        );
-      }
-    }
-    canvas.restore();
-
+    // Strong glow behind the line so it reads clearly on mobile.
     final Paint glow = _paint()
       ..shader = ui.Gradient.linear(
-        Offset(finishX, track.top),
-        Offset(finishX, track.bottom),
+        Offset(track.left, finishY),
+        Offset(track.right, finishY),
         <Color>[
           AppColors.liquidGold.withValues(alpha: 0.0),
           AppColors.liquidGold.withValues(
-            alpha: 0.18 + raceProgress * 0.42,
+            alpha: 0.35 + raceProgress * 0.45,
           ),
           AppColors.liquidGold.withValues(alpha: 0.0),
         ],
@@ -410,35 +368,99 @@ class HorseRaceTrackPainter extends CustomPainter {
       ..blendMode = BlendMode.plus;
     canvas.drawRect(
       Rect.fromLTWH(
-        finishX - lineWidth * 1.4,
-        track.top,
-        lineWidth * 2.8,
-        track.height,
+        track.left,
+        finishY - lineHeight * 1.6,
+        track.width,
+        lineHeight * 3.2,
       ),
       glow,
     );
 
+    final RRect clip = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        track.left,
+        finishY - lineHeight / 2,
+        track.width,
+        lineHeight,
+      ),
+      const Radius.circular(3),
+    );
+    canvas.save();
+    canvas.clipRRect(clip);
+
+    for (int col = 0; col < checkerCols; col++) {
+      for (int row = 0; row < 2; row++) {
+        final bool light = (row + col) % 2 == 0;
+        final Paint checker = _paint()
+          ..color = light ? AppColors.liquidGold : Colors.white;
+        canvas.drawRect(
+          Rect.fromLTWH(
+            track.left + col * colWidth,
+            finishY - lineHeight / 2 + row * (lineHeight / 2),
+            colWidth + 0.5,
+            lineHeight / 2 + 0.5,
+          ),
+          checker,
+        );
+      }
+    }
+    canvas.restore();
+
+    // Bold outline
+    final Paint outline = _paint()
+      ..color = AppColors.liquidGold
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    canvas.drawRRect(clip, outline);
+
+    // FINISH posts
+    final Paint post = _paint()..color = AppColors.liquidGold;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(track.left - 4, finishY - 28, 8, 40),
+        const Radius.circular(2),
+      ),
+      post,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(track.right - 4, finishY - 28, 8, 40),
+        const Radius.circular(2),
+      ),
+      post,
+    );
+
     final ui.ParagraphBuilder builder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(fontSize: 10, fontWeight: FontWeight.w900),
+      ui.ParagraphStyle(
+        textAlign: TextAlign.center,
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+      ),
     )
-      ..pushStyle(ui.TextStyle(color: AppColors.liquidGold.withValues(alpha: 0.9)))
+      ..pushStyle(
+        ui.TextStyle(
+          color: AppColors.liquidGold,
+          fontWeight: FontWeight.w900,
+        ),
+      )
       ..addText('FİNİŞ');
     final ui.Paragraph p = builder.build()
-      ..layout(const ui.ParagraphConstraints(width: 50));
-    canvas.drawParagraph(p, Offset(finishX - 16, track.top - 14));
+      ..layout(ui.ParagraphConstraints(width: track.width));
+    canvas.drawParagraph(p, Offset(track.left, finishY - lineHeight / 2 - 20));
   }
 
   void _drawFinalStretchBanner(Canvas canvas, Size size) {
     final Rect track = HorseRaceTrackLayout.trackRect(size);
+    final double finishY = size.height * HorseRaceTrackLayout.finishLineY;
     final Paint band = _paint()
-      ..color = AppColors.mysticRuby.withValues(alpha: 0.22);
+      ..color = AppColors.mysticRuby.withValues(alpha: 0.18);
     canvas.drawRect(
-      Rect.fromLTWH(track.left, track.top, track.width, track.height),
+      Rect.fromLTWH(track.left, finishY, track.width, size.height * 0.35),
       band,
     );
 
     final ui.ParagraphBuilder builder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(fontSize: 13, fontWeight: FontWeight.w900),
+      ui.ParagraphStyle(fontSize: 12, fontWeight: FontWeight.w900),
     )
       ..pushStyle(ui.TextStyle(color: Colors.white.withValues(alpha: 0.55)))
       ..addText('SON DÜZLÜK');
@@ -446,7 +468,7 @@ class HorseRaceTrackPainter extends CustomPainter {
       ..layout(ui.ParagraphConstraints(width: size.width));
     canvas.drawParagraph(
       p,
-      Offset(size.width * 0.5 - 42, track.top + track.height * 0.5 - 8),
+      Offset(size.width * 0.5 - 42, finishY + 28),
     );
   }
 

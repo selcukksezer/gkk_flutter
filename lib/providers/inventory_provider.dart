@@ -409,6 +409,11 @@ class InventoryNotifier extends Notifier<InventoryState> {
           );
         }
         successMessage = resetResult.message ?? 'Stat puanlari geri alindi.';
+      } else if (isNameChangeScroll(item.itemId)) {
+        return const UseItemResult(
+          success: false,
+          message: 'Yeni isim envanter akisindan secilmeli.',
+        );
       } else if (item.subType == SubType.detox) {
         final bool success = await _repository.useDetox(rowId: item.rowId);
         if (!success) {
@@ -447,6 +452,33 @@ class InventoryNotifier extends Notifier<InventoryState> {
       return UseItemResult(success: false, message: e.message);
     } catch (_) {
       state = state.copyWith(errorMessage: 'Item kullanimi sirasinda beklenmeyen bir hata olustu.');
+      return const UseItemResult(success: false);
+    }
+  }
+
+  Future<UseItemResult> useNameChangeScroll({
+    required InventoryItem item,
+    required String newDisplayName,
+  }) async {
+    try {
+      final UseItemResult result = await _repository.useNameChangeScroll(
+        rowId: item.rowId,
+        newDisplayName: newDisplayName,
+      );
+      if (!result.success) {
+        state = state.copyWith(errorMessage: result.message);
+        return result;
+      }
+      await Future.wait<void>(<Future<void>>[
+        loadInventory(silent: true),
+        ref.read(playerProvider.notifier).loadProfile(),
+      ]);
+      return result;
+    } on AppException catch (e) {
+      state = state.copyWith(errorMessage: e.message);
+      return UseItemResult(success: false, message: e.message);
+    } catch (_) {
+      state = state.copyWith(errorMessage: 'Isim degistirme basarisiz.');
       return const UseItemResult(success: false);
     }
   }

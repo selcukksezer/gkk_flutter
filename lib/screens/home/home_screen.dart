@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../components/comeback/comeback_summary_dialog.dart';
@@ -16,6 +18,8 @@ import '../../providers/comeback_summary_provider.dart';
 import '../../providers/daily_reward_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/player_inbox_provider.dart';
+import '../../providers/staff_provider.dart';
 import '../../qa/qa_flags.dart';
 import '../../routing/app_router.dart';
 import '../../l10n/l10n.dart';
@@ -57,6 +61,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await Future.wait<void>(<Future<void>>[
       ref.read(playerProvider.notifier).loadProfile(),
       ref.read(inventoryProvider.notifier).loadInventory(silent: true),
+      ref.read(staffProvider.notifier).load(),
+      ref.read(playerInboxProvider.notifier).refresh(),
     ]);
     if (!mounted) return;
     await TutorialTriggers.onRouteEnter(ref, AppRoutes.home);
@@ -73,8 +79,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return;
     }
 
-    final ComebackSummaryNotifier notifier =
-        ref.read(comebackSummaryProvider.notifier);
+    final ComebackSummaryNotifier notifier = ref.read(
+      comebackSummaryProvider.notifier,
+    );
     if (ref.read(comebackSummaryProvider).shownThisSession) {
       await _maybeShowDailyReward();
       return;
@@ -83,7 +90,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await notifier.load();
     if (!mounted) return;
 
-    final ComebackSummaryState comebackState = ref.read(comebackSummaryProvider);
+    final ComebackSummaryState comebackState = ref.read(
+      comebackSummaryProvider,
+    );
     final bool shouldShow = comebackState.summary?.showSummary ?? false;
     if (!shouldShow) {
       await _maybeShowDailyReward();
@@ -99,7 +108,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (QaFlags.skipDailyRewardDialog) return;
     // Günlük ödül comeback modalında satır olarak gösterildiyse tekrar açma.
     if (ref.read(comebackSummaryProvider).shownThisSession) {
-      final bool hadDailyRow = ref
+      final bool hadDailyRow =
+          ref
               .read(comebackSummaryProvider)
               .summary
               ?.items
@@ -310,16 +320,21 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
               bottomExtra: kGameChatFabSize + AppSpacing.md,
             ),
             children: <Widget>[
-              const HomePromoCarousel(),
+              TutorialAnchorScope(
+                id: TutorialAnchorId.homePromo,
+                child: const HomePromoCarousel(),
+              ),
               const SizedBox(height: AppSpacing.md),
 
-              // Hero Showcase (Character & Equip)
-              HeroShowcase(
-                profile: profile,
-                inventoryState: widget.inventoryState,
-                totalPower: totalPower,
-                reputation: reputation,
-                onSlotTap: _openSlotInfo,
+              TutorialAnchorScope(
+                id: TutorialAnchorId.homeHero,
+                child: HeroShowcase(
+                  profile: profile,
+                  inventoryState: widget.inventoryState,
+                  totalPower: totalPower,
+                  reputation: reputation,
+                  onSlotTap: _openSlotInfo,
+                ),
               ),
               const SizedBox(height: AppSpacing.xxl),
 
@@ -615,10 +630,7 @@ class _CountdownTextState extends State<_CountdownText> {
     final bool isFinished = diff.isNegative;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.black45,
         borderRadius: BorderRadius.circular(12),

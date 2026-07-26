@@ -457,7 +457,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       if (!mounted) return;
       AppMessenger.show(context, '${rowIds.length} eşya bankaya yatırıldı');
       _selectedInventoryRowIds.clear();
-      await BankTutorial.markDepositCoachShown();
+      await BankTutorial.markDepositCoachShown(ref);
       await _refreshAll();
       await TutorialTriggers.onBankDeposit(ref);
     } catch (e) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/tutorial/tutorial_anchor.dart';
+import '../../../core/tutorial/tutorial_track.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/guild_model.dart';
 import '../guild_helpers.dart';
@@ -44,14 +46,22 @@ class GuildNoGuildView extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: <Widget>[
-            const Text(
-              'Lonca',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Henüz bir loncaya üye değilsin.',
-              style: TextStyle(color: Colors.white54),
+            TutorialAnchorScope(
+              id: TutorialAnchorId.guildHeader,
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Lonca',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Henüz bir loncaya üye değilsin.',
+                    style: TextStyle(color: Colors.white54),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             Column(
@@ -159,13 +169,16 @@ class GuildNoGuildView extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(error!, style: const TextStyle(color: Colors.red)),
               ),
-            OutlinedButton.icon(
-              onPressed: onCreate,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(context.l10n.lonca_kur),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF4B6FFF)),
-                foregroundColor: const Color(0xFF4B6FFF),
+            TutorialAnchorScope(
+              id: TutorialAnchorId.guildJoinBtn,
+              child: OutlinedButton.icon(
+                onPressed: onCreate,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(context.l10n.lonca_kur),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF4B6FFF)),
+                  foregroundColor: const Color(0xFF4B6FFF),
+                ),
               ),
             ),
           ],

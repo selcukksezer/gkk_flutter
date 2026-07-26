@@ -1,24 +1,34 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../components/common/app_messenger.dart';
+import '../../components/common/profile_avatar.dart';
 import '../../components/common/universal_game_dialog.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
+import '../../core/services/app_haptics.dart';
 import '../../core/services/game_notification_scheduler.dart';
-import '../../core/services/local_notification_service.dart';
-import '../../core/services/music_service.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../l10n/l10n.dart';
+import '../../models/player_model.dart';
+import '../../providers/app_settings_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/policy_provider.dart';
+import '../../providers/staff_provider.dart';
+import '../support/widgets/bug_report_reward.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
-import 'package:gkk_flutter/components/common/app_messenger.dart';
-import '../../l10n/l10n.dart';
+import '../../theme/app_text_styles.dart';
+import 'widgets/delete_account_confirm_dialog.dart';
+import 'widgets/settings_design.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -28,69 +38,12 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  double _musicVolume = 0.7;
-  bool _muteAll = false;
-  bool _notifications = true;
-  bool _notifNightMarket = true;
-  bool _notifNemesis = true;
-
-  late TextEditingController _nameController;
-  bool _savingName = false;
-  String? _nameError;
-
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(playerProvider).profile;
-    final name = profile?.displayName ?? profile?.username ?? '';
-    _nameController = TextEditingController(text: name);
-    _musicVolume = MusicService.instance.volume;
-    _muteAll = MusicService.instance.muted;
-    unawaited(_loadNotificationPref());
-  }
-
-  Future<void> _loadNotificationPref() async {
-    await LocalNotificationService.instance.loadEnabledPreference();
-    if (!mounted) return;
-    setState(() {
-      _notifications = LocalNotificationService.instance.isEnabled;
-      _notifNightMarket = LocalNotificationService.instance.isNightMarketEnabled;
-      _notifNemesis = LocalNotificationService.instance.isNemesisEnabled;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ref.read(appSettingsProvider.notifier).reload());
     });
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveName() async {
-    final name = _nameController.text.trim();
-    if (name.length < 3) {
-      setState(() => _nameError = context.l10n.settingsNameMinLength);
-      return;
-    }
-    setState(() {
-      _nameError = null;
-      _savingName = true;
-    });
-    try {
-      await SupabaseService.client.rpc('update_user_profile', params: {'p_display_name': name});
-      await ref.read(playerProvider.notifier).loadProfile();
-      if (mounted) {
-        AppMessenger.show(context, context.l10n.settingsNameUpdated);
-      }
-    } catch (e) {
-      if (mounted) {
-        AppMessenger.showError(
-          context,
-          userFacingErrorMessage(e, fallback: 'Profil güncellenemedi.'),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _savingName = false);
-    }
   }
 
   Future<void> _logout() async {
@@ -108,17 +61,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _deleteAccount() async {
-    final bool? confirm = await UniversalGameDialog.show(
+    final String? username = ref.read(playerProvider).profile?.username;
+    if (username == null || username.isEmpty) {
+      AppMessenger.showError(
+        context,
+        context.l10n.settingsDeleteUsernameMissing,
+      );
+      return;
+    }
+
+    final bool? confirm = await showDeleteAccountConfirmDialog(
       context,
-      title: context.l10n.settingsDeleteAccountTitle,
-      message: context.l10n.settingsDeleteAccountConfirm,
-      confirmLabel: context.l10n.settingsDeleteAccountTitle,
-      cancelLabel: context.l10n.commonCancel,
-      accent: AppColors.mysticRuby,
+      username: username,
     );
     if (confirm != true) return;
     try {
-      await SupabaseService.client.rpc('delete_account');
+      await SupabaseService.client.rpc(
+        'delete_account',
+        params: <String, dynamic>{'p_username': username},
+      );
       await ref.read(authProvider.notifier).logout();
       ref.read(playerProvider.notifier).clear();
       if (mounted) context.go(AppRoutes.login);
@@ -132,242 +93,904 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _copyReferral(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    AppHaptics.selection();
+    if (mounted) {
+      AppMessenger.show(context, context.l10n.settingsReferralCopied);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final SettingsUiState settings = ref.watch(appSettingsProvider);
+    final PlayerProfile? profile = ref.watch(playerProvider).profile;
     final String languageCode = ref.watch(localeProvider).languageCode;
 
+    Future<void> logoutChrome() async {
+      await ref.read(authProvider.notifier).logout();
+      ref.read(playerProvider.notifier).clear();
+    }
+
     return Scaffold(
-      appBar: GameTopBar(
-        title: l10n.routeSettings,
-        onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
-      ),
+      appBar: GameTopBar(title: l10n.routeSettings, onLogout: logoutChrome),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.settings,
-        onLogout: () async {
-          await ref.read(authProvider.notifier).logout();
-          ref.read(playerProvider.notifier).clear();
-        },
+        onLogout: logoutChrome,
       ),
       body: GameScreenBackground(
-        child: ListView(
-          padding: GameScrollLayout.withClearance(context, const EdgeInsets.all(16)),
-          children: <Widget>[
-            _sectionCard(
-              title: context.l10n.ses_ayarlar,
-              children: <Widget>[
-                _sliderTile(
-                  label: '🎵 Müzik ${(_musicVolume * 100).round()}%',
-                  value: _muteAll ? 0.0 : _musicVolume,
-                  onChanged: _muteAll
-                      ? null
-                      : (v) {
-                          setState(() => _musicVolume = v);
-                          MusicService.instance.setVolume(v);
-                        },
+        child: !settings.ready
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: GameScrollLayout.withClearance(
+                  context,
+                  const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 ),
-                _sliderTile(
-                  label: '🔔 Efektler (yakında)',
-                  value: 0.0,
-                  onChanged: null,
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(context.l10n.t_m_sesleri_kapat),
-                  value: _muteAll,
-                  onChanged: (v) {
-                    setState(() => _muteAll = v);
-                    MusicService.instance.setMuted(v);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _sectionCard(
-              title: context.l10n.bildirimler_oyun,
-              children: <Widget>[
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(context.l10n.bildirimler),
-                  value: _notifications,
-                  onChanged: (bool v) async {
-                    setState(() => _notifications = v);
-                    await LocalNotificationService.instance.setEnabled(v);
-                    if (v) {
-                      final profile = ref.read(playerProvider).profile;
-                      await GameNotificationScheduler.instance.syncAll(profile: profile);
-                    }
-                  },
-                ),
-                if (_notifications) ...<Widget>[
-                  SwitchListTile(
-                    contentPadding: const EdgeInsets.only(left: 12),
-                    title: const Text('Gece Pazarı'),
-                    subtitle: const Text(
-                      'Açılış / kapanış hatırlatmaları',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                children: <Widget>[
+                  SettingsStagger(
+                    index: 0,
+                    reduceMotion: settings.reduceMotion,
+                    child: _ProfileHero(
+                      profile: profile,
+                      onCopyReferral:
+                          profile?.referralCode != null &&
+                              profile!.referralCode!.isNotEmpty
+                          ? () => _copyReferral(profile.referralCode!)
+                          : null,
                     ),
-                    value: _notifNightMarket,
-                    onChanged: (bool v) async {
-                      setState(() => _notifNightMarket = v);
-                      await LocalNotificationService.instance
-                          .setNightMarketEnabled(v);
-                      if (v) {
-                        await GameNotificationScheduler.instance
-                            .syncNightMarketReminder();
-                      } else {
-                        await GameNotificationScheduler.instance
-                            .cancelNightMarketReminders();
-                      }
-                    },
                   ),
-                  SwitchListTile(
-                    contentPadding: const EdgeInsets.only(left: 12),
-                    title: const Text('Nemesis'),
-                    subtitle: const Text(
-                      'Çevrimiçi / intikam bildirimleri',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 1,
+                    reduceMotion: settings.reduceMotion,
+                    child: _AudioSection(settings: settings),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 2,
+                    reduceMotion: settings.reduceMotion,
+                    child: _GameplaySection(settings: settings),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 3,
+                    reduceMotion: settings.reduceMotion,
+                    child: const _TutorialSection(),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 4,
+                    reduceMotion: settings.reduceMotion,
+                    child: _NotificationsSection(settings: settings),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 5,
+                    reduceMotion: settings.reduceMotion,
+                    child: _LanguageSection(languageCode: languageCode),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 6,
+                    reduceMotion: settings.reduceMotion,
+                    child: const _SupportSection(),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 7,
+                    reduceMotion: settings.reduceMotion,
+                    child: const _LegalSection(),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 8,
+                    reduceMotion: settings.reduceMotion,
+                    child: _DisplayNameInfoSection(profile: profile),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 9,
+                    reduceMotion: settings.reduceMotion,
+                    child: _AccountSection(
+                      onLogout: _logout,
+                      onDelete: _deleteAccount,
                     ),
-                    value: _notifNemesis,
-                    onChanged: (bool v) async {
-                      setState(() => _notifNemesis = v);
-                      await LocalNotificationService.instance
-                          .setNemesisEnabled(v);
-                    },
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 10,
+                    reduceMotion: settings.reduceMotion,
+                    child: const _AboutSection(),
                   ),
                 ],
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(context.l10n.otomatik_sava),
-                  subtitle: const Text(
-                    'PvP ve zindan otomatik savaş henüz bağlı değil',
-                    style: TextStyle(color: Colors.white38, fontSize: 12),
-                  ),
-                  leading: const Icon(Icons.smart_toy_outlined, color: Colors.white38),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _sectionCard(
-              title: l10n.dil_language,
-              children: <Widget>[
-                const SizedBox(height: 4),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<String>(
-                    segments: <ButtonSegment<String>>[
-                      ButtonSegment<String>(value: 'tr', label: Text(l10n.t_rk_e)),
-                      ButtonSegment<String>(value: 'en', label: Text(l10n.english)),
-                    ],
-                    selected: <String>{languageCode},
-                    onSelectionChanged: (Set<String> selection) {
-                      ref.read(localeProvider.notifier).setLocale(Locale(selection.first));
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _sectionCard(
-              title: context.l10n.profil,
-              children: <Widget>[
-                const SizedBox(height: 4),
-                TextField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: l10n.settingsDisplayNameLabel,
-                    errorText: _nameError,
-                    border: const OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _savingName ? null : _saveName,
-                    child: _savingName
-                        ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(context.l10n.kaydet),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _sectionCard(
-              title: context.l10n.hesap,
-              children: <Widget>[
-                const SizedBox(height: 4),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _logout,
-                    icon: const Icon(Icons.logout_rounded),
-                    label: Text(context.l10n.k_yap),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _deleteAccount,
-                    icon: const Icon(Icons.delete_forever_rounded),
-                    label: Text(context.l10n.hesab_sil),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
+              ),
       ),
     );
   }
+}
 
-  Widget _sectionCard({required String title, required List<Widget> children}) {
-    return DottedPanel(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      borderColor: AppColors.liquidGold.withValues(alpha: 0.15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({required this.profile, this.onCopyReferral});
+
+  final PlayerProfile? profile;
+  final VoidCallback? onCopyReferral;
+
+  @override
+  Widget build(BuildContext context) {
+    final String display = profile == null
+        ? '—'
+        : ((profile!.displayName ?? profile!.username).trim().isEmpty
+              ? profile!.username
+              : (profile!.displayName ?? profile!.username));
+    final String handle = profile == null ? '' : '@${profile!.username}';
+    final int level = profile?.level ?? 1;
+    final String? frame = profile?.avatarFrame;
+    final bool codexFrame = frame == 'codex';
+
+    return SettingsGlassCard(
+      accent: SettingsPalette.gold,
+      glow: true,
+      child: Row(
         children: <Widget>[
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: AppColors.liquidGold,
-              letterSpacing: 0.6,
+          ProfileAvatar(
+            size: 64,
+            avatarUrl: profile?.avatarUrl,
+            glowFrame: true,
+            codexFrame: codexFrame,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  display,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.titleBold.copyWith(
+                    color: SettingsPalette.textHi,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  handle,
+                  style: AppTextStyles.caption.copyWith(
+                    color: SettingsPalette.titanium,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: <Widget>[
+                    _Pill(label: 'Lv $level', color: SettingsPalette.gold),
+                    if (profile?.characterClass != null) ...<Widget>[
+                      const SizedBox(width: 6),
+                      _Pill(
+                        label: _classLabel(profile!.characterClass!),
+                        color: SettingsPalette.fuchsia,
+                      ),
+                    ],
+                  ],
+                ),
+                if (onCopyReferral != null) ...<Widget>[
+                  const SizedBox(height: 10),
+                  SettingsPressable(
+                    onTap: onCopyReferral,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: SettingsPalette.obsidian.withValues(alpha: 0.7),
+                        border: Border.all(
+                          color: SettingsPalette.gold.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Icon(
+                            Icons.card_giftcard_rounded,
+                            size: 14,
+                            color: SettingsPalette.gold,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            context.l10n.settingsReferralCode,
+                            style: AppTextStyles.caption.copyWith(
+                              color: SettingsPalette.titanium,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            profile!.referralCode!,
+                            style: AppTextStyles.captionBold.copyWith(
+                              color: SettingsPalette.gold,
+                              fontSize: 11,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.copy_rounded,
+                            size: 12,
+                            color: SettingsPalette.titanium,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          Divider(
-            color: Colors.white.withValues(alpha: 0.08),
-            height: 18,
-          ),
-          ...children,
         ],
       ),
     );
   }
 
-  Widget _sliderTile({required String label, required double value, ValueChanged<double>? onChanged}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(label, style: const TextStyle(fontSize: 13, color: Colors.white70)),
-        Slider(
-          value: value,
-          onChanged: onChanged,
-          min: 0.0,
-          max: 1.0,
+  String _classLabel(CharacterClass c) => switch (c) {
+    CharacterClass.warrior => 'Savaşçı',
+    CharacterClass.alchemist => 'Simyacı',
+    CharacterClass.shadow => 'Gölge',
+  };
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.captionBold.copyWith(
+          color: color,
+          fontSize: 10,
+          letterSpacing: 0.4,
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _AudioSection extends ConsumerWidget {
+  const _AudioSection({required this.settings});
+
+  final SettingsUiState settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(appSettingsProvider.notifier);
+    return SettingsGlassCard(
+      accent: SettingsPalette.gold,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.music_note_rounded,
+            title: context.l10n.settingsSectionAudio,
+            subtitle: context.l10n.settingsSectionAudioHint,
+          ),
+          const SizedBox(height: 8),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 16),
+          SettingsVolumeSlider(
+            label: context.l10n.settingsMusic,
+            icon: Icons.library_music_rounded,
+            value: settings.muteAll ? 0 : settings.musicVolume,
+            enabled: !settings.muteAll,
+            onChanged: (double v) => notifier.setMusicVolume(v),
+          ),
+          SettingsVolumeSlider(
+            label: context.l10n.settingsSfx,
+            icon: Icons.surround_sound_rounded,
+            value: settings.muteAll ? 0 : settings.sfxVolume,
+            enabled: !settings.muteAll,
+            onChanged: (double v) => notifier.setSfxVolume(v),
+          ),
+          SettingsToggleRow(
+            title: context.l10n.t_m_sesleri_kapat,
+            subtitle: context.l10n.settingsMuteHint,
+            icon: Icons.volume_off_rounded,
+            value: settings.muteAll,
+            onChanged: (bool v) => notifier.setMuteAll(v),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GameplaySection extends ConsumerWidget {
+  const _GameplaySection({required this.settings});
+
+  final SettingsUiState settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(appSettingsProvider.notifier);
+    return SettingsGlassCard(
+      accent: SettingsPalette.fuchsia,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.sports_esports_rounded,
+            title: context.l10n.settingsSectionGameplay,
+            subtitle: context.l10n.settingsSectionGameplayHint,
+            accent: SettingsPalette.fuchsia,
+          ),
+          const SizedBox(height: 8),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 16),
+          SettingsToggleRow(
+            title: context.l10n.settingsHaptic,
+            subtitle: context.l10n.settingsHapticHint,
+            icon: Icons.vibration_rounded,
+            value: settings.hapticEnabled,
+            onChanged: (bool v) async {
+              await notifier.setHapticEnabled(v);
+              if (v) await AppHaptics.medium();
+            },
+          ),
+          SettingsToggleRow(
+            title: context.l10n.settingsReduceMotion,
+            subtitle: context.l10n.settingsReduceMotionHint,
+            icon: Icons.animation_rounded,
+            value: settings.reduceMotion,
+            onChanged: (bool v) => notifier.setReduceMotion(v),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TutorialSection extends ConsumerWidget {
+  const _TutorialSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    return SettingsGlassCard(
+      accent: SettingsPalette.neon,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.school_rounded,
+            title: l10n.settingsSectionTutorial,
+            subtitle: l10n.settingsSectionTutorialHint,
+            accent: SettingsPalette.neon,
+          ),
+          const SizedBox(height: 12),
+          SettingsPrimaryButton(
+            label: l10n.settingsTutorialReplay,
+            icon: Icons.replay_rounded,
+            onPressed: () async {
+              final bool? ok = await UniversalGameDialog.show(
+                context,
+                title: l10n.settingsTutorialReplay,
+                message: l10n.settingsTutorialReplayConfirm,
+                confirmLabel: l10n.settingsTutorialReplay,
+                cancelLabel: l10n.commonCancel,
+              );
+              if (ok != true || !context.mounted) return;
+              await ref.read(tutorialProvider.notifier).resetAndReplay();
+              AppHaptics.medium();
+              if (context.mounted) {
+                context.go(AppRoutes.home);
+                await ref
+                    .read(tutorialProvider.notifier)
+                    .ensureVisibleOnRoute(AppRoutes.home);
+                if (context.mounted) {
+                  AppMessenger.show(context, l10n.settingsTutorialReplayDone);
+                }
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.settingsTutorialReplayHint,
+            style: AppTextStyles.caption.copyWith(
+              color: SettingsPalette.textMid,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SettingsOutlineButton(
+            label: l10n.settingsTutorialSkip,
+            icon: Icons.skip_next_rounded,
+            onPressed: () async {
+              final bool? ok = await UniversalGameDialog.show(
+                context,
+                title: l10n.settingsTutorialSkip,
+                message: l10n.settingsTutorialSkipConfirm,
+                confirmLabel: l10n.settingsTutorialSkip,
+                cancelLabel: l10n.commonCancel,
+              );
+              if (ok != true || !context.mounted) return;
+              await ref.read(tutorialProvider.notifier).skipAll();
+              AppHaptics.selection();
+              if (context.mounted) {
+                AppMessenger.show(context, l10n.settingsTutorialSkipDone);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.settingsTutorialSkipHint,
+            style: AppTextStyles.caption.copyWith(
+              color: SettingsPalette.textMid,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotificationsSection extends ConsumerWidget {
+  const _NotificationsSection({required this.settings});
+
+  final SettingsUiState settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(appSettingsProvider.notifier);
+    return SettingsGlassCard(
+      accent: SettingsPalette.coral,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.notifications_active_rounded,
+            title: context.l10n.settingsSectionNotif,
+            subtitle: context.l10n.settingsSectionNotifHint,
+            accent: SettingsPalette.coral,
+          ),
+          const SizedBox(height: 8),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 16),
+          SettingsToggleRow(
+            title: context.l10n.bildirimler,
+            subtitle: context.l10n.settingsNotifMasterHint,
+            icon: Icons.notifications_rounded,
+            value: settings.notifications,
+            onChanged: (bool v) async {
+              await notifier.setNotifications(v);
+              if (v) {
+                final profile = ref.read(playerProvider).profile;
+                await GameNotificationScheduler.instance.syncAll(
+                  profile: profile,
+                );
+              }
+            },
+          ),
+          if (settings.notifications) ...<Widget>[
+            SettingsToggleRow(
+              indent: true,
+              title: context.l10n.settingsNotifNightMarket,
+              subtitle: context.l10n.settingsNotifNightMarketHint,
+              value: settings.notifNightMarket,
+              onChanged: (bool v) async {
+                await notifier.setNotifNightMarket(v);
+                if (v) {
+                  await GameNotificationScheduler.instance
+                      .syncNightMarketReminder();
+                } else {
+                  await GameNotificationScheduler.instance
+                      .cancelNightMarketReminders();
+                }
+              },
+            ),
+            SettingsToggleRow(
+              indent: true,
+              title: context.l10n.settingsNotifNemesis,
+              subtitle: context.l10n.settingsNotifNemesisHint,
+              value: settings.notifNemesis,
+              onChanged: (bool v) => notifier.setNotifNemesis(v),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguageSection extends ConsumerWidget {
+  const _LanguageSection({required this.languageCode});
+
+  final String languageCode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    return SettingsGlassCard(
+      accent: AppColors.accentCyan,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.language_rounded,
+            title: l10n.settingsSectionLanguage,
+            subtitle: l10n.settingsSectionLanguageHint,
+            accent: AppColors.accentCyan,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _LangChip(
+                  label: l10n.t_rk_e,
+                  selected: languageCode == 'tr',
+                  onTap: () => ref
+                      .read(localeProvider.notifier)
+                      .setLocale(const Locale('tr')),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _LangChip(
+                  label: l10n.english,
+                  selected: languageCode == 'en',
+                  onTap: () => ref
+                      .read(localeProvider.notifier)
+                      .setLocale(const Locale('en')),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LangChip extends StatelessWidget {
+  const _LangChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsPressable(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: selected
+              ? LinearGradient(
+                  colors: <Color>[
+                    AppColors.accentCyan.withValues(alpha: 0.35),
+                    SettingsPalette.navy,
+                  ],
+                )
+              : null,
+          color: selected
+              ? null
+              : SettingsPalette.obsidian.withValues(alpha: 0.7),
+          border: Border.all(
+            color: selected
+                ? AppColors.accentCyan.withValues(alpha: 0.8)
+                : SettingsPalette.titanium.withValues(alpha: 0.3),
+          ),
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.accentCyan.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.captionBold.copyWith(
+            color: selected ? AppColors.accentCyan : SettingsPalette.textMid,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DisplayNameInfoSection extends StatelessWidget {
+  const _DisplayNameInfoSection({required this.profile});
+
+  final PlayerProfile? profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final String display = profile == null
+        ? '—'
+        : ((profile!.displayName ?? profile!.username).trim().isEmpty
+              ? profile!.username
+              : (profile!.displayName ?? profile!.username));
+
+    return SettingsGlassCard(
+      accent: SettingsPalette.gold,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.badge_rounded,
+            title: context.l10n.settingsSectionProfile,
+            subtitle: 'Görünen isim mağazadan değiştirilir',
+          ),
+          const SizedBox(height: 12),
+          Text(
+            display,
+            style: AppTextStyles.bodyBold.copyWith(color: SettingsPalette.textHi),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'İsim Değiştirme Kağıdı (elmas) → envanterden kullan.',
+            style: AppTextStyles.caption.copyWith(color: SettingsPalette.textMid),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountSection extends StatelessWidget {
+  const _AccountSection({required this.onLogout, required this.onDelete});
+
+  final VoidCallback onLogout;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SettingsGlassCard(
+      accent: SettingsPalette.ruby,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.manage_accounts_rounded,
+            title: l10n.settingsSectionAccount,
+            subtitle: l10n.settingsSectionAccountHint,
+            accent: SettingsPalette.ruby,
+          ),
+          const SizedBox(height: 14),
+          SettingsOutlineButton(
+            label: l10n.k_yap,
+            icon: Icons.logout_rounded,
+            accent: SettingsPalette.titanium,
+            onPressed: onLogout,
+          ),
+          const SizedBox(height: 10),
+          SettingsDangerButton(
+            label: l10n.hesab_sil,
+            icon: Icons.delete_forever_rounded,
+            onPressed: onDelete,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SupportSection extends ConsumerWidget {
+  const _SupportSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final StaffState staff = ref.watch(staffProvider);
+    return SettingsGlassCard(
+      accent: SettingsPalette.neon,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const SettingsSectionHeader(
+            icon: Icons.support_agent_rounded,
+            title: 'Destek',
+            subtitle: 'Ticket ve bug bildirimi',
+            accent: SettingsPalette.neon,
+          ),
+          const SizedBox(height: 12),
+          SettingsPressable(
+            onTap: () => context.push(AppRoutes.supportTickets),
+            child: const _SettingsLinkRow(icon: Icons.confirmation_number_outlined, label: 'Destek taleplerim'),
+          ),
+          SettingsPressable(
+            onTap: () => context.push(AppRoutes.createTicket),
+            child: const _SettingsLinkRow(icon: Icons.add_comment_outlined, label: 'Yeni ticket aç'),
+          ),
+          SettingsPressable(
+            onTap: () => context.push(AppRoutes.myBugReports),
+            child: const _SettingsLinkRow(icon: Icons.bug_report_outlined, label: 'Bug raporlarım'),
+          ),
+          const BugReportSettingsRow(),
+          if (staff.profile.isStaff)
+            SettingsPressable(
+              onTap: () => context.push(AppRoutes.staffHub),
+              child: const _SettingsLinkRow(icon: Icons.admin_panel_settings, label: 'Staff Hub'),
+            ),
+          if (staff.profile.hasLiveOpsAccess)
+            SettingsPressable(
+              onTap: () => context.push(AppRoutes.staffLiveOps),
+              child: const _SettingsLinkRow(icon: Icons.tune, label: 'LiveOps'),
+            ),
+          const SizedBox(height: 8),
+          SettingsPressable(
+            onTap: () async {
+              await Clipboard.setData(const ClipboardData(text: 'support@gkk.game'));
+              if (context.mounted) AppMessenger.show(context, 'E-posta kopyalandı');
+            },
+            child: const _SettingsLinkRow(icon: Icons.email_outlined, label: 'support@gkk.game'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegalSection extends ConsumerWidget {
+  const _LegalSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final PolicyState policy = ref.watch(policyProvider);
+    return SettingsGlassCard(
+      accent: SettingsPalette.gold,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const SettingsSectionHeader(
+            icon: Icons.gavel_rounded,
+            title: 'Yasal',
+            subtitle: 'Koşullar ve gizlilik',
+            accent: SettingsPalette.gold,
+          ),
+          const SizedBox(height: 12),
+          for (final doc in policy.documents)
+            SettingsPressable(
+              onTap: () => context.push('${AppRoutes.legal}/${doc.type}'),
+              child: _SettingsLinkRow(icon: Icons.description_outlined, label: doc.title),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsLinkRow extends StatelessWidget {
+  const _SettingsLinkRow({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, size: 18, color: SettingsPalette.textMid),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label, style: const TextStyle(color: SettingsPalette.textHi))),
+          const Icon(Icons.chevron_right, color: SettingsPalette.textMid, size: 18),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SettingsGlassCard(
+      accent: SettingsPalette.titanium,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.info_outline_rounded,
+            title: l10n.settingsSectionAbout,
+            subtitle: l10n.settingsSectionAboutHint,
+            accent: SettingsPalette.titanium,
+          ),
+          const SizedBox(height: 12),
+          _AboutRow(label: l10n.settingsAppName, value: 'GKK'),
+          _AboutRow(label: l10n.settingsVersion, value: '1.0.0+1'),
+          _AboutRow(
+            label: l10n.settingsPersistNote,
+            value: l10n.settingsPersistNoteValue,
+            multiline: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutRow extends StatelessWidget {
+  const _AboutRow({
+    required this.label,
+    required this.value,
+    this.multiline = false,
+  });
+
+  final String label;
+  final String value;
+  final bool multiline;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: multiline
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  style: AppTextStyles.caption.copyWith(
+                    color: SettingsPalette.titanium,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: AppTextStyles.caption.copyWith(
+                    color: SettingsPalette.textMid,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppTextStyles.caption.copyWith(
+                      color: SettingsPalette.titanium,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: AppTextStyles.captionBold.copyWith(
+                    color: SettingsPalette.textHi,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

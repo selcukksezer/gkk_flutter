@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/supabase_service.dart';
@@ -103,29 +105,57 @@ class GuildWarNotifier extends Notifier<GuildWarState> {
 
   Future<void> loadAll() async {
     state = state.copyWith(isLoading: true, clearError: true);
-    try {
-      final results = await Future.wait<dynamic>([
-        SupabaseService.client.rpc('get_guild_war_season'),
-        SupabaseService.client.rpc('get_guild_war_tournaments'),
-        SupabaseService.client.rpc('get_guild_war_territories'),
-        SupabaseService.client.rpc('get_guild_war_rankings'),
-        SupabaseService.client.rpc('get_guild_war_attack_logs', params: {'p_limit': 50}),
-      ]);
+    final List<String> errors = <String>[];
 
-      state = state.copyWith(
-        isLoading: false,
-        season: _parseSeason(results[0]),
-        tournaments: _parseTournaments(results[1]),
-        territories: _parseTerritories(results[2]),
-        rankings: _parseRankings(results[3]),
-        attackLogs: _parseAttackLogs(results[4]),
-      );
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+    Future<T> safe<T>(String label, Future<dynamic> call, T Function(dynamic) parse, T fallback) async {
+      try {
+        return parse(await call);
+      } catch (e) {
+        errors.add(label);
+        return fallback;
+      }
     }
+
+    final GuildWarSeason? season = await safe<GuildWarSeason?>(
+      'season',
+      SupabaseService.client.rpc('get_guild_war_season'),
+      _parseSeason,
+      state.season,
+    );
+    final List<GuildWarTournament> tournaments = await safe<List<GuildWarTournament>>(
+      'tournaments',
+      SupabaseService.client.rpc('get_guild_war_tournaments'),
+      _parseTournaments,
+      state.tournaments,
+    );
+    final List<TerritoryData> territories = await safe<List<TerritoryData>>(
+      'territories',
+      SupabaseService.client.rpc('get_guild_war_territories'),
+      _parseTerritories,
+      state.territories,
+    );
+    final List<GuildWarRanking> rankings = await safe<List<GuildWarRanking>>(
+      'rankings',
+      SupabaseService.client.rpc('get_guild_war_rankings'),
+      _parseRankings,
+      state.rankings,
+    );
+    final List<GuildWarAttackLog> attackLogs = await safe<List<GuildWarAttackLog>>(
+      'logs',
+      SupabaseService.client.rpc('get_guild_war_attack_logs', params: <String, dynamic>{'p_limit': 50}),
+      _parseAttackLogs,
+      state.attackLogs,
+    );
+
+    state = state.copyWith(
+      isLoading: false,
+      season: season,
+      tournaments: tournaments,
+      territories: territories,
+      rankings: rankings,
+      attackLogs: attackLogs,
+      error: errors.isEmpty ? null : 'Bazı veriler yüklenemedi (${errors.join(', ')}). Aşağı çekerek yenile.',
+    );
   }
 
   Future<void> loadAttackLogs({String? guildId, bool showLoading = true}) async {
@@ -168,6 +198,50 @@ class GuildWarNotifier extends Notifier<GuildWarState> {
         return result['error'] as String;
       }
       await loadAll();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<TerritoryAttackPreview?> loadAttackPreview(String territoryId) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'get_territory_attack_preview',
+        params: <String, dynamic>{'p_territory_id': territoryId},
+      );
+      if (raw is Map<String, dynamic>) {
+        return TerritoryAttackPreview.fromJson(raw);
+      }
+      if (raw is Map) {
+        return TerritoryAttackPreview.fromJson(Map<String, dynamic>.from(raw));
+      }
+      return null;
+    } catch (e) {
+      return TerritoryAttackPreview(
+        territoryId: territoryId,
+        territoryName: '',
+        error: e.toString(),
+      );
+    }
+  }
+
+  Future<String?> addDefenseGold(String territoryId, int gold) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'add_territory_defense_gold',
+        params: <String, dynamic>{
+          'p_territory_id': territoryId,
+          'p_gold': gold,
+        },
+      );
+      if (raw is Map && raw['success'] == false) {
+        return raw['error']?.toString();
+      }
+      await loadAll();
+      if (state.activeTerritoryId == territoryId) {
+        await loadTerritoryDetail(territoryId);
+      }
       return null;
     } catch (e) {
       return e.toString();
@@ -329,8 +403,15 @@ class GuildWarNotifier extends Notifier<GuildWarState> {
 }
 
 GuildWarSeason? _parseSeason(dynamic data) {
-  if (data is Map) {
-    return GuildWarSeason.fromJson(Map<String, dynamic>.from(data));
+  final dynamic decoded = data;
+  if (decoded is Map) {
+    return GuildWarSeason.fromJson(Map<String, dynamic>.from(decoded));
+  }
+  if (decoded is String && decoded.trim().isNotEmpty) {
+    final dynamic parsed = jsonDecode(decoded);
+    if (parsed is Map) {
+      return GuildWarSeason.fromJson(Map<String, dynamic>.from(parsed));
+    }
   }
   return null;
 }
@@ -341,7 +422,15 @@ List<GuildWarTournament> _parseTournaments(dynamic data) {
         .map((e) => GuildWarTournament.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
-  return [];
+  if (data is String && data.trim().isNotEmpty) {
+    final dynamic parsed = jsonDecode(data);
+    if (parsed is List) {
+      return parsed
+          .map((e) => GuildWarTournament.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+  }
+  return <GuildWarTournament>[];
 }
 
 List<TerritoryData> _parseTerritories(dynamic data) {
@@ -350,16 +439,25 @@ List<TerritoryData> _parseTerritories(dynamic data) {
         .map((e) => TerritoryData.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
-  return [];
+  if (data is String && data.trim().isNotEmpty) {
+    final dynamic parsed = jsonDecode(data);
+    if (parsed is List) {
+      return parsed
+          .map((e) => TerritoryData.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+  }
+  return <TerritoryData>[];
 }
 
 List<GuildWarRanking> _parseRankings(dynamic data) {
-  if (data is List) {
-    return data
-        .map((e) => GuildWarRanking.fromJson(Map<String, dynamic>.from(e as Map)))
+  final dynamic decoded = _unwrapRpcJson(data);
+  if (decoded is List) {
+    return decoded
+        .map((dynamic e) => GuildWarRanking.fromJson(_asStringKeyedMap(e)))
         .toList();
   }
-  return [];
+  return <GuildWarRanking>[];
 }
 
 List<GuildWarAttackLog> _parseAttackLogs(dynamic data) {
@@ -368,7 +466,15 @@ List<GuildWarAttackLog> _parseAttackLogs(dynamic data) {
         .map((e) => GuildWarAttackLog.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
-  return [];
+  if (data is String && data.trim().isNotEmpty) {
+    final dynamic parsed = jsonDecode(data);
+    if (parsed is List) {
+      return parsed
+          .map((e) => GuildWarAttackLog.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+  }
+  return <GuildWarAttackLog>[];
 }
 
 List<GuildWarParticipant> _parseParticipants(dynamic data) {
@@ -377,7 +483,15 @@ List<GuildWarParticipant> _parseParticipants(dynamic data) {
         .map((e) => GuildWarParticipant.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
-  return [];
+  if (data is String && data.trim().isNotEmpty) {
+    final dynamic parsed = jsonDecode(data);
+    if (parsed is List) {
+      return parsed
+          .map((e) => GuildWarParticipant.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+  }
+  return <GuildWarParticipant>[];
 }
 
 List<GuildWarTournamentRound> _parseTournamentRounds(dynamic data) {
@@ -386,7 +500,32 @@ List<GuildWarTournamentRound> _parseTournamentRounds(dynamic data) {
         .map((e) => GuildWarTournamentRound.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
-  return [];
+  if (data is String && data.trim().isNotEmpty) {
+    final dynamic parsed = jsonDecode(data);
+    if (parsed is List) {
+      return parsed
+          .map((e) => GuildWarTournamentRound.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+  }
+  return <GuildWarTournamentRound>[];
+}
+
+dynamic _unwrapRpcJson(dynamic data) {
+  if (data is String && data.trim().isNotEmpty) {
+    try {
+      return jsonDecode(data);
+    } catch (_) {
+      return data;
+    }
+  }
+  return data;
+}
+
+Map<String, dynamic> _asStringKeyedMap(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  throw FormatException('Expected map, got ${value.runtimeType}');
 }
 
 final guildWarProvider = NotifierProvider<GuildWarNotifier, GuildWarState>(

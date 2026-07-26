@@ -85,7 +85,10 @@ class _ComebackSummaryPanelState extends ConsumerState<_ComebackSummaryPanel> {
     if (hours >= 1) {
       return '${hours.toStringAsFixed(1)} saat yoktun';
     }
-    return '${(hours * 60).round()} dk yoktun';
+    final int minutes = (hours * 60).round();
+    // Heartbeat race / <1 dk → "0 dk yoktun" spam; gerçek süre yoksa nötr karşılama.
+    if (minutes < 1) return 'Tekrar hoş geldin';
+    return '$minutes dk yoktun';
   }
 
   @override

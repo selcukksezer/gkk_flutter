@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/common/item_icon_view.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
@@ -33,6 +36,7 @@ const List<(String, String)> _kTabs = <(String, String)>[
   ('accessory', '💍 Mücevherler'),
   ('rune', '✨ Runlar'),
   ('scroll', '📜 Yazıtlar'),
+  ('other', 'Diğer'),
 ];
 
 String _formatDuration(int totalSeconds) => formatCraftingDuration(totalSeconds);
@@ -46,6 +50,7 @@ String _craftTabCategory(CraftRecipe recipe) {
     'accessory',
     'rune',
     'scroll',
+    'other',
   }.contains(tabType)) {
     return tabType;
   }
@@ -71,6 +76,11 @@ String _craftTabCategory(CraftRecipe recipe) {
       itemId.startsWith('detox_') ||
       itemId.startsWith('han_')) {
     return 'potion';
+  }
+  if (itemId.startsWith('box_') ||
+      tabType == 'consumable_box' ||
+      tabType == 'other') {
+    return 'other';
   }
   return tabType;
 }
@@ -112,6 +122,9 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
       await ref.read(craftingProvider.notifier).loadRecipes(level);
       await ref.read(craftingProvider.notifier).loadQueue();
       _startQueueTimer();
+      if (mounted) {
+        await TutorialTriggers.onRouteEnter(ref, AppRoutes.crafting);
+      }
     });
   }
 
@@ -271,7 +284,9 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                   style: TextStyle(color: AppColors.mutedTitanium.withValues(alpha: 0.7)),
                                 ),
                               )
-                            : GridView.builder(
+                            : TutorialAnchorScope(
+                                id: TutorialAnchorId.craftRecipeList,
+                                child: GridView.builder(
                                 padding: GameScrollLayout.withClearance(
                                   context,
                                   EdgeInsets.fromLTRB(
@@ -300,6 +315,12 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                       batchCount: craftState.selectedBatchCount,
                                     ),
                                     onTap: () {
+                                      unawaited(
+                                        TutorialTriggers.onAnchorTap(
+                                          ref,
+                                          TutorialAnchorId.craftRecipeList,
+                                        ),
+                                      );
                                       if (isSelected) {
                                         ref.read(craftingProvider.notifier).selectRecipe(null);
                                         return;
@@ -308,6 +329,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                     },
                                   );
                                 },
+                              ),
                               ),
                       ),
                     ],

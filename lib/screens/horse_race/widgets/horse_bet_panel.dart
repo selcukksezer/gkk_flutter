@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/common/app_messenger.dart';
 import '../../../components/layout/game_chrome.dart';
+import '../../../core/tutorial/tutorial_anchor.dart';
+import '../../../core/tutorial/tutorial_track.dart';
+import '../../../core/tutorial/tutorial_triggers.dart';
 import '../../../providers/player_provider.dart';
 import '../../../theme/app_colors.dart';
 import '../horse_race_provider.dart';
@@ -252,10 +255,13 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
       key: const Key('horse_race_bet_controls'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const HorseRaceSectionHeader(
-          title: 'Bahis Paneli',
-          subtitle: 'Para birimi ve miktar seç',
-          accent: HorseRaceDesign.gold,
+        TutorialAnchorScope(
+          id: TutorialAnchorId.horseBetPanel,
+          child: const HorseRaceSectionHeader(
+            title: 'Bahis Paneli',
+            subtitle: 'Para birimi ve miktar seç',
+            accent: HorseRaceDesign.gold,
+          ),
         ),
         const SizedBox(height: 10),
         _buildCurrencyToggle(),
@@ -330,11 +336,22 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
           ),
         ),
         const SizedBox(height: 14),
-        HorseRaceGoldButton(
-          label: 'Bahis Yap',
-          icon: Icons.sports_motorsports_rounded,
-          loading: _placingBet,
-          onPressed: _canPlaceBet ? _placeBet : null,
+        TutorialAnchorScope(
+          id: TutorialAnchorId.horsePlaceBetBtn,
+          child: HorseRaceGoldButton(
+            label: 'Bahis Yap',
+            icon: Icons.sports_motorsports_rounded,
+            loading: _placingBet,
+            onPressed: _canPlaceBet
+                ? () async {
+                    await TutorialTriggers.onAnchorTap(
+                      ref,
+                      TutorialAnchorId.horsePlaceBetBtn,
+                    );
+                    await _placeBet();
+                  }
+                : null,
+          ),
         ),
       ],
     );
@@ -361,7 +378,13 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
       laneColor: lane,
       multColor: multColor,
       onTap: widget.isBetting
-          ? () => setState(() => _selectedHorseId = horse.horseId)
+          ? () {
+              TutorialTriggers.onAnchorTap(
+                ref,
+                TutorialAnchorId.horseHorseGrid,
+              );
+              setState(() => _selectedHorseId = horse.horseId);
+            }
           : null,
     );
   }
@@ -422,6 +445,10 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
           sliver: SliverList(
             delegate: SliverChildListDelegate(<Widget>[
               HorseRaceHeroBanner(raceState: widget.raceState),
+              if (widget.raceState.myBet != null) ...<Widget>[
+                const SizedBox(height: 12),
+                HorseRaceMyBetTicket(raceState: widget.raceState),
+              ],
               if (widget.isBetting) ...<Widget>[
                 const SizedBox(height: 14),
                 buildControls(),
@@ -451,19 +478,19 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
               mainAxisExtent: extent,
             ),
             delegate: SliverChildBuilderDelegate(
-              (BuildContext context, int index) =>
-                  buildHorseTile(widget.raceState.horses[index], index),
+              (BuildContext context, int index) {
+                final Widget tile =
+                    buildHorseTile(widget.raceState.horses[index], index);
+                if (index != 0) return tile;
+                return TutorialAnchorScope(
+                  id: TutorialAnchorId.horseHorseGrid,
+                  child: tile,
+                );
+              },
               childCount: widget.raceState.horses.length,
             ),
           ),
         ),
-        if (widget.raceState.myBet != null)
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-            sliver: SliverToBoxAdapter(
-              child: HorseRaceMyBetTicket(raceState: widget.raceState),
-            ),
-          ),
         if (widget.raceState.recentWinners.isNotEmpty)
           SliverPadding(
             padding: EdgeInsets.fromLTRB(14, 16, 14, bottomClearance + 10),

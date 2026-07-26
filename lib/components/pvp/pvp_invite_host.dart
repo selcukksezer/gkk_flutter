@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/combat_restriction.dart';
 import '../../models/player_model.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/pvp_invite_provider.dart';
@@ -275,6 +276,10 @@ class _PvpVsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String myName = myProfile?.displayName ?? myProfile?.username ?? 'Sen';
+    final String? combatBlock = combatRestrictionMessage(
+      hospitalUntil: myProfile?.hospitalUntil,
+      prisonUntil: myProfile?.prisonUntil,
+    );
 
     return Dialog(
       backgroundColor: const Color(0xFF10131D),
@@ -352,6 +357,14 @@ class _PvpVsDialog extends StatelessWidget {
                 ),
               ),
             ),
+            if (combatBlock != null) ...<Widget>[
+              const SizedBox(height: 10),
+              Text(
+                combatBlock,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: <Widget>[
@@ -368,9 +381,12 @@ class _PvpVsDialog extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(true),
+                    onPressed: combatBlock != null
+                        ? null
+                        : () => Navigator.of(context).pop(true),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF22C55E),
+                      disabledBackgroundColor: Colors.white12,
                     ),
                     child: const Text(
                       '⚔️ Kabul Et',

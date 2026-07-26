@@ -5,9 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/staff/staff_player_entry.dart';
+import '../../core/utils/keyboard_dismiss.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/staff_provider.dart';
+import '../../models/staff_model.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import '../../utils/logout_helper.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'chat_design_system.dart';
@@ -596,6 +602,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
         }
         _messageController.clear();
+        dismissKeyboard(context);
         _scheduleScrollToBottom(immediate: true);
 
         // Server state ile hizalamak için hızlı bir yenileme yap.
@@ -699,7 +706,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               title: const Text('Oyuncuyu sustur', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(ctx);
-                unawaited(_mutePlayer(conv.peerUserId, playerName: conv.peerUsername));
+                unawaited(_promptMutePlayer(
+                  conv.peerUserId,
+                  playerName: conv.peerUsername,
+                ));
               },
             ),
           ],
@@ -708,9 +718,59 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Future<void> _promptMutePlayer(
+    String playerId, {
+    String? playerName,
+    String? staffBadge,
+  }) async {
+    if (playerId.isEmpty) {
+      _showSnack('Geçersiz kullanıcı.');
+      return;
+    }
+    if (staffBadge == 'admin' || staffBadge == 'gm') {
+      _showSnack('Yetkili oyuncular susturulamaz.');
+      return;
+    }
+
+    final String? action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.volume_off_outlined),
+              title: const Text('Sustur'),
+              subtitle: Text(playerName ?? 'oyuncu'),
+              onTap: () => Navigator.pop(ctx, 'mute'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == 'mute') {
+      await _mutePlayer(playerId, playerName: playerName);
+    }
+  }
+
   Future<void> _mutePlayer(String playerId, {String? playerName}) async {
     if (playerId.isEmpty) {
       _showSnack('Geçersiz kullanıcı.');
+      return;
+    }
+
+    try {
+      final dynamic res = await ChatRepository.rpc(
+        'block_chat_user',
+        params: <String, dynamic>{'p_blocked_user_id': playerId},
+      );
+      if (res is Map && res['success'] != true) {
+        _showSnack(res['error']?.toString() ?? 'Oyuncu susturulamadı.');
+        return;
+      }
+    } catch (e) {
+      _showSnack(userFacingErrorMessage(e, fallback: 'Oyuncu susturulamadı.'));
       return;
     }
 
@@ -732,15 +792,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     try {
-      await ChatRepository.rpc('block_chat_user', params: <String, dynamic>{'p_blocked_user_id': playerId});
       if (mounted) {
         final String label = playerName ?? _blockedUsers[playerId]?.username ?? 'oyuncu';
         AppMessenger.show(context, '@$label susturuldu.');
       }
       await _loadForChannel(_activeChannel);
     } catch (_) {
-      _showSnack('Oyuncu yerel olarak susturuldu, sunucu engeli uygulanamadı.');
+      _showSnack('Mesajlar yenilenemedi.');
     }
+  }
+
+  Future<void> _showReportSheet(ChatMessage msg) async {
+    final String? reason = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const ListTile(title: Text('Rapor nedeni', style: TextStyle(fontWeight: FontWeight.w700))),
+            ListTile(title: const Text('Spam'), onTap: () => Navigator.pop(ctx, 'spam')),
+            ListTile(title: const Text('Taciz'), onTap: () => Navigator.pop(ctx, 'harassment')),
+            ListTile(title: const Text('Dolandırıcılık'), onTap: () => Navigator.pop(ctx, 'scam')),
+            ListTile(title: const Text('Diğer'), onTap: () => Navigator.pop(ctx, 'other')),
+          ],
+        ),
+      ),
+    );
+    if (reason == null) return;
+    await _reportMessage(msg.id, reason);
   }
 
   Future<void> _reportMessage(String messageId, String reason) async {
@@ -757,21 +837,108 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _deleteMessage(String messageId) async {
+  Future<void> _moderateChatMessage(ChatMessage msg, String action) async {
+    final int? muteMinutes = switch (action) {
+      'mod_delete' => null,
+      'mod_delete_mute_15' => 15,
+      'mod_delete_mute_60' => 60,
+      'mod_delete_mute_4320' => 4320,
+      'mod_delete_mute_7200' => 7200,
+      _ => null,
+    };
+    if (action.startsWith('mod_') && action != 'mod_delete' && muteMinutes == null) {
+      return;
+    }
+
     try {
-      final dynamic res = await ChatRepository.rpc('delete_chat_message', params: <String, dynamic>{'p_message_id': messageId, 'p_reason': 'moderator_delete'});
-      final Map<String, dynamic>? response = res is Map ? Map<String, dynamic>.from(res) : null;
-      if (response?['success'] == true) {
-        setState(() {
-          _messages[_activeChannel] = (_messages[_activeChannel] ?? <ChatMessage>[]).where((m) => m.id != messageId).toList(growable: false);
-        });
-        _showSnack('Mesaj silindi.');
+      final StaffProfile staff = ref.read(staffProvider).profile;
+      Map<String, dynamic>? response;
+
+      if (staff.has('chat.delete_message')) {
+        final Map<String, dynamic> params = <String, dynamic>{
+          'p_message_id': msg.id,
+          'p_reason': 'moderator_delete',
+        };
+        if (muteMinutes != null) {
+          params['p_mute_minutes'] = muteMinutes;
+        }
+        final dynamic res = await ChatRepository.rpc('staff_moderate_chat_message', params: params);
+        response = res is Map ? Map<String, dynamic>.from(res) : null;
       } else {
-        _showSnack(response?['error']?.toString() ?? 'Mesaj silinemedi.');
+        final dynamic deleteRes = await ChatRepository.rpc(
+          'delete_chat_message',
+          params: <String, dynamic>{'p_message_id': msg.id, 'p_reason': 'moderator_delete'},
+        );
+        response = deleteRes is Map ? Map<String, dynamic>.from(deleteRes) : null;
+        if (response?['success'] == true && muteMinutes != null && _moderationState.permissions.canBan) {
+          final dynamic banRes = await ChatRepository.rpc('ban_chat_user', params: <String, dynamic>{
+            'p_target_user_id': msg.senderId,
+            'p_channel': msg.channel.key,
+            'p_duration_minutes': muteMinutes,
+            'p_reason': 'moderator_delete',
+          });
+          final Map<String, dynamic>? banResponse = banRes is Map ? Map<String, dynamic>.from(banRes) : null;
+          if (banResponse?['success'] != true) {
+            response = <String, dynamic>{
+              'success': true,
+              'notice': response?['notice'],
+              'warning': banResponse?['error']?.toString() ?? 'Mesaj silindi ancak susturma uygulanamadi.',
+            };
+          } else {
+            response = <String, dynamic>{
+              'success': true,
+              'notice': response?['notice'],
+              'muted_minutes': muteMinutes,
+            };
+          }
+        }
+      }
+
+      if (response?['success'] == true) {
+        final String notice = response?['notice']?.toString() ?? 'Mesaj silindi.';
+        _applyDeletedMessage(msg.id, msg.channel, notice);
+        if (response?['muted_minutes'] != null) {
+          _showSnack('Mesaj silindi · ${response!['muted_minutes']} dk susturma');
+        } else if (response?['warning'] != null) {
+          _showSnack('${response!['warning']}');
+        } else {
+          _showSnack('Mesaj silindi.');
+        }
+      } else {
+        _showSnack(response?['error']?.toString() ?? 'İşlem başarısız.');
       }
     } catch (e) {
-      _showSnack('Mesaj silinemedi: $e');
+      _showSnack('İşlem başarısız: $e');
     }
+  }
+
+  void _applyDeletedMessage(String id, ChatChannel channel, String notice) {
+    if (!mounted || id.isEmpty) return;
+    setState(() {
+      final List<ChatMessage> prev = List<ChatMessage>.from(_messages[channel] ?? const <ChatMessage>[]);
+      final int idx = prev.indexWhere((ChatMessage m) => m.id == id);
+      if (idx < 0) return;
+      final ChatMessage old = prev[idx];
+      prev[idx] = ChatMessage(
+        id: old.id,
+        channel: old.channel,
+        senderId: old.senderId,
+        senderName: old.senderName,
+        content: notice,
+        timestamp: old.timestamp,
+        isSystem: old.isSystem,
+        recipientUserId: old.recipientUserId,
+        guildId: old.guildId,
+        deletedAt: DateTime.now().toIso8601String(),
+        senderIsOnline: old.senderIsOnline,
+        senderStaffBadge: old.senderStaffBadge,
+        senderKingBadge: old.senderKingBadge,
+        senderGuildName: old.senderGuildName,
+        senderAuthId: old.senderAuthId,
+        systemTone: old.systemTone,
+      );
+      _messages[channel] = prev;
+    });
   }
 
   Future<void> _banPlayer(ChatMessage msg) async {
@@ -920,7 +1087,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             final Map<String, dynamic> oldRow = Map<String, dynamic>.from(payload.oldRecord);
 
             if (newRow.isNotEmpty && newRow['deleted_at'] != null) {
-              _removeMessage(newRow['id']?.toString() ?? '', newRow['channel']?.toString());
+              final String id = newRow['id']?.toString() ?? '';
+              final ChatChannel channel = ChatChannelX.fromKey(newRow['channel']?.toString() ?? 'global');
+              final String notice = newRow['content']?.toString() ?? 'Mesaj silindi.';
+              _applyDeletedMessage(id, channel, notice);
               return;
             }
 
@@ -1064,6 +1234,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final bool showDmPanel = _activeChannel == ChatChannel.dm;
     final bool showComposer = _activeChannel != ChatChannel.dm || _activeDmPeer != null;
+    final StaffProfile staff = ref.watch(staffProvider).profile;
+    final bool canStaffPlayer = canOpenStaffPlayerActions(staff);
+    final bool canModerateMessages =
+        staff.has('chat.delete_message') || _moderationState.permissions.canDelete;
 
     final Widget body = Column(
       children: <Widget>[
@@ -1117,9 +1291,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           onSearchChanged: (String value) => unawaited(_searchDmUsers(value)),
                           onOpenConversation: _openDmConversation,
                           onConversationLongPress: _showDmConversationActions,
-                          onMutePeer: () => _mutePlayer(_activeDmPeer!.id, playerName: _activeDmPeer!.username),
+                          onMutePeer: () => _promptMutePlayer(
+                            _activeDmPeer!.id,
+                            playerName: _activeDmPeer!.username,
+                          ),
                           onLeaveConversation: _leaveDmConversation,
                           onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
+                          canModerateMessages: canModerateMessages,
+                          onModerateMessage: canModerateMessages
+                              ? (ChatMessage m, String action) => unawaited(_moderateChatMessage(m, action))
+                              : null,
                         )
                       : ChatMessageList(
                           isLoading: _isLoading,
@@ -1129,6 +1310,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           isOwnSender: _isOwnSender,
                           isUserOnline: _isUserOnline,
                           onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
+                          onStaffPlayerAction: canStaffPlayer
+                              ? (ChatMessage m) {
+                                  if (m.senderAuthId == null || m.senderAuthId!.isEmpty) return;
+                                  unawaited(openStaffPlayerActions(
+                                    context,
+                                    ref,
+                                    authId: m.senderAuthId!,
+                                    username: m.senderName,
+                                    displayName: m.senderName,
+                                    staffBadge: m.senderStaffBadge,
+                                    kingBadge: m.senderKingBadge,
+                                  ));
+                                }
+                              : null,
+                          onReportMessage: (ChatMessage m) => unawaited(_showReportSheet(m)),
+                          canModerateMessages: canModerateMessages,
+                          onModerateMessage: canModerateMessages
+                              ? (ChatMessage m, String action) => unawaited(_moderateChatMessage(m, action))
+                              : null,
                         ),
                 ),
               ],
@@ -1151,7 +1351,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     if (widget.asPanel) {
-      return body;
+      return DismissKeyboard(child: body);
     }
 
     return Scaffold(
@@ -1162,7 +1362,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         currentRoute: AppRoutes.chat,
         onLogout: _logoutHandler,
       ),
-      body: body,
+      body: DismissKeyboard(child: body),
     );
   }
 }

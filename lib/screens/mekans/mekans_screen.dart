@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../l10n/l10n.dart';
 import '../../models/mekan_model.dart';
 import '../../components/common/item_icon_view.dart';
@@ -35,6 +38,9 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
   void initState() {
     super.initState();
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      TutorialTriggers.onRouteEnter(ref, AppRoutes.mekans);
+    });
   }
 
   Future<void> _load({bool reset = true}) async {
@@ -169,13 +175,24 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
                   separatorBuilder: (BuildContext context, int index) => const SizedBox(height: 10),
                   itemBuilder: (BuildContext context, int i) {
                     final Mekan m = _filtered[i];
-                    return _MekanRowCard(
+                    final Widget card = _MekanRowCard(
                       mekan: m,
                       stockPeek: mekanHubVitrinPeek(
                         m,
                         _stockPreviews[m.id] ?? const <MekanStockPeek>[],
                       ),
-                      onTap: () => context.go(AppRoutes.mekanDetail(m.id)),
+                      onTap: () {
+                        TutorialTriggers.onAnchorTap(
+                          ref,
+                          TutorialAnchorId.mekansList,
+                        );
+                        context.go(AppRoutes.mekanDetail(m.id));
+                      },
+                    );
+                    if (i != 0) return card;
+                    return TutorialAnchorScope(
+                      id: TutorialAnchorId.mekansList,
+                      child: card,
                     );
                   },
                 ),
@@ -253,27 +270,36 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
   Widget _ctaRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: NeonButton(
-              label: 'Benim Mekanim',
-              icon: Icons.shield_moon_rounded,
-              filled: false,
-              accent: MekanPalette.aqua,
-              onPressed: () => context.go(AppRoutes.myMekan),
+      child: TutorialAnchorScope(
+        id: TutorialAnchorId.mekansMyCta,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: NeonButton(
+                label: 'Benim Mekanim',
+                icon: Icons.shield_moon_rounded,
+                filled: false,
+                accent: MekanPalette.aqua,
+                onPressed: () {
+                  TutorialTriggers.onAnchorTap(
+                    ref,
+                    TutorialAnchorId.mekansMyCta,
+                  );
+                  context.go(AppRoutes.myMekan);
+                },
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: NeonButton(
-              label: 'Mekan Ac',
-              icon: Icons.add_business_rounded,
-              accent: MekanPalette.gold,
-              onPressed: () => context.go(AppRoutes.mekanCreate),
+            const SizedBox(width: 10),
+            Expanded(
+              child: NeonButton(
+                label: 'Mekan Ac',
+                icon: Icons.add_business_rounded,
+                accent: MekanPalette.gold,
+                onPressed: () => context.go(AppRoutes.mekanCreate),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

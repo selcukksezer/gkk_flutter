@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../components/layout/game_chrome.dart';
+import '../../../routing/app_router.dart';
 import '../../../theme/app_spacing.dart';
 import 'guild_war_design.dart';
 
@@ -14,6 +15,7 @@ class GuildWarSubScreenScaffold extends ConsumerWidget {
     required this.onLogout,
     required this.body,
     this.currentRoute,
+    this.backRoute = AppRoutes.guildWar,
     this.floatingAction,
   });
 
@@ -21,7 +23,16 @@ class GuildWarSubScreenScaffold extends ConsumerWidget {
   final Future<void> Function() onLogout;
   final Widget body;
   final String? currentRoute;
+  final String backRoute;
   final Widget? floatingAction;
+
+  void _onBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go(backRoute);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,7 +50,7 @@ class GuildWarSubScreenScaffold extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
               child: WarPressable(
-                onTap: () => context.pop(),
+                onTap: () => _onBack(context),
                 child: WarNeonCard(
                   accent: WarPalette.gold,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

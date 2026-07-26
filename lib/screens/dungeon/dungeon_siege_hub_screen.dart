@@ -7,8 +7,13 @@ import 'package:go_router/go_router.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
+import '../../core/services/supabase_service.dart';
 import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
+import '../../models/guild_war_model.dart';
 import '../../providers/dungeon_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
 import '../../providers/guild_war_provider.dart';
@@ -37,9 +42,10 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_refresh(silent: false));
-      unawaited(_maybeOpenDeepLinkedPanel());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _refresh(silent: false);
+      await _maybeOpenDeepLinkedPanel();
+      await TutorialTriggers.onRouteEnter(ref, AppRoutes.dungeonSiegeHub);
     });
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
@@ -85,7 +91,11 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
   }
 
   Future<void> _openSiegePanelForDungeonId(String dungeonId) async {
-    final List<DungeonData> dungeons = ref.read(dungeonProvider).dungeons;
+    if (!mounted) return;
+
+    await ref.read(dungeonProvider.notifier).loadDungeons();
+
+    List<DungeonData> dungeons = ref.read(dungeonProvider).dungeons;
     DungeonData? dungeon;
     for (final DungeonData d in dungeons) {
       if (d.dungeonId == dungeonId) {
@@ -93,8 +103,37 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
         break;
       }
     }
+
     if (dungeon == null) {
-      if (!mounted) return;
+      try {
+        final dynamic raw = await SupabaseService.client.rpc(
+          'get_dungeon_by_id',
+          params: <String, dynamic>{'p_dungeon_id': dungeonId},
+        );
+        if (raw is Map && raw['success'] == true && raw['dungeon'] is Map) {
+          dungeon = DungeonData.fromJson(
+            Map<String, dynamic>.from(raw['dungeon'] as Map),
+          );
+        }
+      } catch (_) {
+        // fall through to capstone fallback
+      }
+    }
+
+    if (dungeon == null) {
+      final DungeonSiegeHub hub = ref.read(dungeonSiegeProvider).hub ?? DungeonSiegeHub.empty();
+      for (final DungeonSiegeTerritoryLink link in hub.territories) {
+        if (link.siegeDungeonId == dungeonId) {
+          final String? capstone = siegeCapstoneForZone(link.zoneNumber);
+          if (capstone != null && capstone != dungeonId) {
+            return _openSiegePanelForDungeonId(capstone);
+          }
+        }
+      }
+    }
+
+    if (dungeon == null && !mounted) return;
+    if (dungeon == null) {
       AppMessenger.show(context, 'Zindan bulunamadı: $dungeonId');
       return;
     }
@@ -110,10 +149,26 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
   }
 
   Future<void> _addGemDefense(String territoryId) async {
-    final int? gems = await showGuildWarDefenseSheet(context);
-    if (gems == null || gems <= 0 || !mounted) return;
+    final profile = ref.read(playerProvider).profile;
+    final territories = ref.read(guildWarProvider).territories;
+    TerritoryData? territory;
+    for (final TerritoryData t in territories) {
+      if (t.id == territoryId) {
+        territory = t;
+        break;
+      }
+    }
+    final GuildWarDefenseRequest? req = await showGuildWarDefenseSheet(
+      context,
+      minDefenseGems: territory?.minDefenseGems ?? 5,
+      vaultGold: territory?.vaultSummary?.vaultGold,
+      playerGems: profile?.gems,
+    );
+    if (req == null || req.amount <= 0 || !mounted) return;
 
-    final String? error = await ref.read(guildWarProvider.notifier).addDefense(territoryId, gems);
+    final String? error = req.mode == GuildWarDefenseMode.gems
+        ? await ref.read(guildWarProvider.notifier).addDefense(territoryId, req.amount)
+        : await ref.read(guildWarProvider.notifier).addDefenseGold(territoryId, req.amount);
     if (!mounted) return;
     if (error != null) {
       AppMessenger.showError(context, error);
@@ -190,7 +245,13 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
                           children: <Widget>[
                             _section(
                               slideIndex++,
-                              _HubStatusCard(status: status, weekKey: hub.weekKey),
+                              TutorialAnchorScope(
+                                id: TutorialAnchorId.siegeHubPanel,
+                                child: _HubStatusCard(
+                                  status: status,
+                                  weekKey: hub.weekKey,
+                                ),
+                              ),
                             ),
                     if (siegeState.errorMessage != null) ...<Widget>[
                       GameScrollLayout.sectionSpacer,

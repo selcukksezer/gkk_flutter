@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/app_constants.dart';
+import 'device_session_service.dart';
 
 class SupabaseService {
   const SupabaseService._();
@@ -27,6 +28,9 @@ class SupabaseService {
     );
 
     _initialized = true;
+    if (Supabase.instance.client.auth.currentSession != null) {
+      await DeviceSessionService.syncRequestHeaders();
+    }
   }
 
   static SupabaseClient get client {

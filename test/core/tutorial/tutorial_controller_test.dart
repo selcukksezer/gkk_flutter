@@ -48,7 +48,7 @@ void main() {
       await ctrl.completeActiveManual();
 
       final TutorialState after = container.read(tutorialProvider);
-      expect(after.activeStep?.id, 'onboarding_hud_energy');
+      expect(after.activeStep?.id, 'onboarding_game_loop');
       expect(
         after.progress.stepsForTrack(TutorialTrackId.onboarding),
         contains('onboarding_welcome'),

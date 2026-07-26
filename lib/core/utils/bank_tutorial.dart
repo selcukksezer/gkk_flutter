@@ -6,12 +6,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/common/universal_game_dialog.dart';
 import '../../routing/app_router.dart';
+import '../tutorial/tutorial_controller.dart';
+import '../tutorial/tutorial_persistence.dart';
 import '../tutorial/tutorial_triggers.dart';
 
 /// Envanter dolu → tek bildirim (dialog veya kısa snack).
+///
+/// One-shot flags live in tutorial v2 progress ([TutorialProgressState.flags]).
+/// Legacy SharedPreferences keys are migrated once on first use.
 class BankTutorial {
-  static const String _shownKey = 'bank_tutorial_shown';
-  static const String _coachKey = 'bank_deposit_coach_shown';
+  static const String _legacyShownKey = 'bank_tutorial_shown';
+  static const String _legacyCoachKey = 'bank_deposit_coach_shown';
 
   static bool _dialogOpen = false;
 
@@ -25,10 +30,10 @@ class BankTutorial {
     await TutorialTriggers.prepareBankTutorialForInventoryFull(ref);
     if (!context.mounted) return;
 
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final bool alreadyShown = prefs.getBool(_shownKey) ?? false;
+    final TutorialController controller = ref.read(tutorialProvider.notifier);
+    await _migrateLegacyPrefs(controller);
 
-    if (alreadyShown) {
+    if (controller.hasProgressFlag(TutorialProgressState.flagBankFullPrompted)) {
       AppMessenger.show(context, 'Envanter dolu — bazı eşyalar alınamadı.');
       return;
     }
@@ -48,23 +53,52 @@ class BankTutorial {
       if (goBank == true && context.mounted) {
         context.go(AppRoutes.bank);
       }
-      await prefs.setBool(_shownKey, true);
+      await controller.setProgressFlag(
+        TutorialProgressState.flagBankFullPrompted,
+      );
     } finally {
       _dialogOpen = false;
     }
   }
 
   /// Banka ekranında ilk yatırma coach-mark (tek seferlik).
-  static Future<bool> shouldShowDepositCoach() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final bool tutorialShown = prefs.getBool(_shownKey) ?? false;
-    final bool coachShown = prefs.getBool(_coachKey) ?? false;
-    if (!tutorialShown || coachShown) return false;
-    return true;
+  static Future<bool> shouldShowDepositCoach(WidgetRef ref) async {
+    final TutorialController controller = ref.read(tutorialProvider.notifier);
+    await _migrateLegacyPrefs(controller);
+    if (!controller.hasProgressFlag(
+      TutorialProgressState.flagBankFullPrompted,
+    )) {
+      return false;
+    }
+    return !controller.hasProgressFlag(
+      TutorialProgressState.flagBankDepositCoachShown,
+    );
   }
 
-  static Future<void> markDepositCoachShown() async {
+  static Future<void> markDepositCoachShown(WidgetRef ref) async {
+    final TutorialController controller = ref.read(tutorialProvider.notifier);
+    await controller.setProgressFlag(
+      TutorialProgressState.flagBankDepositCoachShown,
+    );
+  }
+
+  static Future<void> _migrateLegacyPrefs(TutorialController controller) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_coachKey, true);
+    if (prefs.getBool(_legacyShownKey) == true &&
+        !controller.hasProgressFlag(
+          TutorialProgressState.flagBankFullPrompted,
+        )) {
+      await controller.setProgressFlag(
+        TutorialProgressState.flagBankFullPrompted,
+      );
+    }
+    if (prefs.getBool(_legacyCoachKey) == true &&
+        !controller.hasProgressFlag(
+          TutorialProgressState.flagBankDepositCoachShown,
+        )) {
+      await controller.setProgressFlag(
+        TutorialProgressState.flagBankDepositCoachShown,
+      );
+    }
   }
 }

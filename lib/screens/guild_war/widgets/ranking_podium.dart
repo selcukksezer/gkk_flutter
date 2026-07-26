@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../models/guild_war_model.dart';
@@ -9,17 +11,29 @@ class RankingPodium extends StatelessWidget {
     super.key,
     required this.rankings,
     this.highlightGuildName,
+    this.highlightGuildId,
+    this.onRefresh,
   });
 
   final List<GuildWarRanking> rankings;
   final String? highlightGuildName;
+  final String? highlightGuildId;
+  final Future<void> Function()? onRefresh;
+
+  bool _isHighlighted(GuildWarRanking entry) {
+    if (highlightGuildId != null && entry.guildId == highlightGuildId) return true;
+    if (highlightGuildName != null && entry.guildName == highlightGuildName) return true;
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
     if (rankings.isEmpty) {
-      return const WarEmptyTab(
+      return WarEmptyTab(
         icon: '🏅',
-        message: 'Henüz sıralama verisi yok. Sezon başladığında loncalar burada listelenecek.',
+        message: 'Henüz sıralama verisi yok. Loncalar sezon puanı kazandıkça burada listelenir.',
+        actionLabel: onRefresh == null ? null : 'Yenile',
+        onAction: onRefresh == null ? null : () => unawaited(onRefresh!()),
       );
     }
 
@@ -30,9 +44,9 @@ class RankingPodium extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const WarSectionHeader(
+        WarSectionHeader(
           title: 'Şöhret Sıralaması',
-          subtitle: 'Sezon puanlarına göre en güçlü loncalar',
+          subtitle: '${rankings.length} lonca · sezon puanları',
           accent: WarPalette.gold,
         ),
         if (top3.isNotEmpty)
@@ -52,7 +66,7 @@ class RankingPodium extends StatelessWidget {
         ...rest.map(
           (GuildWarRanking r) => _RankingRow(
             entry: r,
-            isHighlighted: highlightGuildName != null && r.guildName == highlightGuildName,
+            isHighlighted: _isHighlighted(r),
           ),
         ),
       ],

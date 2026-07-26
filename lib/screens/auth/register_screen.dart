@@ -6,11 +6,15 @@ import '../../components/common/app_messenger.dart';
 import '../../core/services/device_identity_service.dart';
 import '../../core/utils/auth_validators.dart';
 import '../../l10n/l10n.dart';
+import '../../models/policy_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/policy_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_spacing.dart';
 import 'widgets/auth_design.dart';
 import 'widgets/auth_form_shell.dart';
+import 'widgets/community_rules_gate.dart';
+import 'widgets/register_legal_consent.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -26,6 +30,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _referralController = TextEditingController();
   bool _obscurePassword = true;
+  LegalDocument? _communityDoc;
+  CommunityRulesDecision _communityDecision = CommunityRulesDecision.pending;
+  bool _termsAccepted = false;
+  bool _privacyAccepted = false;
+  bool _rulesDialogShown = false;
+
+  bool get _canRegister =>
+      _communityDecision == CommunityRulesDecision.accepted &&
+      _termsAccepted &&
+      _privacyAccepted;
 
   @override
   void dispose() {
@@ -36,7 +50,62 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _loadAndShowCommunityRules() async {
+    if (_rulesDialogShown || !mounted) return;
+    _rulesDialogShown = true;
+
+    final LegalDocument? doc =
+        await ref.read(policyProvider.notifier).fetchCommunityDocumentPublic();
+    if (!mounted) return;
+
+    if (doc == null) {
+      AppMessenger.showError(context, 'Topluluk Kuralları yüklenemedi.');
+      return;
+    }
+
+    setState(() => _communityDoc = doc);
+
+    final CommunityRulesDecision? decision = await showRegisterCommunityRulesDialog(
+      context,
+      document: doc,
+    );
+    if (!mounted || decision == null) return;
+
+    setState(() => _communityDecision = decision);
+    if (decision == CommunityRulesDecision.rejected) {
+      AppMessenger.showError(context, 'Kayıt için Topluluk Kurallarını kabul etmelisin.');
+    }
+  }
+
+  Future<void> _reviewCommunityRules() async {
+    final LegalDocument? doc = _communityDoc ??
+        await ref.read(policyProvider.notifier).fetchCommunityDocumentPublic();
+    if (!mounted) return;
+    if (doc == null) {
+      AppMessenger.showError(context, 'Topluluk Kuralları yüklenemedi.');
+      return;
+    }
+
+    setState(() => _communityDoc = doc);
+
+    final CommunityRulesDecision? decision = await showRegisterCommunityRulesDialog(
+      context,
+      document: doc,
+    );
+    if (!mounted || decision == null) return;
+
+    setState(() => _communityDecision = decision);
+    if (decision == CommunityRulesDecision.rejected) {
+      AppMessenger.showError(context, 'Kayıt için Topluluk Kurallarını kabul etmelisin.');
+    }
+  }
+
   Future<void> _submitRegister() async {
+    if (!_canRegister) {
+      AppMessenger.showError(context, 'Kayıt için tüm sözleşmeleri kabul et.');
+      return;
+    }
+
     final FormState? form = _formKey.currentState;
     if (form == null || !form.validate()) {
       return;
@@ -54,6 +123,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
   }
 
+  Future<void> _onRegistered() async {
+    final String? err = await ref.read(policyProvider.notifier).acceptAll();
+    if (!mounted) return;
+    if (err != null) {
+      AppMessenger.showError(context, 'Sözleşme kaydı başarısız: $err');
+    }
+    context.go(AppRoutes.home);
+  }
+
   void _goToLogin() {
     if (context.canPop()) {
       context.pop();
@@ -65,6 +143,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAndShowCommunityRules());
+
     ref.listenManual<AuthState>(authProvider, (
       AuthState? previous,
       AuthState next,
@@ -72,7 +152,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (!mounted) return;
 
       if (next.status == AuthStatus.authenticated) {
-        context.go(AppRoutes.home);
+        _onRegistered();
         return;
       }
 
@@ -158,15 +238,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               autocorrect: false,
               accent: AuthDesign.gold,
               onFieldSubmitted: (_) {
-                if (!isLoading) _submitRegister();
+                if (!isLoading && _canRegister) _submitRegister();
               },
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.base),
+            RegisterLegalConsent(
+              termsAccepted: _termsAccepted,
+              privacyAccepted: _privacyAccepted,
+              onTermsChanged: (bool? v) => setState(() => _termsAccepted = v == true),
+              onPrivacyChanged: (bool? v) => setState(() => _privacyAccepted = v == true),
+            ),
+            CommunityRulesStatusBanner(
+              decision: _communityDecision,
+              onReviewAgain: _reviewCommunityRules,
+            ),
+            const SizedBox(height: AppSpacing.sm),
             AuthGoldButton(
               label: isLoading ? l10n.auth_register_loading : l10n.auth_register_button,
               loading: isLoading,
               icon: Icons.person_add_rounded,
-              onPressed: isLoading ? null : _submitRegister,
+              onPressed: isLoading || !_canRegister ? null : _submitRegister,
             ),
           ],
         ),

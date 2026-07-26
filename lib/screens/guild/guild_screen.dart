@@ -1,14 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../models/guild_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/guild_provider.dart';
+import '../../core/staff/staff_player_entry.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/staff_provider.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'widgets/guild_dialogs.dart';
@@ -37,6 +42,9 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
       await ref.read(guildProvider.notifier).loadGuild();
       if (!ref.read(guildProvider).hasValidGuild) {
         await ref.read(guildProvider.notifier).loadRecommendedGuilds();
+      }
+      if (mounted) {
+        await TutorialTriggers.onRouteEnter(ref, AppRoutes.guild);
       }
     });
   }
@@ -189,6 +197,8 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
     final String myPlayerId = playerState.profile?.id ?? '';
     final GuildRole myRole =
         guildState.hasValidGuild ? ref.watch(myGuildRoleProvider) : GuildRole.member;
+    final bool canStaffPlayer =
+        canOpenStaffPlayerActions(ref.watch(staffProvider).profile);
 
     return Scaffold(
       appBar: GameTopBar(title: context.l10n.routeGuild, onLogout: onLogout),
@@ -229,10 +239,23 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
                       myRole: myRole,
                       myPlayerId: myPlayerId,
                     ),
+                    onStaffMemberAction: canStaffPlayer
+                        ? (GuildMemberData member) {
+                            if (member.userId == null || member.userId!.isEmpty) return;
+                            unawaited(openStaffPlayerActions(
+                              context,
+                              ref,
+                              authId: member.userId!,
+                              username: member.username,
+                              staffBadge: member.staffBadge,
+                            ));
+                          }
+                        : null,
                     onLeave: myRole == GuildRole.leader ? _disbandGuild : _leaveGuild,
                     leaveLabel: myRole == GuildRole.leader ? 'Dağıt' : 'Çık',
                     onGuildWar: () => context.go(AppRoutes.guildWar),
                     onMonument: () => context.go(AppRoutes.guildMonument),
+                    onVault: () => context.go(AppRoutes.guildVault),
                     onRefresh: _refreshGuild,
                     onEditMinJoinPower: myRole == GuildRole.leader
                         ? () => _showMinJoinPowerDialog(guildState.guild!.minJoinPower)

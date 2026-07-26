@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
+import '../core/services/device_session_service.dart';
 import '../models/auth_model.dart';
 import '../repositories/auth_repository.dart';
 
@@ -68,10 +69,25 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
 
+      final DeviceSessionVerifyResult deviceCheck =
+          await DeviceSessionService.verifyCurrentDevice();
+      if (!deviceCheck.valid &&
+          deviceCheck.reason != DeviceSessionReason.noAuth) {
+        await _repository.logout();
+        state = state.copyWith(
+          status: AuthStatus.unauthenticated,
+          clearSession: true,
+          clearUser: true,
+          errorMessage: _deviceSessionMessage(deviceCheck.reason),
+        );
+        return;
+      }
+
       state = state.copyWith(
         status: AuthStatus.authenticated,
         session: session,
       );
+      await DeviceSessionService.syncRequestHeaders();
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.error,
@@ -96,6 +112,7 @@ class AuthNotifier extends Notifier<AuthState> {
         session: response.session,
         user: response.user,
       );
+      await DeviceSessionService.syncRequestHeaders();
     } on AppException catch (e) {
       state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
     } catch (_) {
@@ -130,6 +147,7 @@ class AuthNotifier extends Notifier<AuthState> {
         session: response.session,
         user: response.user,
       );
+      await DeviceSessionService.syncRequestHeaders();
     } on AppException catch (e) {
       state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
     } catch (_) {
@@ -152,6 +170,17 @@ class AuthNotifier extends Notifier<AuthState> {
         clearSession: true,
         clearUser: true,
       );
+    }
+  }
+
+  String _deviceSessionMessage(DeviceSessionReason reason) {
+    switch (reason) {
+      case DeviceSessionReason.otherDevice:
+        return 'Hesabın başka bir cihazda açıldı. Güvenlik için bu oturum sonlandırıldı.';
+      case DeviceSessionReason.superseded:
+        return 'Oturumun süresi doldu veya yeni giriş yapıldı. Tekrar giriş yap.';
+      default:
+        return 'Oturum doğrulanamadı. Tekrar giriş yap.';
     }
   }
 }

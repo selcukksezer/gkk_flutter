@@ -18,6 +18,22 @@ abstract final class DeviceIdentityService {
     return id;
   }
 
+  static Future<int?> readInt(String key) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!prefs.containsKey(key)) return null;
+    return prefs.getInt(key);
+  }
+
+  static Future<void> writeInt(String key, int value) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(key, value);
+  }
+
+  static Future<void> removeKey(String key) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove(key);
+  }
+
   static String _generateId() {
     final Random random = Random.secure();
     final List<int> bytes = List<int>.generate(16, (_) => random.nextInt(256));

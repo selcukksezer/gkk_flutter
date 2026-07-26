@@ -11,13 +11,13 @@ class NemesisRivalPanel extends StatelessWidget {
   const NemesisRivalPanel({
     super.key,
     required this.rival,
-    required this.onRevenge,
+    this.onRevenge,
     required this.onDismiss,
     this.dismissLoading = false,
   });
 
   final NemesisRival rival;
-  final NemesisAction onRevenge;
+  final NemesisAction? onRevenge;
   final VoidCallback onDismiss;
   final bool dismissLoading;
 
@@ -97,9 +97,11 @@ class NemesisRivalPanel extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: rival.rivalId == null || rival.level < 5
+                  onPressed: rival.rivalId == null ||
+                          rival.level < 5 ||
+                          onRevenge == null
                       ? null
-                      : () => onRevenge(rival.rivalId!),
+                      : () => onRevenge!(rival.rivalId!),
                   icon: const Icon(Icons.sports_mma_rounded, size: 18),
                   label: const Text('Düello Gönder'),
                   style: ElevatedButton.styleFrom(

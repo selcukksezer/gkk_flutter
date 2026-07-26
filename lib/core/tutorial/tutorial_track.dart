@@ -12,13 +12,23 @@ abstract final class TutorialTrackId {
   static const String shop = 'shop';
   static const String season = 'season';
   static const String quests = 'quests';
+  static const String craft = 'craft';
+  static const String guild = 'guild';
+  static const String pvp = 'pvp';
+  static const String siege = 'siege';
   static const String dailyChain = 'daily_chain';
   static const String retentionIntro = 'retention_intro';
+  static const String horseRace = 'horse_race';
+  static const String mekans = 'mekans';
+  static const String nightMarket = 'night_market';
 
+  /// Core path: home → dungeon → equip → character → enhance (+ season CTA).
   static const List<String> coreTracks = <String>[
     onboarding,
     dungeon,
     inventory,
+    character,
+    enhancement,
   ];
 
   static const List<String> dailyChainStepIds = <String>[
@@ -42,6 +52,11 @@ abstract final class TutorialAnchorId {
   static const String navDungeonTab = 'nav.dungeon_tab';
   static const String navCharacterTab = 'nav.character_tab';
   static const String navMenuTab = 'nav.menu_tab';
+  static const String homePromo = 'home.promo';
+  static const String homeHero = 'home.hero';
+  static const String homeHotspot = 'home.hotspot';
+  static const String homeCamp = 'home.camp';
+  static const String homePantheon = 'home.pantheon';
   static const String dungeonZone0 = 'dungeon.zone_0';
   static const String dungeonEnterBtn = 'dungeon.enter_btn';
   static const String dungeonConfirmOk = 'dungeon.confirm_ok';
@@ -55,6 +70,8 @@ abstract final class TutorialAnchorId {
   static const String bankDepositBtn = 'bank.deposit_btn';
   static const String marketBrowseTab = 'market.browse_tab';
   static const String shopPotionRow = 'shop.potion_row';
+  static const String shopNightTab = 'shop.night_tab';
+  static const String shopNightOffer = 'shop.night_offer';
   static const String seasonHeader = 'season.header';
   static const String seasonBppBar = 'season.bpp_bar';
   static const String seasonQuestsTab = 'season.quests_tab';
@@ -62,7 +79,18 @@ abstract final class TutorialAnchorId {
   static const String questsClaimBtn = 'quests.claim_btn';
   static const String characterCodexTile = 'character.codex_tile';
   static const String pvpNemesisPanel = 'pvp.nemesis_panel';
-  static const String shopNightTab = 'shop.night_tab';
+  static const String pvpFindMatch = 'pvp.find_match';
+  static const String craftRecipeList = 'craft.recipe_list';
+  static const String craftStartBtn = 'craft.start_btn';
+  static const String guildHeader = 'guild.header';
+  static const String guildJoinBtn = 'guild.join_btn';
+  static const String siegeHubPanel = 'siege.hub_panel';
+  static const String horseBetPanel = 'horse.bet_panel';
+  static const String horsePlaceBetBtn = 'horse.place_bet_btn';
+  static const String horseHorseGrid = 'horse.horse_grid';
+  static const String mekansList = 'mekans.list';
+  static const String mekansMyCta = 'mekans.my_cta';
+  static const String mekansArenaCta = 'mekans.arena_cta';
 }
 
 enum TutorialMode {
@@ -99,6 +127,8 @@ class TutorialStepV2 {
     this.primaryLabel,
     this.allowedRoutes = const <String>[],
     this.requiresPrior = const <String>[],
+    this.navigateToRoute,
+    this.autoNavigateWhenPaused = false,
   });
 
   final String id;
@@ -112,9 +142,19 @@ class TutorialStepV2 {
   final String? primaryLabel;
   final List<String> allowedRoutes;
   final List<String> requiresPrior;
+  final String? navigateToRoute;
+  final bool autoNavigateWhenPaused;
 
   bool get needsAnchor =>
       mode == TutorialMode.spotlightTap || mode == TutorialMode.highlightOnly;
+
+  String? get preferredRoute {
+    if (navigateToRoute != null && navigateToRoute!.isNotEmpty) {
+      return navigateToRoute;
+    }
+    if (allowedRoutes.isNotEmpty) return allowedRoutes.first;
+    return null;
+  }
 }
 
 class TutorialTrack {
@@ -133,6 +173,10 @@ class TutorialTrack {
 abstract final class TutorialRouteTracks {
   static String? trackForRoute(String route) {
     if (route == TutorialRoutes.home) return TutorialTrackId.onboarding;
+    if (route == TutorialRoutes.dungeonSiegeHub ||
+        route.startsWith('${TutorialRoutes.dungeonSiegeHub}/')) {
+      return TutorialTrackId.siege;
+    }
     if (route == TutorialRoutes.dungeon ||
         route.startsWith(TutorialRoutes.dungeon)) {
       return TutorialTrackId.dungeon;
@@ -145,6 +189,22 @@ abstract final class TutorialRouteTracks {
     if (route == TutorialRoutes.shop) return TutorialTrackId.shop;
     if (route == TutorialRoutes.season) return TutorialTrackId.season;
     if (route == TutorialRoutes.quests) return TutorialTrackId.quests;
+    if (route == TutorialRoutes.crafting) return TutorialTrackId.craft;
+    if (route == TutorialRoutes.guild ||
+        route.startsWith('${TutorialRoutes.guild}/')) {
+      return TutorialTrackId.guild;
+    }
+    if (route == TutorialRoutes.pvp) return TutorialTrackId.pvp;
+    if (route == TutorialRoutes.guildWar ||
+        route.startsWith('${TutorialRoutes.guildWar}/')) {
+      return TutorialTrackId.siege;
+    }
+    if (route == TutorialRoutes.horseRace) return TutorialTrackId.horseRace;
+    if (route == TutorialRoutes.mekans ||
+        route.startsWith('${TutorialRoutes.mekans}/') ||
+        route == TutorialRoutes.myMekan) {
+      return TutorialTrackId.mekans;
+    }
     return null;
   }
 }

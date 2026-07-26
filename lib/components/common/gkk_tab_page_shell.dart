@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../layout/game_chrome.dart';
+import '../../core/utils/keyboard_dismiss.dart';
 import '../layout/game_screen_background.dart';
 
 /// Section header — gold accent bar (monumentSectionTitle pattern).
@@ -50,8 +50,8 @@ class GkkTabSectionTitle extends StatelessWidget {
   }
 }
 
-/// Fade + slide list item on tab/content load.
-class GkkTabStaggerItem extends StatelessWidget {
+/// Fade + slide list item on first mount only (parent rebuild ≠ re-animate).
+class GkkTabStaggerItem extends StatefulWidget {
   const GkkTabStaggerItem({
     super.key,
     required this.index,
@@ -64,13 +64,41 @@ class GkkTabStaggerItem extends StatelessWidget {
   final int baseDelayMs;
 
   @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      key: ValueKey<String>('gkk_stagger_${index}_${child.hashCode}'),
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 280 + (index % 10) * baseDelayMs),
+  State<GkkTabStaggerItem> createState() => _GkkTabStaggerItemState();
+}
+
+class _GkkTabStaggerItemState extends State<GkkTabStaggerItem>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(
+        milliseconds: 280 + (widget.index % 10) * widget.baseDelayMs,
+      ),
+    )..forward();
+    _animation = CurvedAnimation(
+      parent: _controller,
       curve: Curves.easeOutCubic,
-      builder: (BuildContext context, double value, Widget? child) {
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (BuildContext context, Widget? child) {
+        final double value = _animation.value;
         return Opacity(
           opacity: value,
           child: Transform.translate(
@@ -79,7 +107,7 @@ class GkkTabStaggerItem extends StatelessWidget {
           ),
         );
       },
-      child: child,
+      child: widget.child,
     );
   }
 }
@@ -126,11 +154,13 @@ class GkkTabPageShell extends StatelessWidget {
               child: GkkTabSectionTitle(sectionTitle!, accent: sectionAccent),
             ),
           Expanded(
-            child: CustomPaint(
-              foregroundPainter: const DotGridPainter(spacing: 16, dotOpacity: 0.045),
-              child: Padding(
-                padding: padding ?? EdgeInsets.zero,
-                child: child,
+            child: DismissKeyboard(
+              child: CustomPaint(
+                foregroundPainter: const DotGridPainter(spacing: 16, dotOpacity: 0.045),
+                child: Padding(
+                  padding: padding ?? EdgeInsets.zero,
+                  child: child,
+                ),
               ),
             ),
           ),
@@ -162,6 +192,7 @@ class GkkTabScrollShell extends StatelessWidget {
     Widget content = CustomPaint(
       foregroundPainter: const DotGridPainter(spacing: 16, dotOpacity: 0.045),
       child: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: GameScrollLayout.withClearance(
           context,

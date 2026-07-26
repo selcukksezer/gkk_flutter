@@ -43,4 +43,7 @@ abstract final class TutorialRoutes {
   static const String guild = '/guild';
   static const String guildWar = '/guild-war';
   static const String dungeonSiegeHub = '/dungeon/siege';
+  static const String horseRace = '/horse-race';
+  static const String mekans = '/mekans';
+  static const String myMekan = '/my-mekan';
 }

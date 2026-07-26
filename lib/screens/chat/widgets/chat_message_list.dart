@@ -1,9 +1,12 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../chat_design_system.dart';
 import '../chat_models.dart';
+import '../../../components/player/player_name_label.dart';
+import '../../../theme/app_colors.dart';
 import 'chat_presence.dart';
 
 class ChatMessageList extends StatelessWidget {
@@ -16,6 +19,10 @@ class ChatMessageList extends StatelessWidget {
     required this.isOwnSender,
     required this.isUserOnline,
     required this.onMuteSender,
+    this.onStaffPlayerAction,
+    this.onReportMessage,
+    this.canModerateMessages = false,
+    this.onModerateMessage,
   });
 
   final bool isLoading;
@@ -25,6 +32,10 @@ class ChatMessageList extends StatelessWidget {
   final bool Function(String senderId) isOwnSender;
   final bool Function(String userId, {bool? fallback}) isUserOnline;
   final void Function(String senderId, String senderName) onMuteSender;
+  final void Function(ChatMessage message)? onStaffPlayerAction;
+  final void Function(ChatMessage message)? onReportMessage;
+  final bool canModerateMessages;
+  final void Function(ChatMessage message, String action)? onModerateMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -64,30 +75,52 @@ class ChatMessageList extends StatelessWidget {
       ),
       child: ListView.builder(
         controller: scrollController,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         itemCount: messages.length,
         padding: const EdgeInsets.all(ChatDesignSystem.spaceMd),
         itemBuilder: (BuildContext context, int i) {
           final ChatMessage m = messages[i];
           final bool isOwn = isOwnSender(m.senderId);
+          final double maxBubbleWidth = math.min(520, MediaQuery.sizeOf(context).width * 0.78);
 
           if (m.isSystem) {
+            final Color accent = switch (m.systemTone) {
+              'success' => ChatDesignSystem.colorSuccess,
+              'danger' => ChatDesignSystem.colorError,
+              'warning' => ChatDesignSystem.colorWarning,
+              _ => ChatDesignSystem.colorInfo,
+            };
+            final IconData icon = switch (m.systemTone) {
+              'success' => Icons.auto_awesome_rounded,
+              'danger' => Icons.local_fire_department_rounded,
+              'warning' => Icons.trending_down_rounded,
+              _ => Icons.info_outline_rounded,
+            };
+
             return Padding(
               padding: const EdgeInsets.only(bottom: ChatDesignSystem.spaceMd),
               child: Container(
                 padding: const EdgeInsets.all(ChatDesignSystem.spaceMd),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [ChatDesignSystem.colorInfo.withValues(alpha: 0.12), ChatDesignSystem.colorInfo.withValues(alpha: 0.04)]),
-                  border: Border.all(color: ChatDesignSystem.colorInfo.withValues(alpha: 0.2)),
+                  gradient: LinearGradient(
+                    colors: <Color>[accent.withValues(alpha: 0.16), accent.withValues(alpha: 0.05)],
+                  ),
+                  border: Border.all(color: accent.withValues(alpha: 0.28)),
                   borderRadius: BorderRadius.circular(ChatDesignSystem.radiusMd),
                 ),
                 child: Row(
                   children: <Widget>[
-                    Icon(Icons.info_outline_rounded, size: 16, color: ChatDesignSystem.colorInfo.withValues(alpha: 0.6)),
+                    Icon(icon, size: 16, color: accent.withValues(alpha: 0.85)),
                     const SizedBox(width: ChatDesignSystem.spaceSm),
                     Expanded(
                       child: Text(
                         m.content,
-                        style: TextStyle(fontSize: 12, color: ChatDesignSystem.colorTextSecondary, fontStyle: FontStyle.italic),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: accent.withValues(alpha: 0.95),
+                          fontWeight: m.systemTone == null ? FontWeight.normal : FontWeight.w600,
+                          fontStyle: m.systemTone == null ? FontStyle.italic : FontStyle.normal,
+                        ),
                       ),
                     ),
                   ],
@@ -96,7 +129,132 @@ class ChatMessageList extends StatelessWidget {
             );
           }
 
-          final double maxBubbleWidth = math.min(520, MediaQuery.sizeOf(context).width * 0.78);
+          if (m.isDeleted) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: ChatDesignSystem.spaceMd),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: ChatDesignSystem.colorWarning.withValues(alpha: 0.08),
+                      border: Border.all(color: ChatDesignSystem.colorWarning.withValues(alpha: 0.22)),
+                      borderRadius: BorderRadius.circular(ChatDesignSystem.radiusMd),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(Icons.delete_outline_rounded, size: 14, color: ChatDesignSystem.colorWarning.withValues(alpha: 0.8)),
+                        const SizedBox(width: ChatDesignSystem.spaceSm),
+                        Flexible(
+                          child: Text(
+                            m.content,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                              color: ChatDesignSystem.colorTextSecondary.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final bool allowLongPress = !isOwn || canModerateMessages;
+
+          final bool muteProtected =
+              m.senderStaffBadge == 'admin' || m.senderStaffBadge == 'gm';
+
+          Future<void> showPeerActions() async {
+            final String? action = await showModalBottomSheet<String>(
+              context: context,
+              backgroundColor: AppColors.bgCard,
+              builder: (BuildContext ctx) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    if (canModerateMessages && !m.isDeleted && onModerateMessage != null) ...<Widget>[
+                      ListTile(
+                        leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        title: const Text('Mesajı sil'),
+                        onTap: () => Navigator.pop(ctx, 'mod_delete'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.delete_forever_outlined, color: Colors.orangeAccent),
+                        title: const Text('Sil + 15 dk sustur'),
+                        onTap: () => Navigator.pop(ctx, 'mod_delete_mute_15'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.delete_forever_outlined, color: Colors.orangeAccent),
+                        title: const Text('Sil + 1 saat sustur'),
+                        onTap: () => Navigator.pop(ctx, 'mod_delete_mute_60'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.delete_forever_outlined, color: Colors.orangeAccent),
+                        title: const Text('Sil + 3 gün sustur'),
+                        onTap: () => Navigator.pop(ctx, 'mod_delete_mute_4320'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.delete_forever_outlined, color: Colors.orangeAccent),
+                        title: const Text('Sil + 5 gün sustur'),
+                        onTap: () => Navigator.pop(ctx, 'mod_delete_mute_7200'),
+                      ),
+                      const Divider(height: 1),
+                    ],
+                    if (onStaffPlayerAction != null &&
+                        m.senderAuthId != null &&
+                        m.senderAuthId!.isNotEmpty)
+                      ListTile(
+                        leading: const Icon(Icons.admin_panel_settings_outlined),
+                        title: const Text('Staff işlemleri'),
+                        onTap: () => Navigator.pop(ctx, 'staff_player'),
+                      ),
+                    if (!isOwn)
+                      ListTile(
+                        leading: const Icon(Icons.flag_outlined),
+                        title: const Text('Raporla'),
+                        onTap: () => Navigator.pop(ctx, 'report'),
+                      ),
+                    if (!isOwn && !muteProtected)
+                      ListTile(
+                        leading: const Icon(Icons.volume_off_outlined),
+                        title: const Text('Sustur'),
+                        onTap: () => Navigator.pop(ctx, 'mute'),
+                      )
+                    else if (!isOwn && muteProtected)
+                      const ListTile(
+                        leading: Icon(Icons.shield_outlined),
+                        title: Text('Yetkili susturulamaz'),
+                        enabled: false,
+                      ),
+                  ],
+                ),
+              ),
+            );
+            if (action == null) return;
+            if (action == 'staff_player' &&
+                onStaffPlayerAction != null &&
+                m.senderAuthId != null &&
+                m.senderAuthId!.isNotEmpty) {
+              onStaffPlayerAction!(m);
+              return;
+            }
+            if (action.startsWith('mod_') && onModerateMessage != null) {
+              onModerateMessage!(m, action);
+              return;
+            }
+            if (action == 'report' && onReportMessage != null) {
+              onReportMessage!(m);
+            } else if (action == 'mute') {
+              onMuteSender(m.senderId, m.senderName);
+            }
+          }
 
           return Padding(
             padding: const EdgeInsets.only(bottom: ChatDesignSystem.spaceMd),
@@ -105,7 +263,7 @@ class ChatMessageList extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxBubbleWidth),
                 child: GestureDetector(
-                  onLongPress: isOwn ? null : () => onMuteSender(m.senderId, m.senderName),
+                  onLongPress: allowLongPress ? () => unawaited(showPeerActions()) : null,
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: isOwn
@@ -143,11 +301,50 @@ class ChatMessageList extends StatelessWidget {
                               )
                             else
                               Flexible(
-                                child: ChatPresenceNameRow(
-                                  label: m.senderName,
-                                  userId: m.senderId,
-                                  online: isUserOnline(m.senderId, fallback: m.senderIsOnline),
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: activeChannel.accentColor),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    if (m.senderId.isNotEmpty) ...<Widget>[
+                                      OnlineStatusDot(
+                                        online: isUserOnline(m.senderId, fallback: m.senderIsOnline),
+                                        size: 7,
+                                      ),
+                                      const SizedBox(width: 6),
+                                    ],
+                                    if (_showSenderGuild(activeChannel, m.senderGuildName))
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 4),
+                                        child: Text(
+                                          '[${m.senderGuildName}]',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: ChatDesignSystem.colorGuildAccent.withValues(alpha: 0.9),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    Flexible(
+                                      child: PlayerNameLabel(
+                                        username: m.senderName,
+                                        staffBadge: m.senderStaffBadge,
+                                        kingBadge: m.senderKingBadge,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: activeChannel.accentColor,
+                                        ),
+                                        compactBadge: true,
+                                        showUsername: false,
+                                        onTap: onStaffPlayerAction != null &&
+                                                m.senderAuthId != null &&
+                                                m.senderAuthId!.isNotEmpty
+                                            ? () => onStaffPlayerAction!(m)
+                                            : null,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             const SizedBox(width: ChatDesignSystem.spaceSm),
@@ -169,5 +366,9 @@ class ChatMessageList extends StatelessWidget {
         },
       ),
     );
+  }
+
+  static bool _showSenderGuild(ChatChannel channel, String? guildName) {
+    return guildName != null && guildName.isNotEmpty;
   }
 }

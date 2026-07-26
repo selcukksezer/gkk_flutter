@@ -1685,13 +1685,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bildirimler => 'Bildirimler';
 
   @override
-  String get otomatik_sava => '⚔️ Otomatik Savaş';
-
-  @override
-  String get pvp_ve_zindan_sava_lar_n_otomatik_y_net =>
-      'PvP ve zindan savaşlarını otomatik yönet';
-
-  @override
   String get dil_language => '🌍 Dil / Language';
 
   @override
@@ -2014,7 +2007,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDeleteAccountConfirm =>
-      'This cannot be undone! Your account and all data will be permanently deleted. Are you sure?';
+      'This cannot be undone! Your account and all data will be permanently deleted.';
+
+  @override
+  String settingsDeleteUsernamePrompt(String username) {
+    return 'Type your username to confirm: $username';
+  }
+
+  @override
+  String get settingsDeleteUsernameMismatch => 'Username does not match.';
+
+  @override
+  String get settingsDeleteUsernameMissing =>
+      'Username not found. Please sign in again.';
 
   @override
   String get settingsNameUpdated => 'Display name updated successfully.';
@@ -2026,7 +2031,546 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDisplayNameLabel => 'Display Name';
 
   @override
+  String get settingsSectionAudio => 'Audio';
+
+  @override
+  String get settingsSectionAudioHint =>
+      'Music and SFX levels are stored on this device';
+
+  @override
+  String get settingsMusic => 'Music';
+
+  @override
+  String get settingsSfx => 'Sound effects';
+
+  @override
+  String get settingsMuteHint => 'Mute music and effects completely';
+
+  @override
+  String get settingsSectionGameplay => 'Gameplay';
+
+  @override
+  String get settingsSectionGameplayHint =>
+      'Haptics, motion, and battle preferences';
+
+  @override
+  String get settingsHaptic => 'Haptics';
+
+  @override
+  String get settingsHapticHint => 'Touch and combat feedback';
+
+  @override
+  String get settingsReduceMotion => 'Reduce motion';
+
+  @override
+  String get settingsReduceMotionHint => 'Disable entrance animations';
+
+  @override
+  String get settingsSectionNotif => 'Notifications';
+
+  @override
+  String get settingsSectionNotifHint => 'Phone alerts and reminders';
+
+  @override
+  String get settingsNotifMasterHint => 'Toggle all local notifications';
+
+  @override
+  String get settingsNotifNightMarket => 'Night Market';
+
+  @override
+  String get settingsNotifNightMarketHint => 'Open / close reminders';
+
+  @override
+  String get settingsNotifNemesis => 'Nemesis';
+
+  @override
+  String get settingsNotifNemesisHint => 'Online / revenge alerts';
+
+  @override
+  String get settingsSectionLanguage => 'Language';
+
+  @override
+  String get settingsSectionLanguageHint => 'UI language — persisted';
+
+  @override
+  String get settingsSectionProfile => 'Profile';
+
+  @override
+  String get settingsSectionProfileHint =>
+      'Display name is saved to the server';
+
+  @override
+  String get settingsSectionAccount => 'Account';
+
+  @override
+  String get settingsSectionAccountHint => 'Session and account management';
+
+  @override
+  String get settingsSectionAbout => 'About';
+
+  @override
+  String get settingsSectionAboutHint => 'Version and persistence info';
+
+  @override
+  String get settingsAppName => 'App';
+
+  @override
+  String get settingsVersion => 'Version';
+
+  @override
+  String get settingsPersistNote => 'Settings persistence';
+
+  @override
+  String get settingsPersistNoteValue =>
+      'Audio, language, haptics, and notification prefs use SharedPreferences on device. flutter run does not wipe them; uninstalling the app or resetting the simulator does. Game progress (gold, items) lives on your Supabase account.';
+
+  @override
+  String get settingsReferralCode => 'Referral';
+
+  @override
+  String get settingsReferralCopied => 'Referral code copied.';
+
+  @override
   String errorWithDetail(String detail) {
     return 'Error: $detail';
   }
+
+  @override
+  String get tutContinue => 'Continue';
+
+  @override
+  String get tutDone => 'Done';
+
+  @override
+  String get tutSkipAll => 'Skip all';
+
+  @override
+  String get settingsSectionTutorial => 'Tutorial';
+
+  @override
+  String get settingsSectionTutorialHint =>
+      'Replay or skip onboarding progress';
+
+  @override
+  String get settingsTutorialReplay => 'Restart tutorial';
+
+  @override
+  String get settingsTutorialReplayHint =>
+      'Clears progress and opens home coaching';
+
+  @override
+  String get settingsTutorialSkip => 'Skip tutorial';
+
+  @override
+  String get settingsTutorialSkipHint => 'Mark all tutorial steps complete';
+
+  @override
+  String get settingsTutorialReplayConfirm =>
+      'Tutorial progress will be cleared and restarted. Continue?';
+
+  @override
+  String get settingsTutorialSkipConfirm =>
+      'All tutorial steps will be skipped. Continue?';
+
+  @override
+  String get settingsTutorialReplayDone => 'Tutorial restarted.';
+
+  @override
+  String get settingsTutorialSkipDone => 'Tutorial skipped.';
+
+  @override
+  String get tut_onboarding_welcome_title => 'Gölge Krallığı\'na hoş geldin';
+
+  @override
+  String get tut_onboarding_welcome_body =>
+      'Kısa rehber seni ilk hedefe götürecek. Devam et.';
+
+  @override
+  String get tut_onboarding_home_promo_title => 'Kamp duyuruları';
+
+  @override
+  String get tut_onboarding_home_promo_body =>
+      'Burada Gece Pazarı, Nemesis ve sezon fırsatları döner.';
+
+  @override
+  String get tut_onboarding_home_hero_title => 'Kahraman vitrini';
+
+  @override
+  String get tut_onboarding_home_hero_body =>
+      'Kuşandığın ekipman ve güç buradan görünür.';
+
+  @override
+  String get tut_onboarding_hud_energy_title => 'Enerji';
+
+  @override
+  String get tut_onboarding_hud_energy_body =>
+      'Zindan ve aktiviteler enerji harcar. Dokunarak devam et.';
+
+  @override
+  String get tut_onboarding_hud_gold_title => 'Altın';
+
+  @override
+  String get tut_onboarding_hud_gold_body =>
+      'Pazar, craft ve güçlendirme için altın kullanılır.';
+
+  @override
+  String get tut_onboarding_hud_gems_title => 'Elmas (Gem)';
+
+  @override
+  String get tut_onboarding_hud_gems_body =>
+      'Premium hızlandırma ve özel eşyalar için.';
+
+  @override
+  String get tut_onboarding_tap_dungeon_tab_title => 'İlk hedef: Zindan';
+
+  @override
+  String get tut_onboarding_tap_dungeon_tab_body => 'Zindan sekmesine dokun.';
+
+  @override
+  String get tut_dungeon_pick_zone_title => 'Bölge seç';
+
+  @override
+  String get tut_dungeon_pick_zone_body =>
+      'Zone 1 ile başla — düşük risk, iyi loot.';
+
+  @override
+  String get tut_dungeon_enter_btn_title => 'Gir';
+
+  @override
+  String get tut_dungeon_enter_btn_body => 'Seçili zindana girmek için dokun.';
+
+  @override
+  String get tut_dungeon_confirm_enter_title => 'Onayla';
+
+  @override
+  String get tut_dungeon_confirm_enter_body =>
+      'Enerji maliyetini kontrol et, onayla.';
+
+  @override
+  String get tut_dungeon_tap_attack_title => 'Saldır';
+
+  @override
+  String get tut_dungeon_tap_attack_body => 'Saldır butonuna dokun.';
+
+  @override
+  String get tut_dungeon_first_win_title => 'Zafer!';
+
+  @override
+  String get tut_dungeon_first_win_body => 'Loot düştü. Envantere bak.';
+
+  @override
+  String get tut_dungeon_to_inventory_title => 'Envanter';
+
+  @override
+  String get tut_dungeon_to_inventory_body => 'Envanter sekmesine git.';
+
+  @override
+  String get tut_inventory_first_item_title => 'Eşyana dokun';
+
+  @override
+  String get tut_inventory_first_item_body => 'Silahına dokunarak detayı aç.';
+
+  @override
+  String get tut_inventory_equip_title => 'Kuşan';
+
+  @override
+  String get tut_inventory_equip_body => 'Kuşan butonuna bas.';
+
+  @override
+  String get tut_inventory_to_character_title => 'Karakter';
+
+  @override
+  String get tut_inventory_to_character_body =>
+      'Gücünü görmek için Karakter sekmesine dokun.';
+
+  @override
+  String get tut_character_check_power_title => 'Güç arttı';
+
+  @override
+  String get tut_character_check_power_body =>
+      'Power skorun savaşlarda belirleyici.';
+
+  @override
+  String get tut_character_stat_panel_title => 'Stat puanı';
+
+  @override
+  String get tut_character_stat_panel_body => 'Level atladıkça puan dağıt.';
+
+  @override
+  String get tut_character_to_enhance_title => 'Geliştirme ocağı';
+
+  @override
+  String get tut_character_to_enhance_body =>
+      'Menü → Geliştirme ile eşyanı +1 yükselt.';
+
+  @override
+  String get tut_enhance_pick_item_title => 'Eşya seç';
+
+  @override
+  String get tut_enhance_pick_item_body => 'Kuşandığın silahı seç.';
+
+  @override
+  String get tut_enhance_tap_forge_title => 'Geliştir';
+
+  @override
+  String get tut_enhance_tap_forge_body =>
+      '+1 dene — parşömen otomatik seçilir.';
+
+  @override
+  String get tut_enhance_result_title => 'Sonuç';
+
+  @override
+  String get tut_enhance_result_body => 'Başarı veya yanma normal.';
+
+  @override
+  String get tut_enhance_season_cta_title => 'Sezon ve görevler';
+
+  @override
+  String get tut_enhance_season_cta_body =>
+      'Battle Pass ve günlük görevler seni bekliyor — Sezon / Görevler menüsünden aç.';
+
+  @override
+  String get tut_bank_deposit_coach_title => 'Bankaya yatır';
+
+  @override
+  String get tut_bank_deposit_coach_body => 'Eşya seç → Yatır ile aktar.';
+
+  @override
+  String get tut_bank_deposit_done_title => 'Tamam';
+
+  @override
+  String get tut_bank_deposit_done_body => 'İlk yatırma tamamlandı.';
+
+  @override
+  String get tut_market_browse_intro_title => 'Pazar';
+
+  @override
+  String get tut_market_browse_intro_body => 'Alım-satım ekonominin kalbi.';
+
+  @override
+  String get tut_shop_energy_potion_title => 'Enerji iksiri';
+
+  @override
+  String get tut_shop_energy_potion_body => 'Enerji bittiğinde iksir al.';
+
+  @override
+  String get tut_season_intro_title => 'Battle Pass';
+
+  @override
+  String get tut_season_intro_body =>
+      'Her sezon ~14 gün. BPP kazan, ödül claim et.';
+
+  @override
+  String get tut_season_bpp_title => 'BPP';
+
+  @override
+  String get tut_season_bpp_body => 'Zindan, PvP, görevler BPP verir.';
+
+  @override
+  String get tut_season_quests_tab_title => 'Görevler';
+
+  @override
+  String get tut_season_quests_tab_body =>
+      'Sezon görevlerini buradan takip et.';
+
+  @override
+  String get tut_season_l20_badge_title => 'L20 Rozeti';
+
+  @override
+  String get tut_season_l20_badge_body =>
+      'Free track L20 — claim etmeyi unutma!';
+
+  @override
+  String get tut_quests_claim_intro_title => 'Görevler';
+
+  @override
+  String get tut_quests_claim_intro_body => 'Tamamlanan görev ödülünü al.';
+
+  @override
+  String get tut_craft_browse_recipes_title => 'Tarifler';
+
+  @override
+  String get tut_craft_browse_recipes_body =>
+      'Üretebileceğin eşyalar burada listelenir.';
+
+  @override
+  String get tut_craft_start_hint_title => 'Üret';
+
+  @override
+  String get tut_craft_start_hint_body =>
+      'Malzeme + altın yeterliyse üretimi başlat.';
+
+  @override
+  String get tut_guild_intro_title => 'Lonca';
+
+  @override
+  String get tut_guild_intro_body =>
+      'Lonca bonusları ve savaşlar takım gücü verir.';
+
+  @override
+  String get tut_guild_join_or_panel_title => 'Katıl / panel';
+
+  @override
+  String get tut_guild_join_or_panel_body =>
+      'Önerilen loncaya katıl veya kendi loncanı yönet.';
+
+  @override
+  String get tut_pvp_find_match_title => 'Arena';
+
+  @override
+  String get tut_pvp_find_match_body => 'Benzer güçte rakiplere meydan oku.';
+
+  @override
+  String get tut_pvp_nemesis_hint_title => 'Nemesis';
+
+  @override
+  String get tut_pvp_nemesis_hint_body =>
+      'Rakibini izle — intikam düellosu ve bonus.';
+
+  @override
+  String get tut_siege_hub_intro_title => 'Kuşatma';
+
+  @override
+  String get tut_siege_hub_intro_body =>
+      'Slot tut veya lonca savaşına katıl. Prime saatlerde bonus.';
+
+  @override
+  String get tut_daily_d1_dungeon_title => 'Gün 1 — Zindan';
+
+  @override
+  String get tut_daily_d1_dungeon_body =>
+      'Günlük hedef: zindana gir, loot topla.';
+
+  @override
+  String get tut_daily_d2_inventory_title => 'Gün 2 — Envanter';
+
+  @override
+  String get tut_daily_d2_inventory_body =>
+      'Eşyalarını düzenle, silahını kuşan.';
+
+  @override
+  String get tut_daily_d3_craft_title => 'Gün 3 — Craft';
+
+  @override
+  String get tut_daily_d3_craft_body => 'Bir tarif seçip üretimi dene.';
+
+  @override
+  String get tut_daily_d4_guild_title => 'Gün 4 — Lonca';
+
+  @override
+  String get tut_daily_d4_guild_body => 'Lonca panelini aç veya katıl.';
+
+  @override
+  String get tut_daily_d5_pvp_title => 'Gün 5 — PvP';
+
+  @override
+  String get tut_daily_d5_pvp_body => 'Arena\'da eşleşmeye bak.';
+
+  @override
+  String get tut_daily_d6_market_title => 'Gün 6 — Pazar';
+
+  @override
+  String get tut_daily_d6_market_body => 'Pazarı gez — alım satım burada.';
+
+  @override
+  String get tut_daily_d7_siege_title => 'Gün 7 — Kuşatma';
+
+  @override
+  String get tut_daily_d7_siege_body =>
+      'Kuşatma hub veya lonca savaşını incele.';
+
+  @override
+  String get tut_retention_codex_title => 'Kodex';
+
+  @override
+  String get tut_retention_codex_body =>
+      'Keşifleri Kodex’te topla. Kilometre taşı ödülleri seni bekliyor.';
+
+  @override
+  String get tut_retention_nemesis_title => 'Nemesis';
+
+  @override
+  String get tut_retention_nemesis_body =>
+      'PvP’de rakibini izle — intikam düellosu ve bonus altın.';
+
+  @override
+  String get tut_retention_night_title => 'Gece Pazarı';
+
+  @override
+  String get tut_retention_night_body =>
+      'Her gün 20:00–22:00 TR — sınırlı gem teklifleri.';
+
+  @override
+  String get tut_horse_intro_title => 'At yarışı';
+
+  @override
+  String get tut_horse_intro_body => 'Bahis paneli: para birimi ve miktar seç.';
+
+  @override
+  String get tut_horse_pick_horse_title => 'At seç';
+
+  @override
+  String get tut_horse_pick_horse_body =>
+      'Çarpanı yüksek veya güvendiğin ata dokun.';
+
+  @override
+  String get tut_horse_place_bet_title => 'Bahis koy';
+
+  @override
+  String get tut_horse_place_bet_body =>
+      'Bahisini onayla — canlı yarış otomatik başlar.';
+
+  @override
+  String get tut_horse_result_tip_title => 'Sonuç';
+
+  @override
+  String get tut_horse_result_tip_body =>
+      'Kazanç/kayıp bilette görünür. Sonraki turda tekrar bahis açılır.';
+
+  @override
+  String get tut_mekans_browse_title => 'Mekanlar';
+
+  @override
+  String get tut_mekans_browse_body =>
+      'Han ve arena mekanlarını keşfet — vitrin ve şöhret burada.';
+
+  @override
+  String get tut_mekans_my_cta_title => 'Benim mekanım';
+
+  @override
+  String get tut_mekans_my_cta_body => 'Kendi mekanını yönet veya yeni aç.';
+
+  @override
+  String get tut_mekans_arena_hint_title => 'Arena düellosu';
+
+  @override
+  String get tut_mekans_arena_hint_body =>
+      'Open Arena from a PvP venue detail — duel local rivals.';
+
+  @override
+  String get tut_mekans_fame_tip_title => 'Şöhret';
+
+  @override
+  String get tut_mekans_fame_tip_body =>
+      'Satış ve arena şöhret kazandırır — liderlikte yüksel.';
+
+  @override
+  String get tut_night_tab_open_title => 'Gece Pazarı';
+
+  @override
+  String get tut_night_tab_open_body => 'Mağazada 🌙 Gece sekmesine geç.';
+
+  @override
+  String get tut_night_window_title => 'Saat penceresi';
+
+  @override
+  String get tut_night_window_body =>
+      'Her gün 20:00–22:00 TR açık. Dışında teklifler kilitli.';
+
+  @override
+  String get tut_night_offer_browse_title => 'Sınırlı teklifler';
+
+  @override
+  String get tut_night_offer_browse_body =>
+      'Gem ile özel paketler — stok bitince gider.';
 }
