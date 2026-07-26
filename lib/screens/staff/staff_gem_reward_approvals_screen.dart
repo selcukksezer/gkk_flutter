@@ -117,7 +117,7 @@ class _StaffGemRewardApprovalsScreenState extends ConsumerState<StaffGemRewardAp
       fields: <StaffFormFieldSpec>[
         StaffFormFieldSpec(
           key: 'gems',
-          label: 'Elmas (100–5000)',
+          label: 'Elmas',
           initial: '$gems',
           keyboardType: TextInputType.number,
         ),

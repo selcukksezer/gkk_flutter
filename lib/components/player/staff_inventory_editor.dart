@@ -126,53 +126,7 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
     });
   }
 
-  bool get _hasFreeSlot => _slotCount < _capacity;
-
   bool get _inventoryFull => _slotCount >= _capacity;
-
-  int _stackSpaceForItem(String itemId, int maxStack) {
-    int space = 0;
-    for (final StaffInventoryRow row in _inventory) {
-      if (row.isEquipped || row.itemId != itemId) continue;
-      space += (row.maxStack - row.quantity).clamp(0, row.maxStack);
-    }
-    return space;
-  }
-
-  int _slotsNeededForQty(int remainingQty, int maxStack) {
-    if (remainingQty <= 0) return 0;
-    return (remainingQty + maxStack - 1) ~/ maxStack;
-  }
-
-  bool _canAddQuantity({
-    required String itemId,
-    required bool isStackable,
-    required int maxStack,
-    required int qty,
-  }) {
-    if (qty <= 0) return false;
-    if (!isStackable) return _hasFreeSlot;
-    int remaining = qty - _stackSpaceForItem(itemId, maxStack);
-    if (remaining <= 0) return true;
-    return _slotCount + _slotsNeededForQty(remaining, maxStack) <= _capacity;
-  }
-
-  String _inventoryFullMessage({required bool isStackable, required String itemName, required int qty}) {
-    if (!isStackable) {
-      return 'Envanter dolu ($_slotCount/$_capacity). Yeni slot yok — $itemName eklenemez.';
-    }
-    return 'Envanter dolu ($_slotCount/$_capacity). $itemName x$qty mevcut slotlara sığmıyor.';
-  }
-
-  bool _canIncreaseRow(StaffInventoryRow row, int delta) {
-    if (delta <= 0) return true;
-    return _canAddQuantity(
-      itemId: row.itemId,
-      isStackable: row.isStackable,
-      maxStack: row.maxStack,
-      qty: delta,
-    );
-  }
 
   String get _reason {
     final String trimmed = widget.reason.trim();
@@ -197,13 +151,6 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
   Future<void> _applyDelta(StaffInventoryRow row, int delta) async {
     if (_busy) return;
     if (delta == 0) return;
-    if (delta > 0 && !_canIncreaseRow(row, delta)) {
-      AppMessenger.showError(
-        context,
-        _inventoryFullMessage(isStackable: row.isStackable, itemName: row.name, qty: delta),
-      );
-      return;
-    }
     if (row.isEquipped && delta < 0) {
       AppMessenger.showError(context, 'Kuşanılmış eşyada azaltma yok — Sil kullanın.');
       return;
@@ -274,7 +221,7 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
       fields: <StaffFormFieldSpec>[
         StaffFormFieldSpec(
           key: 'qty',
-          label: 'Hedef miktar (0–${row.maxStack})',
+          label: 'Hedef miktar',
           initial: '${row.quantity}',
           keyboardType: TextInputType.number,
         ),
@@ -282,7 +229,7 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
     );
     if (values == null) return;
     final int qty = int.tryParse(values['qty'] ?? '') ?? -1;
-    if (qty < 0 || qty > row.maxStack) {
+    if (qty < 0) {
       AppMessenger.showError(context, 'Geçersiz miktar.');
       return;
     }
@@ -308,7 +255,7 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
       fields: <StaffFormFieldSpec>[
         StaffFormFieldSpec(
           key: 'qty',
-          label: item.isStackable ? 'Miktar (max ${item.maxStack})' : 'Adet (1)',
+          label: item.isStackable ? 'Miktar' : 'Adet (1)',
           initial: '1',
           keyboardType: TextInputType.number,
         ),
@@ -317,15 +264,8 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
     if (values == null) return;
     int qty = int.tryParse(values['qty'] ?? '') ?? 0;
     if (!item.isStackable) qty = 1;
-    if (qty < 1 || qty > item.maxStack) {
+    if (qty < 1) {
       AppMessenger.showError(context, 'Geçersiz miktar.');
-      return;
-    }
-    if (!_canAddQuantity(itemId: item.id, isStackable: item.isStackable, maxStack: item.maxStack, qty: qty)) {
-      AppMessenger.showError(
-        context,
-        _inventoryFullMessage(isStackable: item.isStackable, itemName: item.name, qty: qty),
-      );
       return;
     }
     if (qty >= 20) {
@@ -419,14 +359,14 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
                     label: '+1',
                     outlined: true,
                     accent: SettingsPalette.neon,
-                    onPressed: _busy || !_canIncreaseRow(row, 1) ? null : () => _applyDelta(row, 1),
+                    onPressed: _busy || row.isEquipped ? null : () => _applyDelta(row, 1),
                   ),
                 if (row.isStackable && !row.isEquipped)
                   StaffActionButton(
                     label: '+5',
                     outlined: true,
                     accent: SettingsPalette.neon,
-                    onPressed: _busy || !_canIncreaseRow(row, 5) ? null : () => _applyDelta(row, 5),
+                    onPressed: _busy || row.isEquipped ? null : () => _applyDelta(row, 5),
                   ),
                 StaffActionButton(
                   label: 'Sil',
@@ -443,12 +383,6 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
   }
 
   Widget _catalogRow(StaffItemCatalogEntry item) {
-    final bool canAdd = _canAddQuantity(
-      itemId: item.id,
-      isStackable: item.isStackable,
-      maxStack: item.maxStack,
-      qty: 1,
-    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: SettingsGlassCard(
@@ -471,8 +405,8 @@ class _StaffInventoryEditorPanelState extends State<StaffInventoryEditorPanel>
             StaffActionButton(
               label: 'Ekle',
               outlined: true,
-              accent: canAdd ? SettingsPalette.neon : SettingsPalette.titanium,
-              onPressed: _busy || !canAdd ? null : () => _addCatalogItem(item),
+              accent: SettingsPalette.neon,
+              onPressed: _busy ? null : () => _addCatalogItem(item),
             ),
           ],
         ),

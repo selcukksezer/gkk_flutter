@@ -673,7 +673,7 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
             if (ref.read(staffProvider).profile.has('bug.triage')) ...<Widget>[
               const SizedBox(height: 8),
               StaffActionButton(
-                label: 'Elmas öner (100–5000)',
+                label: 'Elmas öner',
                 accent: SettingsPalette.fuchsia,
                 onPressed: () async {
                   final Map<String, String>? values = await showStaffFormDialog(
@@ -683,7 +683,7 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
                     fields: const <StaffFormFieldSpec>[
                       StaffFormFieldSpec(
                         key: 'gems',
-                        label: 'Elmas (100–5000)',
+                        label: 'Elmas',
                         initial: '100',
                         keyboardType: TextInputType.number,
                       ),
@@ -691,8 +691,8 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
                   );
                   if (values == null || !mounted) return;
                   final int amount = int.tryParse(values['gems'] ?? '') ?? 0;
-                  if (amount < 100 || amount > 5000) {
-                    AppMessenger.showError(context, 'Elmas 100–5000 arası olmalı.');
+                  if (amount <= 0) {
+                    AppMessenger.showError(context, 'Elmas miktarı 0 olamaz.');
                     return;
                   }
                   final String? err = await _staffRepo.suggestBugReward(detail.id, amount);

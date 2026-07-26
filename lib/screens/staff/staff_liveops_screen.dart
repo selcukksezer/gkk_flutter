@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_screen_background.dart';
@@ -11,6 +12,7 @@ import '../../providers/live_ticker_provider.dart';
 import '../../providers/staff_provider.dart';
 import '../../repositories/staff_repository.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_text_styles.dart';
 import '../support/widgets/support_design.dart';
 import '../support/widgets/support_screen_shell.dart';
 import 'widgets/staff_design.dart';
@@ -93,7 +95,7 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
   StaffItemCatalogEntry? _dailySelectedItem;
   StaffItemCatalogEntry? _bpSelectedItem;
   StaffItemCatalogEntry? _nightSelectedItem;
-  String? _editingNightOfferId;
+  bool _nightOfferSaving = false;
 
   String? _activeBpSeasonId;
   int? _activeBpSeasonNumber;
@@ -523,25 +525,8 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
     });
   }
 
-  void _loadNightOfferIntoForm(Map row) {
-    final String? itemId = row['item_id']?.toString();
+  void _resetNewNightOfferForm() {
     setState(() {
-      _editingNightOfferId = row['id']?.toString();
-      _nightSelectedItem = itemId == null || itemId.isEmpty
-          ? null
-          : StaffItemCatalogEntry(
-              id: itemId,
-              name: row['item_name']?.toString() ?? itemId,
-            );
-      _nightPrice.text = '${row['price_gems'] ?? ''}';
-      _nightStock.text = '${row['stock'] ?? ''}';
-    });
-    AppMessenger.showSuccess(context, 'Teklif forma yüklendi — düzenleyip kaydedin.');
-  }
-
-  void _clearNightOfferForm() {
-    setState(() {
-      _editingNightOfferId = null;
       _nightSelectedItem = null;
       _nightPrice.text = '50';
       _nightStock.text = '1';
@@ -555,42 +540,64 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
     }
     final int price = int.tryParse(_nightPrice.text.trim()) ?? 0;
     final int stock = int.tryParse(_nightStock.text.trim()) ?? 0;
-    if (price <= 0) {
-      AppMessenger.showError(context, 'Elmas fiyatı 1 veya üzeri olmalı.');
-      return;
+
+    setState(() => _nightOfferSaving = true);
+    try {
+      await _runRpc(
+        'staff_liveops_upsert_night_market_offer',
+        <String, dynamic>{
+          'p_payload': <String, dynamic>{
+            'item_id': _nightSelectedItem!.id,
+            'price_gems': price,
+            'stock': stock,
+          },
+          'p_reason': 'staff upsert',
+        },
+        success: 'Teklif eklendi',
+        onSuccess: () async {
+          _resetNewNightOfferForm();
+          await _loadNightMarket();
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _nightOfferSaving = false);
     }
-    if (stock <= 0) {
-      AppMessenger.showError(context, 'Stok 1 veya üzeri olmalı.');
-      return;
-    }
-    StaffHubDebugLog.log(
-      'H3',
-      'staff_liveops_screen.dart:_upsertNightOffer',
-      'night_upsert_call',
-      data: <String, Object?>{
-        'offerId': _editingNightOfferId,
-        'itemId': _nightSelectedItem?.id,
-        'price': price,
-        'stock': stock,
-      },
+  }
+
+  Future<void> _editNightOffer(Map row) async {
+    final String offerId = row['id']?.toString() ?? '';
+    if (offerId.isEmpty) return;
+
+    final String? itemId = row['item_id']?.toString();
+    final _NightOfferEditPayload? payload = await showDialog<_NightOfferEditPayload>(
+      context: context,
+      builder: (BuildContext ctx) => _NightOfferEditDialog(
+        title: '${row['item_name'] ?? 'Teklif'} düzenle',
+        initialItem: itemId == null || itemId.isEmpty
+            ? null
+            : StaffItemCatalogEntry(
+                id: itemId,
+                name: row['item_name']?.toString() ?? itemId,
+              ),
+        initialPrice: '${row['price_gems'] ?? ''}',
+        initialStock: '${row['stock'] ?? ''}',
+      ),
     );
-    final String? offerId = _editingNightOfferId;
+    if (payload == null || !mounted) return;
+
     await _runRpc(
       'staff_liveops_upsert_night_market_offer',
       <String, dynamic>{
         'p_offer_id': offerId,
         'p_payload': <String, dynamic>{
-          'item_id': _nightSelectedItem!.id,
-          'price_gems': price,
-          'stock': stock,
+          'item_id': payload.itemId,
+          'price_gems': payload.priceGems,
+          'stock': payload.stock,
         },
-        'p_reason': 'staff upsert',
+        'p_reason': 'staff edit',
       },
-      success: offerId == null ? 'Teklif eklendi' : 'Teklif güncellendi',
-      onSuccess: () async {
-        _clearNightOfferForm();
-        await _loadNightMarket();
-      },
+      success: 'Teklif güncellendi',
+      onSuccess: _loadNightMarket,
     );
   }
 
@@ -600,20 +607,38 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
     required String success,
     Future<void> Function()? onSuccess,
   }) async {
-    final dynamic raw = await SupabaseService.client.rpc(fn, params: params);
-    if (!mounted) return;
-    if (raw is Map && raw['success'] == false) {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(fn, params: params);
+      if (!mounted) return;
+      if (raw is Map && raw['success'] == false) {
+        StaffHubDebugLog.log(
+          'H3',
+          'staff_liveops_screen.dart:_runRpc',
+          'liveops_rpc_fail',
+          data: <String, Object?>{'fn': fn, 'error': raw['error']?.toString()},
+        );
+        AppMessenger.showError(context, raw['error']?.toString() ?? 'İşlem başarısız');
+        return;
+      }
+      AppMessenger.showSuccess(context, success);
+      if (onSuccess != null) await onSuccess();
+    } on PostgrestException catch (e) {
       StaffHubDebugLog.log(
         'H3',
         'staff_liveops_screen.dart:_runRpc',
-        'liveops_rpc_fail',
-        data: <String, Object?>{'fn': fn, 'error': raw['error']?.toString()},
+        'liveops_rpc_exception',
+        data: <String, Object?>{'fn': fn, 'error': e.message},
       );
-      AppMessenger.showError(context, raw['error']?.toString() ?? 'İşlem başarısız');
-      return;
+      if (mounted) AppMessenger.showError(context, e.message);
+    } catch (e) {
+      StaffHubDebugLog.log(
+        'H3',
+        'staff_liveops_screen.dart:_runRpc',
+        'liveops_rpc_exception',
+        data: <String, Object?>{'fn': fn, 'error': e.toString()},
+      );
+      if (mounted) AppMessenger.showError(context, 'İşlem başarısız: $e');
     }
-    AppMessenger.showSuccess(context, success);
-    if (onSuccess != null) await onSuccess();
   }
 
   Future<void> _confirmAndRun(
@@ -1049,9 +1074,7 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
           icon: Icons.nightlight_round,
           title: 'Teklifler',
           accent: SettingsPalette.fuchsia,
-          subtitle: _editingNightOfferId == null
-              ? 'Yeni teklif — formu doldurup kaydet'
-              : 'Düzenleniyor: ${_editingNightOfferId!.substring(0, 8)}…',
+          subtitle: 'Yeni teklif — formu doldurup kaydet',
           children: <Widget>[
             StaffItemPickerField(
               selected: _nightSelectedItem,
@@ -1067,42 +1090,25 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: StaffActionButton(
-                    label: _editingNightOfferId == null ? 'Yeni teklif kaydet' : 'Değişiklikleri kaydet',
-                    onPressed: _upsertNightOffer,
-                  ),
-                ),
-                if (_editingNightOfferId != null) ...<Widget>[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: StaffActionButton(
-                      label: 'İptal',
-                      outlined: true,
-                      onPressed: _clearNightOfferForm,
-                    ),
-                  ),
-                ],
-              ],
+            StaffActionButton(
+              label: _nightOfferSaving ? 'Kaydediliyor…' : 'Yeni teklif kaydet',
+              onPressed: _nightOfferSaving ? null : _upsertNightOffer,
             ),
             const SizedBox(height: 8),
             StaffActionButton(label: 'Teklifleri yenile', outlined: true, onPressed: _loadNightMarket),
             ..._nightRows.map((dynamic row) {
               if (row is! Map) return const SizedBox.shrink();
-              final bool editing = _editingNightOfferId == row['id']?.toString();
               return _rowTile(
                 '${row['item_name']} — ${row['price_gems']}💎',
-                subtitle: 'Stok ${row['stock']}${editing ? ' · düzenleniyor' : ''}',
-                onTap: () => _loadNightOfferIntoForm(row),
+                subtitle: 'Stok ${row['stock']}',
+                onTap: () => _editNightOffer(row),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     IconButton(
-                      tooltip: 'Forma yükle',
-                      icon: Icon(Icons.edit_outlined, color: editing ? SettingsPalette.neon : SettingsPalette.gold),
-                      onPressed: () => _loadNightOfferIntoForm(row),
+                      tooltip: 'Düzenle',
+                      icon: Icon(Icons.edit_outlined, color: SettingsPalette.gold),
+                      onPressed: () => _editNightOffer(row),
                     ),
                     IconButton(
                       tooltip: 'Sil',
@@ -1111,12 +1117,7 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
                         'Teklif sil',
                         'staff_liveops_delete_night_market_offer',
                         <String, dynamic>{'p_offer_id': row['id'], 'p_reason': 'staff delete'},
-                        onSuccess: () async {
-                          if (_editingNightOfferId == row['id']?.toString()) {
-                            _clearNightOfferForm();
-                          }
-                          await _loadNightMarket();
-                        },
+                        onSuccess: _loadNightMarket,
                       ),
                     ),
                   ],
@@ -1261,7 +1262,7 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
               maxLines: 3,
               textInputAction: TextInputAction.done,
               onEditingComplete: () => dismissKeyboard(context),
-              decoration: _liveOpsInput('Duyuru metni', hint: 'max 280'),
+              decoration: _liveOpsInput('Duyuru metni', hint: 'Duyuru metni'),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -1368,6 +1369,118 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NightOfferEditPayload {
+  const _NightOfferEditPayload({
+    required this.itemId,
+    required this.priceGems,
+    required this.stock,
+  });
+
+  final String itemId;
+  final int priceGems;
+  final int stock;
+}
+
+class _NightOfferEditDialog extends StatefulWidget {
+  const _NightOfferEditDialog({
+    required this.title,
+    required this.initialItem,
+    required this.initialPrice,
+    required this.initialStock,
+  });
+
+  final String title;
+  final StaffItemCatalogEntry? initialItem;
+  final String initialPrice;
+  final String initialStock;
+
+  @override
+  State<_NightOfferEditDialog> createState() => _NightOfferEditDialogState();
+}
+
+class _NightOfferEditDialogState extends State<_NightOfferEditDialog> {
+  late StaffItemCatalogEntry? _item;
+  late final TextEditingController _price;
+  late final TextEditingController _stock;
+
+  @override
+  void initState() {
+    super.initState();
+    _item = widget.initialItem;
+    _price = TextEditingController(text: widget.initialPrice);
+    _stock = TextEditingController(text: widget.initialStock);
+  }
+
+  @override
+  void dispose() {
+    _price.dispose();
+    _stock.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if ((_item?.id ?? '').isEmpty) {
+      AppMessenger.showError(context, 'Önce eşya seç.');
+      return;
+    }
+    final int price = int.tryParse(_price.text.trim()) ?? 0;
+    final int stock = int.tryParse(_stock.text.trim()) ?? 0;
+    Navigator.pop(
+      context,
+      _NightOfferEditPayload(itemId: _item!.id, priceGems: price, stock: stock),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: SettingsPalette.navy.withValues(alpha: 0.95),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: SettingsPalette.fuchsia.withValues(alpha: 0.4)),
+      ),
+      title: Text(widget.title, style: AppTextStyles.bodyBold.copyWith(color: SettingsPalette.textHi)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            StaffItemPickerField(
+              selected: _item,
+              label: 'Teklif eşyası',
+              onChanged: (StaffItemCatalogEntry? item) => setState(() => _item = item),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _price,
+              style: supportBodyStyle,
+              keyboardType: TextInputType.number,
+              decoration: supportInputDecoration(label: 'Elmas'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _stock,
+              style: supportBodyStyle,
+              keyboardType: TextInputType.number,
+              decoration: supportInputDecoration(label: 'Stok'),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('İptal', style: TextStyle(color: SettingsPalette.titanium)),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: SettingsPalette.fuchsia),
+          onPressed: _save,
+          child: const Text('Kaydet'),
+        ),
+      ],
     );
   }
 }
