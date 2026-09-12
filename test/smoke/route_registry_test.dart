@@ -45,7 +45,7 @@ void main() {
         expect(covered, contains(path), reason: 'Missing quick menu route: $path');
       }
 
-      expect(SmokeRouteRegistry.quickMenuRouteCount, 29);
+      expect(SmokeRouteRegistry.quickMenuRouteCount, 30);
     });
 
     test('includes mandatory sub-screens', () {

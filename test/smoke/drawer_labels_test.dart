@@ -6,7 +6,7 @@ void main() {
   group('Smoke quick menu labels', () {
     test('menu label count matches registry navigable routes + logout', () {
       expect(SmokeMenuLabels.all.length, 29);
-      expect(SmokeRouteRegistry.quickMenuRouteCount, 29);
+      expect(SmokeRouteRegistry.quickMenuRouteCount, 30);
     });
 
     test('every navigable menu label exists in route registry', () {
