@@ -83,6 +83,10 @@ class FakeInventoryRepository implements InventoryRepository {
   Future<UseItemResult> useStatResetScroll({required String rowId}) async => throw UnimplementedError();
 
   @override
+  Future<UseItemResult> useNameChangeScroll({required String rowId, required String newDisplayName}) async =>
+      throw UnimplementedError();
+
+  @override
   Future<bool> splitStack({required String rowId, required int splitQuantity, required int targetSlot}) async =>
       throw UnimplementedError();
 
