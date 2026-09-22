@@ -384,6 +384,7 @@ class AuthField extends StatefulWidget {
     this.autocorrect = false,
     this.enableSuggestions = true,
     this.validator,
+    this.onChanged,
     this.onFieldSubmitted,
     this.suffix,
     this.accent = AuthDesign.gold,
@@ -399,6 +400,7 @@ class AuthField extends StatefulWidget {
   final bool autocorrect;
   final bool enableSuggestions;
   final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
   final void Function(String)? onFieldSubmitted;
   final Widget? suffix;
   final Color accent;
@@ -480,6 +482,7 @@ class _AuthFieldState extends State<AuthField> {
                   autocorrect: widget.autocorrect,
                   enableSuggestions: widget.enableSuggestions,
                   validator: widget.validator,
+                  onChanged: widget.onChanged,
                   onFieldSubmitted: widget.onFieldSubmitted,
                   style: GoogleFonts.urbanist(
                     color: AuthDesign.textHi,

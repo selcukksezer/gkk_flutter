@@ -23,6 +23,8 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     _TickerFilter('guild_war', 'Lonca'),
     _TickerFilter('dungeon_clear', 'Boss'),
     _TickerFilter('siege_win', 'Kuşatma'),
+    _TickerFilter('siege_soon', 'Yakında'),
+    _TickerFilter('siege_start', 'Başladı'),
     _TickerFilter('siege_live', 'Canlı'),
     _TickerFilter('enhance_success', '+8'),
     _TickerFilter('loot_rare', 'Nadir'),

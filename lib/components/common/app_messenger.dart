@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../core/services/connectivity_service.dart';
+import '../../core/tutorial/tutorial_modal_suppress.dart';
 import 'game_alert_popup.dart';
 
 enum AppMessageType { success, error, warning, info }
@@ -17,6 +18,7 @@ const double kAppToastBottomOffset = 96;
 /// [ConnectivityService.reportTransportFailure] is notified instead.
 abstract final class AppMessenger {
   static OverlayEntry? _entry;
+  static const Object _tutorialHoldToken = Object();
 
   static GameAlertVariant _toVariant(AppMessageType type) {
     switch (type) {
@@ -74,6 +76,7 @@ abstract final class AppMessenger {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!overlay.mounted) return;
 
+      TutorialModalSuppress.instance.hold(_tutorialHoldToken);
       _entry = OverlayEntry(
         builder: (BuildContext ctx) {
           return _PopupBarrier(
@@ -126,6 +129,7 @@ abstract final class AppMessenger {
   static void _dismiss() {
     _entry?.remove();
     _entry = null;
+    TutorialModalSuppress.instance.release(_tutorialHoldToken);
   }
 }
 

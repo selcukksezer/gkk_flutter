@@ -2,8 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/errors/user_facing_error.dart';
 import '../core/services/supabase_service.dart';
 import '../models/guild_war_model.dart';
+import 'guild_vault_provider.dart';
 
 class GuildWarState {
   const GuildWarState({
@@ -227,20 +229,161 @@ class GuildWarNotifier extends Notifier<GuildWarState> {
   }
 
   Future<String?> addDefenseGold(String territoryId, int gold) async {
+    return 'Altın ile savunma kaldırıldı. Elmas veya garnizon kullanın.';
+  }
+
+  Future<({String? error, String? message})> joinGarrison(String territoryId) async {
     try {
       final dynamic raw = await SupabaseService.client.rpc(
-        'add_territory_defense_gold',
-        params: <String, dynamic>{
-          'p_territory_id': territoryId,
-          'p_gold': gold,
-        },
+        'guild_war_garrison_join',
+        params: <String, dynamic>{'p_territory_id': territoryId},
       );
       if (raw is Map && raw['success'] == false) {
-        return raw['error']?.toString();
+        return (
+          error: raw['error']?.toString() ?? raw['message']?.toString() ?? 'Nöbet hatası',
+          message: null,
+        );
       }
-      await loadAll();
+      // Light refresh only — full loadAll floods concurrent RPCs → timeout risk.
+      await loadTerritoryDetail(territoryId);
+      try {
+        final dynamic terrRaw =
+            await SupabaseService.client.rpc('get_guild_war_territories');
+        state = state.copyWith(territories: _parseTerritories(terrRaw));
+      } catch (_) {}
+      final String? msg = raw is Map ? raw['message']?.toString() : null;
+      return (error: null, message: msg);
+    } catch (e) {
+      return (error: userFacingErrorMessage(e, fallback: 'Nöbete yazılamadı. Tekrar dene.'), message: null);
+    }
+  }
+
+  Future<({String? error, String? message})> leaveGarrison() async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc('guild_war_garrison_leave');
+      if (raw is Map && raw['success'] == false) {
+        return (
+          error: raw['error']?.toString() ?? raw['message']?.toString() ?? 'Nöbet hatası',
+          message: null,
+        );
+      }
+      final String? tid = state.activeTerritoryId;
+      if (tid != null) await loadTerritoryDetail(tid);
+      try {
+        final dynamic terrRaw =
+            await SupabaseService.client.rpc('get_guild_war_territories');
+        state = state.copyWith(territories: _parseTerritories(terrRaw));
+      } catch (_) {}
+      final String? msg = raw is Map ? raw['message']?.toString() : null;
+      return (error: null, message: msg);
+    } catch (e) {
+      return (error: userFacingErrorMessage(e, fallback: 'Nöbetten ayrılamadı. Tekrar dene.'), message: null);
+    }
+  }
+
+  Future<({String? error, String? message})> openAttackPlan(String territoryId) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'guild_war_open_attack_plan',
+        params: <String, dynamic>{'p_territory_id': territoryId},
+      );
+      if (raw is Map && raw['success'] == false) {
+        return (
+          error: raw['error']?.toString() ?? raw['message']?.toString() ?? 'Plan açılamadı',
+          message: null,
+        );
+      }
       if (state.activeTerritoryId == territoryId) {
         await loadTerritoryDetail(territoryId);
+      }
+      final String? msg = raw is Map ? raw['message']?.toString() : null;
+      return (error: null, message: msg);
+    } catch (e) {
+      return (error: userFacingErrorMessage(e, fallback: 'Plan açılamadı.'), message: null);
+    }
+  }
+
+  Future<Map<String, dynamic>?> loadAttackPlan(String territoryId) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'get_territory_attack_plan',
+        params: <String, dynamic>{'p_territory_id': territoryId},
+      );
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Full garrison status payload (`get_territory_garrison`).
+  Future<Map<String, dynamic>?> loadTerritoryGarrisonStatus(String territoryId) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'get_territory_garrison',
+        params: <String, dynamic>{'p_territory_id': territoryId},
+      );
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Members list only (compat). Prefer [loadTerritoryGarrisonStatus].
+  Future<List<Map<String, dynamic>>> loadTerritoryGarrison(String territoryId) async {
+    final Map<String, dynamic>? status = await loadTerritoryGarrisonStatus(territoryId);
+    if (status == null) return <Map<String, dynamic>>[];
+    final dynamic members = status['members'];
+    if (members is List) {
+      return members
+          .whereType<Map>()
+          .map((Map e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return <Map<String, dynamic>>[];
+  }
+
+  Future<String?> pledgeAttackSupport(String planId) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'guild_war_pledge_attack_support',
+        params: <String, dynamic>{'p_plan_id': planId},
+      );
+      if (raw is Map && raw['success'] == false) {
+        return raw['error']?.toString() ?? raw['message']?.toString();
+      }
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<LiveGuildWarClash?> loadLiveClash({String? guildId}) async {
+    try {
+      final Map<String, dynamic> params = <String, dynamic>{};
+      if (guildId != null) params['p_guild_id'] = guildId;
+      final dynamic raw = await SupabaseService.client.rpc(
+        'get_live_guild_war_clash',
+        params: params.isEmpty ? null : params,
+      );
+      if (raw is Map) {
+        return LiveGuildWarClash.fromJson(Map<String, dynamic>.from(raw));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> rallyClash(int matchId) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'rally_guild_war_clash',
+        params: <String, dynamic>{'p_match_id': matchId},
+      );
+      if (raw is Map && raw['success'] == false) {
+        return raw['error']?.toString() ?? raw['message']?.toString();
       }
       return null;
     } catch (e) {
@@ -254,12 +397,22 @@ class GuildWarNotifier extends Notifier<GuildWarState> {
         'attack_guild_war_territory',
         params: {'p_territory_id': territoryId},
       );
-      if (result is Map<String, dynamic>) {
-        final attackResult = GuildWarAttackResult.fromJson(result);
+      if (result is Map) {
+        final attackResult =
+            GuildWarAttackResult.fromJson(Map<String, dynamic>.from(result));
+        if (attackResult.error == null && attackResult.goldSpent > 0) {
+          ref.read(guildVaultProvider.notifier).applyGoldDelta(-attackResult.goldSpent);
+        }
         await loadAll();
+        // Keep hub/vault UI in sync with spend.
+        await ref.read(guildVaultProvider.notifier).load(silent: true);
         return attackResult;
       }
-      return null;
+      return const GuildWarAttackResult(
+        success: false,
+        message: '',
+        error: 'Sunucudan beklenmeyen yanıt geldi.',
+      );
     } catch (e) {
       return GuildWarAttackResult(
         success: false,
@@ -281,10 +434,42 @@ class GuildWarNotifier extends Notifier<GuildWarState> {
       if (result is Map && result['error'] != null) {
         return result['error'] as String;
       }
+      if (result is Map && result['success'] == false) {
+        return result['error']?.toString() ?? 'Savunma eklenemedi.';
+      }
       await loadAll();
       return null;
     } catch (e) {
-      return e.toString();
+      return userFacingErrorMessage(e, fallback: 'Savunma eklenemedi.');
+    }
+  }
+
+  Future<({String? error, String? message})> addAttackGems(String planId, int gems) async {
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'add_attack_plan_gems',
+        params: <String, dynamic>{
+          'p_plan_id': planId,
+          'p_gems': gems,
+        },
+      );
+      if (raw is Map && raw['success'] == false) {
+        return (
+          error: raw['error']?.toString() ?? 'Elmas eklenemedi.',
+          message: null,
+        );
+      }
+      final String? tid = state.activeTerritoryId;
+      if (tid != null) await loadTerritoryDetail(tid);
+      return (
+        error: null,
+        message: raw is Map ? raw['message']?.toString() : null,
+      );
+    } catch (e) {
+      return (
+        error: userFacingErrorMessage(e, fallback: 'Elmas saldırı desteği eklenemedi.'),
+        message: null,
+      );
     }
   }
 
@@ -376,17 +561,21 @@ class GuildWarNotifier extends Notifier<GuildWarState> {
       if (state.activeTerritoryId != territoryId) return;
 
       TerritoryDetail? detail;
+      String? rpcError;
       if (data is Map) {
         final map = Map<String, dynamic>.from(data);
         if (map['error'] == null) {
           detail = TerritoryDetail.fromJson(map);
+        } else {
+          rpcError = map['error'].toString();
         }
       }
 
       state = state.copyWith(
         territoryDetail: detail,
         isTerritoryDetailLoading: false,
-        clearError: true,
+        clearError: rpcError == null,
+        error: rpcError,
       );
     } catch (e) {
       if (state.activeTerritoryId != territoryId) return;

@@ -4,6 +4,7 @@ import '../core/errors/user_facing_error.dart';
 import '../models/guild_model.dart';
 import '../repositories/guild_monument_repository.dart';
 import 'guild_provider.dart';
+import 'guild_vault_provider.dart';
 import 'inventory_provider.dart';
 import 'player_provider.dart';
 
@@ -142,6 +143,7 @@ class GuildMonumentNotifier extends Notifier<GuildMonumentState> {
       await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
       await ref.read(playerProvider.notifier).loadProfile();
       await loadDashboard();
+      await ref.read(guildVaultProvider.notifier).load(silent: true);
       return result;
     } catch (e) {
       state = state.copyWith(
@@ -153,7 +155,7 @@ class GuildMonumentNotifier extends Notifier<GuildMonumentState> {
     }
   }
 
-  Future<int?> upgradeMonument() async {
+  Future<MonumentUpgradeResult?> upgradeMonument() async {
     final profile = ref.read(playerProvider).profile;
     if (!canUpgradeMonument(profile?.guildRole)) {
       state = state.copyWith(errorMessage: 'Yetkiniz yok!');
@@ -168,10 +170,18 @@ class GuildMonumentNotifier extends Notifier<GuildMonumentState> {
 
     state = state.copyWith(isUpgrading: true, clearError: true);
     try {
-      final int newLevel = await _repository.upgradeMonument(userId: userId);
+      final MonumentUpgradeResult result =
+          await _repository.upgradeMonument(userId: userId);
+      // Instant vault UI: required gold leaves kasası (1:1 with RPC debit).
+      if (result.vaultGoldAfter != null) {
+        ref.read(guildVaultProvider.notifier).applyGoldAbsolute(result.vaultGoldAfter!);
+      } else if (result.goldFromVault > 0) {
+        ref.read(guildVaultProvider.notifier).applyGoldDelta(-result.goldFromVault);
+      }
       await ref.read(guildProvider.notifier).loadGuild();
       await loadDashboard();
-      return newLevel;
+      await ref.read(guildVaultProvider.notifier).load(silent: true);
+      return result;
     } catch (e) {
       state = state.copyWith(
         errorMessage: userFacingErrorMessage(e, fallback: 'Yükseltme başarısız.'),

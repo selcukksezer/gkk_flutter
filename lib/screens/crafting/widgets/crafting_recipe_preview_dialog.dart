@@ -3,8 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/crafting_queue_slots.dart';
 import '../../../core/utils/craft_gold.dart';
 import '../../../models/crafting_model.dart';
+import '../../../providers/bank_quantities_provider.dart';
 import '../../../providers/crafting_provider.dart';
 import '../../../providers/inventory_provider.dart';
 import '../../../providers/player_provider.dart';
@@ -15,7 +17,9 @@ Future<void> showCraftingRecipePreviewDialog({
   required WidgetRef ref,
   required CraftRecipe recipe,
   required Future<bool> Function() onCraft,
+  Future<bool> Function()? onExpandQueue,
 }) async {
+  ref.invalidate(bankQuantitiesProvider);
   ref.read(craftingProvider.notifier).selectRecipe(recipe.id);
 
   await showGeneralDialog<void>(
@@ -59,8 +63,12 @@ Future<void> showCraftingRecipePreviewDialog({
 
                   final double playerGems = playerState.profile?.gems ?? 0;
                   final int playerGold = playerState.profile?.gold ?? 0;
-                  final int gemCost = (craftState.selectedBatchCount - 1).clamp(0, craftingBatchLimit);
-                  final bool canAffordGems = playerGems >= gemCost;
+                  final int queueMax = playerCraftingQueueSlots(playerState.profile);
+                  final int queueUsed = craftState.queue.length;
+                  final bool queueFull = queueUsed >= queueMax;
+                  final int? expandCost = nextCraftQueueSlotUnlockCost(queueMax);
+                  final bool canAffordExpand =
+                      expandCost != null && playerGems >= expandCost;
                   final bool canAffordGold = canAffordCraftGold(
                     playerGold: playerGold,
                     recipe: selectedRecipe,
@@ -71,29 +79,38 @@ Future<void> showCraftingRecipePreviewDialog({
                     batchCount: craftState.selectedBatchCount,
                   );
                   final bool canCraft = hasEnoughMaterials &&
-                      canAffordGems &&
                       canAffordGold &&
                       !craftState.isCrafting &&
-                      craftState.queue.length < craftingQueueLimit;
+                      !queueFull;
 
                   final Map<String, int> ownedQuantities = <String, int>{};
                   for (final item in ref.read(inventoryProvider).items) {
-                    ownedQuantities[item.itemId] = (ownedQuantities[item.itemId] ?? 0) + item.quantity;
+                    ownedQuantities[item.itemId] =
+                        (ownedQuantities[item.itemId] ?? 0) + item.quantity;
                   }
+                  final Map<String, int> bankQuantities =
+                      ref.watch(bankQuantitiesProvider).value ??
+                          const <String, int>{};
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
                     child: CraftingPreviewPanel(
                       recipe: selectedRecipe,
                       batchCount: craftState.selectedBatchCount,
-                      gemCost: gemCost,
                       canCraft: canCraft,
                       isCrafting: craftState.isCrafting,
                       hasEnoughMaterials: hasEnoughMaterials,
-                      canAffordGems: canAffordGems,
                       canAffordGold: canAffordGold,
                       playerGold: playerGold,
+                      queueUsed: queueUsed,
+                      queueMax: queueMax,
+                      expandGemCost: expandCost,
+                      canAffordExpand: canAffordExpand,
+                      isExpandingQueue: craftState.isExpandingQueue,
+                      playerGems: playerGems,
+                      onExpandQueue: onExpandQueue,
                       ownedQuantities: ownedQuantities,
+                      bankQuantities: bankQuantities,
                       onCraft: () async {
                         final bool ok = await onCraft();
                         if (ok && dialogContext.mounted) {

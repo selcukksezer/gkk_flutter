@@ -21,8 +21,50 @@ class SmokeRouteEntry {
 class SmokeRouteRegistry {
   const SmokeRouteRegistry._();
 
+  /// Client-side provider aliases that must never appear as DB RPC names.
+  static const Set<String> staleClientAliases = <String>{
+    'loadTickers',
+    'loadMyOrders',
+    'loadProfile',
+    'get_notifications',
+    'mark_notifications_read',
+  };
+
+  /// DB RPC name pattern (snake_case). QA smokes use `qa_smoke_*`.
+  static final RegExp rpcNamePattern = RegExp(r'^[a-z][a-z0-9_]*$');
+
+  static bool isValidKeyRpc(String name) {
+    if (staleClientAliases.contains(name)) return false;
+    if (name.startsWith('qa_smoke_')) return rpcNamePattern.hasMatch(name);
+    return rpcNamePattern.hasMatch(name);
+  }
+
+  static List<String> get allKeyRpcs {
+    final Set<String> seen = <String>{};
+    for (final SmokeRouteEntry entry in allRoutes) {
+      seen.addAll(entry.keyRpcs);
+    }
+    return seen.toList()..sort();
+  }
+
+  static List<String> get productionKeyRpcs =>
+      allKeyRpcs.where((String rpc) => !rpc.startsWith('qa_smoke_')).toList();
+
+  static Map<String, List<String>> get routeKeyRpcMap {
+    final Map<String, List<String>> map = <String, List<String>>{};
+    for (final SmokeRouteEntry entry in allRoutes) {
+      if (entry.keyRpcs.isEmpty) continue;
+      final List<String> list =
+          map.putIfAbsent(entry.path, () => <String>[]);
+      for (final String rpc in entry.keyRpcs) {
+        if (!list.contains(rpc)) list.add(rpc);
+      }
+    }
+    return map;
+  }
+
   static const List<SmokeRouteEntry> quickMenuRoutes = <SmokeRouteEntry>[
-    SmokeRouteEntry(label: 'Ana Sayfa', path: '/home', keyRpcs: <String>['loadProfile', 'get_comeback_summary', 'get_retention_promos']),
+    SmokeRouteEntry(label: 'Ana Sayfa', path: '/home', keyRpcs: <String>['get_comeback_summary', 'get_retention_promos']),
     SmokeRouteEntry(label: 'Envanter', path: '/inventory', group: 'quick_menu', keyRpcs: <String>['get_inventory']),
     SmokeRouteEntry(label: 'Karakter', path: '/character', keyRpcs: <String>['claim_alchemist_detox']),
     SmokeRouteEntry(
@@ -70,7 +112,7 @@ class SmokeRouteRegistry {
     SmokeRouteEntry(
       label: 'Bildirimler',
       path: '/notifications',
-      keyRpcs: <String>['get_notifications', 'mark_notifications_read'],
+      keyRpcs: <String>['get_my_inbox_notifications', 'mark_inbox_notification_read'],
     ),
     SmokeRouteEntry(
       label: 'Savaş Geçidi',
@@ -108,7 +150,7 @@ class SmokeRouteRegistry {
       path: '/horse-race',
       keyRpcs: <String>['get_horse_race_state', 'place_horse_race_bet', 'qa_smoke_horse_race_fairness'],
     ),
-    SmokeRouteEntry(label: 'Pazar', path: '/market', keyRpcs: <String>['loadTickers', 'loadMyOrders']),
+    SmokeRouteEntry(label: 'Pazar', path: '/market', keyRpcs: <String>['get_market_tickers', 'get_my_market_history']),
     SmokeRouteEntry(
       label: 'Mağaza',
       path: '/shop',
@@ -155,7 +197,7 @@ class SmokeRouteRegistry {
     SmokeRouteEntry(
       label: 'Hastane',
       path: '/hospital',
-      keyRpcs: <String>['heal_with_gems', 'attempt_hospital_escape'],
+      keyRpcs: <String>['get_hospital_status', 'heal_health_with_gems', 'heal_with_gems', 'attempt_hospital_escape'],
     ),
     SmokeRouteEntry(
       label: 'Hapishane',

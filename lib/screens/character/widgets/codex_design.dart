@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../components/common/item_icon_view.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../../models/codex_model.dart';
 import '../../../theme/app_colors.dart';
@@ -123,11 +124,13 @@ class CodexVaultHero extends StatelessWidget {
     required this.dashboard,
     required this.claiming,
     required this.onClaim,
+    this.milestoneScrollController,
   });
 
   final CodexDashboard dashboard;
   final bool claiming;
   final VoidCallback? onClaim;
+  final ScrollController? milestoneScrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -274,7 +277,10 @@ class CodexVaultHero extends StatelessWidget {
                       _GoldProgressBar(value: progress),
                       if (dashboard.milestones.isNotEmpty) ...<Widget>[
                         const SizedBox(height: 12),
-                        CodexMilestoneTrack(milestones: dashboard.milestones),
+                        CodexMilestoneTrack(
+                          milestones: dashboard.milestones,
+                          scrollController: milestoneScrollController,
+                        ),
                       ],
                       if (canClaim || claiming) ...<Widget>[
                         const SizedBox(height: 12),
@@ -392,15 +398,21 @@ class _GoldProgressBar extends StatelessWidget {
 // ─── Milestones ───────────────────────────────────────────────────────────────
 
 class CodexMilestoneTrack extends StatelessWidget {
-  const CodexMilestoneTrack({super.key, required this.milestones});
+  const CodexMilestoneTrack({
+    super.key,
+    required this.milestones,
+    this.scrollController,
+  });
 
   final List<CodexMilestone> milestones;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 68,
       child: ListView.separated(
+        controller: scrollController,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: milestones.length,
@@ -541,6 +553,77 @@ class CodexMilestoneCard extends StatelessWidget {
 }
 
 // ─── Category + rarity — slim Gkk-style rail ──────────────────────────────────
+
+class CodexSearchField extends StatelessWidget {
+  const CodexSearchField({
+    super.key,
+    required this.controller,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: GoogleFonts.urbanist(
+          color: CodexPalette.textHi,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'Ara: isim, bölge, anahtar…',
+          hintStyle: GoogleFonts.urbanist(
+            color: CodexPalette.titanium.withValues(alpha: 0.7),
+            fontSize: 12,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: CodexPalette.titanium,
+          ),
+          suffixIcon: controller.text.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  color: CodexPalette.titanium,
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                ),
+          filled: true,
+          fillColor: CodexPalette.navy.withValues(alpha: 0.9),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: CodexPalette.gold.withValues(alpha: 0.18),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: CodexPalette.gold.withValues(alpha: 0.18),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: CodexPalette.gold.withValues(alpha: 0.55),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class CodexCategoryBar extends StatelessWidget {
   const CodexCategoryBar({
@@ -685,6 +768,7 @@ class CodexRarityFilter extends StatelessWidget {
       'legendary' || 'mythic' => CodexPalette.gold,
       'epic' => CodexPalette.fuchsia,
       'rare' => AppColors.rarityRare,
+      'common' => AppColors.rarityCommon,
       'hidden' => CodexPalette.coral,
       _ => CodexPalette.gold,
     };
@@ -807,12 +891,20 @@ class CodexEntryCard extends StatelessWidget {
                       ),
                     Expanded(
                       child: Center(
-                        child: _CodexEntryOrb(
-                          discovered: discovered,
-                          accent:
-                              discovered ? rarityColor : CodexPalette.fuchsia,
-                          size: 34,
-                        ),
+                        child: discovered && entry.entryType == 'item'
+                            ? ItemIconView(
+                                itemId: entry.entryKey,
+                                iconValue: '',
+                                size: 34,
+                              )
+                            : _CodexEntryOrb(
+                                discovered: discovered,
+                                accent: discovered
+                                    ? rarityColor
+                                    : CodexPalette.fuchsia,
+                                size: 34,
+                                entryType: entry.entryType,
+                              ),
                       ),
                     ),
                     Text(
@@ -859,11 +951,22 @@ class _CodexEntryOrb extends StatelessWidget {
     required this.discovered,
     required this.accent,
     this.size = 48,
+    this.entryType = 'item',
   });
 
   final bool discovered;
   final Color accent;
   final double size;
+  final String entryType;
+
+  IconData get _icon {
+    if (!discovered) return Icons.help_outline_rounded;
+    return switch (entryType) {
+      'boss' => Icons.whatshot_rounded,
+      'dungeon' => Icons.castle_rounded,
+      _ => Icons.auto_stories_rounded,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -907,9 +1010,7 @@ class _CodexEntryOrb extends StatelessWidget {
               ),
             ),
             child: Icon(
-              discovered
-                  ? Icons.auto_stories_rounded
-                  : Icons.help_outline_rounded,
+              _icon,
               color: discovered
                   ? accent
                   : CodexPalette.titanium.withValues(alpha: 0.85),
@@ -1057,11 +1158,19 @@ class CodexEntryDetailSheet extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            _CodexEntryOrb(
-                              discovered: true,
-                              accent: rarityColor,
-                              size: 88,
-                            ),
+                            if (entry.entryType == 'item')
+                              ItemIconView(
+                                itemId: entry.entryKey,
+                                iconValue: '',
+                                size: 72,
+                              )
+                            else
+                              _CodexEntryOrb(
+                                discovered: true,
+                                accent: rarityColor,
+                                size: 88,
+                                entryType: entry.entryType,
+                              ),
                             const SizedBox(height: 18),
                             Text(
                               'KAYIT ADI',

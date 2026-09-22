@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui' show FontFeature;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -119,22 +122,27 @@ class _PvpInviteHostState extends ConsumerState<PvpInviteHost> {
 
     final BuildContext? showCtx = appRootNavigatorKey.currentContext;
     if (showCtx != null && showCtx.mounted) {
-      if (notice.declined) {
+      if (notice.declined || notice.expired) {
+        final String title =
+            notice.expired ? '⏱ Davet Süresi Doldu' : '🚫 Düello Reddedildi';
+        final String body = notice.expired
+            ? '${notice.opponentName} davetine zamanında yanıt vermedi.'
+            : '${notice.opponentName} düello davetini reddetti.';
         await showDialog<void>(
           context: showCtx,
           builder: (BuildContext dCtx) => AlertDialog(
             backgroundColor: const Color(0xFF141B2A),
-            title: const Text(
-              '🚫 Düello Reddedildi',
+            title: Text(
+              title,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
               ),
             ),
             content: Text(
-              '${notice.opponentName} düello davetini reddetti.',
+              body,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70),
             ),
@@ -209,6 +217,14 @@ class _PvpInviteHostState extends ConsumerState<PvpInviteHost> {
             (res['error'] ?? 'Düello başlatılamadı').toString(),
           );
         }
+      } else if (!accept &&
+          res['retryable'] == true &&
+          resultContext != null &&
+          resultContext.mounted) {
+        AppMessenger.showError(
+          resultContext,
+          (res['error'] ?? 'İşlem başarısız').toString(),
+        );
       }
     }
 
@@ -224,11 +240,50 @@ class _PvpInviteHostState extends ConsumerState<PvpInviteHost> {
   }
 }
 
-class _PvpVsDialog extends StatelessWidget {
+class _PvpVsDialog extends StatefulWidget {
   const _PvpVsDialog({required this.invite, required this.myProfile});
 
   final PvpInvite invite;
   final PlayerProfile? myProfile;
+
+  @override
+  State<_PvpVsDialog> createState() => _PvpVsDialogState();
+}
+
+class _PvpVsDialogState extends State<_PvpVsDialog> {
+  Timer? _ticker;
+  Duration _remaining = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    final DateTime? expiresAt = widget.invite.expiresAt;
+    if (expiresAt != null) {
+      _remaining = expiresAt.difference(DateTime.now());
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        final Duration left = expiresAt.difference(DateTime.now());
+        if (left.isNegative || left == Duration.zero) {
+          _ticker?.cancel();
+          if (mounted) Navigator.of(context).pop(null);
+          return;
+        }
+        if (mounted) setState(() => _remaining = left);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  String get _countdownLabel {
+    final int total = _remaining.inSeconds.clamp(0, 3599);
+    final int m = total ~/ 60;
+    final int s = total % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
 
   Widget _fighter({
     required String name,
@@ -275,11 +330,16 @@ class _PvpVsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final PvpInvite invite = widget.invite;
+    final PlayerProfile? myProfile = widget.myProfile;
     final String myName = myProfile?.displayName ?? myProfile?.username ?? 'Sen';
-    final String? combatBlock = combatRestrictionMessage(
+    final String? combatBlock = combatRestrictionForProfile(
+      health: myProfile?.health ?? 0,
+      maxHealth: myProfile?.maxHealth ?? 0,
       hospitalUntil: myProfile?.hospitalUntil,
       prisonUntil: myProfile?.prisonUntil,
     );
+    final bool urgent = _remaining.inSeconds <= 15;
 
     return Dialog(
       backgroundColor: const Color(0xFF10131D),
@@ -304,6 +364,46 @@ class _PvpVsDialog extends StatelessWidget {
                 letterSpacing: 2,
               ),
             ),
+            if (invite.expiresAt != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (urgent ? const Color(0xFFEF4444) : Colors.white)
+                      .withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: urgent
+                        ? const Color(0xFFEF4444)
+                        : Colors.white24,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 14,
+                      color: urgent ? const Color(0xFFEF4444) : Colors.white70,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _countdownLabel,
+                      style: TextStyle(
+                        color:
+                            urgent ? const Color(0xFFEF4444) : Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,

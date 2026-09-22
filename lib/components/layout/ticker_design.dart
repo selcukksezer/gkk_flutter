@@ -40,6 +40,10 @@ class LiveTickerVisual {
         return const LiveTickerVisual(icon: '🏰', accent: TickerPalette.neon, label: 'Lonca savaşı');
       case 'siege_win':
         return const LiveTickerVisual(icon: '🛡️', accent: TickerPalette.neon, label: 'Kuşatma');
+      case 'siege_soon':
+        return const LiveTickerVisual(icon: '🛡️', accent: TickerPalette.neon, label: 'Kuşatma yakında');
+      case 'siege_start':
+        return const LiveTickerVisual(icon: '🔥', accent: TickerPalette.ruby, label: 'Kuşatma başladı');
       case 'siege_live':
         return const LiveTickerVisual(icon: '🔥', accent: TickerPalette.ruby, label: 'Canlı kuşatma');
       case 'night_market':

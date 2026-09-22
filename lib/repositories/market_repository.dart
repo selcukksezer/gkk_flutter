@@ -1,9 +1,15 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../core/errors/app_exception.dart';
 import '../core/services/supabase_service.dart';
 import '../models/market_model.dart';
 
 abstract class MarketRepository {
-  Future<List<MarketTicker>> fetchTickers();
+  Future<MarketTickersPage> fetchTickersPage({
+    required int limit,
+    required int offset,
+    MarketTickerQuery query = const MarketTickerQuery(),
+  });
   Future<List<MarketOrder>> fetchMyOrders({required String sellerId});
   Future<List<MarketListing>> fetchListingsForItem(String itemId);
   Future<bool> createOrder({
@@ -20,79 +26,51 @@ abstract class MarketRepository {
     required String orderId,
     required int quantity,
   });
+  Future<List<MarketTradeRecord>> fetchMyHistory({
+    int limit = 30,
+    int offset = 0,
+  });
 }
 
 class SupabaseMarketRepository implements MarketRepository {
+  static const int defaultPageSize = 48;
+
   @override
-  Future<List<MarketTicker>> fetchTickers() async {
+  Future<MarketTickersPage> fetchTickersPage({
+    required int limit,
+    required int offset,
+    MarketTickerQuery query = const MarketTickerQuery(),
+  }) async {
     _ensureReady();
 
     try {
-      final List<dynamic> rows = await SupabaseService.client
-          .from('market_orders')
-          .select('*')
-          .eq('status', 'open')
-          .eq('side', 'sell')
-          .order('price', ascending: true);
+      final dynamic raw = await SupabaseService.client.rpc(
+        'get_market_tickers',
+        params: <String, dynamic>{
+          'p_limit': limit,
+          'p_offset': offset,
+          'p_search': query.search.isEmpty ? null : query.search,
+          'p_item_type': query.itemType.isEmpty ? null : query.itemType,
+          'p_rarity': query.rarity.isEmpty ? null : query.rarity,
+          'p_sort': query.sortKey,
+        },
+      );
 
-      final Map<String, _TickerAgg> grouped = <String, _TickerAgg>{};
-      for (final dynamic row in rows) {
-        if (row is! Map) continue;
-        final Map<String, dynamic> data = Map<String, dynamic>.from(row);
-        final String itemId = (data['item_id'] ?? '').toString();
-        if (itemId.isEmpty) continue;
+      final Map<String, dynamic> data = raw is Map<String, dynamic>
+          ? raw
+          : Map<String, dynamic>.from(raw as Map);
 
-        final String orderId = (data['order_id'] ?? data['id'] ?? '').toString();
-        final String sellerId = (data['seller_id'] ?? data['player_id'] ?? '').toString();
-        final String itemName = (data['item_name'] ?? 'Bilinmeyen Eşya').toString();
-        final int price = (data['price'] as num?)?.toInt() ?? 0;
-        final int quantity = (data['quantity'] as num?)?.toInt() ?? 0;
-        final String rarity = (data['rarity'] ?? 'common').toString();
-        final String itemType = (data['item_type'] ?? '').toString();
-        final bool isStackable = data['is_stackable'] == true;
+      final List<dynamic> rows = data['items'] as List<dynamic>? ?? const <dynamic>[];
+      final List<MarketTicker> items = rows
+          .whereType<Map>()
+          .map((Map row) => MarketTicker.fromRpcJson(Map<String, dynamic>.from(row)))
+          .toList(growable: false);
 
-        final _TickerAgg agg = grouped.putIfAbsent(
-          itemId,
-          () => _TickerAgg(
-            itemId: itemId,
-            itemName: itemName,
-            itemType: itemType,
-            rarity: rarity,
-            isStackable: isStackable,
-            lowestPrice: price,
-            volume: 0,
-            maxAvailableQty: 0,
-            cheapestOrderId: orderId,
-            cheapestSellerId: sellerId,
-          ),
-        );
-
-        if (price < agg.lowestPrice) {
-          agg.lowestPrice = price;
-          agg.cheapestOrderId = orderId;
-          agg.cheapestSellerId = sellerId;
-          agg.maxAvailableQty = quantity;
-        } else if (price == agg.lowestPrice && orderId == agg.cheapestOrderId) {
-          agg.maxAvailableQty = quantity;
-        }
-        agg.volume += quantity;
-      }
-
-      return grouped.values
-          .map((agg) => MarketTicker(
-                itemId: agg.itemId,
-                itemName: agg.itemName,
-                itemType: agg.itemType,
-                rarity: agg.rarity,
-                isStackable: agg.isStackable,
-                lowestPrice: agg.lowestPrice,
-                volume: agg.volume,
-                priceChange: 0,
-                maxAvailableQty: agg.maxAvailableQty,
-                cheapestOrderId: agg.cheapestOrderId,
-                cheapestSellerId: agg.cheapestSellerId,
-              ))
-          .toList();
+      return MarketTickersPage(
+        items: items,
+        total: (data['total'] as num?)?.toInt() ?? items.length,
+        totalListings: (data['total_listings'] as num?)?.toInt() ?? items.length,
+      );
     } catch (_) {
       throw AppException('Pazar verisi yuklenemedi.', code: 'MARKET_TICKERS_FAILED');
     }
@@ -163,7 +141,7 @@ class SupabaseMarketRepository implements MarketRepository {
     _ensureReady();
 
     try {
-      await SupabaseService.client.rpc(
+      final dynamic raw = await SupabaseService.client.rpc(
         'market_list_item',
         params: <String, dynamic>{
           'p_item_row_id': itemRowId,
@@ -171,7 +149,10 @@ class SupabaseMarketRepository implements MarketRepository {
           'p_price': price,
         },
       );
+      _ensureRpcSuccess(raw);
       return true;
+    } on AppException {
+      rethrow;
     } catch (error) {
       throw AppException(_parseRpcError(error), code: 'MARKET_CREATE_FAILED');
     }
@@ -182,11 +163,14 @@ class SupabaseMarketRepository implements MarketRepository {
     _ensureReady();
 
     try {
-      await SupabaseService.client.rpc(
+      final dynamic raw = await SupabaseService.client.rpc(
         'cancel_sell_order',
         params: <String, dynamic>{'p_order_id': orderId},
       );
+      _ensureRpcSuccess(raw);
       return true;
+    } on AppException {
+      rethrow;
     } catch (error) {
       throw AppException(_parseRpcError(error), code: 'MARKET_CANCEL_FAILED');
     }
@@ -200,14 +184,17 @@ class SupabaseMarketRepository implements MarketRepository {
     _ensureReady();
 
     try {
-      await SupabaseService.client.rpc(
+      final dynamic raw = await SupabaseService.client.rpc(
         'update_market_listing_price',
         params: <String, dynamic>{
           'p_order_id': orderId,
           'p_new_price': newPrice,
         },
       );
+      _ensureRpcSuccess(raw);
       return true;
+    } on AppException {
+      rethrow;
     } catch (error) {
       throw AppException(_parseRpcError(error), code: 'MARKET_UPDATE_PRICE_FAILED');
     }
@@ -221,17 +208,56 @@ class SupabaseMarketRepository implements MarketRepository {
     _ensureReady();
 
     try {
-      await SupabaseService.client.rpc(
+      final dynamic raw = await SupabaseService.client.rpc(
         'purchase_market_listing',
         params: <String, dynamic>{
           'p_order_id': orderId,
           'p_quantity': quantity,
         },
       );
+      _ensureRpcSuccess(raw);
       return true;
+    } on AppException {
+      rethrow;
     } catch (error) {
       throw AppException(_parseRpcError(error), code: 'MARKET_PURCHASE_FAILED');
     }
+  }
+
+  @override
+  Future<List<MarketTradeRecord>> fetchMyHistory({
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    _ensureReady();
+
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'get_my_market_history',
+        params: <String, dynamic>{'p_limit': limit, 'p_offset': offset},
+      );
+      if (raw is! Map || raw['success'] != true) return const <MarketTradeRecord>[];
+      final List<dynamic> rows = raw['items'] as List<dynamic>? ?? const <dynamic>[];
+      return rows
+          .whereType<Map>()
+          .map((Map row) =>
+              MarketTradeRecord.fromJson(Map<String, dynamic>.from(row)))
+          .toList(growable: false);
+    } catch (_) {
+      throw AppException('Islem gecmisi yuklenemedi.', code: 'MARKET_HISTORY_FAILED');
+    }
+  }
+
+  void _ensureRpcSuccess(dynamic raw) {
+    if (raw is! Map) return;
+
+    final Map<String, dynamic> body = Map<String, dynamic>.from(raw);
+    if (body['success'] != false) return;
+
+    throw AppException(
+      body['error']?.toString() ?? 'Islem basarisiz',
+      code: 'MARKET_PURCHASE_FAILED',
+    );
   }
 
   void _ensureReady() {
@@ -244,6 +270,31 @@ class SupabaseMarketRepository implements MarketRepository {
   }
 
   String _parseRpcError(Object error) {
+    if (error is PostgrestException) {
+      final String code = error.code ?? '';
+      final String message = error.message;
+      final String details = error.details?.toString() ?? '';
+      final String combined = '$message $details';
+
+      if (code == 'PGRST203' ||
+          message.contains('Multiple Choices') ||
+          combined.contains('Could not choose')) {
+        return 'Pazar satin alma servisi gecici olarak kullanilamiyor';
+      }
+      if (combined.contains('captcha_required')) return 'captcha_required';
+      if (combined.contains('Giris yapmalisiniz')) return 'Giris yapmalisiniz';
+      if (combined.contains('Yeterli altin yok')) return 'Yeterli altin yok';
+      if (combined.contains('Yeterli elmas yok')) return 'Yeterli elmas yok';
+      if (combined.contains('Envanter dolu')) return 'Envanter dolu veya esya eklenemiyor';
+      if (combined.contains('Kendi ilaninizi')) return 'Kendi ilaninizi satin alamazsiniz';
+      if (combined.contains('Ilan bulunamadi')) return 'Ilan bulunamadi veya satildi';
+      if (combined.contains('pazarda satilamaz')) return 'Bu esya pazarda satilamaz';
+      if (combined.contains('Kuşanili') || combined.contains('Kusanili')) {
+        return 'Kuşanili esya pazara konulamaz';
+      }
+      if (message.trim().isNotEmpty) return message.trim();
+    }
+
     final String raw = error.toString();
     if (raw.contains('captcha_required')) return 'captcha_required';
     if (raw.contains('Giris yapmalisiniz')) return 'Giris yapmalisiniz';
@@ -260,30 +311,4 @@ class SupabaseMarketRepository implements MarketRepository {
     }
     return 'Islem basarisiz';
   }
-}
-
-class _TickerAgg {
-  _TickerAgg({
-    required this.itemId,
-    required this.itemName,
-    required this.itemType,
-    required this.rarity,
-    required this.isStackable,
-    required this.lowestPrice,
-    required this.volume,
-    required this.maxAvailableQty,
-    required this.cheapestOrderId,
-    required this.cheapestSellerId,
-  });
-
-  final String itemId;
-  final String itemName;
-  final String itemType;
-  final String rarity;
-  final bool isStackable;
-  int lowestPrice;
-  int volume;
-  int maxAvailableQty;
-  String cheapestOrderId;
-  String cheapestSellerId;
 }

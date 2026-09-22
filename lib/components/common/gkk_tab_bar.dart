@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/tutorial/tutorial_anchor.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
@@ -180,6 +181,8 @@ class GkkTabBar extends StatelessWidget {
     this.margin,
     this.padding = const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
     this.borderRadius = GkkTabBarTheme.containerRadius,
+    this.tabAnchorIds,
+    this.onTabTutorialTap,
   });
 
   final TabController controller;
@@ -190,6 +193,8 @@ class GkkTabBar extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final EdgeInsetsGeometry padding;
   final double borderRadius;
+  final List<String?>? tabAnchorIds;
+  final void Function(int index, String anchorId)? onTabTutorialTap;
 
   /// Text-only tabs with press-scale micro-interaction.
   static List<Widget> textTabs(List<String> labels) {
@@ -217,15 +222,25 @@ class GkkTabBar extends StatelessWidget {
           animation: controller,
           builder: (BuildContext context, Widget? _) {
             final List<Widget> pills = List<Widget>.generate(tabs.length, (int index) {
-              final Widget pill = _GkkTabPill(
+              final String? tabAnchor = tabAnchorIds != null &&
+                      index < tabAnchorIds!.length
+                  ? tabAnchorIds![index]
+                  : null;
+              Widget pill = _GkkTabPill(
                 active: controller.index == index,
                 onTap: () {
+                  if (tabAnchor != null) {
+                    onTabTutorialTap?.call(index, tabAnchor);
+                  }
                   if (controller.index != index) {
                     controller.animateTo(index);
                   }
                 },
                 child: tabs[index],
               );
+              if (tabAnchor != null) {
+                pill = TutorialAnchorScope(id: tabAnchor, child: pill);
+              }
 
               if (_scrollable) {
                 return Padding(

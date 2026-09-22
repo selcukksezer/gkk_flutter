@@ -95,11 +95,27 @@ class _WarLogsScreenState extends ConsumerState<WarLogsScreen> {
                 if (isLoading && filtered.isEmpty)
                   const Center(child: CircularProgressIndicator(color: WarPalette.gold))
                 else if (filtered.isEmpty)
-                  const Center(
-                    child: WarEmptyTab(
-                      icon: '📜',
-                      message: 'Bu filtrede savaş kaydı yok.',
-                    ),
+                  LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints constraints) {
+                      return RefreshIndicator(
+                        color: WarPalette.gold,
+                        backgroundColor: WarPalette.navy,
+                        onRefresh: () => _load(showLoading: true),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(minHeight: constraints.maxHeight),
+                            child: const Center(
+                              child: WarEmptyTab(
+                                icon: '📜',
+                                message: 'Bu filtrede savaş kaydı yok.',
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   )
                 else
                   LayoutBuilder(

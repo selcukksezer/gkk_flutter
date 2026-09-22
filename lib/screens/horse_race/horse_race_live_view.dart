@@ -42,6 +42,7 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
   Timer? _countdownTimer;
   bool _raceStarted = false;
   bool _finished = false;
+  bool _standingsExpanded = false;
 
   /// Prefer script winner — matches live positions + result overlay.
   String? get _effectiveWinnerId {
@@ -199,153 +200,171 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
           final List<HorseRaceEntry> ranked = _rankedHorses(progress);
           final String? effectiveWinner = _effectiveWinnerId;
 
-          return Stack(
-            fit: StackFit.expand,
+          // A: chrome outside race viewport → track/horses never under HUD.
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              CustomPaint(
-                painter: HorseRaceTrackPainter(
-                  laneCount: widget.horses.length,
-                  laneColors: laneColors,
-                  scrollOffset: scroll,
-                  raceProgress: progress,
-                  gateOpen: _raceStarted,
-                  finalStretch: finalStretch,
-                  showSpeedLines: _raceStarted && progress > 0.08,
-                ),
-              ),
-              LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final Size size = Size(
-                    constraints.maxWidth,
-                    constraints.maxHeight,
-                  );
-                  final double horseSize = HorseRaceTrackLayout.horseSize(
-                    widget.horses.length,
-                  );
-
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: <Widget>[
-                      for (int i = 0; i < widget.horses.length; i++)
-                        _TrackHorseSprite(
-                          horse: widget.horses[i],
-                          index: i,
-                          laneCount: widget.horses.length,
-                          progress: progress,
-                          raceStarted: _raceStarted,
-                          finished: _finished,
-                          isLeader: leaderId == widget.horses[i].horseId,
-                          isMine: myHorseId == widget.horses[i].horseId,
-                          isWinner:
-                              _finished &&
-                              effectiveWinner == widget.horses[i].horseId,
-                          raceScript: widget.raceScript,
-                          size: size,
-                          horseSize: horseSize,
-                          bobPhase: progress * 24 + i,
-                        ),
-                    ],
-                  );
-                },
-              ),
-              Positioned(
-                top: safe.top + 6,
-                left: 10,
-                right: widget.onRequestExit != null ? 52 : 10,
-                child: _BroadcastHud(
-                  progress: progress,
-                  raceStarted: _raceStarted,
-                  finished: _finished,
-                  leader: _horseById(leaderId),
-                  durationMs: widget.raceScript.durationMs,
-                  horseCount: widget.horses.length,
-                ),
-              ),
-              if (widget.onRequestExit != null)
-                Positioned(
-                  top: safe.top + 6,
-                  right: 8,
-                  child: HorseRacePressable(
-                    onTap: widget.onRequestExit,
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: HorseRaceDesign.navy.withValues(alpha: 0.9),
-                        border: Border.all(
-                          color: HorseRaceDesign.fuchsia.withValues(
-                            alpha: 0.45,
+              SizedBox(height: safe.top + 6),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 8, 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: _BroadcastHud(
+                        progress: progress,
+                        raceStarted: _raceStarted,
+                        finished: _finished,
+                        durationMs: widget.raceScript.durationMs,
+                        horseCount: widget.horses.length,
+                        betChip: widget.myBet == null
+                            ? null
+                            : _MyBetHudChip(
+                                bet: widget.myBet!,
+                                horse: _horseById(widget.myBet!.horseId),
+                                rank: _rankOf(myHorseId, ranked),
+                                raceStarted: _raceStarted,
+                              ),
+                      ),
+                    ),
+                    if (widget.onRequestExit != null) ...<Widget>[
+                      const SizedBox(width: 6),
+                      HorseRacePressable(
+                        onTap: widget.onRequestExit,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: HorseRaceDesign.navy.withValues(alpha: 0.9),
+                            border: Border.all(
+                              color: HorseRaceDesign.fuchsia.withValues(
+                                alpha: 0.45,
+                              ),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: AppColors.textPrimary,
+                            size: 18,
                           ),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.close_rounded,
-                        color: AppColors.textPrimary,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ),
-              if (widget.myBet != null)
-                Positioned(
-                  top: safe.top + 118,
-                  left: 10,
-                  right: 148,
-                  child: _MyBetLiveStrip(
-                    bet: widget.myBet!,
-                    horse: _horseById(widget.myBet!.horseId),
-                    rank: _rankOf(myHorseId, ranked),
-                    raceStarted: _raceStarted,
-                  ),
-                ),
-              Positioned(
-                top: safe.top + 118,
-                right: 8,
-                width: 132,
-                child: _LiveStandingsBoard(
-                  ranked: ranked,
-                  raceStarted: _raceStarted,
-                  myHorseId: myHorseId,
-                  finished: _finished,
-                  winnerHorseId: effectiveWinner,
+                    ],
+                  ],
                 ),
               ),
-              Positioned(
-                left: 10,
-                right: 10,
-                bottom: safe.bottom + 10,
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    CustomPaint(
+                      painter: HorseRaceTrackPainter(
+                        laneCount: widget.horses.length,
+                        laneColors: laneColors,
+                        scrollOffset: scroll,
+                        raceProgress: progress,
+                        gateOpen: _raceStarted,
+                        finalStretch: finalStretch,
+                        showSpeedLines: _raceStarted && progress > 0.08,
+                      ),
+                    ),
+                    LayoutBuilder(
+                      builder:
+                          (BuildContext context, BoxConstraints constraints) {
+                        final Size size = Size(
+                          constraints.maxWidth,
+                          constraints.maxHeight,
+                        );
+                        final double horseSize = HorseRaceTrackLayout.horseSize(
+                          widget.horses.length,
+                        );
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: <Widget>[
+                            for (int i = 0; i < widget.horses.length; i++)
+                              _TrackHorseSprite(
+                                horse: widget.horses[i],
+                                index: i,
+                                laneCount: widget.horses.length,
+                                progress: progress,
+                                raceStarted: _raceStarted,
+                                finished: _finished,
+                                isLeader:
+                                    leaderId == widget.horses[i].horseId,
+                                isMine: myHorseId == widget.horses[i].horseId,
+                                isWinner: _finished &&
+                                    effectiveWinner ==
+                                        widget.horses[i].horseId,
+                                raceScript: widget.raceScript,
+                                size: size,
+                                horseSize: horseSize,
+                                bobPhase: progress * 24 + i,
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                    // D: peek top-3 by default; tap → full list.
+                    Positioned(
+                      top: 6,
+                      right: 8,
+                      width: _standingsExpanded ? 148 : 118,
+                      child: _LiveStandingsBoard(
+                        ranked: ranked,
+                        raceStarted: _raceStarted,
+                        myHorseId: myHorseId,
+                        finished: _finished,
+                        winnerHorseId: effectiveWinner,
+                        expanded: _standingsExpanded,
+                        onToggle: () {
+                          setState(
+                            () => _standingsExpanded = !_standingsExpanded,
+                          );
+                        },
+                      ),
+                    ),
+                    if (!_raceStarted)
+                      Positioned.fill(
+                        child: _StartingGateOverlay(
+                          countdown: _countdown,
+                          pulse: _pulseAnim.value,
+                          horseCount: widget.horses.length,
+                        ),
+                      ),
+                    if (_finished)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: const Alignment(0.0, -0.55),
+                                radius: 1.1,
+                                colors: <Color>[
+                                  HorseRaceDesign.gold.withValues(alpha: 0.28),
+                                  HorseRaceDesign.fuchsia.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  Colors.transparent,
+                                ],
+                                stops: const <double>[0.0, 0.45, 1.0],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(10, 6, 10, safe.bottom + 10),
                 child: _CommentaryTicker(
                   text: commentary,
                   pulse: _pulseAnim.value,
                   active: _raceStarted && !_finished,
                 ),
               ),
-              if (!_raceStarted)
-                _StartingGateOverlay(
-                  countdown: _countdown,
-                  pulse: _pulseAnim.value,
-                  horseCount: widget.horses.length,
-                ),
-              if (_finished)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          center: const Alignment(0.0, -0.55),
-                          radius: 1.1,
-                          colors: <Color>[
-                            HorseRaceDesign.gold.withValues(alpha: 0.28),
-                            HorseRaceDesign.fuchsia.withValues(alpha: 0.08),
-                            Colors.transparent,
-                          ],
-                          stops: const <double>[0.0, 0.45, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           );
         },
@@ -583,22 +602,23 @@ class _DustPuff extends StatelessWidget {
   }
 }
 
+/// B: single-row broadcast chrome (+ optional bet chip).
 class _BroadcastHud extends StatelessWidget {
   const _BroadcastHud({
     required this.progress,
     required this.raceStarted,
     required this.finished,
-    required this.leader,
     required this.durationMs,
     required this.horseCount,
+    this.betChip,
   });
 
   final double progress;
   final bool raceStarted;
   final bool finished;
-  final HorseRaceEntry? leader;
   final int durationMs;
   final int horseCount;
+  final Widget? betChip;
 
   @override
   Widget build(BuildContext context) {
@@ -608,20 +628,15 @@ class _BroadcastHud extends StatelessWidget {
         : 0;
     final String clock =
         '${(elapsedSec ~/ 60).toString().padLeft(2, '0')}:${(elapsedSec % 60).toString().padLeft(2, '0')}';
-    final String status = finished
-        ? 'FİNİŞ'
-        : raceStarted
-        ? 'CANLI YAYIN'
-        : 'START KAPISI';
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: HorseRaceDesign.gold.withValues(alpha: 0.4),
             ),
@@ -635,77 +650,32 @@ class _BroadcastHud extends StatelessWidget {
             ),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Row(
                 children: <Widget>[
                   _LiveBadge(active: raceStarted && !finished),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'KRALİYET HİPODROMU',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(
-                          '1. Koşu · 1200m',
-                          style: TextStyle(
-                            color: HorseRaceDesign.titanium,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 6),
+                  const Flexible(
+                    child: Text(
+                      '1200m',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: HorseRaceDesign.titanium,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: <Widget>[
-                      Text(
-                        status,
-                        style: TextStyle(
-                          color: finished
-                              ? HorseRaceDesign.neon
-                              : HorseRaceDesign.fuchsia,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      Text(
-                        raceStarted ? clock : '--:--',
-                        style: TextStyle(
-                          color: finished
-                              ? HorseRaceDesign.neon
-                              : HorseRaceDesign.gold,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          fontFeatures: const <FontFeature>[
-                            FontFeature.tabularFigures(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: <Widget>[
+                  const SizedBox(width: 6),
                   Expanded(
+                    flex: 3,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(999),
                       child: LinearProgressIndicator(
-                        minHeight: 5,
+                        minHeight: 4,
                         value: raceStarted ? progress.clamp(0.0, 1.0) : null,
                         backgroundColor: HorseRaceDesign.obsidian.withValues(
                           alpha: 0.85,
@@ -716,45 +686,34 @@ class _BroadcastHud extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
-                    raceStarted ? '%$pct' : '$horseCount AT',
+                    raceStarted ? clock : '--:--',
                     style: TextStyle(
+                      color: finished
+                          ? HorseRaceDesign.neon
+                          : HorseRaceDesign.gold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    raceStarted ? '%$pct' : '$horseCount',
+                    style: const TextStyle(
                       color: HorseRaceDesign.gold,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
               ),
-              if (leader != null && raceStarted) ...<Widget>[
-                const SizedBox(height: 6),
-                Row(
-                  children: <Widget>[
-                    Text(leader!.emoji, style: const TextStyle(fontSize: 14)),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Lider: ${leader!.name}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: HorseRaceDesign.titanium,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'x${leader!.goldMultiplier.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        color: HorseRaceDesign.gold,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
+              if (betChip != null) ...<Widget>[
+                const SizedBox(height: 4),
+                betChip!,
               ],
             ],
           ),
@@ -812,11 +771,14 @@ class _LiveBadge extends StatelessWidget {
   }
 }
 
+/// D: collapsed = top-3 peek; tap toggles full standings.
 class _LiveStandingsBoard extends StatelessWidget {
   const _LiveStandingsBoard({
     required this.ranked,
     required this.raceStarted,
     required this.finished,
+    required this.expanded,
+    required this.onToggle,
     this.myHorseId,
     this.winnerHorseId,
   });
@@ -824,23 +786,24 @@ class _LiveStandingsBoard extends StatelessWidget {
   final List<HorseRaceEntry> ranked;
   final bool raceStarted;
   final bool finished;
+  final bool expanded;
+  final VoidCallback onToggle;
   final String? myHorseId;
   final String? winnerHorseId;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: HorseRaceNeonPanel(
-          accent: HorseRaceDesign.cyan,
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-          radius: 12,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              const Text(
+    final int peekCount = expanded ? ranked.length : math.min(3, ranked.length);
+    final int hidden = ranked.length - peekCount;
+
+    final Widget list = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            const Expanded(
+              child: Text(
                 'SIRALAMA',
                 style: TextStyle(
                   color: HorseRaceDesign.cyan,
@@ -849,18 +812,60 @@ class _LiveStandingsBoard extends StatelessWidget {
                   letterSpacing: 1.2,
                 ),
               ),
-              const SizedBox(height: 6),
-              for (int i = 0; i < ranked.length; i++)
-                _StandingRow(
-                  rank: i + 1,
-                  horse: ranked[i],
-                  isMine: ranked[i].horseId == myHorseId,
-                  isLeader: i == 0 && raceStarted,
-                  isWinner:
-                      finished && ranked[i].horseId == winnerHorseId,
-                  dimmed: !raceStarted,
-                ),
-            ],
+            ),
+            Icon(
+              expanded
+                  ? Icons.expand_less_rounded
+                  : Icons.expand_more_rounded,
+              size: 14,
+              color: HorseRaceDesign.cyan,
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        for (int i = 0; i < peekCount; i++)
+          _StandingRow(
+            rank: i + 1,
+            horse: ranked[i],
+            isMine: ranked[i].horseId == myHorseId,
+            isLeader: i == 0 && raceStarted,
+            isWinner: finished && ranked[i].horseId == winnerHorseId,
+            dimmed: !raceStarted,
+          ),
+        if (!expanded && hidden > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '+$hidden · dokun',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: HorseRaceDesign.titanium.withValues(alpha: 0.85),
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
+    );
+
+    return HorseRacePressable(
+      onTap: onToggle,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: HorseRaceNeonPanel(
+            accent: HorseRaceDesign.cyan,
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            radius: 12,
+            child: expanded
+                ? ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.42,
+                    ),
+                    child: SingleChildScrollView(child: list),
+                  )
+                : list,
           ),
         ),
       ),
@@ -1101,8 +1106,9 @@ class _StartingGateOverlay extends StatelessWidget {
   }
 }
 
-class _MyBetLiveStrip extends StatelessWidget {
-  const _MyBetLiveStrip({
+/// Compact bet chip inside slim HUD (replaces left BAHİS KUPONU overlay).
+class _MyBetHudChip extends StatelessWidget {
+  const _MyBetHudChip({
     required this.bet,
     this.horse,
     this.rank,
@@ -1120,72 +1126,45 @@ class _MyBetLiveStrip extends StatelessWidget {
         ? HorseRaceDesign.cyan
         : HorseRaceDesign.gold;
     final String amount = bet.currencyType == 'gems'
-        ? '${formatHorseGems(bet.betAmount)} elmas'
-        : '${compactHorseAmount(bet.betAmount)} altın';
+        ? formatHorseGems(bet.betAmount)
+        : compactHorseAmount(bet.betAmount);
+    final String rankLabel =
+        raceStarted && rank != null ? ' · $rank.' : '';
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: HorseRaceNeonPanel(
-          accent: accent,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          radius: 14,
-          child: Row(
-            children: <Widget>[
-              Text(horse?.emoji ?? '🐴', style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Text(
-                      'BAHİS KUPONU',
-                      style: TextStyle(
-                        color: HorseRaceDesign.titanium,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                    Text(
-                      horse?.name ?? bet.horseId,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: accent.withValues(alpha: 0.12),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.star_rounded, size: 12, color: accent),
+          const SizedBox(width: 4),
+          Text(horse?.emoji ?? '🐴', style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              horse?.name ?? bet.horseId,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Text(
-                    '$amount · x${bet.multiplier.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: accent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (raceStarted && rank != null)
-                    Text(
-                      '$rank. sıra',
-                      style: const TextStyle(
-                        color: HorseRaceDesign.titanium,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+          Text(
+            '$amount$rankLabel',
+            style: TextStyle(
+              color: accent,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }

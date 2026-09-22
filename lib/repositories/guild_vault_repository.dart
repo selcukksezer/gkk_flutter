@@ -40,4 +40,22 @@ class GuildVaultRepository {
     if (raw is Map) return Map<String, dynamic>.from(raw);
     return <String, dynamic>{'success': true};
   }
+
+  Future<Map<String, dynamic>> setAutoPayout(bool enabled) async {
+    final dynamic raw = await SupabaseService.client.rpc(
+      'set_guild_vault_auto_payout',
+      params: <String, dynamic>{'p_enabled': enabled},
+    );
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return <String, dynamic>{'success': true};
+  }
+
+  Future<Map<String, dynamic>> depositGold(int amount) async {
+    final dynamic raw = await SupabaseService.client.rpc(
+      'deposit_guild_vault_gold',
+      params: <String, dynamic>{'p_amount': amount},
+    );
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return <String, dynamic>{'success': false, 'error': 'Yatırma başarısız'};
+  }
 }

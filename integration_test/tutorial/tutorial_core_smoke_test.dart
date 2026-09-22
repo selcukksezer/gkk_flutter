@@ -1,5 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/core/tutorial/tutorial_anchor_registry.dart';
+import 'package:gkk_flutter/core/tutorial/tutorial_controller.dart';
 import 'package:gkk_flutter/core/tutorial/tutorial_step.dart';
 import 'package:gkk_flutter/core/tutorial/tutorial_track.dart';
 import 'package:gkk_flutter/core/tutorial/tutorial_track_registry.dart';
@@ -61,7 +64,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await SmokeHarness.ensureInitialized();
-      if (!SmokeEnv.hasCredentials) {
+      if (!SmokeEnv.hasResolvedCredentials) {
         return;
       }
 
@@ -72,9 +75,47 @@ void main() {
       final Finder overlayTitle = find.text('Gölge Krallığı\'na hoş geldin');
       if (overlayTitle.evaluate().isNotEmpty) {
         expect(find.text('Tümünü Atla'), findsOneWidget);
-        await tester.tap(find.text('Sonra'));
+        await tester.tap(find.text('Rehbere Başla'));
         await smokePump(tester);
+        expect(find.text('Temel oyun döngüsü'), findsOneWidget);
       }
+    });
+
+    testWidgets('onboarding home anchors resolve rects on device', (
+      WidgetTester tester,
+    ) async {
+      await SmokeHarness.ensureInitialized();
+      if (!SmokeEnv.hasResolvedCredentials) {
+        return;
+      }
+
+      await SmokeHarness.loginBeforePump();
+      await tester.pumpWidget(const ProviderScope(child: GkkMobileApp()));
+      await smokePump(tester, duration: const Duration(seconds: 4));
+
+      final Element? app = find.byType(GkkMobileApp).evaluate().firstOrNull;
+      if (app == null) return;
+
+      final ProviderContainer container = ProviderScope.containerOf(app);
+      final TutorialController ctrl = container.read(tutorialProvider.notifier);
+      await ctrl.resetAndReplay();
+      await smokePump(tester, duration: const Duration(seconds: 2));
+
+      TutorialAnchorRegistry.instance.scheduleRefresh();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final Rect? promo = TutorialAnchorRegistry.instance.rectFor(
+        TutorialAnchorId.homePromo,
+      );
+      final Rect? hero = TutorialAnchorRegistry.instance.rectFor(
+        TutorialAnchorId.homeHero,
+      );
+
+      expect(
+        promo != null || hero != null,
+        isTrue,
+        reason: 'home onboarding anchors should register on device',
+      );
     });
   });
 }

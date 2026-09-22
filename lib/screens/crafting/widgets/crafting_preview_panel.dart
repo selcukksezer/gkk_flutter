@@ -8,20 +8,27 @@ import '../../../core/utils/craft_gold.dart';
 import '../../../models/crafting_model.dart';
 import '../../../providers/crafting_provider.dart';
 import '../crafting_utils.dart';
+import 'crafting_queue_slots_panel.dart';
 
 class CraftingPreviewPanel extends StatelessWidget {
   const CraftingPreviewPanel({
     super.key,
     required this.recipe,
     required this.batchCount,
-    required this.gemCost,
     required this.canCraft,
     required this.isCrafting,
     required this.hasEnoughMaterials,
-    required this.canAffordGems,
     required this.canAffordGold,
     required this.playerGold,
+    required this.queueUsed,
+    required this.queueMax,
+    this.expandGemCost,
+    this.canAffordExpand = false,
+    this.isExpandingQueue = false,
+    this.playerGems = 0,
+    this.onExpandQueue,
     required this.ownedQuantities,
+    this.bankQuantities = const <String, int>{},
     required this.onCraft,
     required this.onClose,
     required this.onBatchDecrement,
@@ -30,14 +37,21 @@ class CraftingPreviewPanel extends StatelessWidget {
 
   final CraftRecipe? recipe;
   final int batchCount;
-  final int gemCost;
   final bool canCraft;
   final bool isCrafting;
   final bool hasEnoughMaterials;
-  final bool canAffordGems;
   final bool canAffordGold;
   final int playerGold;
+  final int queueUsed;
+  final int queueMax;
+  final int? expandGemCost;
+  final bool canAffordExpand;
+  final bool isExpandingQueue;
+  final double playerGems;
+  final Future<bool> Function()? onExpandQueue;
   final Map<String, int> ownedQuantities;
+  /// Bank stock by itemId — hint only when bag short.
+  final Map<String, int> bankQuantities;
   final VoidCallback onCraft;
   final VoidCallback onClose;
   final VoidCallback onBatchDecrement;
@@ -72,13 +86,21 @@ class CraftingPreviewPanel extends StatelessWidget {
     final int totalXp = (recipe!.xpReward ?? 0) * batchCount;
     final double successRate = recipe!.normalizedSuccessRate;
 
-    final bool showGemError = !canAffordGems && gemCost > 0;
     final bool showMatError = !hasEnoughMaterials;
+    final int bankCoveredShortfall = recipe!.ingredients.where((ing) {
+      final int owned = ownedQuantities[ing.itemId] ?? 0;
+      final int required = ing.quantity * batchCount;
+      if (owned >= required) return false;
+      return (bankQuantities[ing.itemId] ?? 0) > 0;
+    }).length;
+    final bool showBankWithdrawHint = showMatError && bankCoveredShortfall > 0;
     final int totalGoldCost = totalCraftGoldCost(recipe!, batchCount);
     final bool showGoldError = recipe!.goldCost > 0 && !canAffordGold;
+    final bool queueFull = queueUsed >= queueMax;
 
     return Container(
       width: double.infinity,
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.82),
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -90,10 +112,11 @@ class CraftingPreviewPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -184,6 +207,8 @@ class CraftingPreviewPanel extends StatelessWidget {
               final int owned = ownedQuantities[ing.itemId] ?? 0;
               final int required = ing.quantity * batchCount;
               final bool enough = owned >= required;
+              final int inBank = bankQuantities[ing.itemId] ?? 0;
+              final bool showBankHint = !enough && inBank > 0;
               final String ingredientName = ing.itemName.trim().isNotEmpty
                   ? ing.itemName
                   : (ing.itemId.isNotEmpty ? ing.itemId : 'Bilinmiyor');
@@ -192,17 +217,30 @@ class CraftingPreviewPanel extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: enough ? Colors.green.withValues(alpha: 0.55) : Colors.red.withValues(alpha: 0.55),
+                    color: enough
+                        ? Colors.green.withValues(alpha: 0.55)
+                        : showBankHint
+                            ? const Color(0xFFFBBF24).withValues(alpha: 0.65)
+                            : Colors.red.withValues(alpha: 0.55),
                     width: 1.3,
                   ),
-                  color: enough ? Colors.green.withValues(alpha: 0.12) : Colors.red.withValues(alpha: 0.12),
+                  color: enough
+                      ? Colors.green.withValues(alpha: 0.12)
+                      : showBankHint
+                          ? const Color(0xFFFBBF24).withValues(alpha: 0.10)
+                          : Colors.red.withValues(alpha: 0.12),
                 ),
                 child: Column(
                   children: <Widget>[
                     SizedBox(
                       width: 24,
                       height: 24,
-                      child: ItemIconView(iconValue: ing.itemId, itemId: ing.itemId, size: 24, expand: true),
+                      child: ItemIconView(
+                        iconValue: ing.itemId,
+                        itemId: ing.itemId,
+                        size: 24,
+                        expand: true,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -210,7 +248,10 @@ class CraftingPreviewPanel extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -221,6 +262,20 @@ class CraftingPreviewPanel extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    if (showBankHint) ...<Widget>[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Banka: $inBank adet',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFFBBF24),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );
@@ -239,9 +294,9 @@ class CraftingPreviewPanel extends StatelessWidget {
               ),
               _CraftingInfoChip(icon: Icons.timer_rounded, label: timeLabel),
               _CraftingInfoChip(
-                icon: Icons.diamond_rounded,
-                label: '$gemCost 💎',
-                color: showGemError ? Colors.redAccent : const Color(0xFFD8B4FE),
+                icon: Icons.inventory_2_outlined,
+                label: 'Kuyruk $queueUsed/$queueMax',
+                color: queueFull ? Colors.redAccent : const Color(0xFF93C5FD),
               ),
               if (recipe!.goldCost > 0)
                 _CraftingInfoChip(
@@ -321,9 +376,36 @@ class CraftingPreviewPanel extends StatelessWidget {
               ],
             ),
           ),
-          if (showGemError) _buildErrorBox('⚠️ Elmas yetersiz'),
+          const SizedBox(height: 10),
+          CraftingQueueSlotsPanel(
+            unlockedSlots: queueMax,
+            queueLength: queueUsed,
+            playerGems: playerGems,
+            isExpanding: isExpandingQueue,
+            onRequestUnlock: onExpandQueue == null
+                ? () {}
+                : () {
+                    onExpandQueue!();
+                  },
+          ),
+          if (queueFull) ...<Widget>[
+            const SizedBox(height: 8),
+            _buildErrorBox('⚠️ Kuyruk dolu ($queueUsed/$queueMax) — slot acarak genislet'),
+            if (expandGemCost != null && !canAffordExpand)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Sonraki slot icin $expandGemCost ELMAS gerekli',
+                  style: const TextStyle(fontSize: 10, color: Color(0xFFFCA5A5)),
+                ),
+              ),
+          ],
           if (showGoldError) _buildErrorBox('⚠️ Altın yetersiz ($playerGold / $totalGoldCost)'),
           if (showMatError) _buildErrorBox('⚠️ Malzeme yetersiz'),
+          if (showBankWithdrawHint)
+            _buildInfoBox(
+              '🏦 $bankCoveredShortfall malzeme bankada — bankadan çekip tekrar dene',
+            ),
           const SizedBox(height: 10),
           Row(
             children: <Widget>[
@@ -359,6 +441,7 @@ class CraftingPreviewPanel extends StatelessWidget {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -375,6 +458,25 @@ class CraftingPreviewPanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(text, style: const TextStyle(fontSize: 11, color: Color(0xFFFCA5A5))),
+      ),
+    );
+  }
+
+  Widget _buildInfoBox(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBBF24).withValues(alpha: 0.12),
+          border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 11, color: Color(0xFFFDE68A), fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

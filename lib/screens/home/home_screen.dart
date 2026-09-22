@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_controller.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/provider_scheduling.dart';
@@ -23,6 +26,8 @@ import '../../providers/staff_provider.dart';
 import '../../qa/qa_flags.dart';
 import '../../routing/app_router.dart';
 import '../../l10n/l10n.dart';
+import '../../core/utils/player_health.dart';
+import '../../core/utils/power_formula.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
@@ -42,6 +47,11 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _deferredHomePromo = false;
+  /// Claim → loadProfile → ready tekrar tetikler; oturumda bir kez.
+  bool _homePromoHandled = false;
+  bool _homePromoInFlight = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,61 +61,123 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ) {
       if (next.status == PlayerStatus.ready &&
           prev?.status != PlayerStatus.ready) {
-        deferProviderUpdate(_maybeShowComebackSummary);
+        deferProviderUpdate(() {
+          _enforceCharacterClassGate();
+          _maybeShowComebackSummary();
+        });
       }
     });
-    deferProviderUpdate(_loadHomeData);
+    ref.listenManual<TutorialState>(tutorialProvider, (
+      TutorialState? prev,
+      TutorialState next,
+    ) {
+      if (!_deferredHomePromo) return;
+      if (_onboardingBlocksHomePromos()) return;
+      _deferredHomePromo = false;
+      deferProviderUpdate(_maybeShowComebackSummary);
+    });
+    deferProviderUpdate(() => _loadHomeData(isRefresh: false));
   }
 
-  Future<void> _loadHomeData() async {
+  /// Offline redirect hole: /home without class → force onboarding.
+  void _enforceCharacterClassGate() {
+    if (!mounted) return;
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    if (profile == null) return;
+    if (profile.characterClass != null) return;
+    context.go(AppRoutes.characterSelect);
+  }
+
+  bool _onboardingBlocksHomePromos() {
+    final TutorialState tutorial = ref.read(tutorialProvider);
+    if (!tutorial.loaded || tutorial.progress.skippedAll) return false;
+    final TutorialController controller = ref.read(tutorialProvider.notifier);
+    if (!controller.isTrackComplete(TutorialTrackId.onboarding)) return true;
+    return tutorial.activeTrackId == TutorialTrackId.onboarding &&
+        tutorial.activeStep != null;
+  }
+
+  Future<void> _loadHomeData({required bool isRefresh}) async {
+    final bool profileReady =
+        ref.read(playerProvider).status == PlayerStatus.ready &&
+            ref.read(playerProvider).profile != null;
+
     await Future.wait<void>(<Future<void>>[
-      ref.read(playerProvider.notifier).loadProfile(),
+      // F2: select sonrası fresh profile varsa tekrar çekme (pull-refresh hariç).
+      if (isRefresh || !profileReady)
+        ref.read(playerProvider.notifier).loadProfile()
+      else
+        Future<void>.value(),
       ref.read(inventoryProvider.notifier).loadInventory(silent: true),
-      ref.read(staffProvider.notifier).load(),
+      ref.read(staffProvider.notifier).load(silent: !isRefresh),
       ref.read(playerInboxProvider.notifier).refresh(),
     ]);
     if (!mounted) return;
-    await TutorialTriggers.onRouteEnter(ref, AppRoutes.home);
-    final PlayerProfile? profile = ref.read(playerProvider).profile;
-    if (profile != null) {
-      await TutorialTriggers.onEnergyLow(ref, energy: profile.energy);
+
+    _enforceCharacterClassGate();
+    if (ref.read(playerProvider).profile?.characterClass == null) {
+      return;
+    }
+
+    // G2: pull-refresh tutorial onRouteEnter tekrar tetiklemesin.
+    if (!isRefresh) {
+      await TutorialTriggers.onRouteEnter(ref, AppRoutes.home);
+      final PlayerProfile? profile = ref.read(playerProvider).profile;
+      if (profile != null) {
+        await TutorialTriggers.onEnergyLow(ref, energy: profile.energy);
+      }
     }
   }
 
   /// Geri dönüş özeti — günlük ödülden önce; günlük satırı varsa ayrı popup atlanır.
   Future<void> _maybeShowComebackSummary() async {
-    if (QaFlags.skipComebackSummaryDialog) {
-      await _maybeShowDailyReward();
+    if (_homePromoHandled || _homePromoInFlight) return;
+    if (_onboardingBlocksHomePromos()) {
+      _deferredHomePromo = true;
       return;
     }
+    _homePromoInFlight = true;
+    try {
+      if (QaFlags.skipComebackSummaryDialog) {
+        await _maybeShowDailyReward();
+        return;
+      }
 
-    final ComebackSummaryNotifier notifier = ref.read(
-      comebackSummaryProvider.notifier,
-    );
-    if (ref.read(comebackSummaryProvider).shownThisSession) {
-      await _maybeShowDailyReward();
-      return;
+      final ComebackSummaryNotifier notifier = ref.read(
+        comebackSummaryProvider.notifier,
+      );
+      if (ref.read(comebackSummaryProvider).shownThisSession) {
+        await _maybeShowDailyReward();
+        return;
+      }
+
+      await notifier.load();
+      if (!mounted) return;
+
+      final ComebackSummaryState comebackState = ref.read(
+        comebackSummaryProvider,
+      );
+      final bool shouldShow = comebackState.summary?.showSummary ?? false;
+      if (!shouldShow) {
+        await _maybeShowDailyReward();
+        return;
+      }
+
+      _homePromoHandled = true;
+      await showComebackSummaryDialog(context, ref);
+      if (!mounted) return;
+      notifier.markShownThisSession();
+    } finally {
+      _homePromoInFlight = false;
     }
-
-    await notifier.load();
-    if (!mounted) return;
-
-    final ComebackSummaryState comebackState = ref.read(
-      comebackSummaryProvider,
-    );
-    final bool shouldShow = comebackState.summary?.showSummary ?? false;
-    if (!shouldShow) {
-      await _maybeShowDailyReward();
-      return;
-    }
-
-    await showComebackSummaryDialog(context, ref);
-    if (!mounted) return;
-    notifier.markShownThisSession();
   }
 
   Future<void> _maybeShowDailyReward() async {
     if (QaFlags.skipDailyRewardDialog) return;
+    if (_onboardingBlocksHomePromos()) {
+      _deferredHomePromo = true;
+      return;
+    }
     // Günlük ödül comeback modalında satır olarak gösterildiyse tekrar açma.
     if (ref.read(comebackSummaryProvider).shownThisSession) {
       final bool hadDailyRow =
@@ -115,13 +187,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ?.items
               .any((item) => item.kind == ComebackItemKind.dailyReward) ??
           false;
-      if (hadDailyRow) return;
+      if (hadDailyRow) {
+        _homePromoHandled = true;
+        return;
+      }
+    }
+    if (ref.read(dailyRewardProvider).didAutoPromptThisSession) {
+      _homePromoHandled = true;
+      return;
     }
     await ref.read(dailyRewardProvider.notifier).loadStatus();
     if (!mounted) return;
     final bool canClaim =
         ref.read(dailyRewardProvider).status?.canClaim ?? false;
-    if (!canClaim) return;
+    if (!canClaim) {
+      _homePromoHandled = true;
+      return;
+    }
+    ref.read(dailyRewardProvider.notifier).markAutoPromptedThisSession();
+    _homePromoHandled = true;
     await showDailyRewardDialog(context, ref, viewOnly: false);
   }
 
@@ -146,19 +230,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
       ),
       body: switch (playerState.status) {
-        PlayerStatus.initial || PlayerStatus.loading => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        PlayerStatus.initial || PlayerStatus.loading => const _HomeSkeleton(),
         PlayerStatus.error => _HomeErrorView(
           message: playerState.errorMessage ?? 'Profil yüklenemedi.',
-          onRetry: _loadHomeData,
+          onRetry: () => _loadHomeData(isRefresh: true),
         ),
         PlayerStatus.ready => RefreshIndicator(
-          onRefresh: _loadHomeData,
+          onRefresh: () => _loadHomeData(isRefresh: true),
           child: _HomeDashboard(
             profile: playerState.profile!,
             inventoryState: inventoryState,
-            onRefresh: _loadHomeData,
+            onRefresh: () => _loadHomeData(isRefresh: true),
           ),
         ),
       },
@@ -194,6 +276,68 @@ class _HomeErrorView extends StatelessWidget {
               label: const Text('Tekrar Dene'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Progressive first paint — chrome already up; body placeholders while profile loads.
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: GameScrollLayout.fromLTRB(
+        context,
+        left: AppSpacing.base,
+        top: AppSpacing.md,
+        right: AppSpacing.base,
+        bottomExtra: AppSpacing.xl,
+      ),
+      children: const <Widget>[
+        _SkeletonBlock(height: 140, radius: 20),
+        SizedBox(height: AppSpacing.md),
+        _SkeletonBlock(height: 220, radius: 24),
+        SizedBox(height: AppSpacing.xl),
+        Row(
+          children: <Widget>[
+            Expanded(child: _SkeletonBlock(height: 72, radius: 16)),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: _SkeletonBlock(height: 72, radius: 16)),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: _SkeletonBlock(height: 72, radius: 16)),
+          ],
+        ),
+        SizedBox(height: AppSpacing.xxl),
+        _SkeletonBlock(height: 120, radius: 20),
+      ],
+    );
+  }
+}
+
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({required this.height, required this.radius});
+
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFF121826),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: const Color(0x221E293B)),
+      ),
+      child: const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
     );
@@ -247,17 +391,22 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
 
     final int energy = profile.energy;
     final int maxEnergy = profile.maxEnergy;
+    final int health = profile.health;
+    final int maxHealth = profile.maxHealth;
+    final bool lowHealth = isLowHealthAlert(health: health, maxHealth: maxHealth);
     final int tolerance = profile.addictionLevel;
     final int reputation = (profile.reputation ?? 0).clamp(0, 999999999);
 
-    final _EquipmentStats eqStats = _calculateEquipmentStats(
-      widget.inventoryState.equippedItems,
+    final int totalPower = resolveDungeonCombatPower(
+      profile: profile,
+      equippedItems: widget.inventoryState.equippedItems.values,
     );
-    final int totalPower = _calculateTotalPower(
-      eqStats: eqStats,
-      level: profile.level,
-      reputation: reputation,
-    );
+
+    final TutorialState tutorial = ref.watch(tutorialProvider);
+    final bool hideHomeExtras = tutorial.activeStep != null;
+    // E3: promo gizle (homePromo adımı hariç — anchor lazım).
+    final bool hidePromoCarousel = tutorial.activeStep != null &&
+        tutorial.activeStep!.anchorId != TutorialAnchorId.homePromo;
 
     return Stack(
       children: <Widget>[
@@ -309,7 +458,6 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
         // ── Scrollable content ──────────────────────────────────────────
         Positioned.fill(
           child: ListView(
-            // Promo crate art overflows card; must not hard-clip children.
             clipBehavior: Clip.none,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: GameScrollLayout.fromLTRB(
@@ -317,14 +465,20 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
               left: AppSpacing.base,
               top: AppSpacing.md,
               right: AppSpacing.base,
-              bottomExtra: kGameChatFabSize + AppSpacing.md,
+              bottomExtra: AppSpacing.xl,
             ),
             children: <Widget>[
-              TutorialAnchorScope(
-                id: TutorialAnchorId.homePromo,
-                child: const HomePromoCarousel(),
-              ),
-              const SizedBox(height: AppSpacing.md),
+              if (!hidePromoCarousel) ...<Widget>[
+                TutorialAnchorScope(
+                  id: TutorialAnchorId.homePromo,
+                  child: const HomePromoCarousel(),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ] else
+                const TutorialAnchorScope(
+                  id: TutorialAnchorId.homePromo,
+                  child: SizedBox(height: 1),
+                ),
 
               TutorialAnchorScope(
                 id: TutorialAnchorId.homeHero,
@@ -336,17 +490,24 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                   onSlotTap: _openSlotInfo,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.xl),
+
+              if (!hideHomeExtras) ...<Widget>[
+                const _QuickAccessGrid(),
+                const SizedBox(height: AppSpacing.xxl),
+              ],
 
               // Pantheon Leaderboard
-              const PantheonBoard(),
-              const SizedBox(height: AppSpacing.xl),
+              if (!hideHomeExtras) ...<Widget>[
+                const PantheonBoard(),
+                const SizedBox(height: AppSpacing.xl),
+              ],
             ],
           ),
         ),
 
         // Floating warning stack at top-right
-        if (inHospital || inPrison || energy < 20 || tolerance > 60)
+        if (inHospital || inPrison || energy < 20 || tolerance > 60 || lowHealth)
           Positioned(
             top: 0,
             right: 16,
@@ -356,11 +517,76 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                 prisonUntil: profile.prisonUntil,
                 energy: energy,
                 maxEnergy: maxEnergy,
+                health: health,
+                maxHealth: maxHealth,
                 tolerance: tolerance,
               ),
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Ana ekran hızlı erişim kısayolları — bottom bar'da olmayan rotalar.
+class _QuickAccessGrid extends StatelessWidget {
+  const _QuickAccessGrid();
+
+  static const List<(String, String, String, Color)> _shortcuts =
+      <(String, String, String, Color)>[
+    ('📋', 'Görevler', AppRoutes.quests, Color(0xFFC084FC)),
+    ('🤝', 'Ticaret', AppRoutes.trade, Color(0xFF4ADE80)),
+    ('⚔️', 'Lonca Savaşı', AppRoutes.guildWar, Color(0xFFF87171)),
+    ('🏰', 'Zindan', AppRoutes.dungeon, Color(0xFF60A5FA)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        for (int i = 0; i < _shortcuts.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: _shortcutTile(context, _shortcuts[i])),
+        ],
+      ],
+    );
+  }
+
+  Widget _shortcutTile(
+    BuildContext context,
+    (String, String, String, Color) shortcut,
+  ) {
+    final (String emoji, String label, String route, Color accent) = shortcut;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => GoRouter.of(context).push(route),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accent.withValues(alpha: 0.25)),
+          ),
+          child: Column(
+            children: <Widget>[
+              Text(emoji, style: const TextStyle(fontSize: 22)),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -371,6 +597,8 @@ class _WarningStack extends StatelessWidget {
     required this.prisonUntil,
     required this.energy,
     required this.maxEnergy,
+    required this.health,
+    required this.maxHealth,
     required this.tolerance,
   });
 
@@ -378,6 +606,8 @@ class _WarningStack extends StatelessWidget {
   final String? prisonUntil;
   final int energy;
   final int maxEnergy;
+  final int health;
+  final int maxHealth;
   final int tolerance;
 
   bool _isFuture(String? dateStr) {
@@ -396,23 +626,30 @@ class _WarningStack extends StatelessWidget {
 
     if (inHospital || inPrison) {
       banners.add(
-        _ActiveStatusPill(
-          icon: inHospital ? '🏥' : '👮',
-          title: inHospital ? 'Hastanede' : 'Hapiste',
-          until: inHospital
-              ? DateTime.parse(hospitalUntil!).toLocal()
-              : DateTime.parse(prisonUntil!).toLocal(),
-          color: inHospital ? AppColors.danger : Colors.orangeAccent,
+        GestureDetector(
+          onTap: () => GoRouter.of(context)
+              .push(inHospital ? AppRoutes.hospital : AppRoutes.prison),
+          child: _ActiveStatusPill(
+            icon: inHospital ? '🏥' : '👮',
+            title: inHospital ? 'Hastanede' : 'Hapiste',
+            until: inHospital
+                ? DateTime.parse(hospitalUntil!).toLocal()
+                : DateTime.parse(prisonUntil!).toLocal(),
+            color: inHospital ? AppColors.danger : Colors.orangeAccent,
+          ),
         ),
       );
     }
 
     if (energy < 20) {
       banners.add(
-        _StaticStatusPill(
-          icon: '⚡',
-          text: 'Kritik Enerji',
-          color: AppColors.warning,
+        GestureDetector(
+          onTap: () => GoRouter.of(context).push(AppRoutes.shop),
+          child: const _StaticStatusPill(
+            icon: '⚡',
+            text: 'Kritik Enerji',
+            color: AppColors.warning,
+          ),
         ),
       );
     }
@@ -425,6 +662,41 @@ class _WarningStack extends StatelessWidget {
           color: tolerance >= 80 ? AppColors.danger : AppColors.warning,
         ),
       );
+    }
+
+    if (maxHealth > 0 && !inHospital) {
+      final PlayerHealthStatus healthStatus = resolveHealthStatus(
+        health: health,
+        maxHealth: maxHealth,
+      );
+      if (healthStatus == PlayerHealthStatus.critical ||
+          healthStatus == PlayerHealthStatus.wounded) {
+        banners.add(
+          GestureDetector(
+            onTap: () => GoRouter.of(context).push(AppRoutes.hospital),
+            child: _StaticStatusPill(
+              icon: healthStatus == PlayerHealthStatus.critical ? '🩸' : '❤️',
+              text: healthStatus == PlayerHealthStatus.critical
+                  ? 'Kritik Can'
+                  : 'Yaralı',
+              color: healthStatus == PlayerHealthStatus.critical
+                  ? AppColors.mysticRuby
+                  : AppColors.warningSolar,
+            ),
+          ),
+        );
+      } else if (isLowHealthAlert(health: health, maxHealth: maxHealth)) {
+        banners.add(
+          GestureDetector(
+            onTap: () => GoRouter.of(context).push(AppRoutes.hospital),
+            child: const _StaticStatusPill(
+              icon: '❤️',
+              text: 'Düşük Can',
+              color: AppColors.warningSolar,
+            ),
+          ),
+        );
+      }
     }
 
     if (banners.isEmpty) return const SizedBox.shrink();
@@ -605,16 +877,21 @@ class _CountdownText extends StatefulWidget {
 }
 
 class _CountdownTextState extends State<_CountdownText> {
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(seconds: 1), _tick);
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
   }
 
-  void _tick() {
-    if (!mounted) return;
-    setState(() {});
-    Future<void>.delayed(const Duration(seconds: 1), _tick);
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   String _formatDuration(Duration d) {
@@ -645,50 +922,4 @@ class _CountdownTextState extends State<_CountdownText> {
       ),
     );
   }
-}
-
-class _EquipmentStats {
-  const _EquipmentStats({
-    required this.attack,
-    required this.defense,
-    required this.hp,
-    required this.luck,
-  });
-
-  final int attack;
-  final int defense;
-  final int hp;
-  final int luck;
-
-  double get powerFromEquipment => attack + defense + (hp / 10) + (luck * 2);
-}
-
-_EquipmentStats _calculateEquipmentStats(
-  Map<String, InventoryItem?> equippedItems,
-) {
-  int attack = 0;
-  int defense = 0;
-  int hp = 0;
-  int luck = 0;
-
-  for (final item in equippedItems.values) {
-    if (item == null) continue;
-    attack += item.attack;
-    defense += item.defense;
-    hp += item.health;
-    luck += item.luck;
-  }
-
-  return _EquipmentStats(attack: attack, defense: defense, hp: hp, luck: luck);
-}
-
-int _calculateTotalPower({
-  required _EquipmentStats eqStats,
-  required int level,
-  required int reputation,
-}) {
-  final int equipmentPower = eqStats.powerFromEquipment.round();
-  final int levelPower = level * 500;
-  final int reputationPower = (reputation * 0.1).floor();
-  return equipmentPower + levelPower + reputationPower;
 }

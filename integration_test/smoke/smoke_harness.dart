@@ -38,7 +38,12 @@ class SmokeHarness {
   }
 
   static Future<void> pumpApp(WidgetTester tester) async {
-    await loginBeforePump();
+    await loginBeforePump().timeout(
+      const Duration(seconds: 45),
+      onTimeout: () {
+        throw TestFailure('loginBeforePump timed out (45s)');
+      },
+    );
     await tester.pumpWidget(const ProviderScope(child: GkkMobileApp()));
     await smokePump(tester, duration: const Duration(seconds: 2));
   }
@@ -85,18 +90,23 @@ class SmokeHarness {
     await openQuickMenu(tester);
 
     Finder labelFinder = find.text(label);
-    if (labelFinder.evaluate().isEmpty) {
-      throw TestFailure('Quick menu item not found: $label');
-    }
 
     final Finder scrollable = find.byType(Scrollable);
-    if (scrollable.evaluate().isNotEmpty) {
-      await tester.scrollUntilVisible(
-        labelFinder.first,
-        80,
-        scrollable: scrollable.first,
-      );
+    if (labelFinder.evaluate().isEmpty && scrollable.evaluate().isNotEmpty) {
+      try {
+        await tester.scrollUntilVisible(
+          find.text(label).first,
+          120,
+          scrollable: scrollable.first,
+        );
+      } catch (_) {
+        // Item may be off-screen in grid; fall through to not-found check.
+      }
       labelFinder = find.text(label);
+    }
+
+    if (labelFinder.evaluate().isEmpty) {
+      throw TestFailure('Quick menu item not found: $label');
     }
 
     await smokePump(tester, duration: const Duration(milliseconds: 300));

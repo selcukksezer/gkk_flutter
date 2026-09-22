@@ -33,6 +33,8 @@ class StaffState {
 }
 
 class StaffNotifier extends Notifier<StaffState> {
+  Future<void>? _inFlight;
+
   @override
   StaffState build() {
     Future<void>.microtask(load);
@@ -40,6 +42,18 @@ class StaffNotifier extends Notifier<StaffState> {
   }
 
   Future<void> load({bool silent = false}) async {
+    if (_inFlight != null) {
+      return _inFlight!;
+    }
+    _inFlight = _performLoad(silent: silent);
+    try {
+      await _inFlight;
+    } finally {
+      _inFlight = null;
+    }
+  }
+
+  Future<void> _performLoad({required bool silent}) async {
     if (!SupabaseService.isInitialized ||
         SupabaseService.client.auth.currentSession == null) {
       state = const StaffState(profile: StaffProfile.none);

@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../components/common/gkk_progress_bar.dart';
 import '../../../components/player/player_name_label.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
+import '../../../core/utils/provider_scheduling.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/guild_model.dart';
+import '../../../providers/guild_monument_provider.dart';
+import '../../../providers/guild_vault_provider.dart';
+import '../../../repositories/guild_monument_repository.dart';
+import '../../../theme/app_spacing.dart';
+import '../../../theme/app_text_styles.dart';
 import '../guild_helpers.dart';
+import 'guild_clinic_card.dart';
+import 'guild_design.dart';
 
-class GuildMemberView extends StatelessWidget {
+class GuildMemberView extends ConsumerStatefulWidget {
   const GuildMemberView({
     super.key,
     required this.guild,
@@ -40,186 +50,359 @@ class GuildMemberView extends StatelessWidget {
   final VoidCallback? onEditMinJoinPower;
 
   @override
+  ConsumerState<GuildMemberView> createState() => _GuildMemberViewState();
+}
+
+class _GuildMemberViewState extends ConsumerState<GuildMemberView> {
+  @override
+  void initState() {
+    super.initState();
+    deferProviderUpdate(() async {
+      await ref.read(guildVaultProvider.notifier).load(silent: true);
+      await ref.read(guildMonumentProvider.notifier).bootstrap();
+    });
+  }
+
+  Future<void> _refreshAll() async {
+    await widget.onRefresh();
+    await ref.read(guildVaultProvider.notifier).load(silent: true);
+    await ref.read(guildMonumentProvider.notifier).loadDashboard();
+  }
+
+  String _roleBadge(GuildRole role) => switch (role) {
+    GuildRole.leader => 'GM',
+    GuildRole.officer => 'SUBAY',
+    GuildRole.member => 'ÜYE',
+  };
+
+  Color _roleAccent(GuildRole role) => switch (role) {
+    GuildRole.leader => GuildPalette.gold,
+    GuildRole.officer => GuildPalette.coral,
+    GuildRole.member => GuildPalette.titanium,
+  };
+
+  @override
   Widget build(BuildContext context) {
+    final GuildData guild = widget.guild;
+    final vault = ref.watch(guildVaultProvider);
+    final monumentState = ref.watch(guildMonumentProvider);
+    final MonumentDashboard? dash = monumentState.dashboard;
+    final MonumentUpgradeProgress? upgradeProgress = dash == null
+        ? null
+        : MonumentUpgradeProgress.compute(
+            guild: dash.guild,
+            nextCost: dash.nextCost,
+            blueprints: dash.blueprints,
+          );
+
+    final int liveVaultGold = vault.hydrated
+        ? vault.vaultGold
+        : guild.vaultGold;
+    final int onlineCount = (guild.members ?? const <GuildMemberData>[])
+        .where((GuildMemberData m) => m.isOnline == true)
+        .length;
     final List<GuildMemberData> sortedMembers = guild.members == null
         ? <GuildMemberData>[]
-        : List<GuildMemberData>.from(guild.members!)
-      ..sort((GuildMemberData a, GuildMemberData b) =>
-          guildRoleSortOrder(a.role).compareTo(guildRoleSortOrder(b.role)));
+        : (List<GuildMemberData>.from(guild.members!)..sort(
+            (GuildMemberData a, GuildMemberData b) => guildRoleSortOrder(
+              a.role,
+            ).compareTo(guildRoleSortOrder(b.role)),
+          ));
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: onRefresh,
+        color: GuildPalette.gold,
+        backgroundColor: GuildPalette.navy,
+        onRefresh: _refreshAll,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
           children: <Widget>[
             TutorialAnchorScope(
               id: TutorialAnchorId.guildHeader,
-              child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0x334B6FFF)),
+              child: _GuildHeroCard(
+                guild: guild,
+                myRole: widget.myRole,
+                liveVaultGold: liveVaultGold,
+                onlineCount: onlineCount,
+                onEditMinJoinPower: widget.onEditMinJoinPower,
+                roleBadge: _roleBadge(widget.myRole),
+                roleAccent: _roleAccent(widget.myRole),
               ),
+            ),
+            const SizedBox(height: 14),
+            TutorialAnchorScope(
+              id: TutorialAnchorId.guildJoinBtn,
+              child: _GuildCommandGrid(
+                onGuildWar: widget.onGuildWar,
+                onMonument: widget.onMonument,
+                onVault: widget.onVault,
+                vaultGoldLabel: formatGuildCompact(liveVaultGold),
+                monumentLevel: guild.monumentLevel,
+              ),
+            ),
+            if (upgradeProgress != null) ...<Widget>[
+              const SizedBox(height: 14),
+              GuildPressable(
+                onTap: widget.onMonument,
+                child: GuildNeonPanel(
+                  accent: GuildPalette.coral,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          const Text('🏛', style: TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Anıt Sv.${guild.monumentLevel} → ${upgradeProgress.nextLevel}',
+                              style: AppTextStyles.label.copyWith(
+                                color: GuildPalette.textHi,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            upgradeProgress.isReady
+                                ? 'HAZIR'
+                                : '%${upgradeProgress.filledPercent}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: upgradeProgress.isReady
+                                  ? GuildPalette.neon
+                                  : GuildPalette.solar,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: GuildPalette.titanium,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      GkkProgressBar(
+                        value: upgradeProgress.overallProgress,
+                        color: upgradeProgress.isReady
+                            ? GuildPalette.neon
+                            : GuildPalette.coral,
+                        height: 7,
+                        glow: true,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        upgradeProgress.isReady
+                            ? 'Tüm kaynaklar tamam — anıtı yükselt.'
+                            : upgradeProgress.resources
+                                  .where(
+                                    (MonumentResourceProgress r) =>
+                                        !r.isComplete && r.required > 0,
+                                  )
+                                  .map(
+                                    (MonumentResourceProgress r) =>
+                                        '${r.kind.shortLabel} −${formatGuildCompact(r.remaining)}',
+                                  )
+                                  .join(' · '),
+                        style: AppTextStyles.caption.copyWith(
+                          color: GuildPalette.titanium,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            GuildNeonPanel(
+              accent: GuildPalette.gold,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      const Icon(Icons.groups_rounded, color: Color(0xFF4B6FFF), size: 20),
+                      const Text('🪙', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          guild.name,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'LONCA KASASI',
+                              style: AppTextStyles.caption.copyWith(
+                                color: GuildPalette.titanium,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            Text(
+                              '${formatGuildCompact(liveVaultGold)}g',
+                              style: AppTextStyles.h2.copyWith(
+                                fontSize: 26,
+                                color: GuildPalette.gold,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4B6FFF).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Sv. ${guild.level}',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF4B6FFF), fontWeight: FontWeight.w700),
+                      GuildPressable(
+                        onTap: widget.onVault,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            gradient: GuildPalette.goldGrad,
+                          ),
+                          child: const Text(
+                            'Aç',
+                            style: TextStyle(
+                              color: GuildPalette.void_,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: <Widget>[
-                      GuildStatChip(icon: Icons.people_rounded, label: '${guild.memberCount}/${guild.maxMembers} Üye'),
-                      GuildStatChip(icon: Icons.bolt_rounded, label: '${formatGuildCompact(guild.totalPower)} Güç'),
-                      GuildStatChip(icon: Icons.account_balance_outlined, label: 'Anıt Sv.${guild.monumentLevel}'),
-                      GuildStatChip(
-                        icon: Icons.paid_rounded,
-                        label: '${formatGuildCompact(guild.monumentGoldPool)} 🪙 Havuz',
-                      ),
-                      GuildStatChip(
-                        icon: Icons.shield_rounded,
-                        label: guild.minJoinPower > 0
-                            ? 'Min ${formatGuildCompact(guild.minJoinPower)} güç'
-                            : 'Güç limiti yok',
-                      ),
-                    ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Bölge geliri + anıt altın bağışı buraya akar. Savaş ve anıt yükseltme kasadan düşer.',
+                    style: AppTextStyles.caption.copyWith(
+                      color: GuildPalette.titanium,
+                      height: 1.35,
+                    ),
                   ),
-                  if (onEditMinJoinPower != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: onEditMinJoinPower,
-                      icon: const Icon(Icons.tune_rounded, size: 16),
-                      label: Text(context.l10n.kat_l_m_g_limiti),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF4B6FFF)),
-                        foregroundColor: const Color(0xFF8BAEFF),
-                      ),
+                  if (vault.hydrated && vault.items.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 8),
+                    GuildStatPill(
+                      icon: Icons.inventory_2_outlined,
+                      label: '${vault.items.length} kasa eşyası',
+                      accent: GuildPalette.coral,
+                      filled: true,
                     ),
                   ],
                 ],
               ),
             ),
+            const SizedBox(height: 18),
+            GuildSectionTitle(
+              title: context.l10n.sys2_clinic_title.toUpperCase(),
+              subtitle: context.l10n.sys2_clinic_section_sub,
+              accent: GuildPalette.neon,
             ),
-            const SizedBox(height: 14),
-            TutorialAnchorScope(
-              id: TutorialAnchorId.guildJoinBtn,
-              child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton.icon(
-                    onPressed: onGuildWar,
-                    icon: const Icon(Icons.flag_rounded, size: 16),
-                    label: Text(context.l10n.lonca_sava),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white24),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton.icon(
-                    onPressed: onMonument,
-                    icon: const Icon(Icons.account_balance_rounded, size: 16),
-                    label: const Text('Anıt'),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white24),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton.icon(
-                    onPressed: onVault,
-                    icon: const Icon(Icons.savings_rounded, size: 16),
-                    label: const Text('Lonca Kasası'),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFFFB800)),
-                      foregroundColor: const Color(0xFFFFB800),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton(
-                onPressed: onLeave,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                  foregroundColor: Colors.red,
-                ),
-                child: Text(leaveLabel),
-              ),
+            const SizedBox(height: 10),
+            GuildClinicCard(
+              canUpgrade: widget.myRole == GuildRole.leader ||
+                  widget.myRole == GuildRole.officer,
             ),
             const SizedBox(height: 18),
-            Row(
-              children: <Widget>[
-                const Text(
-                  'Üyeler',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                ),
-                if (memberActionLoading) ...<Widget>[
-                  const SizedBox(width: 10),
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ],
-              ],
+            GuildSectionTitle(
+              title: 'ÜYELER',
+              subtitle:
+                  '${sortedMembers.length} kayıt · $onlineCount çevrimiçi',
+              accent: GuildPalette.fuchsia,
+              trailing: widget.memberActionLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: GuildPalette.gold,
+                      ),
+                    )
+                  : null,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             if (sortedMembers.isEmpty)
-              Text(
-                guild.loadError ?? 'Henüz üye kaydı yok.',
-                style: const TextStyle(color: Colors.white38),
+              GuildNeonPanel(
+                accent: GuildPalette.titanium,
+                glow: false,
+                child: Text(
+                  guild.loadError ?? 'Henüz üye kaydı yok.',
+                  style: AppTextStyles.caption.copyWith(
+                    color: GuildPalette.titanium,
+                  ),
+                ),
               )
             else
-              ...sortedMembers.map(
-                (GuildMemberData member) => GuildMemberTile(
-                  member: member,
-                  isMe: member.playerId == myPlayerId,
-                  canAct: myRole != GuildRole.member && member.playerId != myPlayerId,
-                  onTap: () => onMemberTap(member),
-                  onLongPress: onStaffMemberAction != null && member.userId != null
-                      ? () => onStaffMemberAction!(member)
-                      : null,
-                  onStaffTap: onStaffMemberAction != null &&
-                          member.userId != null &&
-                          member.userId!.isNotEmpty &&
-                          member.playerId != myPlayerId
-                      ? () => onStaffMemberAction!(member)
-                      : null,
+              ...List<Widget>.generate(sortedMembers.length, (int i) {
+                final GuildMemberData member = sortedMembers[i];
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: i == sortedMembers.length - 1 ? 0 : 8,
+                  ),
+                  child: _GuildMemberCard(
+                    member: member,
+                    isMe: member.playerId == widget.myPlayerId,
+                    canAct:
+                        widget.myRole != GuildRole.member &&
+                        member.playerId != widget.myPlayerId,
+                    roleAccent: _roleAccent(member.role),
+                    roleBadge: _roleBadge(member.role),
+                    onTap: () => widget.onMemberTap(member),
+                    onLongPress:
+                        widget.onStaffMemberAction != null &&
+                            member.userId != null
+                        ? () => widget.onStaffMemberAction!(member)
+                        : null,
+                    onStaffTap:
+                        widget.onStaffMemberAction != null &&
+                            member.userId != null &&
+                            member.userId!.isNotEmpty &&
+                            member.playerId != widget.myPlayerId
+                        ? () => widget.onStaffMemberAction!(member)
+                        : null,
+                  ),
+                );
+              }),
+            const SizedBox(height: 18),
+            Align(
+              alignment: Alignment.centerRight,
+              child: GuildPressable(
+                onTap: widget.onLeave,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: GuildPalette.ruby.withValues(alpha: 0.55),
+                    ),
+                    color: GuildPalette.ruby.withValues(alpha: 0.10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(
+                        widget.myRole == GuildRole.leader
+                            ? Icons.dangerous_outlined
+                            : Icons.logout_rounded,
+                        size: 16,
+                        color: GuildPalette.ruby,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.leaveLabel,
+                        style: const TextStyle(
+                          color: GuildPalette.ruby,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -227,6 +410,540 @@ class GuildMemberView extends StatelessWidget {
   }
 }
 
+class _GuildHeroCard extends StatelessWidget {
+  const _GuildHeroCard({
+    required this.guild,
+    required this.myRole,
+    required this.liveVaultGold,
+    required this.onlineCount,
+    required this.roleBadge,
+    required this.roleAccent,
+    this.onEditMinJoinPower,
+  });
+
+  final GuildData guild;
+  final GuildRole myRole;
+  final int liveVaultGold;
+  final int onlineCount;
+  final String roleBadge;
+  final Color roleAccent;
+  final VoidCallback? onEditMinJoinPower;
+
+  @override
+  Widget build(BuildContext context) {
+    return GuildNeonPanel(
+      accent: GuildPalette.fuchsia,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: GuildPalette.fuchsia.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: GuildPalette.fuchsia.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: const Text(
+                  'CANLI LONCA',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: GuildPalette.fuchsia,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: roleAccent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: roleAccent.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  roleBadge,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: roleAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      GuildPalette.fuchsia.withValues(alpha: 0.35),
+                      GuildPalette.gold.withValues(alpha: 0.18),
+                      GuildPalette.navy,
+                    ],
+                  ),
+                  border: Border.all(
+                    color: GuildPalette.gold.withValues(alpha: 0.5),
+                    width: 1.4,
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: GuildPalette.fuchsia.withValues(alpha: 0.25),
+                      blurRadius: 16,
+                    ),
+                  ],
+                ),
+                child: const Text('⚔️', style: TextStyle(fontSize: 28)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      guild.name,
+                      style: AppTextStyles.h2.copyWith(
+                        fontSize: 22,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      guild.description?.trim().isNotEmpty == true
+                          ? guild.description!.trim()
+                          : 'Lonca güçlerini birleştir — savaş, anıt, kasa.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: GuildPalette.titanium,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: <Widget>[
+                        GuildStatPill(
+                          icon: Icons.workspace_premium_rounded,
+                          label: 'Sv.${guild.level}',
+                          accent: GuildPalette.gold,
+                          filled: true,
+                        ),
+                        GuildStatPill(
+                          icon: Icons.account_balance_rounded,
+                          label: 'Anıt ${guild.monumentLevel}',
+                          accent: GuildPalette.coral,
+                        ),
+                        GuildStatPill(
+                          icon: Icons.circle,
+                          label: '$onlineCount online',
+                          accent: GuildPalette.neon,
+                          filled: true,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _HeroMetric(
+                  label: 'ÜYE',
+                  value: '${guild.memberCount}/${guild.maxMembers}',
+                  accent: GuildPalette.fuchsia,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroMetric(
+                  label: 'GÜÇ',
+                  value: formatGuildCompact(guild.totalPower),
+                  accent: GuildPalette.solar,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroMetric(
+                  label: 'KASA',
+                  value: '${formatGuildCompact(liveVaultGold)}g',
+                  accent: GuildPalette.gold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          GuildProgressStrip(
+            label: 'Kadro doluluk',
+            value: guild.maxMembers <= 0
+                ? 0
+                : guild.memberCount / guild.maxMembers,
+            detail: '${guild.memberCount} / ${guild.maxMembers}',
+            accent: GuildPalette.fuchsia,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: <Widget>[
+              Icon(
+                Icons.shield_rounded,
+                size: 14,
+                color: guild.minJoinPower > 0
+                    ? GuildPalette.coral
+                    : GuildPalette.titanium,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  guild.minJoinPower > 0
+                      ? 'Katılım min ${formatGuildCompact(guild.minJoinPower)} güç'
+                      : 'Katılım güç limiti yok',
+                  style: AppTextStyles.caption.copyWith(
+                    color: GuildPalette.titanium,
+                  ),
+                ),
+              ),
+              if (onEditMinJoinPower != null)
+                GuildPressable(
+                  onTap: onEditMinJoinPower,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: GuildPalette.fuchsia.withValues(alpha: 0.45),
+                      ),
+                      color: GuildPalette.fuchsia.withValues(alpha: 0.12),
+                    ),
+                    child: Text(
+                      context.l10n.kat_l_m_g_limiti,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: GuildPalette.fuchsia,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  const _HeroMetric({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: GuildPalette.obsidian.withValues(alpha: 0.55),
+        border: Border.all(color: accent.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.7,
+              color: accent.withValues(alpha: 0.85),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: GuildPalette.textHi,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuildCommandGrid extends StatelessWidget {
+  const _GuildCommandGrid({
+    required this.onGuildWar,
+    required this.onMonument,
+    required this.onVault,
+    required this.vaultGoldLabel,
+    required this.monumentLevel,
+  });
+
+  final VoidCallback onGuildWar;
+  final VoidCallback onMonument;
+  final VoidCallback onVault;
+  final String vaultGoldLabel;
+  final int monumentLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: GuildActionTile(
+                title: context.l10n.lonca_sava,
+                subtitle: 'Fetih & savunma',
+                icon: Icons.flag_rounded,
+                accent: GuildPalette.fuchsia,
+                filled: true,
+                onTap: onGuildWar,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GuildActionTile(
+                title: 'Anıt',
+                subtitle: 'Sv.$monumentLevel bağış',
+                icon: Icons.account_balance_rounded,
+                accent: GuildPalette.coral,
+                onTap: onMonument,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        GuildActionTile(
+          title: 'Lonca Kasası',
+          subtitle: '${vaultGoldLabel}g · yatırım & dağıtım',
+          icon: Icons.savings_rounded,
+          accent: GuildPalette.gold,
+          onTap: onVault,
+        ),
+      ],
+    );
+  }
+}
+
+class _GuildMemberCard extends StatelessWidget {
+  const _GuildMemberCard({
+    required this.member,
+    required this.isMe,
+    required this.canAct,
+    required this.roleAccent,
+    required this.roleBadge,
+    required this.onTap,
+    this.onLongPress,
+    this.onStaffTap,
+  });
+
+  final GuildMemberData member;
+  final bool isMe;
+  final bool canAct;
+  final Color roleAccent;
+  final String roleBadge;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onStaffTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool online = member.isOnline == true;
+    return GuildPressable(
+      enabled: canAct,
+      onTap: canAct ? onTap : null,
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                isMe
+                    ? GuildPalette.fuchsia.withValues(alpha: 0.14)
+                    : GuildPalette.surfaceHi,
+                GuildPalette.navy,
+              ],
+            ),
+            border: Border.all(
+              color: isMe
+                  ? GuildPalette.fuchsia.withValues(alpha: 0.45)
+                  : roleAccent.withValues(alpha: 0.22),
+            ),
+            boxShadow: isMe
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: GuildPalette.fuchsia.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            children: <Widget>[
+              Stack(
+                children: <Widget>[
+                  Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: roleAccent.withValues(alpha: 0.14),
+                      border: Border.all(
+                        color: roleAccent.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Text(
+                      guildRoleEmoji(member.role),
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: online
+                            ? GuildPalette.neon
+                            : GuildPalette.obsidian,
+                        border: Border.all(
+                          color: GuildPalette.navy,
+                          width: 1.5,
+                        ),
+                        boxShadow: online
+                            ? <BoxShadow>[
+                                BoxShadow(
+                                  color: GuildPalette.neon.withValues(
+                                    alpha: 0.55,
+                                  ),
+                                  blurRadius: 6,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: PlayerNameLabel(
+                            username: member.username,
+                            staffBadge: member.staffBadge,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: isMe
+                                  ? GuildPalette.fuchsia
+                                  : GuildPalette.textHi,
+                            ),
+                            compactBadge: true,
+                            showUsername: false,
+                            onTap: onStaffTap,
+                          ),
+                        ),
+                        if (isMe) ...<Widget>[
+                          const SizedBox(width: 4),
+                          Text(
+                            '(Ben)',
+                            style: AppTextStyles.caption.copyWith(
+                              color: GuildPalette.titanium,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Sv.${member.level} · ${guildRoleLabel(member.role)} · ${formatGuildCompact(member.power)} güç',
+                      style: AppTextStyles.caption.copyWith(
+                        color: GuildPalette.titanium,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: roleAccent.withValues(alpha: 0.14),
+                  border: Border.all(color: roleAccent.withValues(alpha: 0.35)),
+                ),
+                child: Text(
+                  roleBadge,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: roleAccent,
+                  ),
+                ),
+              ),
+              if (canAct) ...<Widget>[
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.more_vert_rounded,
+                  size: 16,
+                  color: GuildPalette.titanium,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Kept for any external imports.
 class GuildMemberTile extends StatelessWidget {
   const GuildMemberTile({
     super.key,
@@ -247,74 +964,23 @@ class GuildMemberTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool online = member.isOnline == true;
-    return GestureDetector(
-      onTap: canAct ? onTap : null,
+    return _GuildMemberCard(
+      member: member,
+      isMe: isMe,
+      canAct: canAct,
+      roleAccent: switch (member.role) {
+        GuildRole.leader => GuildPalette.gold,
+        GuildRole.officer => GuildPalette.coral,
+        GuildRole.member => GuildPalette.titanium,
+      },
+      roleBadge: switch (member.role) {
+        GuildRole.leader => 'GM',
+        GuildRole.officer => 'SUBAY',
+        GuildRole.member => 'ÜYE',
+      },
+      onTap: onTap,
       onLongPress: onLongPress,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF4B6FFF).withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isMe ? const Color(0x334B6FFF) : Colors.white12,
-          ),
-        ),
-        child: Row(
-          children: <Widget>[
-            Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: online ? Colors.green : Colors.white24,
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        guildRoleEmoji(member.role),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      const SizedBox(width: 5),
-                      PlayerNameLabel(
-                        username: member.username,
-                        staffBadge: member.staffBadge,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: isMe ? const Color(0xFF8BAEFF) : Colors.white,
-                        ),
-                        compactBadge: true,
-                        showUsername: false,
-                        onTap: onStaffTap,
-                      ),
-                      if (isMe)
-                        const Text(
-                          ' (Ben)',
-                          style: TextStyle(fontSize: 11, color: Colors.white38),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Sv.${member.level} · ${guildRoleLabel(member.role)} · ${formatGuildCompact(member.power)} güç',
-                    style: const TextStyle(fontSize: 11, color: Colors.white38),
-                  ),
-                ],
-              ),
-            ),
-            if (canAct)
-              const Icon(Icons.more_vert_rounded, size: 16, color: Colors.white38),
-          ],
-        ),
-      ),
+      onStaffTap: onStaffTap,
     );
   }
 }
@@ -327,13 +993,6 @@ class GuildStatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Icon(icon, size: 13, color: Colors.white54),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.white70)),
-      ],
-    );
+    return GuildStatPill(icon: icon, label: label);
   }
 }

@@ -1,0 +1,38 @@
+{
+  "before": {
+    "bots": 400,
+    "chat_dm_count": 0,
+    "dungeon_runs": 0,
+    "gems_sum": 2000000,
+    "gold_avg": 25000000,
+    "gold_delta_pct_vs_seed": 0,
+    "gold_delta_vs_seed": 0,
+    "gold_sum": 10000000000,
+    "market_cancelled": 0,
+    "market_fill_rate_pct": 0,
+    "market_filled": 0,
+    "market_open": 0,
+    "seed_gold_per_bot": 25000000,
+    "seed_gold_total": 10000000000,
+    "trade_sessions": 0
+  },
+  "after": {
+    "bots": 400,
+    "chat_dm_count": 0,
+    "dungeon_runs": 0,
+    "gems_sum": 2000000,
+    "gold_avg": 25000000,
+    "gold_delta_pct_vs_seed": 0,
+    "gold_delta_vs_seed": 0,
+    "gold_sum": 10000000000,
+    "market_cancelled": 0,
+    "market_fill_rate_pct": 0,
+    "market_filled": 0,
+    "market_open": 0,
+    "seed_gold_per_bot": 25000000,
+    "seed_gold_total": 10000000000,
+    "trade_sessions": 0
+  },
+  "gold_delta": 0,
+  "gems_delta": 0
+}

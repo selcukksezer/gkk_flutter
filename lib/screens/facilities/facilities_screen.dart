@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,10 @@ import '../../models/facility_model.dart';
 import '../../models/player_model.dart';
 import '../../providers/facilities_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'widgets/facilities_hub_design.dart';
@@ -181,11 +187,16 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
             return 0;
           });
 
+    final bool facilitiesCollectCoach =
+        ref.watch(tutorialProvider).activeStep?.id == 'facilities_collect';
+
     final List<Widget Function(int index)> cardBuilders =
         <Widget Function(int index)>[];
     for (int i = 0; i < sortedFacilities.length; i++) {
       final _FacilityCardData facility = sortedFacilities[i];
       final int animIndex = animationStartIndex + i;
+      final bool isTutorialCard =
+          facilitiesCollectCoach && tierGroup.tier == 1 && i == 0;
       cardBuilders.add((int _) {
         final PlayerFacility? playerFacility = unlockedByType[facility.type];
         final bool isUnlocked = playerFacility != null;
@@ -202,7 +213,7 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
                 canUnlock: canUnlock,
               );
 
-        return FacHubFacilityCard(
+        Widget card = FacHubFacilityCard(
           animationIndex: animIndex,
           icon: facility.icon,
           name: facility.name,
@@ -210,16 +221,39 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
           canUnlock: canUnlock,
           footer: footer,
           accentColor: accent,
-          onTap: () => _onFacilityTap(
-            context,
-            facility: facility,
-            isUnlocked: isUnlocked,
-            canUnlock: canUnlock,
-            inPrison: inPrison,
-            level: level,
-            gold: gold,
-          ),
+          onTap: () {
+            if (facilitiesCollectCoach && !isTutorialCard) {
+              ref.read(tutorialProvider.notifier).registerWrongTap();
+              return;
+            }
+            if (isTutorialCard) {
+              unawaited(
+                TutorialTriggers.onAnchorTap(
+                  ref,
+                  TutorialAnchorId.facilitiesHubCard,
+                ),
+              );
+            }
+            unawaited(
+              _onFacilityTap(
+                context,
+                facility: facility,
+                isUnlocked: isUnlocked,
+                canUnlock: canUnlock,
+                inPrison: inPrison,
+                level: level,
+                gold: gold,
+              ),
+            );
+          },
         );
+        if (isTutorialCard) {
+          card = TutorialAnchorScope(
+            id: TutorialAnchorId.facilitiesHubCard,
+            child: card,
+          );
+        }
+        return card;
       });
     }
 

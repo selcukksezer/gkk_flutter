@@ -94,6 +94,7 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
   bool _loadingDetail = true;
   bool _detailLoadedOnce = false;
   bool _enforcementLoadedOnce = false;
+  bool _enforcementFailed = false;
   bool _isProtectedAdmin = false;
   StaffPlayerDetail? _playerDetail;
   bool _historyExpanded = false;
@@ -163,11 +164,13 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
               raw['is_protected_admin'] == true || widget.staffBadge == 'admin';
           _loadingEnforcement = false;
           _enforcementLoadedOnce = true;
+          _enforcementFailed = false;
         });
       } else {
         setState(() {
           _loadingEnforcement = false;
           _enforcementLoadedOnce = true;
+          _enforcementFailed = true;
         });
       }
     } catch (_) {
@@ -175,6 +178,7 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
         setState(() {
           _loadingEnforcement = false;
           _enforcementLoadedOnce = true;
+          _enforcementFailed = true;
         });
       }
     }
@@ -621,6 +625,12 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
   }
 
   Widget _historySection() {
+    if (_enforcementFailed) {
+      return Text(
+        'İşlem geçmişi yüklenemedi.',
+        style: supportCaptionStyle.copyWith(color: SettingsPalette.coral),
+      );
+    }
     if (_history.isEmpty) {
       return Text('Kayıt yok.', style: supportCaptionStyle);
     }
@@ -697,6 +707,25 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
         child: Center(child: CircularProgressIndicator(color: SettingsPalette.gold, strokeWidth: 2)),
+      );
+    }
+
+    if (_enforcementFailed) {
+      return Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              'Kısıt bilgisi yüklenemedi.',
+              style: supportCaptionStyle.copyWith(color: SettingsPalette.coral),
+            ),
+          ),
+          StaffActionButton(
+            label: 'Tekrar Dene',
+            outlined: true,
+            accent: SettingsPalette.gold,
+            onPressed: () => _loadEnforcement(),
+          ),
+        ],
       );
     }
 

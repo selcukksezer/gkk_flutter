@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/app_foreground_service.dart';
@@ -17,6 +19,7 @@ class PvpInvite {
     this.challengerLevel = 1,
     this.challengerPower = 0,
     this.challengerRating = 1000,
+    this.expiresAt,
   });
 
   final String inviteId;
@@ -27,6 +30,10 @@ class PvpInvite {
   final int challengerLevel;
   final int challengerPower;
   final int challengerRating;
+  final DateTime? expiresAt;
+
+  bool get isExpired =>
+      expiresAt != null && !expiresAt!.isAfter(DateTime.now());
 
   factory PvpInvite.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic> ch = json['challenger'] is Map
@@ -43,6 +50,8 @@ class PvpInvite {
       challengerLevel: (ch['level'] as num?)?.toInt() ?? 1,
       challengerPower: (ch['power'] as num?)?.toInt() ?? 0,
       challengerRating: (ch['pvp_rating'] as num?)?.toInt() ?? 1000,
+      expiresAt: DateTime.tryParse((json['expires_at'] ?? '').toString())
+          ?.toLocal(),
     );
   }
 }
@@ -60,11 +69,13 @@ class PvpDuelResultNotice {
     this.opponentLevel = 1,
     this.opponentPower = 0,
     this.opponentRating = 1000,
+    this.expired = false,
   });
 
   final String inviteId;
   final int wager;
   final bool declined;
+  final bool expired;
 
   /// respond_pvp_invite'ın kaydettiği result JSON'u (declined ise boş).
   final Map<String, dynamic> duel;
@@ -84,6 +95,7 @@ class PvpDuelResultNotice {
       inviteId: (json['invite_id'] ?? '').toString(),
       wager: (json['wager'] as num?)?.toInt() ?? 0,
       declined: (json['status'] ?? '').toString() == 'declined',
+      expired: (json['status'] ?? '').toString() == 'expired',
       duel: json['result'] is Map
           ? Map<String, dynamic>.from(json['result'] as Map)
           : <String, dynamic>{},
@@ -138,6 +150,7 @@ class PvpInviteState {
 
   PvpInvite? get nextPopup {
     for (final PvpInvite invite in pending) {
+      if (invite.isExpired) continue;
       if (!dismissedIds.contains(invite.inviteId)) return invite;
     }
     return null;
@@ -261,8 +274,9 @@ class PvpInviteNotifier extends Notifier<PvpInviteState> {
                 .toList(growable: false)
             : state.unseenArenaResults,
       );
-    } catch (_) {
-      // Sessiz — sonraki poll dener.
+    } catch (e) {
+      // 8 sn'de bir tekrar denenir; davetler 2 dk yaşadığı için kayıp riski düşük.
+      if (kDebugMode) debugPrint('pvp invite poll fail: $e');
     }
   }
 
@@ -323,8 +337,12 @@ class PvpInviteNotifier extends Notifier<PvpInviteState> {
       if (raw is Map) return Map<String, dynamic>.from(raw);
       return <String, dynamic>{'success': false};
     } catch (_) {
-      dismiss(inviteId);
-      return <String, dynamic>{'success': false, 'error': 'İşlem başarısız'};
+      // Ağ hatası: daveti düşürme — popup tekrar açılır, oyuncu yeniden dener.
+      return <String, dynamic>{
+        'success': false,
+        'error': 'Bağlantı hatası — davet tekrar gösterilecek.',
+        'retryable': true,
+      };
     }
   }
 }

@@ -23,6 +23,12 @@ class MarketState {
     this.errorMessage,
     this.tickersLoaded = false,
     this.myOrdersLoaded = false,
+    this.tickerQuery = const MarketTickerQuery(),
+    this.tickerTotal = 0,
+    this.totalListings = 0,
+    this.isLoadingMore = false,
+    this.myHistory = const <MarketTradeRecord>[],
+    this.myHistoryLoaded = false,
   });
 
   final MarketStatus status;
@@ -31,6 +37,14 @@ class MarketState {
   final String? errorMessage;
   final bool tickersLoaded;
   final bool myOrdersLoaded;
+  final MarketTickerQuery tickerQuery;
+  final int tickerTotal;
+  final int totalListings;
+  final bool isLoadingMore;
+  final List<MarketTradeRecord> myHistory;
+  final bool myHistoryLoaded;
+
+  bool get hasMoreTickers => tickers.length < tickerTotal;
 
   factory MarketState.initial() => const MarketState(
         status: MarketStatus.initial,
@@ -46,6 +60,12 @@ class MarketState {
     bool clearError = false,
     bool? tickersLoaded,
     bool? myOrdersLoaded,
+    MarketTickerQuery? tickerQuery,
+    int? tickerTotal,
+    int? totalListings,
+    bool? isLoadingMore,
+    List<MarketTradeRecord>? myHistory,
+    bool? myHistoryLoaded,
   }) {
     return MarketState(
       status: status ?? this.status,
@@ -54,6 +74,12 @@ class MarketState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       tickersLoaded: tickersLoaded ?? this.tickersLoaded,
       myOrdersLoaded: myOrdersLoaded ?? this.myOrdersLoaded,
+      tickerQuery: tickerQuery ?? this.tickerQuery,
+      tickerTotal: tickerTotal ?? this.tickerTotal,
+      totalListings: totalListings ?? this.totalListings,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      myHistory: myHistory ?? this.myHistory,
+      myHistoryLoaded: myHistoryLoaded ?? this.myHistoryLoaded,
     );
   }
 }
@@ -83,26 +109,73 @@ class MarketNotifier extends Notifier<MarketState> {
     await Future.wait(<Future<void>>[
       loadTickers(force: true),
       loadMyOrders(force: true),
+      loadMyHistory(force: true),
       ref.read(inventoryProvider.notifier).loadInventory(silent: true),
       ref.read(playerProvider.notifier).loadProfile(),
     ]);
   }
 
-  Future<void> loadTickers({bool force = false}) async {
-    if (!force && state.tickersLoaded) return;
+  Future<void> loadTickers({
+    bool force = false,
+    MarketTickerQuery? query,
+  }) async {
+    final MarketTickerQuery nextQuery = query ?? state.tickerQuery;
+    final bool sameQuery = nextQuery == state.tickerQuery;
+    if (!force && state.tickersLoaded && sameQuery) return;
 
-    state = state.copyWith(status: MarketStatus.loading, clearError: true);
+    state = state.copyWith(
+      status: MarketStatus.loading,
+      clearError: true,
+      tickerQuery: nextQuery,
+      tickers: sameQuery && !force ? state.tickers : <MarketTicker>[],
+      isLoadingMore: false,
+    );
     try {
-      final List<MarketTicker> tickers = await _repository.fetchTickers();
+      final MarketTickersPage page = await _repository.fetchTickersPage(
+        limit: SupabaseMarketRepository.defaultPageSize,
+        offset: 0,
+        query: nextQuery,
+      );
       state = state.copyWith(
         status: MarketStatus.ready,
-        tickers: tickers,
+        tickers: page.items,
         tickersLoaded: true,
+        tickerTotal: page.total,
+        totalListings: page.totalListings,
       );
     } on AppException catch (e) {
       state = state.copyWith(status: MarketStatus.error, errorMessage: e.message);
     } catch (_) {
       state = state.copyWith(status: MarketStatus.error, errorMessage: 'Pazar verisi yuklenemedi.');
+    }
+  }
+
+  Future<void> loadMoreTickers() async {
+    if (state.isLoadingMore || !state.hasMoreTickers) return;
+    if (state.status == MarketStatus.loading) return;
+
+    state = state.copyWith(isLoadingMore: true, clearError: true);
+    try {
+      final MarketTickersPage page = await _repository.fetchTickersPage(
+        limit: SupabaseMarketRepository.defaultPageSize,
+        offset: state.tickers.length,
+        query: state.tickerQuery,
+      );
+      state = state.copyWith(
+        status: MarketStatus.ready,
+        tickers: <MarketTicker>[...state.tickers, ...page.items],
+        tickersLoaded: true,
+        tickerTotal: page.total,
+        totalListings: page.totalListings,
+        isLoadingMore: false,
+      );
+    } on AppException catch (e) {
+      state = state.copyWith(isLoadingMore: false, errorMessage: e.message);
+    } catch (_) {
+      state = state.copyWith(
+        isLoadingMore: false,
+        errorMessage: 'Daha fazla ilan yuklenemedi.',
+      );
     }
   }
 
@@ -127,6 +200,18 @@ class MarketNotifier extends Notifier<MarketState> {
       state = state.copyWith(status: MarketStatus.error, errorMessage: e.message);
     } catch (_) {
       state = state.copyWith(status: MarketStatus.error, errorMessage: 'Ilanlar yuklenemedi.');
+    }
+  }
+
+  Future<void> loadMyHistory({bool force = false}) async {
+    if (!force && state.myHistoryLoaded) return;
+    try {
+      final List<MarketTradeRecord> history = await _repository.fetchMyHistory();
+      state = state.copyWith(myHistory: history, myHistoryLoaded: true);
+    } on AppException {
+      state = state.copyWith(myHistoryLoaded: true);
+    } catch (_) {
+      state = state.copyWith(myHistoryLoaded: true);
     }
   }
 

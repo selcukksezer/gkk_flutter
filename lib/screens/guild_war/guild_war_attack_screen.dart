@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,7 @@ import '../../components/layout/game_screen_background.dart';
 import '../../components/common/app_messenger.dart';
 import '../../core/utils/combat_restriction.dart';
 import '../../models/guild_war_model.dart';
+import '../../providers/guild_vault_provider.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
@@ -54,14 +57,20 @@ class _GuildWarAttackScreenState extends ConsumerState<GuildWarAttackScreen> {
     final String? combatBlock = combatRestrictionMessage(
       hospitalUntil: profile?.hospitalUntil,
       prisonUntil: profile?.prisonUntil,
+      health: profile?.health,
+      maxHealth: profile?.maxHealth,
     );
     if (combatBlock != null) {
       AppMessenger.showError(context, combatBlock);
       return;
     }
-    if (_preview != null && !_preview!.canAfford) {
-      AppMessenger.showError(context, 'Lonca kasasında yeterli altın yok.');
-      return;
+    if (_preview != null) {
+      final liveVault = ref.read(guildVaultProvider);
+      final int gold = liveVault.hydrated ? liveVault.vaultGold : _preview!.vaultGold;
+      if (gold < _preview!.attackGoldCost) {
+        AppMessenger.showError(context, 'Lonca kasasında yeterli altın yok.');
+        return;
+      }
     }
 
     setState(() => _attacking = true);
@@ -76,13 +85,28 @@ class _GuildWarAttackScreenState extends ConsumerState<GuildWarAttackScreen> {
       await _load();
       return;
     }
+    unawaited(ref.read(playerProvider.notifier).loadProfile());
     await context.push(AppRoutes.guildWarBattleResult, extra: result);
-    if (mounted) await _load();
+    if (!mounted) return;
+
+    // Win → own territory now; don't reload attack preview (shows "kendi bölgene...").
+    if (result.success) {
+      context.go('${AppRoutes.guildWarTerritory}/${widget.territoryId}');
+      return;
+    }
+    await _load();
   }
 
   @override
   Widget build(BuildContext context) {
     final TerritoryAttackPreview? p = _preview;
+    final liveVault = ref.watch(guildVaultProvider);
+    final int displayVaultGold = liveVault.hydrated
+        ? liveVault.vaultGold
+        : (p?.vaultGold ?? 0);
+    final bool canAfford = p == null
+        ? false
+        : displayVaultGold >= p.attackGoldCost;
 
     return GuildWarSubScreenScaffold(
       title: '⚔ Lonca Saldırısı',
@@ -91,7 +115,53 @@ class _GuildWarAttackScreenState extends ConsumerState<GuildWarAttackScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: WarPalette.gold))
           : p == null || p.error != null
-              ? Center(child: Text(p?.error ?? 'Önizleme yüklenemedi'))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Text('⚠️', style: TextStyle(fontSize: 36)),
+                        const SizedBox(height: 10),
+                        Text(
+                          p?.error ?? 'Önizleme yüklenemedi',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 13),
+                        ),
+                        const SizedBox(height: 14),
+                        if ((p?.error ?? '').contains('Kendi bölgenize'))
+                          OutlinedButton.icon(
+                            onPressed: () => context.go(
+                              '${AppRoutes.guildWarTerritory}/${widget.territoryId}',
+                            ),
+                            icon: const Icon(Icons.map_rounded,
+                                size: 16, color: WarPalette.gold),
+                            label: const Text('Bölgeye dön',
+                                style: TextStyle(color: WarPalette.gold)),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: WarPalette.gold.withValues(alpha: 0.4),
+                              ),
+                            ),
+                          )
+                        else
+                          OutlinedButton.icon(
+                            onPressed: _load,
+                            icon: const Icon(Icons.refresh_rounded,
+                                size: 16, color: WarPalette.gold),
+                            label: const Text('Tekrar Dene',
+                                style: TextStyle(color: WarPalette.gold)),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: WarPalette.gold.withValues(alpha: 0.4),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                )
               : ListView(
                   padding: GameScrollLayout.pagePadding(context),
                   children: <Widget>[
@@ -117,7 +187,16 @@ class _GuildWarAttackScreenState extends ConsumerState<GuildWarAttackScreen> {
                           _row('Saldırı maliyeti', '${p.attackGoldCost} 🪙'),
                           _row('Günlük gelir', '${p.tradeIncome} 🪙'),
                           if (p.roiDays != null) _row('ROI', '~${p.roiDays} gün'),
-                          _row('Kasa', '${p.vaultGold} 🪙'),
+                          _row('Kasa', '$displayVaultGold 🪙'),
+                          _row('Saldırı gücü', '${p.attackPower}'),
+                          if (p.sizeAttackMult > 1.001)
+                            _row(
+                              'Küçük lonca bonusu',
+                              '×${p.sizeAttackMult.toStringAsFixed(2)} (${p.memberCount} üye)',
+                            ),
+                          if (p.gemAttackBoost > 0)
+                            _row('Elmas saldırı', '+${p.gemAttackBoost}'),
+                          _row('Savunma gücü', '${p.defensePower}'),
                           _row('Tahmini şans', '%${p.winChancePct.toStringAsFixed(1)}'),
                         ],
                       ),
@@ -133,7 +212,7 @@ class _GuildWarAttackScreenState extends ConsumerState<GuildWarAttackScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _attacking || !p.canAfford ? null : _attack,
+                        onPressed: _attacking || !canAfford ? null : _attack,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: WarPalette.ruby,
                           foregroundColor: Colors.white,
@@ -142,7 +221,7 @@ class _GuildWarAttackScreenState extends ConsumerState<GuildWarAttackScreen> {
                         child: Text(
                           _attacking
                               ? 'Saldırılıyor…'
-                              : p.canAfford
+                              : canAfford
                                   ? 'Saldır (${p.attackGoldCost}g)'
                                   : 'Kasa yetersiz',
                         ),

@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/tutorial/tutorial_anchor.dart';
+import '../../../core/tutorial/tutorial_track.dart';
 import '../../../core/utils/gold_format.dart';
 import '../../../core/utils/power_formula.dart';
 import '../../../models/dungeon_model.dart';
@@ -43,6 +45,10 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
     this.siegeSlotCount = 5,
     this.siegeConfig,
     this.onSiegeTap,
+    this.useTutorialAnchors = false,
+    this.onCardTap,
+    this.zoneLevelLocked = false,
+    this.zoneRequiredLevel = 1,
   });
 
   final DungeonData dungeon;
@@ -69,6 +75,10 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
   final int siegeSlotCount;
   final DungeonSiegeConfig? siegeConfig;
   final VoidCallback? onSiegeTap;
+  final bool useTutorialAnchors;
+  final VoidCallback? onCardTap;
+  final bool zoneLevelLocked;
+  final int zoneRequiredLevel;
 
   String get _threatLabel {
     if (successPercent >= 80) return 'KOLAY';
@@ -87,6 +97,7 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
     if (entering) return 'Giriliyor...';
     if (inHospital) return 'Hastane Kilidi';
     if (inPrison) return 'Hapis Kilidi';
+    if (zoneLevelLocked) return 'Lv.$zoneRequiredLevel Gerekli';
     if (!canEnter) return 'Enerji Yetersiz';
     return 'Zindana Gir';
   }
@@ -99,7 +110,21 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
         powerRequirement > 0 ? (playerPower / powerRequirement).clamp(0.0, 2.0) : 1.0;
     final bool powerOk = powerRatio >= 1.0;
 
-    return Container(
+    Widget enterButton = _CaveEnterButton(
+      active: active,
+      entering: entering,
+      label: _enterLabel,
+      theme: theme,
+      onTap: active ? onEnter : null,
+    );
+    if (useTutorialAnchors) {
+      enterButton = TutorialAnchorScope(
+        id: TutorialAnchorId.dungeonEnterBtn,
+        child: enterButton,
+      );
+    }
+
+    Widget card = Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
@@ -264,13 +289,7 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                               _CaveLootButton(onTap: onLoot, theme: theme),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: _CaveEnterButton(
-                                  active: active,
-                                  entering: entering,
-                                  label: _enterLabel,
-                                  theme: theme,
-                                  onTap: active ? onEnter : null,
-                                ),
+                                child: enterButton,
                               ),
                             ],
                           ),
@@ -295,6 +314,21 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (useTutorialAnchors) {
+      card = TutorialAnchorScope(
+        id: TutorialAnchorId.dungeonZone0,
+        child: card,
+      );
+    }
+    if (onCardTap != null) {
+      card = GestureDetector(
+        onTap: onCardTap,
+        behavior: HitTestBehavior.opaque,
+        child: card,
+      );
+    }
+    return card;
   }
 }
 

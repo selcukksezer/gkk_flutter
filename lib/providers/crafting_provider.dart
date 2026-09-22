@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/crafting_queue_slots.dart';
 import '../core/services/supabase_service.dart';
 import '../models/crafting_model.dart';
 import '../models/inventory_model.dart';
 import 'inventory_provider.dart';
 
 const int craftingBatchLimit = 5;
-const int craftingQueueLimit = 10;
 
 class CraftingState {
   const CraftingState({
@@ -15,6 +15,7 @@ class CraftingState {
     required this.isLoading,
     required this.isCrafting,
     required this.isCancelling,
+    this.isExpandingQueue = false,
     this.error,
     this.selectedRecipeId,
     required this.selectedBatchCount,
@@ -26,6 +27,7 @@ class CraftingState {
   final bool isLoading;
   final bool isCrafting;
   final bool isCancelling;
+  final bool isExpandingQueue;
   final String? error;
   final String? selectedRecipeId;
   final int selectedBatchCount;
@@ -37,6 +39,7 @@ class CraftingState {
         isLoading: false,
         isCrafting: false,
         isCancelling: false,
+        isExpandingQueue: false,
         selectedBatchCount: 1,
         selectedTab: 'tumu',
       );
@@ -47,6 +50,7 @@ class CraftingState {
     bool? isLoading,
     bool? isCrafting,
     bool? isCancelling,
+    bool? isExpandingQueue,
     String? error,
     String? selectedRecipeId,
     int? selectedBatchCount,
@@ -60,6 +64,7 @@ class CraftingState {
       isLoading: isLoading ?? this.isLoading,
       isCrafting: isCrafting ?? this.isCrafting,
       isCancelling: isCancelling ?? this.isCancelling,
+      isExpandingQueue: isExpandingQueue ?? this.isExpandingQueue,
       error: clearError ? null : (error ?? this.error),
       selectedRecipeId:
           clearSelectedRecipe ? null : (selectedRecipeId ?? this.selectedRecipeId),
@@ -205,6 +210,8 @@ class CraftingNotifier extends Notifier<CraftingState> {
     }
     return null;
   }
+
+  bool _rpcSucceeded(dynamic response) => _readRpcSuccess(response) == true;
 
   String? _readRpcMessage(dynamic response) {
     if (response is List && response.isNotEmpty) {
@@ -409,11 +416,15 @@ class CraftingNotifier extends Notifier<CraftingState> {
     required String recipeId,
     required int batchCount,
     required List<InventoryItem> inventoryItems,
+    required int maxQueueSlots,
   }) async {
     if (state.isCrafting) return false;
-    if (state.queue.length >= craftingQueueLimit) {
+    final int queueLimit = maxQueueSlots.clamp(craftingQueueBaseSlots, craftingQueueMaxSlots);
+    final int activeQueueCount =
+        state.queue.where((CraftQueueItem item) => !item.claimed).length;
+    if (activeQueueCount >= queueLimit) {
       state = state.copyWith(
-        error: 'Uretim kuyrugu dolu (maksimum $craftingQueueLimit).',
+        error: 'Uretim kuyrugu dolu ($activeQueueCount/$queueLimit). ELMAS ile genislet.',
       );
       return false;
     }
@@ -452,8 +463,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
           'p_quantity': clampedBatch,
         });
 
-        final bool? startSuccess = _readRpcSuccess(startResponse);
-        if (startSuccess == false) {
+        if (!_rpcSucceeded(startResponse)) {
           state = state.copyWith(
             isCrafting: false,
             error: _readRpcMessage(startResponse) ?? 'Uretim baslatilamadi.',
@@ -519,8 +529,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
         'p_queue_item_id': queueItemId,
       });
 
-      final bool? success = _readRpcSuccess(response);
-      if (success == false) {
+      if (!_rpcSucceeded(response)) {
         await loadQueue();
         state = state.copyWith(
           error: _readRpcMessage(response) ?? 'Urun alinamadi.',
@@ -545,8 +554,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
         'p_queue_item_id': queueItemId,
       });
 
-      final bool? success = _readRpcSuccess(response);
-      if (success == false) {
+      if (!_rpcSucceeded(response)) {
         state = state.copyWith(
           error: _readRpcMessage(response) ?? 'Kuyruk ogesi kaldirilamadi.',
         );
@@ -572,8 +580,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
         'p_queue_item_id': queueItemId,
       });
 
-      final bool? success = _readRpcSuccess(response);
-      if (success == false) {
+      if (!_rpcSucceeded(response)) {
         state = state.copyWith(
           isCancelling: false,
           error: _readRpcMessage(response) ?? 'Uretim iptal edilemedi.',
@@ -588,6 +595,32 @@ class CraftingNotifier extends Notifier<CraftingState> {
       state = state.copyWith(
         isCancelling: false,
         error: 'Uretim iptal edilirken bir hata olustu: ${e.toString()}',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> expandCraftQueueSlot() async {
+    if (state.isExpandingQueue) return false;
+    state = state.copyWith(isExpandingQueue: true, clearError: true);
+    try {
+      final dynamic raw =
+          await SupabaseService.client.rpc('expand_craft_queue_slot');
+
+      if (!_rpcSucceeded(raw)) {
+        state = state.copyWith(
+          isExpandingQueue: false,
+          error: _readRpcMessage(raw) ?? 'Kuyruk genisletilemedi.',
+        );
+        return false;
+      }
+
+      state = state.copyWith(isExpandingQueue: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isExpandingQueue: false,
+        error: 'Kuyruk genisletilirken bir hata olustu: ${e.toString()}',
       );
       return false;
     }

@@ -13,6 +13,7 @@ import '../../core/services/presence_service.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
+import '../../l10n/l10n.dart';
 import '../../models/mekan_model.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/mekan_detail_provider.dart';
@@ -33,6 +34,7 @@ class MekanDetailScreen extends ConsumerStatefulWidget {
 
 class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
   bool _refreshing = false;
+  bool _nightlifeBusy = false;
 
   @override
   void initState() {
@@ -67,6 +69,218 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
         happyHour: mekan.happyHourActive,
         onConfirm: (int qty) => _buy(mekan, item, qty),
       ),
+    );
+  }
+
+  Future<void> _refill(MekanStockEntry item) async {
+    if (_nightlifeBusy) return;
+    setState(() => _nightlifeBusy = true);
+    try {
+      final MekanRefillResult result = await ref.read(mekanRepositoryProvider).refill(
+            mekanId: widget.mekanId,
+            itemId: item.itemId,
+          );
+      await ref.read(playerProvider.notifier).loadProfile();
+      if (!mounted) return;
+      await _showRefillResult(result);
+      await _reload(silent: true);
+    } catch (e) {
+      if (mounted) {
+        AppMessenger.showError(
+          context,
+          userFacingErrorMessage(e, fallback: context.l10n.nightlife_busy),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _nightlifeBusy = false);
+    }
+  }
+
+  Future<void> _showRefillResult(MekanRefillResult result) async {
+    final l10n = context.l10n;
+    final Color accent = result.isOverdose ? MekanPalette.ruby : MekanPalette.neon;
+    final String title = result.isOverdose ? l10n.nightlife_overdose : l10n.nightlife_refill_ok;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) {
+        return Container(
+          padding: EdgeInsets.fromLTRB(18, 16, 18, MediaQuery.viewInsetsOf(ctx).bottom + 24),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: MekanPalette.aqua, width: 1.5)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(color: MekanPalette.textLow, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                l10n.nightlife_result,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: MekanPalette.textMid,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: accent),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                result.message,
+                style: const TextStyle(fontSize: 14, color: MekanPalette.textHi, height: 1.35),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  GlowChip(
+                    icon: Icons.bolt_rounded,
+                    label: '${l10n.nightlife_energy_cost} ${result.energyBefore}→${result.energyAfter}',
+                    color: MekanPalette.aqua,
+                  ),
+                  GlowChip(
+                    icon: Icons.confirmation_number_rounded,
+                    label: '${l10n.nightlife_tickets} ${result.ticketsLeft}',
+                    color: MekanPalette.solar,
+                  ),
+                  GlowChip(
+                    icon: Icons.monetization_on_rounded,
+                    label: 'Gold -${result.goldPaid}',
+                    color: MekanPalette.gold,
+                  ),
+                  GlowChip(
+                    icon: Icons.medication_liquid_rounded,
+                    label: '${l10n.nightlife_addiction} ${result.addictionLevel} · ${result.tolerance}%',
+                    color: MekanPalette.fuchsia,
+                  ),
+                  if (result.odNextWarning)
+                    GlowChip(
+                      icon: Icons.warning_amber_rounded,
+                      label: l10n.nightlife_od_warning,
+                      color: MekanPalette.ruby,
+                    ),
+                ],
+              ),
+              if (result.hospital) ...<Widget>[
+                const SizedBox(height: 14),
+                NeonButton(
+                  label: l10n.nightlife_hospital_cta,
+                  icon: Icons.local_hospital_rounded,
+                  accent: MekanPalette.ruby,
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    context.go(AppRoutes.hospital);
+                  },
+                ),
+              ] else ...<Widget>[
+                const SizedBox(height: 14),
+                NeonButton(
+                  label: 'OK',
+                  accent: accent,
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openRefillSheet(Mekan mekan, List<MekanStockEntry> refillStock) async {
+    final l10n = context.l10n;
+    if (refillStock.isEmpty) {
+      AppMessenger.showError(context, l10n.nightlife_no_refill_stock);
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) {
+        return Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.7),
+          padding: EdgeInsets.fromLTRB(16, 14, 16, MediaQuery.viewInsetsOf(ctx).bottom + 20),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: MekanPalette.aqua, width: 1.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                l10n.nightlife_buy_drink,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: MekanPalette.textHi),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.nightlife_enter_free,
+                style: const TextStyle(fontSize: 12, color: MekanPalette.textMid),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: refillStock.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (BuildContext context, int i) {
+                    final MekanStockEntry s = refillStock[i];
+                    final bool own = ref.read(playerProvider).profile?.authId == mekan.ownerId;
+                    final String priceLabel = own ? '1 ${l10n.nightlife_tickets}' : '${s.sellPrice}g + 1 ${l10n.nightlife_tickets}';
+                    return ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: MekanPalette.aqua, width: 0.6),
+                      ),
+                      leading: ItemIconView(iconValue: s.icon, size: 36),
+                      title: Text(s.name, style: const TextStyle(color: MekanPalette.textHi, fontWeight: FontWeight.w800)),
+                      subtitle: Text(
+                        'x${s.quantity} · $priceLabel',
+                        style: const TextStyle(color: MekanPalette.textMid, fontSize: 12),
+                      ),
+                      trailing: NeonButton(
+                        label: l10n.nightlife_refill,
+                        accent: MekanPalette.neon,
+                        expand: false,
+                        busy: _nightlifeBusy,
+                        onPressed: _nightlifeBusy
+                            ? null
+                            : () async {
+                                Navigator.of(ctx).pop();
+                                await _refill(s);
+                              },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -148,6 +362,8 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
           final String? typeKey = mekan.typeKey;
           final Color accent = MekanPalette.accent(typeKey);
           final List<MekanStockEntry> vitrinStock = mekanVitrinStock(mekan, detail.stock);
+          final List<MekanStockEntry> refillStock =
+              vitrinStock.where((MekanStockEntry s) => s.canRefill).toList(growable: false);
           final String vitrinSubtitle = !mekan.isOpen || mekan.raidClosed
               ? (mekan.raidClosed ? 'Polis baskını — satış kapalı' : 'Mekan kapalı')
               : '${vitrinStock.length} ürün satışta';
@@ -171,9 +387,20 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                       ),
                     if (mekan.happyHourActive)
                       SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
+                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                         sliver: SliverToBoxAdapter(
-                          child: HappyHourBanner(until: DateTime.parse(mekan.happyHourUntil!)),
+                          child: HappyHourBanner(
+                            until: DateTime.parse(mekan.happyHourUntil!),
+                            title: context.l10n.party_live,
+                            subtitle: context.l10n.party_live_subtitle,
+                          ),
+                        ),
+                      ),
+                    if (mekan.isOpen && !mekan.raidClosed)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: _nightlifePanel(mekan, accent, isOwner, refillStock),
                         ),
                       ),
                     SliverPadding(
@@ -232,6 +459,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                             (BuildContext context, int i) {
                               final MekanStockEntry s = vitrinStock[i];
                               final bool canBuy = !isOwner && mekan.isOpen && !mekan.raidClosed;
+                              final bool canRefillHere = s.canRefill && mekan.isOpen && !mekan.raidClosed;
                               return LootStockCard(
                                 name: s.name,
                                 itemId: s.itemId,
@@ -242,14 +470,22 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                                 isHanOnly: s.isHanOnly,
                                 contraband: mekanItemIsContraband(s.itemId),
                                 discounted: mekan.happyHourActive,
-                                onTap: canBuy ? () => _openBuySheet(mekan, s) : null,
-                                trailing: canBuy
+                                onTap: canRefillHere
+                                    ? () => _refill(s)
+                                    : (canBuy ? () => _openBuySheet(mekan, s) : null),
+                                trailing: canRefillHere
                                     ? NeonButton(
-                                        label: 'Satın Al',
-                                        accent: MekanPalette.gold,
-                                        onPressed: () => _openBuySheet(mekan, s),
+                                        label: context.l10n.nightlife_refill,
+                                        accent: MekanPalette.neon,
+                                        onPressed: _nightlifeBusy ? null : () => _refill(s),
                                       )
-                                    : null,
+                                    : canBuy
+                                        ? NeonButton(
+                                            label: 'Satın Al',
+                                            accent: MekanPalette.gold,
+                                            onPressed: () => _openBuySheet(mekan, s),
+                                          )
+                                        : null,
                               );
                             },
                             childCount: vitrinStock.length,
@@ -279,7 +515,112 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
     );
   }
 
+  Widget _nightlifePanel(
+    Mekan mekan,
+    Color accent,
+    bool isOwner,
+    List<MekanStockEntry> refillStock,
+  ) {
+    final l10n = context.l10n;
+    final bool partyOn = mekan.happyHourActive;
+    final profile = ref.watch(playerProvider).profile;
+    final int tickets = profile?.nightlifeTickets ?? 0;
+    final int addiction = profile?.addictionLevel ?? 0;
+    final int tol = profile?.tolerance ?? 0;
+    return NeonPanel(
+      accent: accent,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          NeonSectionHeader(
+            title: l10n.nightlife_floor,
+            subtitle: l10n.nightlife_floor_subtitle,
+            accent: accent,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.nightlife_enter_free,
+            style: const TextStyle(fontSize: 11.5, color: MekanPalette.textMid, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              GlowChip(
+                icon: Icons.confirmation_number_rounded,
+                label: '${l10n.nightlife_tickets} $tickets',
+                color: MekanPalette.solar,
+              ),
+              GlowChip(
+                icon: Icons.medication_liquid_rounded,
+                label: '${l10n.nightlife_addiction} $addiction · $tol%',
+                color: MekanPalette.fuchsia,
+              ),
+              if (isOwner)
+                GlowChip(
+                  icon: Icons.shield_rounded,
+                  label: l10n.nightlife_own_safe,
+                  color: MekanPalette.neon,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          NeonButton(
+            label: l10n.nightlife_buy_drink,
+            icon: Icons.local_bar_rounded,
+            accent: MekanPalette.aqua,
+            busy: _nightlifeBusy,
+            onPressed: _nightlifeBusy ? null : () => _openRefillSheet(mekan, refillStock),
+          ),
+          if (isOwner) ...<Widget>[
+            const SizedBox(height: 10),
+            NeonButton(
+              label: partyOn ? l10n.party_live : l10n.start_party,
+              icon: Icons.campaign_rounded,
+              filled: false,
+              accent: MekanPalette.coral,
+              busy: _nightlifeBusy,
+              onPressed: (_nightlifeBusy || partyOn)
+                  ? null
+                  : () async {
+                      setState(() => _nightlifeBusy = true);
+                      try {
+                        await ref.read(mekanRepositoryProvider).startParty(mekanId: mekan.id);
+                        await ref.read(playerProvider.notifier).loadProfile();
+                        if (mounted) {
+                          AppMessenger.showSuccess(context, l10n.party_live);
+                          await _reload(silent: true);
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          AppMessenger.showError(
+                            context,
+                            userFacingErrorMessage(e, fallback: l10n.nightlife_busy),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _nightlifeBusy = false);
+                      }
+                    },
+            ),
+            if (!partyOn)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  l10n.nightlife_no_party,
+                  style: const TextStyle(fontSize: 11.5, color: MekanPalette.textMid, fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _presencePanel(List<Map<String, dynamic>> presence, Color accent) {
+    final String who = context.l10n.who_is_here;
     return NeonPanel(
       accent: accent,
       padding: const EdgeInsets.all(12),
@@ -298,7 +639,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'ŞU AN İÇERİDE (${presence.length})',
+                '${who.toUpperCase()} (${presence.length})',
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,

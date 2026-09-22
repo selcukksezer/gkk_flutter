@@ -73,6 +73,9 @@ class MonumentGuildSnapshot {
   final int goldPool;
 
   factory MonumentGuildSnapshot.fromJson(Map<String, dynamic> json) {
+    final int vaultGold = (json['vault_gold'] as num?)?.toInt() ??
+        (json['monument_gold_pool'] as num?)?.toInt() ??
+        0;
     return MonumentGuildSnapshot(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
@@ -80,7 +83,7 @@ class MonumentGuildSnapshot {
       structural: (json['monument_structural'] as num?)?.toInt() ?? 0,
       mystical: (json['monument_mystical'] as num?)?.toInt() ?? 0,
       critical: (json['monument_critical'] as num?)?.toInt() ?? 0,
-      goldPool: (json['monument_gold_pool'] as num?)?.toInt() ?? 0,
+      goldPool: vaultGold,
     );
   }
 }
@@ -186,6 +189,10 @@ class MonumentResourceProgress {
   int get filledPercent => (progress * 100).round().clamp(0, 100);
 
   int get remainingPercent => (100 - filledPercent).clamp(0, 100);
+
+  int get remaining => (required - current).clamp(0, required < 0 ? 0 : required);
+
+  bool get isComplete => required <= 0 || current >= required;
 }
 
 class MonumentUpgradeProgress {
@@ -298,12 +305,24 @@ class MonumentDonateResult {
 }
 
 class MonumentUpgradeResult {
-  const MonumentUpgradeResult({required this.newLevel});
+  const MonumentUpgradeResult({
+    required this.newLevel,
+    this.goldFromVault = 0,
+    this.vaultGoldAfter,
+  });
 
   final int newLevel;
+  final int goldFromVault;
+  final int? vaultGoldAfter;
 
   factory MonumentUpgradeResult.fromRpc(Map<String, dynamic> json) {
-    return MonumentUpgradeResult(newLevel: (json['new_level'] as num?)?.toInt() ?? 0);
+    return MonumentUpgradeResult(
+      newLevel: (json['new_level'] as num?)?.toInt() ?? 0,
+      goldFromVault: (json['gold_from_vault'] as num?)?.toInt() ??
+          (json['required_gold'] as num?)?.toInt() ??
+          0,
+      vaultGoldAfter: (json['vault_gold'] as num?)?.toInt(),
+    );
   }
 }
 
@@ -317,7 +336,7 @@ abstract class GuildMonumentRepository {
     required int gold,
   });
 
-  Future<int> upgradeMonument({required String userId});
+  Future<MonumentUpgradeResult> upgradeMonument({required String userId});
 }
 
 Map<String, dynamic>? _asStringKeyMap(dynamic value) {
@@ -402,7 +421,7 @@ class SupabaseGuildMonumentRepository implements GuildMonumentRepository {
   }
 
   @override
-  Future<int> upgradeMonument({required String userId}) async {
+  Future<MonumentUpgradeResult> upgradeMonument({required String userId}) async {
     final dynamic raw = await SupabaseService.client.rpc(
       'upgrade_monument',
       params: <String, dynamic>{'p_user_id': userId},
@@ -414,7 +433,7 @@ class SupabaseGuildMonumentRepository implements GuildMonumentRepository {
     if (result['success'] != true) {
       throw Exception((result['error'] ?? 'Yükseltme başarısız').toString());
     }
-    return MonumentUpgradeResult.fromRpc(result).newLevel;
+    return MonumentUpgradeResult.fromRpc(result);
   }
 }
 

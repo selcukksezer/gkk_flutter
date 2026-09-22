@@ -263,6 +263,7 @@ class GuildNotifier extends Notifier<GuildState> {
       'promote_guild_member',
       'demote_guild_member',
       'kick_guild_member',
+      'transfer_guild_leadership',
     };
     if (memberId.isEmpty || !allowedActions.contains(action)) {
       state = state.copyWith(error: 'Geçersiz lonca üyesi işlemi.');

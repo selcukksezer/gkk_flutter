@@ -1,0 +1,215 @@
+{
+  "run_id": null,
+  "test_name": "tutorial_live_journey_smoke",
+  "screenshot_dir": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210",
+  "verdict": "FAIL",
+  "pass": 9,
+  "total": 20,
+  "failures": [
+    "dungeon_intro: stuck at null",
+    "dungeon_pick_zone: stuck at null",
+    "dungeon_enter_btn: stuck at null",
+    "dungeon_confirm_enter: stuck at null",
+    "dungeon_tap_attack: stuck at null",
+    "dungeon_first_win: stuck at null (battle win hold timeout)",
+    "dungeon_to_inventory: stuck at null",
+    "inventory_first_item: stuck at null",
+    "inventory_equip: step timeout 120s at inventory_equip",
+    "inventory_to_character: stuck at null",
+    "core_complete_check: enhancement not progressed: {}"
+  ],
+  "steps": [
+    {
+      "id": "onboarding_welcome",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/01_after_onboarding_welcome.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_game_loop",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/02_after_onboarding_game_loop.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_home_promo",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/03_after_onboarding_home_promo.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_home_hero",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/04_after_onboarding_home_hero.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_hud_energy",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/05_after_onboarding_hud_energy.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_hud_gold",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/06_after_onboarding_hud_gold.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_hud_gems",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/07_after_onboarding_hud_gems.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_nav_intro",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/08_after_onboarding_nav_intro.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "onboarding_tap_dungeon_tab",
+      "pass": true,
+      "error": null,
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/09_after_onboarding_tap_dungeon_tab.png",
+      "fix_notes": [
+        "OK \u2014 no fix required for this step."
+      ]
+    },
+    {
+      "id": "dungeon_intro",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/10_after_dungeon_intro.png",
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "Inspect screenshot + tutorial_controller / host for dungeon_intro."
+      ]
+    },
+    {
+      "id": "dungeon_pick_zone",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/11_after_dungeon_pick_zone.png",
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "Dungeon anchors \u2014 dungeon_screen zone/enter/confirm wiring."
+      ]
+    },
+    {
+      "id": "dungeon_enter_btn",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/12_after_dungeon_enter_btn.png",
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "Dungeon anchors \u2014 dungeon_screen zone/enter/confirm wiring."
+      ]
+    },
+    {
+      "id": "dungeon_confirm_enter",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/13_after_dungeon_confirm_enter.png",
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "Dungeon anchors \u2014 dungeon_screen zone/enter/confirm wiring."
+      ]
+    },
+    {
+      "id": "dungeon_tap_attack",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/14_after_dungeon_tap_attack.png",
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "dungeon.attack_btn \u2014 battle screen energy/power gate or anchor."
+      ]
+    },
+    {
+      "id": "dungeon_first_win",
+      "pass": false,
+      "error": "stuck at null (battle win hold timeout)",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/15_after_dungeon_first_win.png",
+      "fix_notes": [
+        "FAIL: stuck at null (battle win hold timeout)",
+        "Win hold \u2014 TutorialTriggers.onDungeonWin / revealHeldDungeonWin."
+      ]
+    },
+    {
+      "id": "dungeon_to_inventory",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/16_after_dungeon_to_inventory.png",
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "Inspect screenshot + tutorial_controller / host for dungeon_to_inventory."
+      ]
+    },
+    {
+      "id": "inventory_first_item",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": "/Users/selcuk/Documents/gkk-web/gkk_flutter/reports/screenshots/tutorial_2026-07-29_135210/17_after_inventory_first_item.png",
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "inventory.first_weapon \u2014 no loot weapon? Seed QA inventory."
+      ]
+    },
+    {
+      "id": "inventory_equip",
+      "pass": false,
+      "error": "step timeout 120s at inventory_equip",
+      "screenshot_after": null,
+      "fix_notes": [
+        "FAIL: step timeout 120s at inventory_equip",
+        "equip_success event \u2014 inventory_screen onEquipSuccess trigger."
+      ]
+    },
+    {
+      "id": "inventory_to_character",
+      "pass": false,
+      "error": "stuck at null",
+      "screenshot_after": null,
+      "fix_notes": [
+        "FAIL: stuck at null",
+        "Inspect screenshot + tutorial_controller / host for inventory_to_character."
+      ]
+    },
+    {
+      "id": "core_complete_check",
+      "pass": false,
+      "error": "enhancement not progressed: {}",
+      "screenshot_after": null,
+      "fix_notes": [
+        "FAIL: enhancement not progressed: {}",
+        "Inspect screenshot + tutorial_controller / host for core_complete_check."
+      ]
+    }
+  ],
+  "drive_exit": 1
+}

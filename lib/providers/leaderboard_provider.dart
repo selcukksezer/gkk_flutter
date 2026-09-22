@@ -92,7 +92,7 @@ class LeaderboardNotifier extends Notifier<LeaderboardState> {
         },
       );
 
-      if (result is! List || result.isEmpty) {
+      if (result is! List) {
         state = state.copyWith(
           status: LeaderboardStatus.error,
           entries: <LeaderboardEntry>[],
@@ -102,25 +102,23 @@ class LeaderboardNotifier extends Notifier<LeaderboardState> {
       }
 
       final List<LeaderboardEntry> entries = result
-          .whereType<Map<String, dynamic>>()
-          .map(LeaderboardEntry.fromJson)
+          .whereType<Map>()
+          .map(
+            (Map row) => LeaderboardEntry.fromJson(
+              Map<String, dynamic>.from(row),
+            ),
+          )
           .where((LeaderboardEntry e) => e.username.isNotEmpty)
           .toList();
 
-      if (entries.isEmpty) {
-        state = state.copyWith(
-          status: LeaderboardStatus.error,
-          entries: <LeaderboardEntry>[],
-          errorMessage: 'Sıralama yüklenemedi',
-        );
-        return;
-      }
-
+      // Empty board = valid (no rows yet), not a hard failure.
       state = state.copyWith(
         status: LeaderboardStatus.ready,
         entries: entries,
       );
-      await _resolvePlayerRank(entries, category, nextWeekly);
+      if (entries.isNotEmpty) {
+        await _resolvePlayerRank(entries, category, nextWeekly);
+      }
     } catch (_) {
       state = state.copyWith(
         status: LeaderboardStatus.error,

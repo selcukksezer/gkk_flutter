@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../components/common/app_messenger.dart';
 import '../core/services/supabase_service.dart';
+import '../core/tutorial/tutorial_modal_suppress.dart';
 import '../providers/auth_provider.dart';
 import '../providers/player_provider.dart';
 import '../routing/app_router.dart';
@@ -171,42 +172,44 @@ class _BanEnforcementGateState extends ConsumerState<BanEnforcementGate> {
   Widget build(BuildContext context) {
     if (!_status.isBanned) return widget.child;
 
-    return Stack(
-      children: <Widget>[
-        IgnorePointer(child: widget.child),
-        Positioned.fill(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(color: SettingsPalette.void_.withValues(alpha: 0.88)),
+    return TutorialSuppressScope(
+      active: true,
+      child: Stack(
+        children: <Widget>[
+          IgnorePointer(child: widget.child),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(color: SettingsPalette.void_.withValues(alpha: 0.88)),
+            ),
           ),
-        ),
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: SettingsGlassCard(
-              accent: SettingsPalette.ruby,
-              glow: true,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const SettingsSectionHeader(
-                    icon: Icons.block_rounded,
-                    title: 'Hesap askıya alındı',
-                    subtitle: 'Bu hesapla oyuna erişemezsin',
-                    accent: SettingsPalette.ruby,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Sebep',
-                    style: AppTextStyles.caption.copyWith(color: SettingsPalette.titanium),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _status.reason ?? 'Belirtilmedi',
-                    style: AppTextStyles.body.copyWith(color: SettingsPalette.textHi),
-                  ),
-                  const SizedBox(height: 12),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: SettingsGlassCard(
+                accent: SettingsPalette.ruby,
+                glow: true,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    const SettingsSectionHeader(
+                      icon: Icons.block_rounded,
+                      title: 'Hesap askıya alındı',
+                      subtitle: 'Bu hesapla oyuna erişemezsin',
+                      accent: SettingsPalette.ruby,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Sebep',
+                      style: AppTextStyles.caption.copyWith(color: SettingsPalette.titanium),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _status.reason ?? 'Belirtilmedi',
+                      style: AppTextStyles.body.copyWith(color: SettingsPalette.textHi),
+                    ),
+                    const SizedBox(height: 12),
                   Text(
                     'Süre',
                     style: AppTextStyles.caption.copyWith(color: SettingsPalette.titanium),
@@ -232,7 +235,8 @@ class _BanEnforcementGateState extends ConsumerState<BanEnforcementGate> {
             ),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }

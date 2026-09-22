@@ -1,0 +1,119 @@
+{
+  "checked_at": "2026-07-29T14:50:57.381245+00:00",
+  "passed": 13,
+  "tests": [
+    {
+      "area": "catalog",
+      "detail": {
+        "duplicate_groups": 0
+      },
+      "pass": true,
+      "test": "rarity_slot_groups_unique_stat_tuples"
+    },
+    {
+      "area": "catalog",
+      "detail": {
+        "unique_combos": 4
+      },
+      "pass": true,
+      "test": "common_weapons_four_unique_roles"
+    },
+    {
+      "area": "roles",
+      "detail": {
+        "sword_attack": 1100
+      },
+      "pass": true,
+      "test": "sword_highest_common_weapon_attack"
+    },
+    {
+      "area": "roles",
+      "detail": {
+        "axe_luck": 280
+      },
+      "pass": true,
+      "test": "axe_highest_common_weapon_luck"
+    },
+    {
+      "area": "roles",
+      "detail": {
+        "staff_health": 320
+      },
+      "pass": true,
+      "test": "staff_has_health_extra"
+    },
+    {
+      "area": "roles",
+      "detail": {
+        "dagger_luck": 220,
+        "sword_luck": 80
+      },
+      "pass": true,
+      "test": "dagger_luck_above_sword"
+    },
+    {
+      "area": "roles",
+      "detail": {
+        "bracers_attack": 560,
+        "mitts_luck": 260
+      },
+      "pass": true,
+      "test": "gloves_mitts_vs_bracers_not_identical"
+    },
+    {
+      "area": "flavor",
+      "detail": {
+        "expected": 6,
+        "with_extra_line": 6
+      },
+      "pass": true,
+      "test": "seeded_items_have_ekstra_description"
+    },
+    {
+      "area": "power",
+      "detail": {
+        "mismatches": 0
+      },
+      "pass": true,
+      "test": "catalog_power_matches_formula"
+    },
+    {
+      "area": "catalog",
+      "detail": {
+        "clone_groups": 0
+      },
+      "pass": true,
+      "test": "no_exact_stat_clones"
+    },
+    {
+      "area": "catalog",
+      "detail": {
+        "bad_rarities": 0
+      },
+      "pass": true,
+      "test": "all_rarity_weapons_unique"
+    },
+    {
+      "area": "inventory",
+      "detail": {
+        "catalog_attack": 850,
+        "has_extra_in_desc": true,
+        "inventory_attack": 850,
+        "slot": 10
+      },
+      "pass": true,
+      "test": "inventory_join_returns_catalog_attack_and_extra"
+    },
+    {
+      "area": "combat",
+      "detail": {
+        "axe_equip_power": 1410,
+        "sword_equip_power": 1260
+      },
+      "pass": true,
+      "test": "equip_power_differs_between_common_weapons"
+    }
+  ],
+  "total": 13,
+  "verdict": "PASS"
+}

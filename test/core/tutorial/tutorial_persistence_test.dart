@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gkk_flutter/core/tutorial/tutorial_persistence.dart';
 import 'package:gkk_flutter/core/tutorial/tutorial_track.dart';
+import 'package:gkk_flutter/core/tutorial/tutorial_track_registry.dart';
 
 void main() {
   group('TutorialProgressState v2', () {
@@ -105,7 +106,7 @@ void main() {
         restored.stepsForTrack(TutorialTrackId.inventory),
         original.stepsForTrack(TutorialTrackId.inventory),
       );
-      expect(restored.version, 3);
+      expect(restored.version, TutorialTrackRegistry.version);
     });
 
     test('skipAll sets skipped flag and all tracks', () {
@@ -113,6 +114,31 @@ void main() {
           TutorialProgressState.initial().skipAll();
       expect(skipped.skippedAll, isTrue);
       expect(skipped.isTrackComplete(TutorialTrackId.season), isTrue);
+    });
+
+    test('mergeServer hardReset wipes prior progress', () {
+      final TutorialProgressState local = TutorialProgressState(
+        version: 2,
+        completedTracks: <String>{TutorialTrackId.onboarding, TutorialTrackId.dungeon},
+        stepsByTrack: <String, Set<String>>{
+          TutorialTrackId.onboarding: <String>{'onboarding_welcome'},
+        },
+        skippedAll: false,
+        hardReset: true,
+      );
+      final TutorialProgressState merged = local.mergeServer(
+        <String, dynamic>{
+          'completed_tracks': <String>[TutorialTrackId.season],
+          'steps': <String, dynamic>{
+            TutorialTrackId.season: <String>['season_intro'],
+          },
+        },
+        tutorialCompleted: true,
+      );
+      expect(merged.completedTracks, isEmpty);
+      expect(merged.stepsByTrack, isEmpty);
+      expect(merged.hardReset, isTrue);
+      expect(merged.skippedAll, isFalse);
     });
   });
 }

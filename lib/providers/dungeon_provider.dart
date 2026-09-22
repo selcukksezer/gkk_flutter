@@ -61,8 +61,14 @@ class DungeonNotifier extends Notifier<DungeonState> {
   @override
   DungeonState build() => DungeonState.initial();
 
-  Future<void> loadDungeons() async {
-    state = state.copyWith(status: DungeonStatus.loading, clearError: true);
+  Future<void> loadDungeons({bool silent = false}) async {
+    final bool keepVisible =
+        silent && state.dungeons.isNotEmpty && state.status == DungeonStatus.ready;
+    if (!keepVisible) {
+      state = state.copyWith(status: DungeonStatus.loading, clearError: true);
+    } else {
+      state = state.copyWith(clearError: true);
+    }
     try {
       final dungeons = await _repository.getDungeons();
       state = state.copyWith(
@@ -70,12 +76,22 @@ class DungeonNotifier extends Notifier<DungeonState> {
         dungeons: dungeons,
       );
     } on AppException catch (e) {
-      state = state.copyWith(status: DungeonStatus.error, errorMessage: e.message);
+      if (keepVisible) {
+        state = state.copyWith(errorMessage: e.message);
+      } else {
+        state = state.copyWith(status: DungeonStatus.error, errorMessage: e.message);
+      }
     } catch (_) {
-      state = state.copyWith(
-        status: DungeonStatus.error,
-        errorMessage: 'Zindan listesi yuklenirken beklenmeyen bir hata olustu.',
-      );
+      const String msg =
+          'Zindan listesi yuklenirken beklenmeyen bir hata olustu.';
+      if (keepVisible) {
+        state = state.copyWith(errorMessage: msg);
+      } else {
+        state = state.copyWith(
+          status: DungeonStatus.error,
+          errorMessage: msg,
+        );
+      }
     }
   }
 

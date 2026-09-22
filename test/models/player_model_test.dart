@@ -57,8 +57,8 @@ void main() {
       'intelligence': 9,
       'luck': 10,
       'character_class': 'warrior',
-      'hp': 88,
       'stat_points': 0,
+      'crafting_queue_slots': 1,
     };
 
     final PlayerProfile model = PlayerProfile.fromJson(json);
@@ -121,7 +121,6 @@ void main() {
       'intelligence': 9,
       'luck': 10,
       'character_class': 'warrior',
-      'hp': 88,
       'stat_points': 0,
     };
 

@@ -25,12 +25,18 @@ Future<List<Map<String, dynamic>>> _fetchPresence(String mekanId) async {
       'get_mekan_presence',
       params: <String, dynamic>{'p_mekan_id': mekanId},
     );
+    final List<dynamic> rows;
     if (res is List) {
-      return res
-          .whereType<Map>()
-          .map((Map e) => Map<String, dynamic>.from(e))
-          .toList(growable: false);
+      rows = res;
+    } else if (res is Map && res['data'] is List) {
+      rows = res['data'] as List<dynamic>;
+    } else {
+      return const <Map<String, dynamic>>[];
     }
+    return rows
+        .whereType<Map>()
+        .map((Map e) => Map<String, dynamic>.from(e))
+        .toList(growable: false);
   } catch (_) {
     // presence yüklenemezse bölüm gizli kalır
   }

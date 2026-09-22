@@ -1,0 +1,29 @@
+{
+  "label": "2026-07-22-yedek",
+  "created_at_utc": "2026-07-22T15:22:25Z",
+  "purpose": "Pre-dungeon-siege migration full backup",
+  "layers": {
+    "in_db_snapshot": {
+      "function": "public.qa_create_full_snapshot_backup('2026-07-22-yedek pre-dungeon-siege migration')",
+      "backup_id": "bkp_20260722_152225",
+      "backup_schema": "backup_20260722_152225",
+      "table_count": 102,
+      "row_count_total": 1082437,
+      "restore_hint": "SELECT public.qa_restore_snapshot_backup('bkp_20260722_152225');"
+    },
+    "pg_dump_schema": {
+      "file": "full_schema.sql",
+      "bytes": 1203445,
+      "note": "All schemas, functions, tables via supabase db dump --linked dry-run script"
+    },
+    "pg_dump_data": {
+      "file": "full_data.sql",
+      "status": "partial_or_failed",
+      "note": "Data-only dump hit SSL EOF; in-DB snapshot is primary restore path"
+    }
+  },
+  "restore_priority": [
+    "1. qa_restore_snapshot_backup('bkp_20260722_152225') — fastest, full public+auth+storage clone",
+    "2. pg_restore / psql from full_schema.sql + manual data if needed"
+  ]
+}

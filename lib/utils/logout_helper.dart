@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/tutorial/tutorial_controller.dart';
 import '../providers/auth_provider.dart';
 import '../providers/crafting_provider.dart';
 import '../providers/daily_reward_provider.dart';
@@ -8,6 +9,7 @@ import '../providers/guild_provider.dart';
 import '../providers/guild_war_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/player_provider.dart';
+import '../providers/policy_provider.dart';
 import '../providers/pvp_provider.dart';
 import '../providers/dungeon_siege_provider.dart';
 
@@ -19,6 +21,8 @@ void clearGameSessionProviders(WidgetRef ref) {
   ref.read(facilitiesProvider.notifier).clear();
   ref.read(craftingProvider.notifier).clear();
   ref.read(dailyRewardProvider.notifier).clear();
+  ref.read(tutorialProvider.notifier).clearSession();
+  ref.invalidate(policyProvider);
   ref.invalidate(guildWarProvider);
   ref.invalidate(pvpDashboardProvider);
   ref.invalidate(pvpHistoryProvider);
@@ -28,6 +32,7 @@ void clearGameSessionProviders(WidgetRef ref) {
 
 /// Signs out and clears all session providers — use from any screen logout handler.
 Future<void> performLogout(WidgetRef ref) async {
-  await ref.read(authProvider.notifier).logout();
+  // Clear BEFORE auth logout — logout redirects/unmounts caller → WidgetRef dies.
   clearGameSessionProviders(ref);
+  await ref.read(authProvider.notifier).logout();
 }

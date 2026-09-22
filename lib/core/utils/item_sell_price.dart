@@ -1,6 +1,10 @@
 import '../../models/item_model.dart';
 
 /// Knight Online style NPC vendor sell — mirrors `compute_npc_sell_price` SQL.
+///
+/// Equip (weapon/armor): +0 sell is 6× prior capped price, then
+/// `×(1 + enhancement × 0.15)` (same curve as combat stats).
+/// Materials / potions / craft mats: prior mild `×(1 + enh × 0.06)` + hard cap.
 int computeNpcSellPrice({
   required String itemId,
   required Rarity rarity,
@@ -26,7 +30,10 @@ int computeNpcSellPrice({
   }
 
   final int level = requiredLevel < 1 ? 1 : requiredLevel;
+  final int enh = enhancementLevel.clamp(0, 10);
   final int stat = attack + defense + power + luck;
+  final bool isEquip =
+      itemType == ItemType.weapon || itemType == ItemType.armor;
 
   int worth = (stat ~/ 15) + (level * 6);
   if (worth < 10) worth = 10;
@@ -53,8 +60,17 @@ int computeNpcSellPrice({
   final double sellPct = _sellPct(rarity);
   final int shopRef = _min(_max(basePrice, worth), shopCap);
 
-  int sell = (shopRef * sellPct * (1.0 + (enhancementLevel.clamp(0, 999) * 0.06))).floor();
-  sell = _min(sell, _maxSellCap(rarity, level));
+  int sell = (shopRef * sellPct).floor();
+  final int maxSell = _maxSellCap(rarity, level);
+  sell = _min(sell, maxSell);
+
+  if (isEquip) {
+    sell = sell * 6;
+    sell = (sell * (1.0 + (enh * 0.15))).floor();
+  } else {
+    sell = (sell * (1.0 + (enh * 0.06))).floor();
+    sell = _min(sell, maxSell);
+  }
 
   if (sell <= 0) return 0;
   return sell < 1 ? 1 : sell;

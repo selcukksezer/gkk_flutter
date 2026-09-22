@@ -1,0 +1,4 @@
+Initialising login role...
+posthog 2026/07/29 21:38:54 WARN: sending request - Post "https://eu.i.posthog.com/batch/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+unexpected status 400: {"message":"Failed to run sql query: ERROR:  57014: canceling statement due to statement timeout\nCONTEXT:  SQL statement \"SELECT pg_sleep(2.2)\"\nPL/pgSQL function qa_live_play_run_bot(integer) line 272 at PERFORM\nPL/pgSQL function qa_live_play_swarm(integer,integer) line 22 at assignment\n"}
+Try rerunning the command with --debug to troubleshoot the error.

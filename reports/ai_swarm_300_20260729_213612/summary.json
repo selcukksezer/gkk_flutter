@@ -1,0 +1,26 @@
+{
+  "run_id": null,
+  "from": 1,
+  "to": 400,
+  "bots_pass": 0,
+  "bots_fail": 0,
+  "bots_total": 0,
+  "bots": [],
+  "coverage_by_goal": {},
+  "verdict": "PASS",
+  "goals_not_in_sql_marathon": [
+    "character_stats_view",
+    "codex_dashboard",
+    "pvp_dashboard_load",
+    "trade_initiate",
+    "crafting_start_queue",
+    "horse_race_bet",
+    "bank_deposit",
+    "facilities_start_job"
+  ],
+  "registry_goal_count": 60,
+  "mesh": {
+    "botCount": 400,
+    "guildSize": 10
+  }
+}

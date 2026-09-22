@@ -191,7 +191,10 @@ class GameNotificationScheduler {
       NotificationKind.prison ||
       NotificationKind.lowHealth ||
       NotificationKind.boxReady ||
-      NotificationKind.facilityReady =>
+      NotificationKind.facilityReady ||
+      NotificationKind.craftReady ||
+      NotificationKind.healthFull ||
+      NotificationKind.hospitalDischarge =>
         false,
       NotificationKind.friendRequest ||
       NotificationKind.friendRequestAccepted ||
@@ -202,7 +205,9 @@ class GameNotificationScheduler {
       NotificationKind.chatMessage ||
       NotificationKind.dailyReward ||
       NotificationKind.questReward ||
-      NotificationKind.referralReward =>
+      NotificationKind.referralReward ||
+      NotificationKind.marketSale ||
+      NotificationKind.classBuff =>
         true,
       NotificationKind.codexNewEntry ||
       NotificationKind.codexMilestone =>

@@ -90,17 +90,25 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
   bool _dismissingNemesis = false;
   int _nightMarketBaseSeconds = 0;
   DateTime? _nightMarketSyncedAt;
+  ProviderContainer? _container;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(retentionPromosProvider.notifier).load(silent: true);
+      if (!mounted) return;
+      // Retention fetch = retentionPromosProvider only (poll/build). No double RPC.
       _loadFeaturedBox();
       _startAutoAdvance();
       _startCountdownTick();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _container = ProviderScope.containerOf(context);
   }
 
   @override
@@ -153,9 +161,14 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
 
   void _startCountdownTick() {
     _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      final RetentionPromos promos = ref.read(retentionPromosProvider).promos;
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final ProviderContainer? container = _container;
+      if (container == null) return;
+      final RetentionPromos promos = container.read(retentionPromosProvider).promos;
       _syncNightMarketClock(promos);
       if (promos.nightMarket.active) {
         setState(() {});
@@ -412,7 +425,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool compact = constraints.maxWidth < 390;
-        final double bannerHeight = compact ? 190 : 200;
+        final double bannerHeight = compact ? 200 : 212;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -566,67 +579,72 @@ class _CrateBannerShell extends StatelessWidget {
               ),
             Positioned(
               left: 20,
-              top: compact ? 18 : 24,
-              bottom: compact ? 18 : 24,
+              top: compact ? 16 : 20,
+              bottom: compact ? 16 : 20,
               right: contentRight,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      slide.title,
-                      style: GoogleFonts.urbanist(
-                        textStyle: TextStyle(
-                          color: Colors.white,
-                          fontSize: compact ? 24 : 28,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: compact ? 6 : 8),
-                  if (slide.showTimer && slide.timerSeconds > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.carbonVoid.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(99),
-                          border: Border.all(
-                            color: AppColors.warningSolar.withValues(alpha: 0.5),
-                          ),
-                        ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          _formatTimer(slide.timerSeconds),
+                          slide.title,
                           style: GoogleFonts.urbanist(
-                            fontSize: compact ? 11 : 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.warningSolar,
+                            textStyle: TextStyle(
+                              color: Colors.white,
+                              fontSize: compact ? 24 : 28,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  Text(
-                    slide.subtitle,
-                    style: GoogleFonts.urbanist(
-                      textStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: compact ? 12 : 13,
-                        height: 1.4,
+                      SizedBox(height: compact ? 6 : 8),
+                      if (slide.showTimer && slide.timerSeconds > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.carbonVoid.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(99),
+                              border: Border.all(
+                                color: AppColors.warningSolar.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Text(
+                              _formatTimer(slide.timerSeconds),
+                              style: GoogleFonts.urbanist(
+                                fontSize: compact ? 11 : 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.warningSolar,
+                              ),
+                            ),
+                          ),
+                        ),
+                      Text(
+                        slide.subtitle,
+                        style: GoogleFonts.urbanist(
+                          textStyle: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: compact ? 12 : 13,
+                            height: 1.4,
+                          ),
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    maxLines: compact ? 2 : 3,
-                    overflow: TextOverflow.ellipsis,
+                    ],
                   ),
-                  const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,

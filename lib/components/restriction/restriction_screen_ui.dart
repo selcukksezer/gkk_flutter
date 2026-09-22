@@ -242,6 +242,28 @@ class RestrictionFreeCard extends StatelessWidget {
   }
 }
 
+class RestrictionActionTile {
+  const RestrictionActionTile({
+    required this.label,
+    required this.icon,
+    required this.accent,
+    required this.onPressed,
+    this.filled = false,
+    this.loading = false,
+    this.subtitle,
+    this.wrap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color accent;
+  final VoidCallback? onPressed;
+  final bool filled;
+  final bool loading;
+  final String? subtitle;
+  final Widget Function(Widget child)? wrap;
+}
+
 class RestrictionActivePanel extends StatelessWidget {
   const RestrictionActivePanel({
     super.key,
@@ -256,6 +278,9 @@ class RestrictionActivePanel extends StatelessWidget {
     required this.footer,
     this.extraInfo,
     this.actions = const <Widget>[],
+    this.actionTiles,
+    this.primaryAction,
+    this.statusChip,
   });
 
   final Color accent;
@@ -267,7 +292,11 @@ class RestrictionActivePanel extends StatelessWidget {
   final String countdown;
   final double progress;
   final Widget? extraInfo;
+  /// Legacy stacked buttons — prefer [actionTiles] + [primaryAction].
   final List<Widget> actions;
+  final List<RestrictionActionTile>? actionTiles;
+  final RestrictionActionTile? primaryAction;
+  final String? statusChip;
   final Widget? footer;
 
   @override
@@ -280,58 +309,291 @@ class RestrictionActivePanel extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Text(emoji, style: const TextStyle(fontSize: 30)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: accent,
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: <Color>[
+                      accent.withValues(alpha: 0.35),
+                      accent.withValues(alpha: 0.05),
+                    ],
                   ),
+                  border: Border.all(color: accent.withValues(alpha: 0.45)),
+                ),
+                child: Text(emoji, style: const TextStyle(fontSize: 26)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: <Widget>[
+                        _StatusChip(label: reasonValue, accent: accent),
+                        if (statusChip != null)
+                          _StatusChip(
+                            label: statusChip!,
+                            accent: AppColors.liquidGold,
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          RestrictionInfoRow(label: reasonLabel, value: reasonValue),
-          const SizedBox(height: 6),
-          RestrictionInfoRow(label: 'Taburcu:', value: releaseLabel),
           const SizedBox(height: 16),
-          Center(
-            child: Text(
-              countdown,
-              style: TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.w900,
-                color: accent,
-                letterSpacing: 2,
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: accent.withValues(alpha: 0.28)),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  accent.withValues(alpha: 0.12),
+                  AppColors.carbonVoid.withValues(alpha: 0.55),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 6,
-              value: progress.clamp(0.0, 1.0),
-              backgroundColor: AppColors.darkObsidian.withValues(alpha: 0.85),
-              color: accent,
+            child: Column(
+              children: <Widget>[
+                Text(
+                  countdown,
+                  style: TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w900,
+                    color: accent,
+                    letterSpacing: 2,
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Çıkış: $releaseLabel',
+                  style: const TextStyle(
+                    color: AppColors.mutedTitanium,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    minHeight: 7,
+                    value: progress.clamp(0.0, 1.0),
+                    backgroundColor:
+                        AppColors.darkObsidian.withValues(alpha: 0.85),
+                    color: accent,
+                  ),
+                ),
+              ],
             ),
           ),
           if (extraInfo != null) ...<Widget>[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             extraInfo!,
           ],
-          const SizedBox(height: 18),
-          ...actions,
+          const SizedBox(height: 14),
+          if (primaryAction != null) ...<Widget>[
+            _buildPrimary(primaryAction!),
+            const SizedBox(height: 10),
+          ],
+          if (actionTiles != null && actionTiles!.isNotEmpty)
+            RestrictionActionGrid(tiles: actionTiles!)
+          else
+            ...actions,
           if (footer != null) ...<Widget>[
             const SizedBox(height: 12),
             footer!,
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPrimary(RestrictionActionTile tile) {
+    Widget child = RestrictionFilledButton(
+      label: tile.label,
+      color: tile.accent,
+      icon: tile.icon,
+      loading: tile.loading,
+      onPressed: tile.onPressed,
+    );
+    if (tile.wrap != null) child = tile.wrap!(child);
+    return child;
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.accent});
+
+  final String label;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: accent.withValues(alpha: 0.12),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: accent,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact 2-col game action grid — not laundry-list full-width buttons.
+class RestrictionActionGrid extends StatelessWidget {
+  const RestrictionActionGrid({super.key, required this.tiles});
+
+  final List<RestrictionActionTile> tiles;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: tiles.map((RestrictionActionTile t) {
+        final double width =
+            (MediaQuery.sizeOf(context).width - 16 * 2 - 18 * 2 - 8) / 2;
+        final double tileW = width.clamp(120.0, 180.0);
+        Widget cell = SizedBox(
+          width: tileW,
+          child: _ActionCell(tile: t),
+        );
+        if (t.wrap != null) cell = t.wrap!(cell);
+        return cell;
+      }).toList(),
+    );
+  }
+}
+
+class _ActionCell extends StatelessWidget {
+  const _ActionCell({required this.tile});
+
+  final RestrictionActionTile tile;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool enabled = tile.onPressed != null && !tile.loading;
+    return RestrictionPressable(
+      onTap: enabled ? tile.onPressed : null,
+      enabled: enabled,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: tile.accent.withValues(alpha: enabled ? 0.45 : 0.2),
+          ),
+          gradient: tile.filled && enabled
+              ? RestrictionScreenUi.gradientForAccent(tile.accent)
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    AppColors.spaceNavy.withValues(alpha: 0.95),
+                    AppColors.carbonVoid.withValues(alpha: 0.98),
+                  ],
+                ),
+          boxShadow: enabled
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: tile.accent.withValues(alpha: 0.14),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: <Widget>[
+            if (tile.loading)
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: tile.filled ? AppColors.carbonVoid : tile.accent,
+                ),
+              )
+            else
+              Icon(
+                tile.icon,
+                size: 18,
+                color: tile.filled && enabled
+                    ? AppColors.carbonVoid
+                    : (enabled ? tile.accent : AppColors.mutedTitanium),
+              ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    tile.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      height: 1.15,
+                      color: tile.filled && enabled
+                          ? AppColors.carbonVoid
+                          : (enabled
+                              ? AppColors.textPrimary
+                              : AppColors.mutedTitanium),
+                    ),
+                  ),
+                  if (tile.subtitle != null)
+                    Text(
+                      tile.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: tile.filled && enabled
+                            ? AppColors.carbonVoid.withValues(alpha: 0.75)
+                            : AppColors.mutedTitanium,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

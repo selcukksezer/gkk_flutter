@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/character/badge_showcase_panel.dart';
 import '../../components/character/character_combat_stats_panel.dart';
+import '../../components/character/character_health_panel.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_anchor_registry.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../components/character/stat_allocation_panel.dart';
 import '../../components/common/profile_avatar.dart';
@@ -17,12 +19,14 @@ import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/character_class_abilities.dart';
 import '../../core/utils/cosmetic_title.dart';
+import '../../core/utils/effective_luck.dart';
 import '../../core/utils/reputation_tier.dart';
 import '../../core/utils/xp_formula.dart';
 import '../../models/player_model.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_badges_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_controller.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
@@ -54,16 +58,75 @@ class CharacterScreen extends ConsumerStatefulWidget {
 
 class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   bool _claimingDetox = false;
+  final GlobalKey _classAbilitiesSectionKey = GlobalKey();
+  int _classAbilitiesScrollGeneration = 0;
+
+  bool _isFuture(String? dateStr) {
+    if (dateStr == null) return false;
+    final DateTime? date = DateTime.tryParse(dateStr);
+    return date != null && date.isAfter(DateTime.now());
+  }
 
   @override
   void initState() {
     super.initState();
+    ref.listenManual<TutorialState>(tutorialProvider, (
+      TutorialState? prev,
+      TutorialState next,
+    ) {
+      if (next.activeStep?.id == 'character_class_abilities') {
+        _queueClassAbilitiesAutoScroll();
+      }
+    });
+    ref.listenManual<PlayerState>(playerProvider, (
+      PlayerState? prev,
+      PlayerState next,
+    ) {
+      if (next.status != PlayerStatus.ready) return;
+      if (ref.read(tutorialProvider).activeStep?.id !=
+          'character_class_abilities') {
+        return;
+      }
+      _queueClassAbilitiesAutoScroll();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(playerProvider.notifier).loadProfile();
       ref.read(inventoryProvider.notifier).loadInventory();
       ref.read(playerBadgesProvider.notifier).load();
       await TutorialTriggers.onRouteEnter(ref, AppRoutes.character);
+      if (!mounted) return;
+      if (ref.read(tutorialProvider).activeStep?.id ==
+          'character_class_abilities') {
+        _queueClassAbilitiesAutoScroll();
+      }
     });
+  }
+
+  void _queueClassAbilitiesAutoScroll() {
+    final int generation = ++_classAbilitiesScrollGeneration;
+    unawaited(_scrollToClassAbilitiesSection(generation));
+  }
+
+  Future<void> _scrollToClassAbilitiesSection(int generation) async {
+    for (int attempt = 0; attempt < 36; attempt++) {
+      await Future<void>.delayed(
+        Duration(milliseconds: attempt == 0 ? 120 : 48),
+      );
+      if (!mounted || generation != _classAbilitiesScrollGeneration) return;
+      if (ref.read(playerProvider).status != PlayerStatus.ready) continue;
+
+      final BuildContext? target = _classAbilitiesSectionKey.currentContext;
+      if (target == null) continue;
+
+      await Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 550),
+        curve: Curves.easeOutCubic,
+        alignment: 0.12,
+      );
+      TutorialAnchorRegistry.instance.scheduleRefresh();
+      return;
+    }
   }
 
   Future<void> _claimAlchemistDetox() async {
@@ -148,6 +211,10 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     final level = xpProgress.level;
 
     final int reputation = (profile?.reputation ?? 0).clamp(0, 999999999);
+    final bool highlightPowerTutorial =
+        ref.watch(tutorialProvider).activeStep?.id == 'character_check_power';
+    final bool statTutorialStep =
+        ref.watch(tutorialProvider).activeStep?.id == 'character_stat_panel';
 
     return GameScreenBackground(
       child: ListView(
@@ -161,7 +228,14 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
           GameScrollSection(
             child: _buildCodexLink(context),
           ),
-          GameScrollSection(child: _buildQuickResources(profile)),
+          GameScrollSection(
+            child: _buildQuickResources(
+              profile,
+              highlightPowerTutorial: highlightPowerTutorial,
+            ),
+          ),
+          if (statTutorialStep && (profile?.statPoints ?? 0) <= 0)
+            GameScrollSection(child: _buildStatTutorialIntro()),
           if ((profile?.statPoints ?? 0) > 0)
             GameScrollSection(
               child: TutorialAnchorScope(
@@ -171,9 +245,20 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                 ),
               ),
             ),
+          if (profile != null && profile.maxHealth > 0)
+            GameScrollSection(
+              child: CharacterHealthPanel(
+                profile: profile,
+                inHospital: _isFuture(profile.hospitalUntil),
+                inPrison: _isFuture(profile.prisonUntil),
+              ),
+            ),
           GameScrollSection(child: _buildCombatStats(profile, level, reputation)),
           GameScrollSection(child: _buildClassDetails(profile)),
-          GameScrollSection(child: _buildExtraInfo(profile)),
+          GameScrollSection(
+            key: _classAbilitiesSectionKey,
+            child: _buildExtraInfo(profile),
+          ),
         ],
       ),
     );
@@ -628,8 +713,31 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     );
   }
 
-  Widget _buildQuickResources(PlayerProfile? profile) {
+  Widget _buildQuickResources(
+    PlayerProfile? profile, {
+    required bool highlightPowerTutorial,
+  }) {
+    Widget powerCard = _miniResource(
+      '⚔️ Güç',
+      _fmtCompact(profile?.power ?? 0),
+      AppColors.liquidGold,
+    );
+    if (highlightPowerTutorial) {
+      powerCard = TutorialAnchorScope(
+        id: TutorialAnchorId.characterPowerStat,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => TutorialTriggers.onAnchorTap(
+            ref,
+            TutorialAnchorId.characterPowerStat,
+          ),
+          child: powerCard,
+        ),
+      );
+    }
+
     final List<Widget> cards = <Widget>[
+      powerCard,
       _miniResource(
         '⚡ Enerji',
         '${profile?.energy ?? 0}/${profile?.maxEnergy ?? 100}',
@@ -649,6 +757,57 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
           Expanded(child: cards[i]),
         ],
       ],
+    );
+  }
+
+  Widget _buildStatTutorialIntro() {
+    return TutorialAnchorScope(
+      id: TutorialAnchorId.characterStatPanel,
+      child: _card(
+        child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.cyberFuchsia.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.cyberFuchsia.withValues(alpha: 0.35),
+              ),
+            ),
+            child: const Icon(
+              Icons.auto_graph_rounded,
+              color: AppColors.cyberFuchsia,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Stat puanları',
+                  style: AppTextStyles.bodyBold.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Level atladıkça Güç, Çeviklik ve Dayanıklılık puanı kazanırsın. '
+                  'Şu an puanın yok — zindanda level atlayınca bu panel açılır.',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.mutedTitanium,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
     );
   }
 
@@ -699,14 +858,19 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       child: CharacterCombatStatsPanel(
         power: _fmtCompact(profile?.power ?? 0),
-        maxHealth: '${profile?.maxHealth ?? 0}',
+        health: profile?.health ?? 0,
+        maxHealth: profile?.maxHealth ?? 0,
         attack: '${profile?.attack ?? 0}',
         defense: '${profile?.defense ?? 0}',
-        luck: '${profile?.luck ?? 0}',
+        luck: profile == null
+            ? '0'
+            : '${effectivePlayerLuckFromProfile(profile)}',
+        luckSubtitle: profile == null || profile.equipBonusLuck <= 0
+            ? null
+            : 'baz ${profile.luck ?? 0}',
         pvpWinRate: '%$winRate',
         pvpRating: '${profile?.pvpRating ?? 0}',
         reputation: reputation,
-        highlightPowerAnchor: true,
       ),
     );
   }
@@ -803,26 +967,36 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
           collapsedIconColor: AppColors.mutedTitanium,
           children: <Widget>[
             if (charClass != null && abilities.isNotEmpty) ...<Widget>[
-              Text(
-                '${_classTitle(charClass)} — Sınıf Yetenekleri',
-                style: AppTextStyles.captionBold.copyWith(color: accent),
+              // Spotlight only class passives — full ExpansionTile was too tall
+              // and pushed the coach Devam button under the fold.
+              TutorialAnchorScope(
+                id: TutorialAnchorId.characterClassAbilities,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text(
+                      '${_classTitle(charClass)} — Sınıf Yetenekleri',
+                      style: AppTextStyles.captionBold.copyWith(color: accent),
+                    ),
+                    const SizedBox(height: 10),
+                    ...abilities.map((CharacterAbilityDef ability) {
+                      final bool isSignature =
+                          ability.kind == CharacterAbilityKind.signature;
+                      final bool isActive =
+                          ability.name == 'Kan Hırsı' && bloodlustActive;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _abilityTile(
+                          ability: ability,
+                          accent: accent,
+                          isSignature: isSignature,
+                          isActive: isActive,
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              ...abilities.map((CharacterAbilityDef ability) {
-                final bool isSignature =
-                    ability.kind == CharacterAbilityKind.signature;
-                final bool isActive = ability.name == 'Kan Hırsı' &&
-                    bloodlustActive;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _abilityTile(
-                    ability: ability,
-                    accent: accent,
-                    isSignature: isSignature,
-                    isActive: isActive,
-                  ),
-                );
-              }),
               const SizedBox(height: 8),
               Divider(color: AppColors.mutedTitanium.withValues(alpha: 0.15)),
               const SizedBox(height: 8),

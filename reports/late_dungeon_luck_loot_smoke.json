@@ -1,0 +1,347 @@
+{
+  "checked_at": "2026-07-29T14:59:23.886533+00:00",
+  "key_finding": {
+    "equip_max_luck_sum": 42398,
+    "equipped_item_luck_affects_loot": false,
+    "loot_bonus_cap": 0.2,
+    "loot_uses": "users.luck + monument + codex",
+    "max_observed_user_luck": 284,
+    "plus10_item_luck_affects_loot": false,
+    "worst_items_per_100_wins": 49,
+    "worst_late_boss_equip_drop": 0.49
+  },
+  "passed": 7,
+  "rates_count": 50,
+  "tests": [
+    {
+      "area": "source",
+      "detail": {
+        "equip_luck_power_at_plus10_combat_only": 211990,
+        "equip_max_luck_sum_8slot": 42398,
+        "note": "Item +10 luck büyütür combat power (luck*2*2.5); loot formülüne girmez.",
+        "uses_inventory_luck": false,
+        "uses_v_player_luck": true
+      },
+      "pass": true,
+      "test": "loot_luck_uses_users_luck_not_equipped_items"
+    },
+    {
+      "area": "dungeons",
+      "detail": {
+        "count": 10,
+        "dungeons": [
+          {
+            "dungeon_order": 65,
+            "equipment_drop_chance": 0.35,
+            "id": "dng_065",
+            "is_boss": true,
+            "name": "Ultimus Provocatio",
+            "power_requirement": 450000,
+            "resource_drop_chance": 0.6,
+            "scroll_drop_chance": 0.15
+          },
+          {
+            "dungeon_order": 64,
+            "equipment_drop_chance": 0.35,
+            "id": "dng_064",
+            "is_boss": true,
+            "name": "Creatrix Nexus",
+            "power_requirement": 444000,
+            "resource_drop_chance": 0.6,
+            "scroll_drop_chance": 0.15
+          },
+          {
+            "dungeon_order": 63,
+            "equipment_drop_chance": 0.35,
+            "id": "dng_063",
+            "is_boss": true,
+            "name": "Nihilum Absolutum",
+            "power_requirement": 438000,
+            "resource_drop_chance": 0.6,
+            "scroll_drop_chance": 0.15
+          },
+          {
+            "dungeon_order": 62,
+            "equipment_drop_chance": 0.35,
+            "id": "dng_062",
+            "is_boss": true,
+            "name": "Chaos Primordiale",
+            "power_requirement": 432000,
+            "resource_drop_chance": 0.6,
+            "scroll_drop_chance": 0.15
+          },
+          {
+            "dungeon_order": 61,
+            "equipment_drop_chance": 0.35,
+            "id": "dng_061",
+            "is_boss": true,
+            "name": "Chronos Aeternus",
+            "power_requirement": 425000,
+            "resource_drop_chance": 0.6,
+            "scroll_drop_chance": 0.15
+          },
+          {
+            "dungeon_order": 60,
+            "equipment_drop_chance": 0.28,
+            "id": "dng_060",
+            "is_boss": true,
+            "name": "Omnium Finis",
+            "power_requirement": 420000,
+            "resource_drop_chance": 0.55,
+            "scroll_drop_chance": 0.1
+          },
+          {
+            "dungeon_order": 59,
+            "equipment_drop_chance": 0.28,
+            "id": "dng_059",
+            "is_boss": false,
+            "name": "Fati Thronus",
+            "power_requirement": 414000,
+            "resource_drop_chance": 0.55,
+            "scroll_drop_chance": 0.1
+          },
+          {
+            "dungeon_order": 58,
+            "equipment_drop_chance": 0.28,
+            "id": "dng_058",
+            "is_boss": false,
+            "name": "Deorum Atrium",
+            "power_requirement": 406000,
+            "resource_drop_chance": 0.55,
+            "scroll_drop_chance": 0.1
+          },
+          {
+            "dungeon_order": 57,
+            "equipment_drop_chance": 0.28,
+            "id": "dng_057",
+            "is_boss": false,
+            "name": "Dimensionis Nexus",
+            "power_requirement": 398000,
+            "resource_drop_chance": 0.55,
+            "scroll_drop_chance": 0.1
+          },
+          {
+            "dungeon_order": 56,
+            "equipment_drop_chance": 0.28,
+            "id": "dng_056",
+            "is_boss": false,
+            "name": "Temporis Fissura",
+            "power_requirement": 390000,
+            "resource_drop_chance": 0.55,
+            "scroll_drop_chance": 0.1
+          }
+        ]
+      },
+      "pass": true,
+      "test": "late_dungeons_sampled"
+    },
+    {
+      "area": "caps",
+      "detail": {
+        "drop_chance_cap": 0.95,
+        "loot_luck_bonus_cap": 0.2,
+        "luck_to_hit_bonus_cap": 134,
+        "rarity_shift_cap": 0.1
+      },
+      "pass": true,
+      "test": "loot_bonus_and_drop_and_rarity_caps_present"
+    },
+    {
+      "area": "balance",
+      "detail": {
+        "excessive_cells": 0,
+        "sample_rates": [
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_065",
+            "eff_equipment_drop": 0.3553,
+            "eff_luck": 10,
+            "eff_resource_drop": 0.609,
+            "eff_scroll_drop": 0.1523,
+            "expected_equip_per_100_wins": 35.5,
+            "gold_mult": 1.02,
+            "loot_bonus": 0.015,
+            "profile": "luck_0",
+            "rarity_shift": 0.008,
+            "shadow_bonus": 0
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_064",
+            "eff_equipment_drop": 0.3553,
+            "eff_luck": 10,
+            "eff_resource_drop": 0.609,
+            "eff_scroll_drop": 0.1523,
+            "expected_equip_per_100_wins": 35.5,
+            "gold_mult": 1.02,
+            "loot_bonus": 0.015,
+            "profile": "luck_0",
+            "rarity_shift": 0.008,
+            "shadow_bonus": 0
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_063",
+            "eff_equipment_drop": 0.3553,
+            "eff_luck": 10,
+            "eff_resource_drop": 0.609,
+            "eff_scroll_drop": 0.1523,
+            "expected_equip_per_100_wins": 35.5,
+            "gold_mult": 1.02,
+            "loot_bonus": 0.015,
+            "profile": "luck_0",
+            "rarity_shift": 0.008,
+            "shadow_bonus": 0
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_065",
+            "eff_equipment_drop": 0.42,
+            "eff_luck": 143,
+            "eff_resource_drop": 0.72,
+            "eff_scroll_drop": 0.18,
+            "expected_equip_per_100_wins": 42,
+            "gold_mult": 1.286,
+            "loot_bonus": 0.2,
+            "profile": "luck_cap_133",
+            "rarity_shift": 0.1,
+            "shadow_bonus": 0
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_064",
+            "eff_equipment_drop": 0.42,
+            "eff_luck": 143,
+            "eff_resource_drop": 0.72,
+            "eff_scroll_drop": 0.18,
+            "expected_equip_per_100_wins": 42,
+            "gold_mult": 1.286,
+            "loot_bonus": 0.2,
+            "profile": "luck_cap_133",
+            "rarity_shift": 0.1,
+            "shadow_bonus": 0
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_063",
+            "eff_equipment_drop": 0.42,
+            "eff_luck": 143,
+            "eff_resource_drop": 0.72,
+            "eff_scroll_drop": 0.18,
+            "expected_equip_per_100_wins": 42,
+            "gold_mult": 1.286,
+            "loot_bonus": 0.2,
+            "profile": "luck_cap_133",
+            "rarity_shift": 0.1,
+            "shadow_bonus": 0
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_065",
+            "eff_equipment_drop": 0.49,
+            "eff_luck": 294,
+            "eff_resource_drop": 0.84,
+            "eff_scroll_drop": 0.21,
+            "expected_equip_per_100_wins": 49,
+            "gold_mult": 1.588,
+            "loot_bonus": 0.2,
+            "profile": "luck_284_shadow",
+            "rarity_shift": 0.1,
+            "shadow_bonus": 0.2
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_064",
+            "eff_equipment_drop": 0.49,
+            "eff_luck": 294,
+            "eff_resource_drop": 0.84,
+            "eff_scroll_drop": 0.21,
+            "expected_equip_per_100_wins": 49,
+            "gold_mult": 1.588,
+            "loot_bonus": 0.2,
+            "profile": "luck_284_shadow",
+            "rarity_shift": 0.1,
+            "shadow_bonus": 0.2
+          },
+          {
+            "base_equipment_drop": 0.35,
+            "dungeon": "dng_063",
+            "eff_equipment_drop": 0.49,
+            "eff_luck": 294,
+            "eff_resource_drop": 0.84,
+            "eff_scroll_drop": 0.21,
+            "expected_equip_per_100_wins": 49,
+            "gold_mult": 1.588,
+            "loot_bonus": 0.2,
+            "profile": "luck_284_shadow",
+            "rarity_shift": 0.1,
+            "shadow_bonus": 0.2
+          }
+        ],
+        "softcap_hits_095": 0,
+        "threshold": 0.7
+      },
+      "pass": true,
+      "test": "late_dungeon_equipment_drop_not_excessive_under_real_luck"
+    },
+    {
+      "area": "caps",
+      "detail": {
+        "bonus_at_133": 0.1995,
+        "bonus_at_134": 0.2,
+        "bonus_at_284": 0.2,
+        "bonus_at_equip_sum": 0.2
+      },
+      "pass": true,
+      "test": "loot_luck_bonus_saturates_by_luck_134"
+    },
+    {
+      "area": "hypothesis",
+      "detail": {
+        "dng_065_base": 0.35,
+        "dng_065_eff_with_shadow": 0.49,
+        "equip_luck_sum": 42398,
+        "expected_equip_per_100_wins_worst": 49,
+        "hypo_bonus_still": 0.2,
+        "hypo_eff_luck": 42692,
+        "hypo_sample": [
+          {
+            "dungeon": "dng_065",
+            "eff_equipment_drop": 0.42,
+            "eff_luck": 42408,
+            "expected_equip_per_100_wins": 42,
+            "gold_mult": 85.816,
+            "loot_bonus": 0.2,
+            "profile": "hypo_equip_luck_only",
+            "rarity_shift": 0.1
+          },
+          {
+            "dungeon": "dng_065",
+            "eff_equipment_drop": 0.49,
+            "eff_luck": 42692,
+            "expected_equip_per_100_wins": 49,
+            "gold_mult": 86.384,
+            "loot_bonus": 0.2,
+            "profile": "hypo_equip_plus_user_shadow",
+            "rarity_shift": 0.1
+          }
+        ]
+      },
+      "pass": true,
+      "test": "even_if_equip_luck_wired_bonus_still_capped_020"
+    },
+    {
+      "area": "balance",
+      "detail": {
+        "eff": 0.49,
+        "formula": "0.35 * (1 + 0.20_luck_cap + 0.20_shadow) = 0.49",
+        "items_per_100_wins": 49,
+        "verdict_tr": "Son zindanlarda max luck + shadow bile ~49 item/100 win — aşırı değil. +10 luck item set loot şişirmez."
+      },
+      "pass": true,
+      "test": "worst_real_late_boss_equip_drop_le_049"
+    }
+  ],
+  "total": 7,
+  "verdict": "PASS"
+}

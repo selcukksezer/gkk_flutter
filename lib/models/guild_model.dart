@@ -165,6 +165,7 @@ class GuildData {
     required this.monumentMystical,
     required this.monumentCritical,
     required this.monumentGoldPool,
+    this.vaultGold = 0,
     this.minJoinPower = 0,
     this.members,
     this.loadError,
@@ -182,7 +183,9 @@ class GuildData {
   final int monumentStructural;
   final int monumentMystical;
   final int monumentCritical;
+  /// Deprecated separate pool — always prefer [vaultGold].
   final int monumentGoldPool;
+  final int vaultGold;
   final int minJoinPower;
   final List<GuildMemberData>? members;
   final String? loadError;
@@ -224,6 +227,7 @@ class GuildData {
       monumentMystical: _asInt(json['monument_mystical']),
       monumentCritical: _asInt(json['monument_critical']),
       monumentGoldPool: _asInt(json['monument_gold_pool']),
+      vaultGold: _asInt(json['vault_gold'], fallback: _asInt(json['monument_gold_pool'])),
       minJoinPower: _asInt(json['min_join_power']),
       members: members,
       loadError: json['error']?.toString(),
@@ -244,6 +248,7 @@ class GuildData {
         'monument_mystical': monumentMystical,
         'monument_critical': monumentCritical,
         'monument_gold_pool': monumentGoldPool,
+        'vault_gold': vaultGold,
         'min_join_power': minJoinPower,
         'members': members?.map((m) => m.toJson()).toList(),
       };

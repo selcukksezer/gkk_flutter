@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../components/layout/game_screen_background.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
+import '../../../core/tutorial/tutorial_anchor_registry.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../core/utils/gold_format.dart';
 import '../../../models/dungeon_model.dart';
@@ -126,11 +127,17 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
       begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
+    _entry.addListener(_refreshTutorialAnchors);
     _entry.forward();
+  }
+
+  void _refreshTutorialAnchors() {
+    TutorialAnchorRegistry.instance.scheduleRefresh();
   }
 
   @override
   void dispose() {
+    _entry.removeListener(_refreshTutorialAnchors);
     _entry.dispose();
     super.dispose();
   }
@@ -471,18 +478,17 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
-                                          child: TutorialAnchorScope(
-                                            id: TutorialAnchorId.dungeonConfirmOk,
-                                            child: _EntryButton(
-                                              label: 'Gir',
-                                              filled: true,
-                                              accent: AppColors.liquidGold,
-                                              enabled: _canConfirm,
-                                              pressed: _confirmPressed,
-                                              onHighlight: (bool v) =>
-                                                  setState(() => _confirmPressed = v),
-                                              onTap: _onConfirm,
-                                            ),
+                                          child: _EntryButton(
+                                            label: 'Gir',
+                                            filled: true,
+                                            accent: AppColors.liquidGold,
+                                            enabled: _canConfirm,
+                                            pressed: _confirmPressed,
+                                            tutorialAnchorId:
+                                                TutorialAnchorId.dungeonConfirmOk,
+                                            onHighlight: (bool v) =>
+                                                setState(() => _confirmPressed = v),
+                                            onTap: _onConfirm,
                                           ),
                                         ),
                                       ],
@@ -750,6 +756,7 @@ class _EntryButton extends StatelessWidget {
     this.pressed = false,
     this.onHighlight,
     this.enabled = true,
+    this.tutorialAnchorId,
   });
 
   final String label;
@@ -759,13 +766,14 @@ class _EntryButton extends StatelessWidget {
   final bool pressed;
   final ValueChanged<bool>? onHighlight;
   final bool enabled;
+  final String? tutorialAnchorId;
 
   @override
   Widget build(BuildContext context) {
     final Color effectiveAccent =
         enabled ? accent : AppColors.mutedTitanium.withValues(alpha: 0.45);
 
-    return GestureDetector(
+    Widget button = GestureDetector(
       onTapDown: enabled ? (_) => onHighlight?.call(true) : null,
       onTapUp: enabled ? (_) => onHighlight?.call(false) : null,
       onTapCancel: enabled ? () => onHighlight?.call(false) : null,
@@ -823,5 +831,9 @@ class _EntryButton extends StatelessWidget {
         ),
       ),
     );
+    if (tutorialAnchorId != null) {
+      button = TutorialAnchorScope(id: tutorialAnchorId!, child: button);
+    }
+    return button;
   }
 }

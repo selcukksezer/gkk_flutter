@@ -26,6 +26,11 @@ enum NotificationKind {
   nightMarketOpen,
   nightMarketEnding,
   bugReportUpdate,
+  marketSale,
+  craftReady,
+  healthFull,
+  hospitalDischarge,
+  classBuff,
 }
 
 extension NotificationKindX on NotificationKind {
@@ -52,6 +57,11 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.nightMarketOpen => Icons.nights_stay_rounded,
         NotificationKind.nightMarketEnding => Icons.timer_rounded,
         NotificationKind.bugReportUpdate => Icons.bug_report_rounded,
+        NotificationKind.marketSale => Icons.storefront_rounded,
+        NotificationKind.craftReady => Icons.construction_rounded,
+        NotificationKind.healthFull => Icons.favorite_rounded,
+        NotificationKind.hospitalDischarge => Icons.exit_to_app_rounded,
+        NotificationKind.classBuff => Icons.local_fire_department_rounded,
       };
 
   Color get accentColor => switch (this) {
@@ -77,6 +87,11 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.nightMarketOpen => AppColors.warningSolar,
         NotificationKind.nightMarketEnding => AppColors.warningSolar,
         NotificationKind.bugReportUpdate => AppColors.accentBlue,
+        NotificationKind.marketSale => AppColors.liquidGold,
+        NotificationKind.craftReady => AppColors.warningSolar,
+        NotificationKind.healthFull => AppColors.toxicNeon,
+        NotificationKind.hospitalDischarge => AppColors.toxicNeon,
+        NotificationKind.classBuff => AppColors.mysticRuby,
       };
 
   String get sectionLabel => switch (this) {
@@ -102,6 +117,11 @@ extension NotificationKindX on NotificationKind {
         NotificationKind.nightMarketOpen => 'Mağaza',
         NotificationKind.nightMarketEnding => 'Mağaza',
         NotificationKind.bugReportUpdate => 'Bug / Destek',
+        NotificationKind.marketSale => 'Pazar',
+        NotificationKind.craftReady => 'Üretim',
+        NotificationKind.healthFull => 'Sağlık',
+        NotificationKind.hospitalDischarge => 'Hastane',
+        NotificationKind.classBuff => 'Sınıf buff',
       };
 }
 

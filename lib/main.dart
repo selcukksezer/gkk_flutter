@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'widgets/session_enforcement_gate.dart';
 import 'widgets/ban_enforcement_gate.dart';
-import 'widgets/policy_acceptance_gate.dart';
 import 'components/common/connectivity_gate.dart';
 import 'components/common/level_up_host.dart';
+import 'components/common/power_change_host.dart';
 import 'core/tutorial/tutorial_host.dart';
 import 'components/notifications/notification_inbox_host.dart';
 import 'components/notifications/phone_notification_sync.dart';
@@ -66,8 +67,12 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
         SupabaseService.client.auth.currentSession != null) {
       PresenceService.instance.start();
     }
-    _presenceAuthSub = authRefreshStream.listen((_) {
+    _presenceAuthSub = authRefreshStream.listen((dynamic event) {
       if (!SupabaseService.isInitialized) return;
+      if (event is AuthState &&
+          event.event == AuthChangeEvent.passwordRecovery) {
+        _router.go(AppRoutes.updatePassword);
+      }
       if (SupabaseService.client.auth.currentSession != null) {
         PresenceService.instance.start();
       } else {
@@ -114,26 +119,30 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
                       decoration: TextDecoration.none,
                       decorationThickness: 0,
                     ),
-                    child: TutorialHost(
-                      router: _router,
-                      child: LevelUpHost(
-                        child: ConnectivityGate(
-                          child: BanEnforcementGate(
-                            child: SessionEnforcementGate(
-                              child: PolicyAcceptanceGate(
-                                child:
-                                    child ??
-                                    const ColoredBox(
-                                      color: AppColors.carbonVoid,
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          color: AppColors.liquidGold,
+                    // Blocking gates ABOVE TutorialHost → policy/ban/offline
+                    // cover coach automatically. TutorialSuppressScope still
+                    // hides overlay while those layers are active.
+                    child: ConnectivityGate(
+                      child: BanEnforcementGate(
+                        child: SessionEnforcementGate(
+                          // Legal consent = register screen only (no in-game gate).
+                          child: TutorialHost(
+                              router: _router,
+                              child: LevelUpHost(
+                                child: PowerChangeHost(
+                                  child:
+                                      child ??
+                                      const ColoredBox(
+                                        color: AppColors.carbonVoid,
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            color: AppColors.liquidGold,
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                ),
                               ),
                             ),
-                          ),
                         ),
                       ),
                     ),

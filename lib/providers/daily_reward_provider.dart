@@ -11,6 +11,7 @@ class DailyRewardState {
     this.status,
     this.error,
     this.lastClaimWarning,
+    this.autoPromptedThisSession = false,
   });
 
   final bool isLoading;
@@ -18,6 +19,22 @@ class DailyRewardState {
   final DailyRewardStatus? status;
   final String? error;
   final String? lastClaimWarning;
+  /// Home auto-popup once per app session (claim → loadProfile must not re-open).
+  final bool autoPromptedThisSession;
+
+  /// Hot reload can leave pre-field instances with null bool storage.
+  bool get didAutoPromptThisSession {
+    try {
+      return autoPromptedThisSession;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Hot reload can leave pre-field instances with null bool storage.
+  static bool _readAutoPrompted(DailyRewardState state) {
+    return state.didAutoPromptThisSession;
+  }
 
   DailyRewardState copyWith({
     bool? isLoading,
@@ -25,6 +42,7 @@ class DailyRewardState {
     DailyRewardStatus? status,
     String? error,
     String? lastClaimWarning,
+    bool? autoPromptedThisSession,
     bool clearError = false,
     bool clearStatus = false,
     bool clearWarning = false,
@@ -37,6 +55,8 @@ class DailyRewardState {
       lastClaimWarning: clearWarning
           ? null
           : (lastClaimWarning ?? this.lastClaimWarning),
+      autoPromptedThisSession:
+          autoPromptedThisSession ?? _readAutoPrompted(this),
     );
   }
 }
@@ -81,6 +101,7 @@ class DailyRewardNotifier extends Notifier<DailyRewardState> {
       await ref.read(playerProvider.notifier).loadProfile();
       state = state.copyWith(
         claimInProgress: false,
+        autoPromptedThisSession: true,
         lastClaimWarning: result.warning ??
             (result.itemSkipped ? result.message : null),
       );
@@ -89,6 +110,10 @@ class DailyRewardNotifier extends Notifier<DailyRewardState> {
       state = state.copyWith(claimInProgress: false, error: e.toString());
       return false;
     }
+  }
+
+  void markAutoPromptedThisSession() {
+    state = state.copyWith(autoPromptedThisSession: true);
   }
 
   void clear() {

@@ -67,6 +67,9 @@ class GuildWarRanking {
   final String guildName;
   final String? guildId;
   final int points;
+  final int prestige;
+  final int rankScore;
+  final Map<String, int> breakdown;
   final int wins;
   final int losses;
 
@@ -75,16 +78,32 @@ class GuildWarRanking {
     required this.guildName,
     this.guildId,
     this.points = 0,
+    this.prestige = 0,
+    this.rankScore = 0,
+    this.breakdown = const <String, int>{},
     this.wins = 0,
     this.losses = 0,
   });
 
   factory GuildWarRanking.fromJson(Map<String, dynamic> json) {
+    final Map<String, int> breakdown = <String, int>{};
+    final dynamic rawBreakdown = json['breakdown'];
+    if (rawBreakdown is Map) {
+      rawBreakdown.forEach((Object? key, Object? value) {
+        if (key == null) return;
+        breakdown[key.toString()] = _asInt(value);
+      });
+    }
+    final int points = _asInt(json['points']);
+    final int prestige = _asInt(json['prestige']);
     return GuildWarRanking(
       rank: _asInt(json['rank'], fallback: 0),
       guildName: (json['guild_name'] ?? json['guildName'] ?? '—').toString(),
       guildId: json['guild_id']?.toString(),
-      points: _asInt(json['points']),
+      points: points,
+      prestige: prestige,
+      rankScore: _asInt(json['rank_score'] ?? json['rankScore'], fallback: points + (prestige ~/ 4)),
+      breakdown: breakdown,
       wins: _asInt(json['wins']),
       losses: _asInt(json['losses']),
     );
@@ -128,6 +147,8 @@ class GuildWarTournamentMatch {
     required this.winnerGuildId,
     required this.winnerGuildName,
     required this.status,
+    this.windowStart,
+    this.windowEnd,
   });
 
   final int id;
@@ -140,9 +161,12 @@ class GuildWarTournamentMatch {
   final String? winnerGuildId;
   final String winnerGuildName;
   final String status;
+  final DateTime? windowStart;
+  final DateTime? windowEnd;
 
   bool get isCompleted => status == 'completed';
   bool get isPending => status == 'pending';
+  bool get isLive => status == 'live';
 
   factory GuildWarTournamentMatch.fromJson(Map<String, dynamic> json) {
     return GuildWarTournamentMatch(
@@ -156,6 +180,93 @@ class GuildWarTournamentMatch {
       winnerGuildId: json['winnerGuildId']?.toString(),
       winnerGuildName: (json['winnerGuildName'] ?? '').toString(),
       status: (json['status'] ?? 'pending').toString(),
+      windowStart: json['windowStart'] != null
+          ? DateTime.tryParse(json['windowStart'].toString())
+          : (json['window_start'] != null
+              ? DateTime.tryParse(json['window_start'].toString())
+              : null),
+      windowEnd: json['windowEnd'] != null
+          ? DateTime.tryParse(json['windowEnd'].toString())
+          : (json['window_end'] != null
+              ? DateTime.tryParse(json['window_end'].toString())
+              : null),
+    );
+  }
+}
+
+class LiveGuildWarClash {
+  const LiveGuildWarClash({
+    required this.status,
+    this.matchId,
+    this.tournamentId,
+    this.tournamentName,
+    this.roundName,
+    this.windowStart,
+    this.windowEnd,
+    this.guild1Id,
+    this.guild1Name,
+    this.guild1Score = 0,
+    this.guild2Id,
+    this.guild2Name,
+    this.guild2Score = 0,
+    this.nextTournamentId,
+    this.nextTournamentName,
+    this.nextStartAt,
+    this.prizePool,
+    this.phase,
+    this.message,
+  });
+
+  final String status;
+  final int? matchId;
+  final String? tournamentId;
+  final String? tournamentName;
+  final String? roundName;
+  final DateTime? windowStart;
+  final DateTime? windowEnd;
+  final String? guild1Id;
+  final String? guild1Name;
+  final int guild1Score;
+  final String? guild2Id;
+  final String? guild2Name;
+  final int guild2Score;
+  final String? nextTournamentId;
+  final String? nextTournamentName;
+  final DateTime? nextStartAt;
+  final String? prizePool;
+  final String? phase;
+  final String? message;
+
+  bool get isLive => status == 'live';
+
+  factory LiveGuildWarClash.fromJson(Map<String, dynamic> json) {
+    return LiveGuildWarClash(
+      status: (json['status'] ?? 'idle').toString(),
+      matchId: json['match_id'] != null ? _asInt(json['match_id']) : null,
+      tournamentId: json['tournament_id']?.toString() ??
+          json['next_tournament_id']?.toString(),
+      tournamentName: json['tournament_name']?.toString(),
+      roundName: json['round_name']?.toString(),
+      windowStart: json['window_start'] != null
+          ? DateTime.tryParse(json['window_start'].toString())
+          : null,
+      windowEnd: json['window_end'] != null
+          ? DateTime.tryParse(json['window_end'].toString())
+          : null,
+      guild1Id: json['guild1_id']?.toString(),
+      guild1Name: json['guild1_name']?.toString(),
+      guild1Score: _asInt(json['guild1_score']),
+      guild2Id: json['guild2_id']?.toString(),
+      guild2Name: json['guild2_name']?.toString(),
+      guild2Score: _asInt(json['guild2_score']),
+      nextTournamentId: json['next_tournament_id']?.toString(),
+      nextTournamentName: json['next_tournament_name']?.toString(),
+      nextStartAt: json['next_start_at'] != null
+          ? DateTime.tryParse(json['next_start_at'].toString())
+          : null,
+      prizePool: json['prize_pool']?.toString(),
+      phase: json['phase']?.toString(),
+      message: json['message']?.toString(),
     );
   }
 }
@@ -203,6 +314,10 @@ class TerritoryData {
   final bool hasActiveSiegeSession;
   final int attackGoldCost;
   final int minDefenseGems;
+  final String? lootItemId;
+  final String? lootItemName;
+  final double lootItemChance;
+  final double tradeIncomeHourly;
   final TerritoryVaultSummary? vaultSummary;
 
   const TerritoryData({
@@ -224,8 +339,19 @@ class TerritoryData {
     this.hasActiveSiegeSession = false,
     this.attackGoldCost = 0,
     this.minDefenseGems = 5,
+    this.lootItemId,
+    this.lootItemName,
+    this.lootItemChance = 0,
+    this.tradeIncomeHourly = 0,
     this.vaultSummary,
   });
+
+  bool get hasTerritoryLoot =>
+      lootItemId != null && lootItemId!.isNotEmpty && lootItemChance > 0;
+
+  String get lootChanceLabel => lootItemChance >= 1
+      ? '6-7/gün kasaya eşya'
+      : '${(lootItemChance * 100).round()}%/gün kasaya eşya';
 
   bool get isUnclaimed =>
       ownerGuildId == null || ownerGuildName == null || ownerGuildName == 'Sahipsiz';
@@ -256,6 +382,10 @@ class TerritoryData {
       hasActiveSiegeSession: json['has_active_siege_session'] == true,
       attackGoldCost: _asInt(json['attack_gold_cost']),
       minDefenseGems: _asInt(json['min_defense_gems'], fallback: 5),
+      lootItemId: json['loot_item_id']?.toString(),
+      lootItemName: json['loot_item_name']?.toString(),
+      lootItemChance: _asDouble(json['loot_item_chance']),
+      tradeIncomeHourly: _asDouble(json['trade_income_hourly']),
       vaultSummary: json['vault_summary'] is Map
           ? TerritoryVaultSummary.fromJson(
               Map<String, dynamic>.from(json['vault_summary'] as Map),
@@ -371,10 +501,16 @@ class GuildWarAttackResult {
   final String message;
   final int pointsGained;
   final int attackPower;
+  final int attackPowerRaw;
+  final double sizeAttackMult;
+  final int memberCount;
   final int defensePower;
   final int goldSpent;
   final String? territoryName;
   final String? defenderGuildName;
+  final int healthLost;
+  final int healthAfter;
+  final int maxHealth;
   final String? error;
 
   const GuildWarAttackResult({
@@ -382,23 +518,38 @@ class GuildWarAttackResult {
     required this.message,
     this.pointsGained = 0,
     this.attackPower = 0,
+    this.attackPowerRaw = 0,
+    this.sizeAttackMult = 1,
+    this.memberCount = 0,
     this.defensePower = 0,
     this.goldSpent = 0,
     this.territoryName,
     this.defenderGuildName,
+    this.healthLost = 0,
+    this.healthAfter = 0,
+    this.maxHealth = 0,
     this.error,
   });
 
   factory GuildWarAttackResult.fromJson(Map<String, dynamic> json) {
+    final int attackPower = _asInt(json['attack_power']);
     return GuildWarAttackResult(
       success: json['success'] == true,
       message: (json['message'] ?? '').toString(),
       pointsGained: _asInt(json['points_gained']),
-      attackPower: _asInt(json['attack_power']),
+      attackPower: attackPower,
+      attackPowerRaw: _asInt(json['attack_power_raw'], fallback: attackPower),
+      sizeAttackMult: json['size_attack_mult'] is num
+          ? (json['size_attack_mult'] as num).toDouble()
+          : 1,
+      memberCount: _asInt(json['member_count']),
       defensePower: _asInt(json['defense_power']),
       goldSpent: _asInt(json['gold_spent']),
       territoryName: json['territory_name']?.toString(),
       defenderGuildName: json['defender_guild_name']?.toString(),
+      healthLost: _asInt(json['health_lost']),
+      healthAfter: _asInt(json['health_after']),
+      maxHealth: _asInt(json['max_health']),
       error: json['error']?.toString(),
     );
   }
@@ -475,7 +626,11 @@ class TerritoryAttackPreview {
     this.attackGoldCost = 0,
     this.roiDays,
     this.attackPower = 0,
+    this.attackPowerRaw = 0,
+    this.sizeAttackMult = 1,
+    this.memberCount = 0,
     this.defensePower = 0,
+    this.gemAttackBoost = 0,
     this.winChancePct = 0,
     this.vaultGold = 0,
     this.vaultGoldPending = 0,
@@ -491,7 +646,11 @@ class TerritoryAttackPreview {
   final int attackGoldCost;
   final double? roiDays;
   final int attackPower;
+  final int attackPowerRaw;
+  final double sizeAttackMult;
+  final int memberCount;
   final int defensePower;
+  final int gemAttackBoost;
   final double winChancePct;
   final int vaultGold;
   final int vaultGoldPending;
@@ -511,20 +670,30 @@ class TerritoryAttackPreview {
     final Map<String, dynamic>? defenderMap = json['defender_guild'] is Map
         ? Map<String, dynamic>.from(json['defender_guild'] as Map)
         : null;
+    final int attackPower = _asInt(json['attack_power']);
     return TerritoryAttackPreview(
       territoryId: (json['territory_id'] ?? '').toString(),
       territoryName: (json['territory_name'] ?? '').toString(),
       tradeIncome: _asInt(json['trade_income']),
       attackGoldCost: _asInt(json['attack_gold_cost']),
       roiDays: json['roi_days'] is num ? (json['roi_days'] as num).toDouble() : null,
-      attackPower: _asInt(json['attack_power']),
+      attackPower: attackPower,
+      attackPowerRaw: _asInt(json['attack_power_raw'], fallback: attackPower),
+      sizeAttackMult: json['size_attack_mult'] is num
+          ? (json['size_attack_mult'] as num).toDouble()
+          : 1,
+      memberCount: _asInt(json['member_count']),
       defensePower: _asInt(json['defense_power']),
+      gemAttackBoost: _asInt(json['gem_attack_boost']),
       winChancePct: json['win_chance_pct'] is num
           ? (json['win_chance_pct'] as num).toDouble()
-          : 0,
+          : (json['win_chance'] is num
+              ? (json['win_chance'] as num).toDouble() * 100
+              : 0),
       vaultGold: _asInt(json['vault_gold']),
       vaultGoldPending: _asInt(json['vault_gold_pending']),
-      canAfford: json['can_afford'] == true,
+      canAfford: json['can_afford'] == true ||
+          _asInt(json['vault_gold']) >= _asInt(json['attack_gold_cost']),
       attackerGuild: GuildWarGuildBrief.fromJson(
         json['attacker_guild'] is Map
             ? Map<String, dynamic>.from(json['attacker_guild'] as Map)
@@ -577,6 +746,13 @@ int _asInt(dynamic value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+double _asDouble(dynamic value, {double fallback = 0}) {
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? fallback;
   return fallback;
 }
 

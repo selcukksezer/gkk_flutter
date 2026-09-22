@@ -7,50 +7,111 @@ import 'tutorial_track.dart';
 import 'tutorial_track_registry.dart';
 
 /// Local + optional server tutorial progress (v2 track-based).
+///
+/// Local prefs are **per auth user**. Shared-device / new-account must not
+/// inherit another player's completed/skipped tutorial.
 class TutorialPersistence {
   TutorialPersistence._();
 
-  static const String _prefsKey = 'gkk_tutorial_state';
+  static const String _legacyPrefsKey = 'gkk_tutorial_state';
+
+  static String? get currentAuthId {
+    if (!SupabaseService.isInitialized) return null;
+    return SupabaseService.client.auth.currentUser?.id;
+  }
+
+  static String? get _authId => currentAuthId;
+
+  static String _prefsKeyFor(String authId) => 'gkk_tutorial_state_$authId';
+
+  static bool _serverProgressIsFresh(
+    Map<String, dynamic> server, {
+    required bool tutorialCompleted,
+  }) {
+    if (tutorialCompleted) return false;
+    if (server['skipped_all'] == true) return false;
+    if (_stringSet(server['completed_tracks']).isNotEmpty) return false;
+    final dynamic steps = server['steps'];
+    if (steps is Map && steps.isNotEmpty) return false;
+    if (_stringSet(server['completed_steps']).isNotEmpty) return false;
+    return true;
+  }
 
   static Future<TutorialProgressState> load() async {
+    final String? authId = _authId;
+    // Logged out — never seed coach from another account's device cache.
+    if (authId == null) {
+      return TutorialProgressState.initial();
+    }
+
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? raw = prefs.getString(_prefsKey);
-    TutorialProgressState state = TutorialProgressState.initial();
-    if (raw != null) {
+    TutorialProgressState local = TutorialProgressState.initial();
+    final String scopedKey = _prefsKeyFor(authId);
+    final String? scopedRaw = prefs.getString(scopedKey);
+    if (scopedRaw != null) {
       try {
-        state = TutorialProgressState.fromJson(
-          Map<String, dynamic>.from(jsonDecode(raw) as Map),
+        local = TutorialProgressState.fromJson(
+          Map<String, dynamic>.from(jsonDecode(scopedRaw) as Map),
         );
       } catch (_) {}
     }
 
-    if (SupabaseService.isInitialized &&
-        SupabaseService.client.auth.currentUser != null) {
-      try {
-        final dynamic row = await SupabaseService.client
-            .from('users')
-            .select('tutorial_progress, tutorial_completed')
-            .eq('auth_id', SupabaseService.client.auth.currentUser!.id)
-            .maybeSingle();
-        if (row is Map) {
-          final Map<String, dynamic> serverProgress =
-              row['tutorial_progress'] is Map
-                  ? Map<String, dynamic>.from(row['tutorial_progress'] as Map)
-                  : <String, dynamic>{};
-          state = state.mergeServer(
-            serverProgress,
-            tutorialCompleted: row['tutorial_completed'] == true,
-          );
-          await _saveLocal(state);
+    try {
+      final dynamic row = await SupabaseService.client
+          .from('users')
+          .select('tutorial_progress, tutorial_completed')
+          .eq('auth_id', authId)
+          .maybeSingle();
+      if (row is Map) {
+        final Map<String, dynamic> serverProgress =
+            row['tutorial_progress'] is Map
+                ? Map<String, dynamic>.from(row['tutorial_progress'] as Map)
+                : <String, dynamic>{};
+        final bool tutorialCompleted = row['tutorial_completed'] == true;
+
+        // New account (or wiped server): ignore device leftovers + legacy key.
+        if (_serverProgressIsFresh(
+          serverProgress,
+          tutorialCompleted: tutorialCompleted,
+        )) {
+          final TutorialProgressState fresh = TutorialProgressState.initial();
+          await _saveLocal(fresh, authId: authId);
+          return fresh;
         }
-      } catch (_) {}
+
+        // One-time migrate legacy global key for returning users only.
+        if (scopedRaw == null) {
+          final String? legacyRaw = prefs.getString(_legacyPrefsKey);
+          if (legacyRaw != null) {
+            try {
+              local = TutorialProgressState.fromJson(
+                Map<String, dynamic>.from(jsonDecode(legacyRaw) as Map),
+              );
+            } catch (_) {}
+          }
+        }
+
+        local = local.mergeServer(
+          serverProgress,
+          tutorialCompleted: tutorialCompleted,
+        );
+        await _saveLocal(local, authId: authId);
+        await prefs.remove(_legacyPrefsKey);
+      } else if (scopedRaw == null) {
+        // No users row yet (race right after register) — stay fresh.
+        await _saveLocal(local, authId: authId);
+      }
+    } catch (_) {
+      // Offline: keep scoped local only (never legacy cross-account).
     }
 
-    return state;
+    return local;
   }
 
   static Future<void> save(TutorialProgressState state) async {
-    await _saveLocal(state);
+    final String? authId = _authId;
+    if (authId == null) return;
+    await _saveLocal(state, authId: authId);
     await _syncServer(state);
   }
 
@@ -58,7 +119,10 @@ class TutorialPersistence {
   static Future<void> hardReset() async {
     final TutorialProgressState cleared =
         TutorialProgressState.initial(hardReset: true);
-    await _saveLocal(cleared);
+    final String? authId = _authId;
+    if (authId != null) {
+      await _saveLocal(cleared, authId: authId);
+    }
     if (SupabaseService.isInitialized &&
         SupabaseService.client.auth.currentUser != null) {
       try {
@@ -69,9 +133,12 @@ class TutorialPersistence {
     }
   }
 
-  static Future<void> _saveLocal(TutorialProgressState state) async {
+  static Future<void> _saveLocal(
+    TutorialProgressState state, {
+    required String authId,
+  }) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, jsonEncode(state.toJson()));
+    await prefs.setString(_prefsKeyFor(authId), jsonEncode(state.toJson()));
   }
 
   static Future<void> _syncServer(TutorialProgressState state) async {
@@ -85,6 +152,13 @@ class TutorialPersistence {
         params: <String, dynamic>{'p_progress': state.toJson()},
       );
     } catch (_) {}
+  }
+
+  static Set<String> _stringSet(dynamic raw) {
+    if (raw is List) {
+      return raw.map((dynamic e) => e.toString()).toSet();
+    }
+    return <String>{};
   }
 }
 
@@ -120,13 +194,13 @@ class TutorialProgressState {
   final Set<String> flags;
   final bool hardReset;
 
-  Set<String> stepsForTrack(String trackId) =>
-      stepsByTrack[trackId] ?? <String>{};
+  bool get coreCompleted =>
+      TutorialTrackId.coreTracks.every(completedTracks.contains);
 
   bool isTrackComplete(String trackId) => completedTracks.contains(trackId);
 
-  bool get coreCompleted =>
-      TutorialTrackId.coreTracks.every(completedTracks.contains);
+  Set<String> stepsForTrack(String trackId) =>
+      stepsByTrack[trackId] ?? const <String>{};
 
   bool hasFlag(String flag) => flags.contains(flag);
 
@@ -161,15 +235,8 @@ class TutorialProgressState {
     required bool tutorialCompleted,
   }) {
     if (hardReset) {
-      return TutorialProgressState(
-        version: version,
-        completedTracks: completedTracks,
-        stepsByTrack: stepsByTrack,
-        skippedAll: skippedAll,
-        coreCompletedAt: coreCompletedAt,
-        flags: flags,
-        hardReset: true,
-      );
+      // Settings replay — never keep prior completed_tracks/steps under the flag.
+      return TutorialProgressState.initial(hardReset: true);
     }
 
     final bool serverHardReset = server['hard_reset'] == true;
@@ -269,6 +336,27 @@ class TutorialProgressState {
     );
   }
 
+  TutorialProgressState uncompleteStep({
+    required String trackId,
+    required String stepId,
+  }) {
+    final Set<String> current = stepsByTrack[trackId] ?? <String>{};
+    if (!current.contains(stepId)) return this;
+    final Map<String, Set<String>> nextSteps =
+        Map<String, Set<String>>.from(stepsByTrack);
+    nextSteps[trackId] = <String>{...current}..remove(stepId);
+    final Set<String> nextTracks = <String>{...completedTracks}..remove(trackId);
+    return TutorialProgressState(
+      version: version,
+      completedTracks: nextTracks,
+      stepsByTrack: nextSteps,
+      skippedAll: skippedAll,
+      coreCompletedAt: coreCompletedAt,
+      flags: flags,
+      hardReset: false,
+    );
+  }
+
   TutorialProgressState completeTrack(String trackId) {
     final Set<String> nextTracks = <String>{...completedTracks, trackId};
     final bool coreDone = TutorialTrackId.coreTracks.every(nextTracks.contains);
@@ -337,4 +425,3 @@ class TutorialProgressState {
     return <String>{};
   }
 }
-

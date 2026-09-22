@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../core/services/device_identity_service.dart';
+import '../../core/services/supabase_service.dart';
 import '../../core/utils/auth_validators.dart';
 import '../../l10n/l10n.dart';
 import '../../models/policy_model.dart';
+import '../../models/referral_preview_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/policy_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_spacing.dart';
+import '../../utils/logout_helper.dart';
 import 'widgets/auth_design.dart';
 import 'widgets/auth_form_shell.dart';
 import 'widgets/community_rules_gate.dart';
@@ -35,14 +40,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _termsAccepted = false;
   bool _privacyAccepted = false;
   bool _rulesDialogShown = false;
+  bool _policyBusy = false;
+  bool _usernameTaken = false;
+  bool _checkingUsername = false;
+  Timer? _usernameDebounce;
+  Timer? _referralDebounce;
+  bool _referralChecking = false;
+  ReferralPreview? _referralPreview;
 
   bool get _canRegister =>
       _communityDecision == CommunityRulesDecision.accepted &&
       _termsAccepted &&
-      _privacyAccepted;
+      _privacyAccepted &&
+      !_usernameTaken;
 
   @override
   void dispose() {
+    _usernameDebounce?.cancel();
+    _referralDebounce?.cancel();
     _emailController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -50,18 +65,58 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
+  void _onUsernameChanged(String value) {
+    _usernameDebounce?.cancel();
+    setState(() {
+      _usernameTaken = false;
+      _checkingUsername = value.trim().length >= 3;
+    });
+    _usernameDebounce = Timer(const Duration(milliseconds: 450), () async {
+      final String trimmed = value.trim();
+      if (trimmed.length < 3 ||
+          AuthValidators.validateUsername(trimmed, context.l10n) != null) {
+        if (mounted) setState(() => _checkingUsername = false);
+        return;
+      }
+      final bool available =
+          await ref.read(authProvider.notifier).isUsernameAvailable(trimmed);
+      if (!mounted) return;
+      setState(() {
+        _checkingUsername = false;
+        _usernameTaken = !available;
+      });
+    });
+  }
+
+  void _onReferralChanged(String value) {
+    _referralDebounce?.cancel();
+    final String trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      setState(() {
+        _referralChecking = false;
+        _referralPreview = null;
+      });
+      return;
+    }
+    setState(() => _referralChecking = true);
+    _referralDebounce = Timer(const Duration(milliseconds: 500), () async {
+      final ReferralPreview preview =
+          await ref.read(authProvider.notifier).validateReferralCode(trimmed);
+      if (!mounted) return;
+      setState(() {
+        _referralChecking = false;
+        _referralPreview = preview;
+      });
+    });
+  }
+
   Future<void> _loadAndShowCommunityRules() async {
     if (_rulesDialogShown || !mounted) return;
     _rulesDialogShown = true;
 
-    final LegalDocument? doc =
+    final LegalDocument doc =
         await ref.read(policyProvider.notifier).fetchCommunityDocumentPublic();
     if (!mounted) return;
-
-    if (doc == null) {
-      AppMessenger.showError(context, 'Topluluk Kuralları yüklenemedi.');
-      return;
-    }
 
     setState(() => _communityDoc = doc);
 
@@ -78,13 +133,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _reviewCommunityRules() async {
-    final LegalDocument? doc = _communityDoc ??
+    final LegalDocument doc = _communityDoc ??
         await ref.read(policyProvider.notifier).fetchCommunityDocumentPublic();
     if (!mounted) return;
-    if (doc == null) {
-      AppMessenger.showError(context, 'Topluluk Kuralları yüklenemedi.');
-      return;
-    }
 
     setState(() => _communityDoc = doc);
 
@@ -111,6 +162,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
+    if (_usernameTaken) {
+      AppMessenger.showError(context, context.l10n.auth_username_taken);
+      return;
+    }
+
+    final ReferralPreview? refPreview = _referralPreview;
+    if (_referralController.text.trim().isNotEmpty &&
+        refPreview != null &&
+        !refPreview.empty &&
+        !refPreview.valid) {
+      AppMessenger.showError(context, context.l10n.auth_referral_invalid);
+      return;
+    }
+
     final String deviceId = await DeviceIdentityService.currentId();
     await ref.read(authProvider.notifier).register(
           email: _emailController.text.trim(),
@@ -124,12 +189,57 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _onRegistered() async {
-    final String? err = await ref.read(policyProvider.notifier).acceptAll();
-    if (!mounted) return;
-    if (err != null) {
-      AppMessenger.showError(context, 'Sözleşme kaydı başarısız: $err');
+    setState(() => _policyBusy = true);
+    try {
+      // Wait briefly so JWT/session is usable by RPCs after signUp.
+      for (int i = 0; i < 10; i++) {
+        if (SupabaseService.client.auth.currentSession != null) break;
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+
+      final String? err = await ref.read(policyProvider.notifier).acceptAll();
+      if (!mounted) return;
+      if (err != null) {
+        await _showPolicyStuckDialog(err);
+        return;
+      }
+      context.go(AppRoutes.home);
+    } finally {
+      if (mounted) setState(() => _policyBusy = false);
     }
-    context.go(AppRoutes.home);
+  }
+
+  Future<void> _showPolicyStuckDialog(String err) async {
+    final AppLocalizations l10n = context.l10n;
+    final bool? retry = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: Text(l10n.auth_policy_stuck_title),
+          content: Text(err),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.auth_policy_logout),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.auth_policy_retry),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (retry == true) {
+      await _onRegistered();
+      return;
+    }
+    await performLogout(ref);
+    if (!mounted) return;
+    context.go(AppRoutes.login);
   }
 
   void _goToLogin() {
@@ -138,6 +248,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
     context.push(AppRoutes.login);
+  }
+
+  Widget _referralHint(AppLocalizations l10n) {
+    if (_referralChecking) {
+      return Text(
+        l10n.auth_referral_validating,
+        style: AuthDesign.bodyMuted(color: AuthDesign.titanium),
+      );
+    }
+    final ReferralPreview? preview = _referralPreview;
+    if (preview == null || preview.empty) {
+      return const SizedBox.shrink();
+    }
+    if (!preview.valid) {
+      return Text(
+        l10n.auth_referral_invalid,
+        style: AuthDesign.bodyMuted(color: AuthDesign.fuchsia),
+      );
+    }
+    return Text(
+      l10n.auth_referral_bonus_preview(
+        preview.unlockLevel,
+        preview.referredGems,
+        preview.referrerGems,
+      ),
+      style: AuthDesign.bodyMuted(color: AuthDesign.gold),
+    );
   }
 
   @override
@@ -150,6 +287,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       AuthState next,
     ) {
       if (!mounted) return;
+
+      if (next.status == AuthStatus.pendingEmailConfirmation) {
+        final String email = next.pendingEmail ??
+            next.user?.email ??
+            _emailController.text.trim();
+        context.go(
+          '${AppRoutes.emailConfirm}?email=${Uri.encodeComponent(email)}',
+        );
+        return;
+      }
 
       if (next.status == AuthStatus.authenticated) {
         _onRegistered();
@@ -165,7 +312,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final AuthState authState = ref.watch(authProvider);
-    final bool isLoading = authState.status == AuthStatus.loading;
+    final bool isLoading =
+        authState.status == AuthStatus.loading || _policyBusy;
     final AppLocalizations l10n = context.l10n;
 
     return AuthFormShell(
@@ -205,8 +353,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               autofillHints: const <String>[AutofillHints.username],
               autocorrect: false,
               accent: AuthDesign.fuchsia,
-              validator: (String? value) => AuthValidators.validateUsername(value, l10n),
+              onChanged: _onUsernameChanged,
+              validator: (String? value) {
+                final String? base = AuthValidators.validateUsername(value, l10n);
+                if (base != null) return base;
+                if (_usernameTaken) return l10n.auth_username_taken;
+                return null;
+              },
             ),
+            if (_checkingUsername || _usernameTaken) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                _usernameTaken
+                    ? l10n.auth_username_taken
+                    : '...',
+                style: AuthDesign.bodyMuted(
+                  color: _usernameTaken ? AuthDesign.fuchsia : AuthDesign.titanium,
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.base),
             AuthField(
               controller: _passwordController,
@@ -237,10 +402,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               textInputAction: TextInputAction.done,
               autocorrect: false,
               accent: AuthDesign.gold,
+              onChanged: _onReferralChanged,
               onFieldSubmitted: (_) {
                 if (!isLoading && _canRegister) _submitRegister();
               },
             ),
+            const SizedBox(height: 6),
+            _referralHint(l10n),
             const SizedBox(height: AppSpacing.base),
             RegisterLegalConsent(
               termsAccepted: _termsAccepted,

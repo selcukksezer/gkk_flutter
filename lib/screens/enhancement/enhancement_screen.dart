@@ -12,6 +12,7 @@ import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/enhancement_stats.dart';
 import '../../models/enhancement_config_model.dart';
 import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
@@ -19,8 +20,12 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../repositories/enhancement_repository.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_anchor_registry.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../core/tutorial/tutorial_inventory_target.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
+import '../../l10n/l10n.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/logout_helper.dart';
@@ -182,8 +187,66 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       if (!mounted) return;
       setState(() => _config = config);
       await TutorialTriggers.onRouteEnter(ref, AppRoutes.enhancement);
+      _syncEnhanceTutorialInventoryTab();
     });
   }
+
+  void _syncEnhanceTutorialInventoryTab() {
+    final TutorialStepV2? step = ref.read(tutorialProvider).activeStep;
+    if (step?.id != 'enhance_pick_item') return;
+    if (_invTab == _InvTab.gear) {
+      TutorialAnchorRegistry.instance.scheduleRefresh();
+      return;
+    }
+    setState(() => _invTab = _InvTab.gear);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      TutorialAnchorRegistry.instance.scheduleRefresh();
+    });
+  }
+
+  /// No gear / parchment → show Devam so coach not stuck on GÜÇLENDİR.
+  void _syncEnhanceCoachBypass({required bool canEnhance}) {
+    if (!mounted) return;
+    final TutorialState tut = ref.read(tutorialProvider);
+    final String? stepId = tut.activeStep?.id;
+    final TutorialController ctrl = ref.read(tutorialProvider.notifier);
+
+    if (stepId == 'enhance_pick_item') {
+      final bool hasItem =
+          ref.read(inventoryProvider).items.any(_isEnhanceable);
+      if (!hasItem) {
+        ctrl.setCoachBypass(
+          enabled: true,
+          body: context.l10n.tut_enhance_bypass_no_item_body,
+        );
+      } else {
+        ctrl.setCoachBypass(enabled: false);
+      }
+      return;
+    }
+
+    if (stepId == 'enhance_tap_forge') {
+      final bool missingItemOrScroll = _selectedItem == null ||
+          (_autoFindScroll(_selectedItem!) == null &&
+              _compatibleScroll() == null);
+      if (!canEnhance && !_isEnhancing && missingItemOrScroll) {
+        ctrl.setCoachBypass(
+          enabled: true,
+          body: context.l10n.tut_enhance_bypass_no_scroll_body,
+        );
+      } else {
+        ctrl.setCoachBypass(enabled: false);
+      }
+      return;
+    }
+
+    if (tut.forceShowManualCta) {
+      ctrl.setCoachBypass(enabled: false);
+    }
+  }
+
+  String? _tutorialEnhanceWeaponRowId(InventoryState state) =>
+      TutorialInventoryTarget.enhanceWeaponRowId(state);
 
   @override
   void dispose() {
@@ -518,6 +581,24 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         !_isEnhancing &&
         _forgePhase == _ForgeVisualPhase.idle;
 
+    // Inventory / gold / selection → coach Devam when forge blocked.
+    ref.watch(inventoryProvider);
+    ref.watch(tutorialProvider.select((TutorialState s) => s.activeStep?.id));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncEnhanceCoachBypass(canEnhance: canEnhance);
+    });
+
+    ref.listen<String?>(
+      tutorialProvider.select((TutorialState state) => state.activeStep?.id),
+      (String? previous, String? next) {
+        if (next == 'enhance_pick_item' && previous != next) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _syncEnhanceTutorialInventoryTab();
+          });
+        }
+      },
+    );
+
     return PopScope(
       canPop: GoRouter.of(context).canPop(),
       onPopInvokedWithResult: (bool didPop, _) {
@@ -535,23 +616,33 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
           onLogout: () async => performLogout(ref),
         ),
         body: GameScreenBackground(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                _buildAnvilPanel(
-                  successChance: successChance,
-                  nextCost: nextCost,
-                  gold: gold,
-                  currentLevel: currentLevel,
-                  canEnhance: canEnhance,
-                  config: _config,
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final double anvilMaxH = constraints.maxHeight * 0.48;
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: anvilMaxH),
+                      child: SingleChildScrollView(
+                        child: _buildAnvilPanel(
+                          successChance: successChance,
+                          nextCost: nextCost,
+                          gold: gold,
+                          currentLevel: currentLevel,
+                          canEnhance: canEnhance,
+                          config: _config,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(child: _buildInventoryPanel()),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Expanded(child: _buildInventoryPanel()),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -638,11 +729,9 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              TutorialAnchorScope(
-                id: TutorialAnchorId.enhanceItemSlot,
-                child: _anvilSlot(
-                  size: 66,
-                  label: 'Eşya',
+              _anvilSlot(
+                size: 66,
+                label: 'Eşya',
                   accent: _selectedItem != null ? accent : null,
                   onClear: _selectedItem != null && !_isEnhancing
                       ? () => setState(() => _selectedItem = null)
@@ -684,7 +773,6 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                         ),
                       )
                     : null,
-                ),
               ),
               _anvilPlus(),
               _anvilSlot(
@@ -821,6 +909,10 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
               color: _selectedItem != null ? accent : AppColors.mutedTitanium,
             ),
           ),
+          if (_selectedItem != null) ...<Widget>[
+            const SizedBox(height: 6),
+            _enhancementStatPreview(_selectedItem!, previewLevel),
+          ],
           const SizedBox(height: 8),
           // Bilgi şeridi — tek satır
           Row(
@@ -1092,6 +1184,48 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
     );
   }
 
+  /// PLAN_05: current enhanced stats → next +1 preview.
+  Widget _enhancementStatPreview(InventoryItem item, int currentLevel) {
+    final int nextLevel = (currentLevel + 1).clamp(0, 10);
+    final bool canPreviewNext = currentLevel < 10;
+
+    String line(String label, int base) {
+      if (base <= 0) return '';
+      final int now = enhancedStat(base, currentLevel);
+      if (!canPreviewNext) return '$label $now';
+      final int next = enhancedStat(base, nextLevel);
+      return '$label $now→$next';
+    }
+
+    final List<String> parts = <String>[
+      if (item.attack > 0) line('ATK', item.attack),
+      if (item.defense > 0) line('DEF', item.defense),
+      if (item.health > 0) line('HP', item.health),
+      if (item.luck > 0) line('LUCK', item.luck),
+    ].where((String s) => s.isNotEmpty).toList();
+
+    final int powerNow = enhancedItemPowerContribution(
+      item,
+      enhancementLevel: currentLevel,
+    );
+    final String powerLine = canPreviewNext
+        ? 'GÜÇ $powerNow→${enhancedItemPowerContribution(item, enhancementLevel: nextLevel)}'
+        : 'GÜÇ $powerNow';
+
+    return Text(
+      parts.isEmpty ? powerLine : '${parts.join('  ·  ')}  ·  $powerLine',
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        color: AppColors.toxicNeon.withValues(alpha: 0.9),
+        height: 1.25,
+      ),
+    );
+  }
+
   // ─── ENVANTER ────────────────────────────────────────────────────────────
   List<InventoryItem> _filteredInventory(List<InventoryItem> all) {
     switch (_invTab) {
@@ -1118,9 +1252,13 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
 
   Widget _buildInventoryPanel() {
     final inventoryState = ref.watch(inventoryProvider);
+    final TutorialStepV2? tutorialStep = ref.watch(tutorialProvider).activeStep;
+    final bool pickWeaponCoach = tutorialStep?.id == 'enhance_pick_item';
+    final String? tutorialWeaponRowId =
+        pickWeaponCoach ? _tutorialEnhanceWeaponRowId(inventoryState) : null;
     final List<InventoryItem> allItems = inventoryState.items;
     final List<InventoryItem> items = _filteredInventory(allItems);
-    final double bottomPad = MediaQuery.of(context).padding.bottom + 96;
+    final double bottomPad = GameScrollLayout.bottomInset(context);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
@@ -1178,7 +1316,10 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                         ),
                     itemCount: items.length,
                     itemBuilder: (BuildContext context, int idx) =>
-                        _buildInventoryTile(items[idx]),
+                        _buildInventoryTile(
+                          items[idx],
+                          tutorialWeaponRowId: tutorialWeaponRowId,
+                        ),
                   ),
           ),
         ],
@@ -1216,13 +1357,16 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         setState(() => _invTab = tabs[index].$1);
       },
       isScrollable: true,
-      height: 36,
+      height: 42,
       padding: EdgeInsets.zero,
     );
   }
 
   /// KO stili envanter hücresi: kare, koyu iç, rarity çerçeve, +seviye rozeti.
-  Widget _buildInventoryTile(InventoryItem item) {
+  Widget _buildInventoryTile(
+    InventoryItem item, {
+    String? tutorialWeaponRowId,
+  }) {
     final bool usable = _isForgeUsable(item);
     final bool isSelected =
         (_selectedItem?.rowId == item.rowId) ||
@@ -1230,8 +1374,14 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         (_selectedRune != 'none' && item.itemId == 'rune_$_selectedRune');
     final Color rarityC = _rarityColor(item.rarity);
 
-    return GestureDetector(
-      onTap: () => _handleInventoryItemTap(item),
+    final bool isTutorialWeapon =
+        tutorialWeaponRowId != null && item.rowId == tutorialWeaponRowId;
+
+    final Widget tile = GestureDetector(
+      onTap: () => _handleInventoryItemTap(
+        item,
+        tutorialWeaponRowId: tutorialWeaponRowId,
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         decoration: BoxDecoration(
@@ -1319,10 +1469,26 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         ),
       ),
     );
+
+    if (!isTutorialWeapon) return tile;
+
+    return TutorialAnchorScope(
+      id: TutorialAnchorId.enhanceInventoryWeapon,
+      child: tile,
+    );
   }
 
-  void _handleInventoryItemTap(InventoryItem item) {
+  void _handleInventoryItemTap(
+    InventoryItem item, {
+    String? tutorialWeaponRowId,
+  }) {
     if (_isEnhancing) return;
+    if (tutorialWeaponRowId != null &&
+        item.rowId != tutorialWeaponRowId &&
+        _isEnhanceable(item)) {
+      ref.read(tutorialProvider.notifier).registerWrongTap();
+      return;
+    }
     if (_isEnhanceable(item)) {
       HapticFeedback.selectionClick();
       setState(() {
@@ -1333,9 +1499,14 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
           _selectedScroll = _autoFindScroll(item);
         }
       });
-      unawaited(
-        TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.enhanceItemSlot),
-      );
+      if (item.rowId == tutorialWeaponRowId) {
+        unawaited(
+          TutorialTriggers.onAnchorTap(
+            ref,
+            TutorialAnchorId.enhanceInventoryWeapon,
+          ),
+        );
+      }
     } else if (_isScrollItem(item)) {
       HapticFeedback.selectionClick();
       setState(() => _selectedScroll = item);

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../routing/app_router.dart';
+import '../../../core/legal/legal_document_content.dart';
+import '../../../models/policy_model.dart';
 import '../../../theme/app_spacing.dart';
+import 'auth_design.dart';
+import 'auth_legal_document_dialog.dart';
 
 /// Terms + privacy checkboxes shown during registration (store consent).
+///
+/// `(oku)` opens formatted markdown dialog — no `/legal` route.
 class RegisterLegalConsent extends StatelessWidget {
   const RegisterLegalConsent({
     super.key,
@@ -19,44 +24,73 @@ class RegisterLegalConsent extends StatelessWidget {
   final ValueChanged<bool?> onTermsChanged;
   final ValueChanged<bool?> onPrivacyChanged;
 
+  void _openDocument(BuildContext context, String type) {
+    final LegalDocument doc = LegalDocumentContent.resolve(
+      LegalDocument(type: type, version: 1, title: '', bodyMd: ''),
+    );
+    showAuthLegalDocumentDialog(context, document: doc);
+  }
+
+  Widget _consentRow({
+    required BuildContext context,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    required String label,
+    required String docType,
+  }) {
+    return CheckboxListTile(
+      value: value,
+      onChanged: onChanged,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      controlAffinity: ListTileControlAffinity.leading,
+      title: Text.rich(
+        TextSpan(
+          style: AuthDesign.bodyMuted(color: AuthDesign.textMid),
+          children: <InlineSpan>[
+            TextSpan(text: '$label '),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _openDocument(context, docType),
+                child: Text(
+                  '(oku)',
+                  style: GoogleFonts.urbanist(
+                    color: AuthDesign.gold,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline,
+                    decorationColor: AuthDesign.gold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        CheckboxListTile(
+        _consentRow(
+          context: context,
           value: termsAccepted,
           onChanged: onTermsChanged,
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: <Widget>[
-              const Text('Kullanım Koşullarını kabul ediyorum '),
-              GestureDetector(
-                onTap: () => context.push('${AppRoutes.legal}/terms'),
-                child: const Text('(oku)', style: TextStyle(decoration: TextDecoration.underline)),
-              ),
-            ],
-          ),
+          label: 'Kullanım Koşullarını kabul ediyorum',
+          docType: 'terms',
         ),
-        CheckboxListTile(
+        _consentRow(
+          context: context,
           value: privacyAccepted,
           onChanged: onPrivacyChanged,
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: <Widget>[
-              const Text('Gizlilik Politikasını kabul ediyorum '),
-              GestureDetector(
-                onTap: () => context.push('${AppRoutes.legal}/privacy'),
-                child: const Text('(oku)', style: TextStyle(decoration: TextDecoration.underline)),
-              ),
-            ],
-          ),
+          label: 'Gizlilik Politikasını kabul ediyorum',
+          docType: 'privacy',
         ),
         const SizedBox(height: AppSpacing.sm),
       ],

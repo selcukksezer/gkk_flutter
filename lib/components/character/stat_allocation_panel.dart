@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/utils/power_helpers.dart';
+import '../../core/utils/stat_allocation.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/power_change_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../common/app_messenger.dart';
@@ -25,9 +28,10 @@ class _StatAllocationPanelState extends ConsumerState<StatAllocationPanel> {
   int _attack = 0;
   int _defense = 0;
   int _luck = 0;
+  int _health = 0;
   bool _saving = false;
 
-  int get _pending => _attack + _defense + _luck;
+  int get _pending => _attack + _defense + _luck + _health;
   int get _remaining => widget.availablePoints - _pending;
 
   void _bump(String stat, int delta) {
@@ -42,6 +46,8 @@ class _StatAllocationPanelState extends ConsumerState<StatAllocationPanel> {
           _defense = (_defense + delta).clamp(0, widget.availablePoints);
         case 'luck':
           _luck = (_luck + delta).clamp(0, widget.availablePoints);
+        case 'health':
+          _health = (_health + delta).clamp(0, widget.availablePoints);
       }
     });
   }
@@ -49,6 +55,7 @@ class _StatAllocationPanelState extends ConsumerState<StatAllocationPanel> {
   Future<void> _confirm() async {
     if (_pending <= 0 || _saving) return;
     setState(() => _saving = true);
+    final int powerBefore = readPlayerTotalPower(ref);
     try {
       final dynamic res = await SupabaseService.client.rpc(
         'allocate_stat_points',
@@ -56,19 +63,29 @@ class _StatAllocationPanelState extends ConsumerState<StatAllocationPanel> {
           'p_attack': _attack,
           'p_defense': _defense,
           'p_luck': _luck,
+          'p_health': _health,
         },
       );
       final bool ok = res is Map && res['success'] == true;
       if (!mounted) return;
       if (ok) {
         HapticFeedback.mediumImpact();
-        AppMessenger.showSuccess(context, '✅ $_pending puan dağıtıldı!');
+        final Map<String, dynamic> data = Map<String, dynamic>.from(res);
+        final int healthGain = (data['health_gain'] as num?)?.toInt() ?? 0;
+        final String extra = healthGain > 0 ? ' (+$healthGain can)' : '';
+        AppMessenger.showSuccess(context, '✅ $_pending puan dagitildi!$extra');
         setState(() {
           _attack = 0;
           _defense = 0;
           _luck = 0;
+          _health = 0;
         });
         await ref.read(playerProvider.notifier).loadProfile();
+        if (!mounted) return;
+        ref.read(powerChangeProvider.notifier).emit(
+              oldPower: powerBefore,
+              newPower: readPlayerTotalPower(ref),
+            );
       } else {
         AppMessenger.showError(context, 'Puan dağıtımı başarısız.');
       }
@@ -118,7 +135,7 @@ class _StatAllocationPanelState extends ConsumerState<StatAllocationPanel> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Her level +3 puan. Puanları istediğin stata dağıt.',
+            'Her level +3 puan. Can: 1 puan = +$statPointHealthMultiplier max can.',
             style: AppTextStyles.micro.copyWith(color: AppColors.mutedTitanium),
           ),
           const SizedBox(height: 4),
@@ -134,7 +151,9 @@ class _StatAllocationPanelState extends ConsumerState<StatAllocationPanel> {
           const SizedBox(height: 6),
           _statRow('Savunma', '🛡️', _defense, 'defense', AppColors.accentCyan),
           const SizedBox(height: 6),
-          _statRow('Şans', '🍀', _luck, 'luck', AppColors.toxicNeon),
+          _statRow('Sans', '🍀', _luck, 'luck', AppColors.toxicNeon),
+          const SizedBox(height: 6),
+          _healthRow(),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -170,6 +189,57 @@ class _StatAllocationPanelState extends ConsumerState<StatAllocationPanel> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _healthRow() {
+    return Row(
+      children: <Widget>[
+        const Text('❤️', style: TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Can',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (_health > 0)
+                Text(
+                  statPointHealthPreviewLabel(_health),
+                  style: AppTextStyles.micro.copyWith(
+                    color: AppColors.mysticRuby,
+                    fontWeight: FontWeight.w700,
+                  ),
+                )
+              else
+                Text(
+                  'x$statPointHealthMultiplier can / puan',
+                  style: AppTextStyles.micro.copyWith(
+                    color: AppColors.mutedTitanium,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        _roundButton(Icons.remove, _health > 0 ? () => _bump('health', -1) : null),
+        SizedBox(
+          width: 40,
+          child: Text(
+            _health > 0 ? '+$_health' : '0',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption.copyWith(
+              color: _health > 0 ? AppColors.mysticRuby : AppColors.mutedTitanium,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        _roundButton(Icons.add, _remaining > 0 ? () => _bump('health', 1) : null),
+      ],
     );
   }
 

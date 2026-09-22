@@ -67,7 +67,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final int listingCount = ref.watch(marketProvider).tickers.length;
+    final int listingCount = ref.watch(marketProvider).totalListings;
 
     return Scaffold(
       appBar: GameTopBar(title: context.l10n.routeMarket, onLogout: _logout),

@@ -37,6 +37,8 @@ class DungeonCard extends StatelessWidget {
     this.siegeSlotCount = 5,
     this.siegeConfig,
     this.onSiegeTap,
+    this.zoneLevelLocked = false,
+    this.zoneRequiredLevel = 1,
   });
 
   final DungeonData dungeon;
@@ -59,6 +61,8 @@ class DungeonCard extends StatelessWidget {
   final int siegeSlotCount;
   final DungeonSiegeConfig? siegeConfig;
   final VoidCallback? onSiegeTap;
+  final bool zoneLevelLocked;
+  final int zoneRequiredLevel;
 
   bool get _isBoss => dungeon.difficulty.toLowerCase().contains('dungeon');
 
@@ -238,6 +242,8 @@ class DungeonCard extends StatelessWidget {
                               entering: entering,
                               inHospital: inHospital,
                               inPrison: inPrison,
+                              zoneLevelLocked: zoneLevelLocked,
+                              zoneRequiredLevel: zoneRequiredLevel,
                               color: threat,
                               onEnter: onEnter,
                               useTutorialAnchor: useTutorialAnchors,
@@ -496,6 +502,8 @@ class _DungeonEnterButton extends StatelessWidget {
     required this.color,
     required this.onEnter,
     this.useTutorialAnchor = false,
+    this.zoneLevelLocked = false,
+    this.zoneRequiredLevel = 1,
   });
 
   final bool canEnter;
@@ -505,11 +513,14 @@ class _DungeonEnterButton extends StatelessWidget {
   final Color color;
   final VoidCallback onEnter;
   final bool useTutorialAnchor;
+  final bool zoneLevelLocked;
+  final int zoneRequiredLevel;
 
   String get _label {
     if (entering) return 'Girilyor...';
     if (inHospital) return 'Hastane Kilidi';
     if (inPrison) return 'Hapis Kilidi';
+    if (zoneLevelLocked) return 'Lv.$zoneRequiredLevel Gerekli';
     if (!canEnter) return 'Enerji Yetersiz';
     return 'Zindana Gir';
   }

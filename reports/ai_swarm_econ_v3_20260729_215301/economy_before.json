@@ -1,0 +1,16 @@
+{
+  "qa_live_play_economy_report": {
+    "bots": 400,
+    "gold_sum": 10000000000,
+    "gold_avg": 25000000,
+    "gems_sum": 2000000,
+    "market_open": 0,
+    "market_history_buys": 0,
+    "market_fill_rate_pct": 0,
+    "dungeon_runs": 0,
+    "chat_dm_count": 0,
+    "trade_sessions": 0,
+    "seed_gold_per_bot": 25000000,
+    "gold_delta_vs_seed": 0
+  }
+}

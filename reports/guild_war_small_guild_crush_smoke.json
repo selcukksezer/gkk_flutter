@@ -1,0 +1,4349 @@
+{
+  "generated_at": "2026-07-29T17:39:58.075870+00:00",
+  "seed": 20260729,
+  "purpose": "Detect if small guilds get crushed under live guild-war formula + compare mitigations",
+  "scenarios": [
+    {
+      "config": {
+        "name": "A_LIVE_current",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "live_flat_10M",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": null,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.83)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.0,
+        "mid": 0.667,
+        "large": 2.971,
+        "mega": 3.937
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 210,
+          "wins": 13,
+          "win_rate_pct": 6.19,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 5628571
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 446,
+          "wins": 80,
+          "win_rate_pct": 17.94,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 26177777
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 735,
+          "wins": 259,
+          "win_rate_pct": 35.24,
+          "with_territory": 12,
+          "territories": 14,
+          "territory_share_pct": 16.67,
+          "income_share_pct": 12.93,
+          "avg_income_earned": 92825000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 839,
+          "wins": 485,
+          "win_rate_pct": 57.81,
+          "with_territory": 29,
+          "territories": 39,
+          "territory_share_pct": 46.43,
+          "income_share_pct": 44.23,
+          "avg_income_earned": 336080000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 625,
+          "wins": 423,
+          "win_rate_pct": 67.68,
+          "with_territory": 25,
+          "territories": 31,
+          "territory_share_pct": 36.9,
+          "income_share_pct": 42.85,
+          "avg_income_earned": 624666666
+        }
+      },
+      "gini_territories": 0.8259,
+      "gini_income": 0.7353,
+      "small_guild_land_share_pct": 0.0,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "mega": 37,
+          "small": 40,
+          "micro": 5,
+          "mid": 117,
+          "large": 60
+        },
+        "small": {
+          "mega": 16,
+          "micro": 5,
+          "small": 21,
+          "large": 17,
+          "mid": 21
+        },
+        "micro": {
+          "mega": 3,
+          "small": 4,
+          "mid": 4,
+          "micro": 1,
+          "large": 1
+        },
+        "large": {
+          "mega": 157,
+          "mid": 90,
+          "large": 222,
+          "small": 14,
+          "micro": 2
+        },
+        "mega": {
+          "mega": 262,
+          "large": 147,
+          "mid": 13,
+          "small": 1
+        }
+      },
+      "ownership_final": {
+        "large": 39,
+        "mega": 31,
+        "mid": 14
+      },
+      "ownership_day0": {
+        "small": 10,
+        "large": 27,
+        "mega": 22,
+        "mid": 22,
+        "micro": 3
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 2,
+          "income_earned": 859000000,
+          "win_rate_pct": 73.9
+        },
+        {
+          "gid": 20,
+          "tier": "large",
+          "size": 40,
+          "power": 2644022,
+          "territories": 2,
+          "income_earned": 576000000,
+          "win_rate_pct": 81.0
+        },
+        {
+          "gid": 62,
+          "tier": "large",
+          "size": 37,
+          "power": 2142577,
+          "territories": 2,
+          "income_earned": 404000000,
+          "win_rate_pct": 58.3
+        },
+        {
+          "gid": 67,
+          "tier": "mega",
+          "size": 44,
+          "power": 4760338,
+          "territories": 2,
+          "income_earned": 606000000,
+          "win_rate_pct": 80.0
+        },
+        {
+          "gid": 120,
+          "tier": "mid",
+          "size": 24,
+          "power": 1053657,
+          "territories": 2,
+          "income_earned": 212000000,
+          "win_rate_pct": 44.4
+        },
+        {
+          "gid": 129,
+          "tier": "large",
+          "size": 35,
+          "power": 2104810,
+          "territories": 2,
+          "income_earned": 374000000,
+          "win_rate_pct": 54.5
+        },
+        {
+          "gid": 139,
+          "tier": "large",
+          "size": 39,
+          "power": 3180331,
+          "territories": 2,
+          "income_earned": 535000000,
+          "win_rate_pct": 68.2
+        },
+        {
+          "gid": 150,
+          "tier": "large",
+          "size": 36,
+          "power": 2172819,
+          "territories": 2,
+          "income_earned": 304000000,
+          "win_rate_pct": 47.6
+        },
+        {
+          "gid": 163,
+          "tier": "mega",
+          "size": 46,
+          "power": 4924834,
+          "territories": 2,
+          "income_earned": 720000000,
+          "win_rate_pct": 73.9
+        },
+        {
+          "gid": 180,
+          "tier": "large",
+          "size": 34,
+          "power": 2437434,
+          "territories": 2,
+          "income_earned": 380000000,
+          "win_rate_pct": 63.2
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 475797,
+          "def": 459465
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 321700,
+          "def": 363864
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 18054,
+          "def": 485879
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 2283933,
+          "def": 486453
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 127540,
+          "def": 574812
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 409010,
+          "def": 575311
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 553825,
+          "def": 600961
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 2463737,
+          "def": 721498
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 2238263,
+          "def": 880712
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 335353,
+          "def": 485594
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 822483,
+          "def": 607828
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 501611,
+          "def": 486814
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 693751,
+          "def": 690253
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 650468,
+          "def": 708113
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 344174,
+          "def": 606750
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "B_ROI_1_75x_income",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.75",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": null,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.88)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.0,
+        "mid": 0.0,
+        "large": 2.438,
+        "mega": 6.603
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 74,
+          "wins": 4,
+          "win_rate_pct": 5.41,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 1371428
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 103,
+          "wins": 13,
+          "win_rate_pct": 12.62,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 3911111
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 114,
+          "wins": 34,
+          "win_rate_pct": 29.82,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 12100000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 554,
+          "wins": 394,
+          "win_rate_pct": 71.12,
+          "with_territory": 23,
+          "territories": 32,
+          "territory_share_pct": 38.1,
+          "income_share_pct": 32.15,
+          "avg_income_earned": 271780000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 735,
+          "wins": 584,
+          "win_rate_pct": 79.46,
+          "with_territory": 25,
+          "territories": 52,
+          "territory_share_pct": 61.9,
+          "income_share_pct": 67.85,
+          "avg_income_earned": 1023833333
+        }
+      },
+      "gini_territories": 0.8795,
+      "gini_income": 0.872,
+      "small_guild_land_share_pct": 0.0,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "mega": 18,
+          "small": 5,
+          "mid": 5,
+          "large": 6
+        },
+        "small": {
+          "mega": 7,
+          "micro": 2,
+          "mid": 2,
+          "large": 2
+        },
+        "micro": {
+          "mega": 2,
+          "small": 1,
+          "mid": 1
+        },
+        "large": {
+          "mega": 103,
+          "large": 264,
+          "small": 4,
+          "mid": 21,
+          "micro": 2
+        },
+        "mega": {
+          "mega": 485,
+          "small": 3,
+          "mid": 5,
+          "large": 91
+        }
+      },
+      "ownership_final": {
+        "large": 32,
+        "mega": 52
+      },
+      "ownership_day0": {
+        "mid": 18,
+        "mega": 36,
+        "small": 7,
+        "large": 21,
+        "micro": 2
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 73,
+          "tier": "mega",
+          "size": 46,
+          "power": 4581552,
+          "territories": 3,
+          "income_earned": 1139000000,
+          "win_rate_pct": 78.6
+        },
+        {
+          "gid": 115,
+          "tier": "mega",
+          "size": 44,
+          "power": 5280224,
+          "territories": 3,
+          "income_earned": 1476000000,
+          "win_rate_pct": 76.7
+        },
+        {
+          "gid": 130,
+          "tier": "mega",
+          "size": 48,
+          "power": 5265648,
+          "territories": 3,
+          "income_earned": 1478000000,
+          "win_rate_pct": 80.0
+        },
+        {
+          "gid": 140,
+          "tier": "mega",
+          "size": 48,
+          "power": 5279467,
+          "territories": 3,
+          "income_earned": 1303000000,
+          "win_rate_pct": 76.7
+        },
+        {
+          "gid": 163,
+          "tier": "mega",
+          "size": 46,
+          "power": 4924834,
+          "territories": 3,
+          "income_earned": 1192000000,
+          "win_rate_pct": 80.0
+        },
+        {
+          "gid": 272,
+          "tier": "mega",
+          "size": 48,
+          "power": 5077194,
+          "territories": 3,
+          "income_earned": 1085000000,
+          "win_rate_pct": 81.5
+        },
+        {
+          "gid": 6,
+          "tier": "large",
+          "size": 33,
+          "power": 2196403,
+          "territories": 2,
+          "income_earned": 484000000,
+          "win_rate_pct": 55.0
+        },
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 2,
+          "income_earned": 1442000000,
+          "win_rate_pct": 86.7
+        },
+        {
+          "gid": 35,
+          "tier": "mega",
+          "size": 43,
+          "power": 5110691,
+          "territories": 2,
+          "income_earned": 1314000000,
+          "win_rate_pct": 90.0
+        },
+        {
+          "gid": 64,
+          "tier": "mega",
+          "size": 50,
+          "power": 5047777,
+          "territories": 2,
+          "income_earned": 1176000000,
+          "win_rate_pct": 76.7
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 475797,
+          "def": 363956
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 321700,
+          "def": 460071
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 18054,
+          "def": 485812
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2283933,
+          "def": 485308
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 127540,
+          "def": 486030
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 409010,
+          "def": 486283
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 553825,
+          "def": 600582
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2463737,
+          "def": 606826
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 2238263,
+          "def": 574467
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 822483,
+          "def": 574124
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 693751,
+          "def": 606750
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 650468,
+          "def": 608454
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 344174,
+          "def": 689987
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 1669807,
+          "def": 721164
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 707220,
+          "def": 728252
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "C_underdog_softcap",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.75",
+        "underdog_atk_bonus": 0.35,
+        "soft_cap_def_vs_atk": 2.5,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": null,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.89)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.0,
+        "mid": 0.0,
+        "large": 2.133,
+        "mega": 7.111
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 98,
+          "wins": 28,
+          "win_rate_pct": 28.57,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 10400000
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 132,
+          "wins": 42,
+          "win_rate_pct": 31.82,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 13511111
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 163,
+          "wins": 81,
+          "win_rate_pct": 49.69,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 29250000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 457,
+          "wins": 340,
+          "win_rate_pct": 74.4,
+          "with_territory": 18,
+          "territories": 28,
+          "territory_share_pct": 33.33,
+          "income_share_pct": 28.67,
+          "avg_income_earned": 237060000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 664,
+          "wins": 539,
+          "win_rate_pct": 81.17,
+          "with_territory": 23,
+          "territories": 56,
+          "territory_share_pct": 66.67,
+          "income_share_pct": 71.33,
+          "avg_income_earned": 986100000
+        }
+      },
+      "gini_territories": 0.8949,
+      "gini_income": 0.8543,
+      "small_guild_land_share_pct": 0.0,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "mega": 22,
+          "micro": 12,
+          "small": 11,
+          "mid": 25,
+          "large": 11
+        },
+        "small": {
+          "mega": 12,
+          "micro": 8,
+          "mid": 11,
+          "large": 7,
+          "small": 4
+        },
+        "micro": {
+          "mega": 13,
+          "micro": 3,
+          "large": 6,
+          "small": 2,
+          "mid": 4
+        },
+        "large": {
+          "mega": 91,
+          "large": 203,
+          "small": 12,
+          "mid": 32,
+          "micro": 2
+        },
+        "mega": {
+          "mega": 428,
+          "small": 13,
+          "large": 86,
+          "micro": 3,
+          "mid": 9
+        }
+      },
+      "ownership_final": {
+        "mega": 56,
+        "large": 28
+      },
+      "ownership_day0": {
+        "micro": 9,
+        "small": 9,
+        "large": 14,
+        "mega": 36,
+        "mid": 16
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 16,
+          "tier": "mega",
+          "size": 42,
+          "power": 4306980,
+          "territories": 3,
+          "income_earned": 1224000000,
+          "win_rate_pct": 89.7
+        },
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 3,
+          "income_earned": 1471000000,
+          "win_rate_pct": 86.7
+        },
+        {
+          "gid": 92,
+          "tier": "mega",
+          "size": 45,
+          "power": 5309805,
+          "territories": 3,
+          "income_earned": 1503000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 113,
+          "tier": "mega",
+          "size": 47,
+          "power": 4580230,
+          "territories": 3,
+          "income_earned": 998000000,
+          "win_rate_pct": 90.9
+        },
+        {
+          "gid": 115,
+          "tier": "mega",
+          "size": 44,
+          "power": 5280224,
+          "territories": 3,
+          "income_earned": 1471000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 140,
+          "tier": "mega",
+          "size": 48,
+          "power": 5279467,
+          "territories": 3,
+          "income_earned": 1501000000,
+          "win_rate_pct": 90.0
+        },
+        {
+          "gid": 202,
+          "tier": "mega",
+          "size": 44,
+          "power": 4851757,
+          "territories": 3,
+          "income_earned": 1017000000,
+          "win_rate_pct": 66.7
+        },
+        {
+          "gid": 238,
+          "tier": "mega",
+          "size": 50,
+          "power": 5047580,
+          "territories": 3,
+          "income_earned": 1243000000,
+          "win_rate_pct": 89.3
+        },
+        {
+          "gid": 245,
+          "tier": "mega",
+          "size": 45,
+          "power": 5217929,
+          "territories": 3,
+          "income_earned": 1337000000,
+          "win_rate_pct": 86.7
+        },
+        {
+          "gid": 272,
+          "tier": "mega",
+          "size": 48,
+          "power": 5077194,
+          "territories": 3,
+          "income_earned": 1043000000,
+          "win_rate_pct": 73.1
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 475797,
+          "def": 363956
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 321700,
+          "def": 460071
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 18054,
+          "def": 485812
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2283933,
+          "def": 485308
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 127540,
+          "def": 486030
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 409010,
+          "def": 486283
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 553825,
+          "def": 600582
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2463737,
+          "def": 606826
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 2238263,
+          "def": 574467
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 335353,
+          "def": 575237
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 822483,
+          "def": 606750
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 693751,
+          "def": 606894
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 650468,
+          "def": 721164
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 28469,
+          "def": 709827
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 344174,
+          "def": 690274
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "D_size_bracket",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.75",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": true,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": null,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.88)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.254,
+        "mid": 0.0,
+        "large": 1.448,
+        "mega": 7.492
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 83,
+          "wins": 14,
+          "win_rate_pct": 16.87,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 4857142
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 144,
+          "wins": 64,
+          "win_rate_pct": 44.44,
+          "with_territory": 6,
+          "territories": 6,
+          "territory_share_pct": 7.14,
+          "income_share_pct": 4.99,
+          "avg_income_earned": 17422222
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 97,
+          "wins": 16,
+          "win_rate_pct": 16.49,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 5900000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 398,
+          "wins": 257,
+          "win_rate_pct": 64.57,
+          "with_territory": 13,
+          "territories": 19,
+          "territory_share_pct": 22.62,
+          "income_share_pct": 18.11,
+          "avg_income_earned": 188100000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 845,
+          "wins": 678,
+          "win_rate_pct": 80.24,
+          "with_territory": 29,
+          "territories": 59,
+          "territory_share_pct": 70.24,
+          "income_share_pct": 76.9,
+          "avg_income_earned": 1131166666
+        }
+      },
+      "gini_territories": 0.8756,
+      "gini_income": 0.8654,
+      "small_guild_land_share_pct": 7.14,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mega": {
+          "mega": 590,
+          "large": 88
+        },
+        "large": {
+          "mega": 112,
+          "mid": 9,
+          "large": 136
+        },
+        "mid": {
+          "large": 15,
+          "small": 1
+        },
+        "small": {
+          "mid": 7,
+          "small": 49,
+          "micro": 8
+        },
+        "micro": {
+          "small": 8,
+          "micro": 6
+        }
+      },
+      "ownership_final": {
+        "large": 19,
+        "mega": 59,
+        "small": 6
+      },
+      "ownership_day0": {
+        "large": 35,
+        "mega": 48,
+        "mid": 1
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 130,
+          "tier": "mega",
+          "size": 48,
+          "power": 5265648,
+          "territories": 3,
+          "income_earned": 1293000000,
+          "win_rate_pct": 76.7
+        },
+        {
+          "gid": 181,
+          "tier": "mega",
+          "size": 46,
+          "power": 4700405,
+          "territories": 3,
+          "income_earned": 1232000000,
+          "win_rate_pct": 83.3
+        },
+        {
+          "gid": 245,
+          "tier": "mega",
+          "size": 45,
+          "power": 5217929,
+          "territories": 3,
+          "income_earned": 1262000000,
+          "win_rate_pct": 86.7
+        },
+        {
+          "gid": 301,
+          "tier": "mega",
+          "size": 45,
+          "power": 4631257,
+          "territories": 3,
+          "income_earned": 964000000,
+          "win_rate_pct": 75.0
+        },
+        {
+          "gid": 16,
+          "tier": "mega",
+          "size": 42,
+          "power": 4306980,
+          "territories": 2,
+          "income_earned": 865000000,
+          "win_rate_pct": 63.0
+        },
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 2,
+          "income_earned": 1479000000,
+          "win_rate_pct": 83.3
+        },
+        {
+          "gid": 20,
+          "tier": "large",
+          "size": 40,
+          "power": 2644022,
+          "territories": 2,
+          "income_earned": 538000000,
+          "win_rate_pct": 71.4
+        },
+        {
+          "gid": 21,
+          "tier": "large",
+          "size": 34,
+          "power": 2440336,
+          "territories": 2,
+          "income_earned": 524000000,
+          "win_rate_pct": 68.2
+        },
+        {
+          "gid": 30,
+          "tier": "mega",
+          "size": 46,
+          "power": 4821447,
+          "territories": 2,
+          "income_earned": 1218000000,
+          "win_rate_pct": 80.0
+        },
+        {
+          "gid": 35,
+          "tier": "mega",
+          "size": 43,
+          "power": 5110691,
+          "territories": 2,
+          "income_earned": 1164000000,
+          "win_rate_pct": 76.7
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 3608927,
+          "def": 363956
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 2238263,
+          "def": 459716
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 2107809,
+          "def": 485497
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 1669807,
+          "def": 485308
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 1839306,
+          "def": 485536
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2174246,
+          "def": 486283
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 4319960,
+          "def": 575503
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 1812145,
+          "def": 574822
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 1666675,
+          "def": 600582
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 4571957,
+          "def": 688966
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 1871945,
+          "def": 487096
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 1684948,
+          "def": 607019
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2731560,
+          "def": 606826
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 4470051,
+          "def": 607237
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 1839020,
+          "def": 721164
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "E_cap3_territories",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.75",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": 3,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.88)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.0,
+        "mid": 0.0,
+        "large": 1.829,
+        "mega": 7.619
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 74,
+          "wins": 4,
+          "win_rate_pct": 5.41,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 1485714
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 95,
+          "wins": 5,
+          "win_rate_pct": 5.26,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 1511111
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 108,
+          "wins": 27,
+          "win_rate_pct": 25.0,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 8850000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 457,
+          "wins": 293,
+          "win_rate_pct": 64.11,
+          "with_territory": 18,
+          "territories": 24,
+          "territory_share_pct": 28.57,
+          "income_share_pct": 23.75,
+          "avg_income_earned": 219580000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 873,
+          "wins": 686,
+          "win_rate_pct": 78.58,
+          "with_territory": 30,
+          "territories": 60,
+          "territory_share_pct": 71.43,
+          "income_share_pct": 76.25,
+          "avg_income_earned": 1124700000
+        }
+      },
+      "gini_territories": 0.8776,
+      "gini_income": 0.8672,
+      "small_guild_land_share_pct": 0.0,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mega": {
+          "mega": 575,
+          "unowned": 1,
+          "large": 105,
+          "micro": 1,
+          "mid": 4
+        },
+        "mid": {
+          "unowned": 1,
+          "mega": 12,
+          "micro": 1,
+          "small": 1,
+          "mid": 6,
+          "large": 6
+        },
+        "micro": {
+          "unowned": 1,
+          "mega": 2,
+          "micro": 1
+        },
+        "small": {
+          "mega": 4,
+          "mid": 1
+        },
+        "large": {
+          "mega": 108,
+          "large": 164,
+          "small": 4,
+          "mid": 16,
+          "micro": 1
+        }
+      },
+      "ownership_final": {
+        "large": 24,
+        "mega": 60
+      },
+      "ownership_day0": {
+        "mid": 12,
+        "large": 29,
+        "mega": 36,
+        "small": 4,
+        "micro": 3
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 48,
+          "tier": "mega",
+          "size": 43,
+          "power": 4545353,
+          "territories": 3,
+          "income_earned": 834000000,
+          "win_rate_pct": 73.1
+        },
+        {
+          "gid": 140,
+          "tier": "mega",
+          "size": 48,
+          "power": 5279467,
+          "territories": 3,
+          "income_earned": 1296000000,
+          "win_rate_pct": 93.3
+        },
+        {
+          "gid": 182,
+          "tier": "mega",
+          "size": 45,
+          "power": 4468936,
+          "territories": 3,
+          "income_earned": 1217000000,
+          "win_rate_pct": 86.7
+        },
+        {
+          "gid": 272,
+          "tier": "mega",
+          "size": 48,
+          "power": 5077194,
+          "territories": 3,
+          "income_earned": 1158000000,
+          "win_rate_pct": 69.0
+        },
+        {
+          "gid": 301,
+          "tier": "mega",
+          "size": 45,
+          "power": 4631257,
+          "territories": 3,
+          "income_earned": 1118000000,
+          "win_rate_pct": 72.4
+        },
+        {
+          "gid": 11,
+          "tier": "large",
+          "size": 37,
+          "power": 2648587,
+          "territories": 2,
+          "income_earned": 596000000,
+          "win_rate_pct": 73.9
+        },
+        {
+          "gid": 16,
+          "tier": "mega",
+          "size": 42,
+          "power": 4306980,
+          "territories": 2,
+          "income_earned": 1101000000,
+          "win_rate_pct": 83.3
+        },
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 2,
+          "income_earned": 1080000000,
+          "win_rate_pct": 72.4
+        },
+        {
+          "gid": 35,
+          "tier": "mega",
+          "size": 43,
+          "power": 5110691,
+          "territories": 2,
+          "income_earned": 1159000000,
+          "win_rate_pct": 79.3
+        },
+        {
+          "gid": 64,
+          "tier": "mega",
+          "size": 50,
+          "power": 5047777,
+          "territories": 2,
+          "income_earned": 1047000000,
+          "win_rate_pct": 72.4
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 3835583,
+          "def": 1461915
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "unowned",
+          "zone": 4,
+          "atk": 3738293,
+          "def": 600
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "unowned",
+          "zone": 4,
+          "atk": 499198,
+          "def": 600
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "unowned",
+          "zone": 3,
+          "atk": 19705,
+          "def": 2500
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 3695336,
+          "def": 1094301
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 4319897,
+          "def": 1435780
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 352929,
+          "def": 1212894
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 68359,
+          "def": 1534193
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 2731560,
+          "def": 1543960
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 781526,
+          "def": 1516103
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "large",
+          "zone": 5,
+          "atk": 3723603,
+          "def": 734156
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 1839020,
+          "def": 1490308
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "large",
+          "zone": 4,
+          "atk": 2107809,
+          "def": 1061352
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 2217745,
+          "def": 1573090
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 1874584,
+          "def": 1606339
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "F_hybrid_tax_underdog",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.75",
+        "underdog_atk_bonus": 0.25,
+        "soft_cap_def_vs_atk": 3.0,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.08,
+        "max_territories_per_guild": 4,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.89)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.085,
+        "mid": 0.19,
+        "large": 1.448,
+        "mega": 7.492
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 143,
+          "wins": 29,
+          "win_rate_pct": 20.28,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 10742857
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 189,
+          "wins": 52,
+          "win_rate_pct": 27.51,
+          "with_territory": 2,
+          "territories": 2,
+          "territory_share_pct": 2.38,
+          "income_share_pct": 1.57,
+          "avg_income_earned": 15511111
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 188,
+          "wins": 74,
+          "win_rate_pct": 39.36,
+          "with_territory": 4,
+          "territories": 4,
+          "territory_share_pct": 4.76,
+          "income_share_pct": 3.28,
+          "avg_income_earned": 24125000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 384,
+          "wins": 269,
+          "win_rate_pct": 70.05,
+          "with_territory": 15,
+          "territories": 19,
+          "territory_share_pct": 22.62,
+          "income_share_pct": 19.62,
+          "avg_income_earned": 187500000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 715,
+          "wins": 594,
+          "win_rate_pct": 83.08,
+          "with_territory": 25,
+          "territories": 59,
+          "territory_share_pct": 70.24,
+          "income_share_pct": 75.52,
+          "avg_income_earned": 1074200000
+        }
+      },
+      "gini_territories": 0.8897,
+      "gini_income": 0.8573,
+      "small_guild_land_share_pct": 2.38,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "unowned": 1,
+          "mega": 13,
+          "small": 11,
+          "mid": 17,
+          "large": 26,
+          "micro": 6
+        },
+        "large": {
+          "mega": 81,
+          "micro": 12,
+          "small": 18,
+          "mid": 36,
+          "large": 122
+        },
+        "mega": {
+          "unowned": 1,
+          "mega": 497,
+          "large": 78,
+          "small": 11,
+          "mid": 7
+        },
+        "small": {
+          "mega": 16,
+          "large": 14,
+          "micro": 6,
+          "small": 8,
+          "mid": 8
+        },
+        "micro": {
+          "mega": 7,
+          "large": 13,
+          "micro": 5,
+          "small": 2,
+          "mid": 2
+        }
+      },
+      "ownership_final": {
+        "mid": 4,
+        "mega": 59,
+        "large": 19,
+        "small": 2
+      },
+      "ownership_day0": {
+        "micro": 7,
+        "large": 20,
+        "mega": 33,
+        "mid": 13,
+        "small": 11
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 3,
+          "income_earned": 1482000000,
+          "win_rate_pct": 93.3
+        },
+        {
+          "gid": 30,
+          "tier": "mega",
+          "size": 46,
+          "power": 4821447,
+          "territories": 3,
+          "income_earned": 1562000000,
+          "win_rate_pct": 93.3
+        },
+        {
+          "gid": 48,
+          "tier": "mega",
+          "size": 43,
+          "power": 4545353,
+          "territories": 3,
+          "income_earned": 1162000000,
+          "win_rate_pct": 81.5
+        },
+        {
+          "gid": 64,
+          "tier": "mega",
+          "size": 50,
+          "power": 5047777,
+          "territories": 3,
+          "income_earned": 1480000000,
+          "win_rate_pct": 90.0
+        },
+        {
+          "gid": 92,
+          "tier": "mega",
+          "size": 45,
+          "power": 5309805,
+          "territories": 3,
+          "income_earned": 1448000000,
+          "win_rate_pct": 76.7
+        },
+        {
+          "gid": 115,
+          "tier": "mega",
+          "size": 44,
+          "power": 5280224,
+          "territories": 3,
+          "income_earned": 1312000000,
+          "win_rate_pct": 76.7
+        },
+        {
+          "gid": 137,
+          "tier": "mega",
+          "size": 50,
+          "power": 5737531,
+          "territories": 3,
+          "income_earned": 1383000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 138,
+          "tier": "mega",
+          "size": 42,
+          "power": 4345021,
+          "territories": 3,
+          "income_earned": 1208000000,
+          "win_rate_pct": 81.5
+        },
+        {
+          "gid": 182,
+          "tier": "mega",
+          "size": 45,
+          "power": 4468936,
+          "territories": 3,
+          "income_earned": 1186000000,
+          "win_rate_pct": 75.0
+        },
+        {
+          "gid": 202,
+          "tier": "mega",
+          "size": 44,
+          "power": 4851757,
+          "territories": 3,
+          "income_earned": 1321000000,
+          "win_rate_pct": 86.7
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "unowned",
+          "zone": 3,
+          "atk": 499198,
+          "def": 2500
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 777584,
+          "def": 1154250
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 553825,
+          "def": 1178240
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2463737,
+          "def": 1190293
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "unowned",
+          "zone": 7,
+          "atk": 3835583,
+          "def": 4800
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 4513324,
+          "def": 1188133
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 518421,
+          "def": 988629
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 270373,
+          "def": 1093120
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 4166506,
+          "def": 1212758
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 1939335,
+          "def": 1188732
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 316306,
+          "def": 1213309
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 781526,
+          "def": 1277292
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 3608927,
+          "def": 1320317
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 1839020,
+          "def": 1317182
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 2175230,
+          "def": 1318324
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "G_power_mean_not_sum",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.75",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": 4,
+        "support_frac": 0.85,
+        "power_aggregate": "mean",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.96)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.0,
+        "mid": 0.0,
+        "large": 0.0,
+        "mega": 10.667
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 72,
+          "wins": 2,
+          "win_rate_pct": 2.78,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 742857
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 113,
+          "wins": 23,
+          "win_rate_pct": 20.35,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 7288888
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 122,
+          "wins": 40,
+          "win_rate_pct": 32.79,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 13500000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 98,
+          "wins": 44,
+          "win_rate_pct": 44.9,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 28080000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 560,
+          "wins": 251,
+          "win_rate_pct": 44.82,
+          "with_territory": 18,
+          "territories": 84,
+          "territory_share_pct": 100.0,
+          "income_share_pct": 100.0,
+          "avg_income_earned": 1416233333
+        }
+      },
+      "gini_territories": 0.9636,
+      "gini_income": 0.9427,
+      "small_guild_land_share_pct": 0.0,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "unowned": 1,
+          "large": 3,
+          "mega": 15,
+          "small": 6,
+          "mid": 13,
+          "micro": 2
+        },
+        "mega": {
+          "unowned": 1,
+          "large": 28,
+          "mega": 199,
+          "mid": 15,
+          "small": 8
+        },
+        "small": {
+          "mega": 16,
+          "mid": 3,
+          "small": 1,
+          "large": 3
+        },
+        "large": {
+          "mega": 15,
+          "small": 8,
+          "mid": 8,
+          "large": 13
+        },
+        "micro": {
+          "mega": 1,
+          "mid": 1
+        }
+      },
+      "ownership_final": {
+        "mega": 84
+      },
+      "ownership_day0": {
+        "mid": 14,
+        "mega": 41,
+        "small": 15,
+        "large": 13,
+        "micro": 1
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 35,
+          "tier": "mega",
+          "size": 43,
+          "power": 5110691,
+          "territories": 10,
+          "income_earned": 4545000000,
+          "win_rate_pct": 46.7
+        },
+        {
+          "gid": 249,
+          "tier": "mega",
+          "size": 46,
+          "power": 5577613,
+          "territories": 10,
+          "income_earned": 4606000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 92,
+          "tier": "mega",
+          "size": 45,
+          "power": 5309805,
+          "territories": 9,
+          "income_earned": 4452000000,
+          "win_rate_pct": 66.7
+        },
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 7,
+          "income_earned": 4215000000,
+          "win_rate_pct": 56.7
+        },
+        {
+          "gid": 245,
+          "tier": "mega",
+          "size": 45,
+          "power": 5217929,
+          "territories": 7,
+          "income_earned": 3054000000,
+          "win_rate_pct": 53.3
+        },
+        {
+          "gid": 115,
+          "tier": "mega",
+          "size": 44,
+          "power": 5280224,
+          "territories": 6,
+          "income_earned": 3293000000,
+          "win_rate_pct": 50.0
+        },
+        {
+          "gid": 137,
+          "tier": "mega",
+          "size": 50,
+          "power": 5737531,
+          "territories": 6,
+          "income_earned": 2085000000,
+          "win_rate_pct": 46.7
+        },
+        {
+          "gid": 140,
+          "tier": "mega",
+          "size": 48,
+          "power": 5279467,
+          "territories": 5,
+          "income_earned": 2322000000,
+          "win_rate_pct": 56.7
+        },
+        {
+          "gid": 64,
+          "tier": "mega",
+          "size": 50,
+          "power": 5047777,
+          "territories": 4,
+          "income_earned": 1310000000,
+          "win_rate_pct": 40.7
+        },
+        {
+          "gid": 163,
+          "tier": "mega",
+          "size": 46,
+          "power": 4924834,
+          "territories": 4,
+          "income_earned": 2188000000,
+          "win_rate_pct": 43.3
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "unowned",
+          "zone": 3,
+          "atk": 31199,
+          "def": 2500
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 1,
+          "atk": 35344,
+          "def": 67659
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "unowned",
+          "zone": 7,
+          "atk": 85235,
+          "def": 4800
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "large",
+          "zone": 5,
+          "atk": 94027,
+          "def": 77359
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 38624,
+          "def": 100023
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "large",
+          "zone": 4,
+          "atk": 94693,
+          "def": 82428
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 64644,
+          "def": 101139
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 31630,
+          "def": 102841
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 49703,
+          "def": 97591
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 58790,
+          "def": 100892
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 94056,
+          "def": 102247
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 63463,
+          "def": 101884
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 66119,
+          "def": 104344
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 41121,
+          "def": 106626
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 35714,
+          "def": 107624
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "H_sqrt_size_scale",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.75",
+        "underdog_atk_bonus": 0.15,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": 4,
+        "support_frac": 0.85,
+        "power_aggregate": "sqrt",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.91)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.0,
+        "small": 0.0,
+        "mid": 0.0,
+        "large": 0.914,
+        "mega": 9.143
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 73,
+          "wins": 3,
+          "win_rate_pct": 4.11,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 1028571
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 111,
+          "wins": 20,
+          "win_rate_pct": 18.02,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 5955555
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 113,
+          "wins": 33,
+          "win_rate_pct": 29.2,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 11400000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 312,
+          "wins": 184,
+          "win_rate_pct": 58.97,
+          "with_territory": 10,
+          "territories": 12,
+          "territory_share_pct": 14.29,
+          "income_share_pct": 11.29,
+          "avg_income_earned": 144360000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 827,
+          "wins": 545,
+          "win_rate_pct": 65.9,
+          "with_territory": 28,
+          "territories": 72,
+          "territory_share_pct": 85.71,
+          "income_share_pct": 88.71,
+          "avg_income_earned": 1231366666
+        }
+      },
+      "gini_territories": 0.9074,
+      "gini_income": 0.8872,
+      "small_guild_land_share_pct": 0.0,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "unowned": 1,
+          "mega": 15,
+          "large": 7,
+          "micro": 1,
+          "small": 5,
+          "mid": 4
+        },
+        "large": {
+          "mega": 50,
+          "large": 113,
+          "small": 8,
+          "mid": 13
+        },
+        "mega": {
+          "unowned": 1,
+          "mega": 474,
+          "large": 53,
+          "mid": 12,
+          "small": 4,
+          "micro": 1
+        },
+        "small": {
+          "mega": 12,
+          "small": 2,
+          "mid": 3,
+          "large": 2,
+          "micro": 1
+        },
+        "micro": {
+          "mega": 1,
+          "small": 1,
+          "mid": 1
+        }
+      },
+      "ownership_final": {
+        "large": 12,
+        "mega": 72
+      },
+      "ownership_day0": {
+        "small": 11,
+        "mid": 15,
+        "mega": 38,
+        "large": 19,
+        "micro": 1
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 4,
+          "income_earned": 1659000000,
+          "win_rate_pct": 76.7
+        },
+        {
+          "gid": 140,
+          "tier": "mega",
+          "size": 48,
+          "power": 5279467,
+          "territories": 4,
+          "income_earned": 1557000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 301,
+          "tier": "mega",
+          "size": 45,
+          "power": 4631257,
+          "territories": 4,
+          "income_earned": 1189000000,
+          "win_rate_pct": 56.7
+        },
+        {
+          "gid": 35,
+          "tier": "mega",
+          "size": 43,
+          "power": 5110691,
+          "territories": 3,
+          "income_earned": 1542000000,
+          "win_rate_pct": 90.0
+        },
+        {
+          "gid": 92,
+          "tier": "mega",
+          "size": 45,
+          "power": 5309805,
+          "territories": 3,
+          "income_earned": 1471000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 113,
+          "tier": "mega",
+          "size": 47,
+          "power": 4580230,
+          "territories": 3,
+          "income_earned": 1230000000,
+          "win_rate_pct": 71.4
+        },
+        {
+          "gid": 130,
+          "tier": "mega",
+          "size": 48,
+          "power": 5265648,
+          "territories": 3,
+          "income_earned": 1396000000,
+          "win_rate_pct": 53.3
+        },
+        {
+          "gid": 137,
+          "tier": "mega",
+          "size": 50,
+          "power": 5737531,
+          "territories": 3,
+          "income_earned": 1608000000,
+          "win_rate_pct": 63.3
+        },
+        {
+          "gid": 138,
+          "tier": "mega",
+          "size": 42,
+          "power": 4345021,
+          "territories": 3,
+          "income_earned": 1055000000,
+          "win_rate_pct": 64.3
+        },
+        {
+          "gid": 163,
+          "tier": "mega",
+          "size": 46,
+          "power": 4924834,
+          "territories": 3,
+          "income_earned": 1323000000,
+          "win_rate_pct": 66.7
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "unowned",
+          "zone": 3,
+          "atk": 124799,
+          "def": 2500
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 165781,
+          "def": 351596
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 394513,
+          "def": 348924
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "unowned",
+          "zone": 7,
+          "atk": 571774,
+          "def": 4800
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 651442,
+          "def": 351012
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 133855,
+          "def": 330086
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 102191,
+          "def": 355646
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 628124,
+          "def": 358353
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 354072,
+          "def": 330017
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 1,
+          "atk": 100024,
+          "def": 367266
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 2,
+          "atk": 550356,
+          "def": 376047
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 302333,
+          "def": 359032
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 357605,
+          "def": 380785
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 306881,
+          "def": 380920
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 658394,
+          "def": 391486
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "I_bracket_plus_mean",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.5",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": true,
+        "income_tax_to_weak": 0.05,
+        "max_territories_per_guild": 3,
+        "support_frac": 0.85,
+        "power_aggregate": "mean",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "PASS_IMPROVED",
+      "verdict_notes": [
+        "mean+bracket \u2192 k\u00fc\u00e7\u00fck lonca hayatta; \u00f6nerilen y\u00f6n",
+        "territory Gini y\u00fcksek (0.94)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.163,
+        "small": 0.677,
+        "mid": 0.048,
+        "large": 0.0,
+        "mega": 8.127
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 163,
+          "wins": 55,
+          "win_rate_pct": 33.74,
+          "with_territory": 3,
+          "territories": 3,
+          "territory_share_pct": 3.57,
+          "income_share_pct": 3.15,
+          "avg_income_earned": 25114285
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 313,
+          "wins": 155,
+          "win_rate_pct": 49.52,
+          "with_territory": 9,
+          "territories": 16,
+          "territory_share_pct": 19.05,
+          "income_share_pct": 16.93,
+          "avg_income_earned": 58688888
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 161,
+          "wins": 45,
+          "win_rate_pct": 27.95,
+          "with_territory": 1,
+          "territories": 1,
+          "territory_share_pct": 1.19,
+          "income_share_pct": 0.79,
+          "avg_income_earned": 16950000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 108,
+          "wins": 38,
+          "win_rate_pct": 35.19,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 27500000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 606,
+          "wins": 305,
+          "win_rate_pct": 50.33,
+          "with_territory": 16,
+          "territories": 64,
+          "territory_share_pct": 76.19,
+          "income_share_pct": 79.13,
+          "avg_income_earned": 1196566666
+        }
+      },
+      "gini_territories": 0.9427,
+      "gini_income": 0.8789,
+      "small_guild_land_share_pct": 22.62,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "micro": {
+          "unowned": 1,
+          "small": 40,
+          "micro": 14
+        },
+        "mega": {
+          "large": 23,
+          "unowned": 1,
+          "mega": 281
+        },
+        "mid": {
+          "unowned": 1,
+          "large": 18,
+          "mid": 14,
+          "small": 12
+        },
+        "large": {
+          "mega": 35,
+          "large": 3
+        },
+        "small": {
+          "micro": 38,
+          "mid": 30,
+          "small": 87
+        }
+      },
+      "ownership_final": {
+        "mega": 64,
+        "small": 16,
+        "micro": 3,
+        "mid": 1
+      },
+      "ownership_day0": {
+        "mega": 62,
+        "large": 17,
+        "micro": 1,
+        "mid": 4
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 18,
+          "tier": "mega",
+          "size": 44,
+          "power": 5339750,
+          "territories": 9,
+          "income_earned": 3472000000,
+          "win_rate_pct": 60.0
+        },
+        {
+          "gid": 249,
+          "tier": "mega",
+          "size": 46,
+          "power": 5577613,
+          "territories": 8,
+          "income_earned": 2700000000,
+          "win_rate_pct": 50.0
+        },
+        {
+          "gid": 35,
+          "tier": "mega",
+          "size": 43,
+          "power": 5110691,
+          "territories": 5,
+          "income_earned": 2705000000,
+          "win_rate_pct": 53.3
+        },
+        {
+          "gid": 92,
+          "tier": "mega",
+          "size": 45,
+          "power": 5309805,
+          "territories": 5,
+          "income_earned": 2909000000,
+          "win_rate_pct": 56.7
+        },
+        {
+          "gid": 67,
+          "tier": "mega",
+          "size": 44,
+          "power": 4760338,
+          "territories": 4,
+          "income_earned": 1670000000,
+          "win_rate_pct": 50.0
+        },
+        {
+          "gid": 115,
+          "tier": "mega",
+          "size": 44,
+          "power": 5280224,
+          "territories": 4,
+          "income_earned": 2205000000,
+          "win_rate_pct": 53.3
+        },
+        {
+          "gid": 137,
+          "tier": "mega",
+          "size": 50,
+          "power": 5737531,
+          "territories": 4,
+          "income_earned": 1705000000,
+          "win_rate_pct": 56.7
+        },
+        {
+          "gid": 140,
+          "tier": "mega",
+          "size": 48,
+          "power": 5279467,
+          "territories": 4,
+          "income_earned": 1915000000,
+          "win_rate_pct": 46.7
+        },
+        {
+          "gid": 228,
+          "tier": "mega",
+          "size": 45,
+          "power": 4859858,
+          "territories": 4,
+          "income_earned": 1620000000,
+          "win_rate_pct": 46.7
+        },
+        {
+          "gid": 245,
+          "tier": "mega",
+          "size": 45,
+          "power": 5217929,
+          "territories": 4,
+          "income_earned": 2207000000,
+          "win_rate_pct": 36.7
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "unowned",
+          "zone": 4,
+          "atk": 11665,
+          "def": 600
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "large",
+          "zone": 7,
+          "atk": 85235,
+          "def": 74420
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "unowned",
+          "zone": 4,
+          "atk": 86937,
+          "def": 600
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "unowned",
+          "zone": 3,
+          "atk": 35393,
+          "def": 2500
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 3,
+          "atk": 31199,
+          "def": 76288
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "large",
+          "zone": 5,
+          "atk": 87984,
+          "def": 81780
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "large",
+          "zone": 5,
+          "atk": 86397,
+          "def": 81950
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 3,
+          "atk": 35016,
+          "def": 77846
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 4,
+          "atk": 38345,
+          "def": 82788
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 54678,
+          "def": 97591
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 4,
+          "atk": 71540,
+          "def": 101139
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 92655,
+          "def": 97591
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 57471,
+          "def": 99972
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 94133,
+          "def": 101204
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 50462,
+          "def": 100023
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "J_equal_quality_live_sum",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "live_flat_10M",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": null,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.77)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.054,
+        "small": 0.296,
+        "mid": 0.905,
+        "large": 2.743,
+        "mega": 2.667
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.6,
+          "avg_power": 142063,
+          "attacks": 328,
+          "wins": 62,
+          "win_rate_pct": 18.9,
+          "with_territory": 1,
+          "territories": 1,
+          "territory_share_pct": 1.19,
+          "income_share_pct": 0.92,
+          "avg_income_earned": 25000000
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 338678,
+          "attacks": 686,
+          "wins": 229,
+          "win_rate_pct": 33.38,
+          "with_territory": 7,
+          "territories": 7,
+          "territory_share_pct": 8.33,
+          "income_share_pct": 6.17,
+          "avg_income_earned": 75400000
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.8,
+          "avg_power": 703404,
+          "attacks": 820,
+          "wins": 380,
+          "win_rate_pct": 46.34,
+          "with_territory": 18,
+          "territories": 19,
+          "territory_share_pct": 22.62,
+          "income_share_pct": 22.11,
+          "avg_income_earned": 158112500
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 1277700,
+          "attacks": 647,
+          "wins": 351,
+          "win_rate_pct": 54.25,
+          "with_territory": 33,
+          "territories": 36,
+          "territory_share_pct": 42.86,
+          "income_share_pct": 43.5,
+          "avg_income_earned": 265900000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.9,
+          "avg_power": 1723374,
+          "attacks": 410,
+          "wins": 238,
+          "win_rate_pct": 58.05,
+          "with_territory": 19,
+          "territories": 21,
+          "territory_share_pct": 25.0,
+          "income_share_pct": 27.3,
+          "avg_income_earned": 374200000
+        }
+      },
+      "gini_territories": 0.7723,
+      "gini_income": 0.5562,
+      "small_guild_land_share_pct": 9.52,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "small": {
+          "mega": 24,
+          "small": 88,
+          "micro": 29,
+          "mid": 60,
+          "large": 28
+        },
+        "mid": {
+          "mega": 66,
+          "small": 87,
+          "micro": 11,
+          "mid": 148,
+          "large": 68
+        },
+        "micro": {
+          "unowned": 1,
+          "mega": 8,
+          "micro": 17,
+          "small": 17,
+          "mid": 14,
+          "large": 5
+        },
+        "mega": {
+          "mega": 91,
+          "large": 102,
+          "mid": 39,
+          "small": 5,
+          "micro": 1
+        },
+        "large": {
+          "mega": 111,
+          "micro": 3,
+          "small": 25,
+          "mid": 100,
+          "large": 112
+        }
+      },
+      "ownership_final": {
+        "mega": 21,
+        "large": 36,
+        "small": 7,
+        "mid": 19,
+        "micro": 1
+      },
+      "ownership_day0": {
+        "mid": 25,
+        "large": 21,
+        "micro": 8,
+        "small": 16,
+        "mega": 14
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 48,
+          "tier": "mega",
+          "size": 44,
+          "power": 1718826,
+          "territories": 2,
+          "income_earned": 555000000,
+          "win_rate_pct": 87.5
+        },
+        {
+          "gid": 94,
+          "tier": "large",
+          "size": 35,
+          "power": 1204998,
+          "territories": 2,
+          "income_earned": 214000000,
+          "win_rate_pct": 46.7
+        },
+        {
+          "gid": 99,
+          "tier": "mega",
+          "size": 49,
+          "power": 1633611,
+          "territories": 2,
+          "income_earned": 426000000,
+          "win_rate_pct": 84.6
+        },
+        {
+          "gid": 258,
+          "tier": "large",
+          "size": 26,
+          "power": 1036908,
+          "territories": 2,
+          "income_earned": 278000000,
+          "win_rate_pct": 64.3
+        },
+        {
+          "gid": 286,
+          "tier": "large",
+          "size": 31,
+          "power": 1301890,
+          "territories": 2,
+          "income_earned": 260000000,
+          "win_rate_pct": 50.0
+        },
+        {
+          "gid": 307,
+          "tier": "mid",
+          "size": 25,
+          "power": 884196,
+          "territories": 2,
+          "income_earned": 276000000,
+          "win_rate_pct": 64.3
+        },
+        {
+          "gid": 3,
+          "tier": "mid",
+          "size": 15,
+          "power": 543600,
+          "territories": 1,
+          "income_earned": 220000000,
+          "win_rate_pct": 50.0
+        },
+        {
+          "gid": 5,
+          "tier": "mid",
+          "size": 19,
+          "power": 755344,
+          "territories": 1,
+          "income_earned": 238000000,
+          "win_rate_pct": 53.8
+        },
+        {
+          "gid": 7,
+          "tier": "large",
+          "size": 37,
+          "power": 1558755,
+          "territories": 1,
+          "income_earned": 290000000,
+          "win_rate_pct": 46.7
+        },
+        {
+          "gid": 14,
+          "tier": "mid",
+          "size": 24,
+          "power": 853002,
+          "territories": 1,
+          "income_earned": 274000000,
+          "win_rate_pct": 53.3
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 235066,
+          "def": 120641
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 462612,
+          "def": 160220
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 502327,
+          "def": 201802
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "unowned",
+          "zone": 2,
+          "atk": 61741,
+          "def": 800
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 168866,
+          "def": 121978
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 496260,
+          "def": 122191
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 221721,
+          "def": 224461
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 1522307,
+          "def": 225113
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 139588,
+          "def": 160945
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 278570,
+          "def": 243647
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 1552953,
+          "def": 479213
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 768543,
+          "def": 241109
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 273917,
+          "def": 162547
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 1370797,
+          "def": 243934
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 1224438,
+          "def": 296372
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "K_equal_quality_mean_bracket_cap",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "income_x1.5",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": true,
+        "income_tax_to_weak": 0.05,
+        "max_territories_per_guild": 3,
+        "support_frac": 0.85,
+        "power_aggregate": "mean",
+        "monument_inverse_atk": false,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "PASS_IMPROVED",
+      "verdict_notes": [
+        "mean+bracket \u2192 k\u00fc\u00e7\u00fck lonca hayatta; \u00f6nerilen y\u00f6n",
+        "territory Gini y\u00fcksek (0.94)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 1.197,
+        "small": 0.55,
+        "mid": 0.238,
+        "large": 0.0,
+        "mega": 5.587
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.6,
+          "avg_power": 142063,
+          "attacks": 280,
+          "wins": 141,
+          "win_rate_pct": 50.36,
+          "with_territory": 8,
+          "territories": 22,
+          "territory_share_pct": 26.19,
+          "income_share_pct": 26.31,
+          "avg_income_earned": 105228571
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 338678,
+          "attacks": 307,
+          "wins": 150,
+          "win_rate_pct": 48.86,
+          "with_territory": 4,
+          "territories": 13,
+          "territory_share_pct": 15.48,
+          "income_share_pct": 14.9,
+          "avg_income_earned": 76844444
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.8,
+          "avg_power": 703404,
+          "attacks": 247,
+          "wins": 113,
+          "win_rate_pct": 45.75,
+          "with_territory": 3,
+          "territories": 5,
+          "territory_share_pct": 5.95,
+          "income_share_pct": 4.33,
+          "avg_income_earned": 53950000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 1277700,
+          "attacks": 106,
+          "wins": 37,
+          "win_rate_pct": 34.91,
+          "with_territory": 0,
+          "territories": 0,
+          "territory_share_pct": 0.0,
+          "income_share_pct": 0.0,
+          "avg_income_earned": 28440000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.9,
+          "avg_power": 1723374,
+          "attacks": 522,
+          "wins": 211,
+          "win_rate_pct": 40.42,
+          "with_territory": 13,
+          "territories": 44,
+          "territory_share_pct": 52.38,
+          "income_share_pct": 54.46,
+          "avg_income_earned": 854800000
+        }
+      },
+      "gini_territories": 0.9428,
+      "gini_income": 0.8232,
+      "small_guild_land_share_pct": 41.67,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "unowned": 2,
+          "large": 38,
+          "mid": 41,
+          "small": 32
+        },
+        "micro": {
+          "unowned": 1,
+          "micro": 74,
+          "small": 66
+        },
+        "mega": {
+          "mega": 207,
+          "large": 4
+        },
+        "large": {
+          "mega": 34,
+          "large": 2,
+          "mid": 1
+        },
+        "small": {
+          "mid": 66,
+          "small": 39,
+          "micro": 45
+        }
+      },
+      "ownership_final": {
+        "mega": 44,
+        "small": 13,
+        "mid": 5,
+        "micro": 22
+      },
+      "ownership_day0": {
+        "mega": 51,
+        "large": 23,
+        "mid": 9,
+        "micro": 1
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 233,
+          "tier": "micro",
+          "size": 4,
+          "power": 230604,
+          "territories": 10,
+          "income_earned": 1830000000,
+          "win_rate_pct": 71.4
+        },
+        {
+          "gid": 168,
+          "tier": "small",
+          "size": 8,
+          "power": 403497,
+          "territories": 6,
+          "income_earned": 1170000000,
+          "win_rate_pct": 63.2
+        },
+        {
+          "gid": 30,
+          "tier": "mega",
+          "size": 42,
+          "power": 1787654,
+          "territories": 5,
+          "income_earned": 2334000000,
+          "win_rate_pct": 33.3
+        },
+        {
+          "gid": 35,
+          "tier": "mega",
+          "size": 46,
+          "power": 1784421,
+          "territories": 5,
+          "income_earned": 2029000000,
+          "win_rate_pct": 30.0
+        },
+        {
+          "gid": 157,
+          "tier": "mega",
+          "size": 44,
+          "power": 1777982,
+          "territories": 5,
+          "income_earned": 1582000000,
+          "win_rate_pct": 40.0
+        },
+        {
+          "gid": 178,
+          "tier": "mega",
+          "size": 49,
+          "power": 1955759,
+          "territories": 5,
+          "income_earned": 1455000000,
+          "win_rate_pct": 46.4
+        },
+        {
+          "gid": 73,
+          "tier": "mega",
+          "size": 48,
+          "power": 1947524,
+          "territories": 4,
+          "income_earned": 2284000000,
+          "win_rate_pct": 46.7
+        },
+        {
+          "gid": 131,
+          "tier": "small",
+          "size": 6,
+          "power": 330670,
+          "territories": 4,
+          "income_earned": 1153000000,
+          "win_rate_pct": 70.0
+        },
+        {
+          "gid": 163,
+          "tier": "mega",
+          "size": 45,
+          "power": 1730619,
+          "territories": 4,
+          "income_earned": 1591000000,
+          "win_rate_pct": 56.7
+        },
+        {
+          "gid": 215,
+          "tier": "micro",
+          "size": 5,
+          "power": 303285,
+          "territories": 4,
+          "income_earned": 797000000,
+          "win_rate_pct": 42.1
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "unowned",
+          "zone": 2,
+          "atk": 30901,
+          "def": 800
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "unowned",
+          "zone": 5,
+          "atk": 36494,
+          "def": 3000
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 3,
+          "atk": 30476,
+          "def": 39914
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "unowned",
+          "zone": 6,
+          "atk": 33369,
+          "def": 3800
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mega",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 30773,
+          "def": 33419
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 6,
+          "atk": 25271,
+          "def": 39776
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 4,
+          "atk": 34888,
+          "def": 41633
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 31295,
+          "def": 35517
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 6,
+          "atk": 34429,
+          "def": 42693
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 34019,
+          "def": 35432
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 34319,
+          "def": 34759
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 2,
+          "atk": 32442,
+          "def": 39914
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 2,
+          "atk": 35537,
+          "def": 43218
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 3,
+          "atk": 31800,
+          "def": 36831
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "large",
+          "zone": 1,
+          "atk": 35681,
+          "def": 41706
+        }
+      ]
+    },
+    {
+      "config": {
+        "name": "L_monument_inverse_atk",
+        "n_guilds": 320,
+        "n_days": 30,
+        "n_territories": 84,
+        "map_copies": 12,
+        "cost_mode": "live_flat_10M",
+        "underdog_atk_bonus": 0.0,
+        "soft_cap_def_vs_atk": null,
+        "size_bracket_only": false,
+        "income_tax_to_weak": 0.0,
+        "max_territories_per_guild": null,
+        "support_frac": 0.85,
+        "power_aggregate": "sum",
+        "monument_inverse_atk": true,
+        "combat": "success = (U*atk) > (U*def)  [live attack_guild_war_territory]",
+        "defense": "garrison share = total_power * (floor(size/owned)/size) + gem"
+      },
+      "verdict": "FAIL_CRUSH",
+      "verdict_notes": [
+        "mega land/pop \u22652\u00d7 ve micro \u22640.4\u00d7 \u2192 k\u00fc\u00e7\u00fck lonca eziliyor",
+        "territory Gini y\u00fcksek (0.77)"
+      ],
+      "crush_index_land_over_pop": {
+        "micro": 0.163,
+        "small": 0.423,
+        "mid": 1.19,
+        "large": 1.448,
+        "mega": 3.429
+      },
+      "by_tier": {
+        "micro": {
+          "guilds": 70,
+          "avg_size": 3.5,
+          "avg_power": 68025,
+          "attacks": 300,
+          "wins": 58,
+          "win_rate_pct": 19.33,
+          "with_territory": 3,
+          "territories": 3,
+          "territory_share_pct": 3.57,
+          "income_share_pct": 2.76,
+          "avg_income_earned": 22371428
+        },
+        "small": {
+          "guilds": 90,
+          "avg_size": 8.9,
+          "avg_power": 345645,
+          "attacks": 653,
+          "wins": 244,
+          "win_rate_pct": 37.37,
+          "with_territory": 10,
+          "territories": 10,
+          "territory_share_pct": 11.9,
+          "income_share_pct": 11.09,
+          "avg_income_earned": 82433333
+        },
+        "mid": {
+          "guilds": 80,
+          "avg_size": 18.3,
+          "avg_power": 713446,
+          "attacks": 734,
+          "wins": 312,
+          "win_rate_pct": 42.51,
+          "with_territory": 24,
+          "territories": 25,
+          "territory_share_pct": 29.76,
+          "income_share_pct": 24.67,
+          "avg_income_earned": 119600000
+        },
+        "large": {
+          "guilds": 50,
+          "avg_size": 33.7,
+          "avg_power": 2342631,
+          "attacks": 626,
+          "wins": 373,
+          "win_rate_pct": 59.58,
+          "with_territory": 17,
+          "territories": 19,
+          "territory_share_pct": 22.62,
+          "income_share_pct": 22.57,
+          "avg_income_earned": 284120000
+        },
+        "mega": {
+          "guilds": 30,
+          "avg_size": 45.4,
+          "avg_power": 4881985,
+          "attacks": 406,
+          "wins": 273,
+          "win_rate_pct": 67.24,
+          "with_territory": 24,
+          "territories": 27,
+          "territory_share_pct": 32.14,
+          "income_share_pct": 38.91,
+          "avg_income_earned": 432033333
+        }
+      },
+      "gini_territories": 0.7723,
+      "gini_income": 0.6093,
+      "small_guild_land_share_pct": 15.48,
+      "small_guild_pop_share_pct": 50.0,
+      "conquest_matrix_attacker_x_defender": {
+        "mid": {
+          "mega": 51,
+          "micro": 16,
+          "small": 98,
+          "mid": 94,
+          "large": 53
+        },
+        "small": {
+          "mega": 32,
+          "large": 34,
+          "small": 73,
+          "mid": 90,
+          "micro": 15
+        },
+        "micro": {
+          "mega": 6,
+          "micro": 23,
+          "small": 15,
+          "mid": 9,
+          "large": 5
+        },
+        "large": {
+          "mega": 106,
+          "small": 36,
+          "mid": 72,
+          "large": 159
+        },
+        "mega": {
+          "mega": 134,
+          "mid": 22,
+          "large": 104,
+          "small": 12,
+          "micro": 1
+        }
+      },
+      "ownership_final": {
+        "small": 10,
+        "large": 19,
+        "mid": 25,
+        "mega": 27,
+        "micro": 3
+      },
+      "ownership_day0": {
+        "small": 16,
+        "large": 24,
+        "mid": 24,
+        "mega": 15,
+        "micro": 5
+      },
+      "top10_guilds_by_territories": [
+        {
+          "gid": 30,
+          "tier": "mega",
+          "size": 46,
+          "power": 4821447,
+          "territories": 2,
+          "income_earned": 388000000,
+          "win_rate_pct": 58.8
+        },
+        {
+          "gid": 94,
+          "tier": "large",
+          "size": 37,
+          "power": 2798508,
+          "territories": 2,
+          "income_earned": 330000000,
+          "win_rate_pct": 56.2
+        },
+        {
+          "gid": 110,
+          "tier": "large",
+          "size": 35,
+          "power": 2136224,
+          "territories": 2,
+          "income_earned": 400000000,
+          "win_rate_pct": 80.0
+        },
+        {
+          "gid": 163,
+          "tier": "mega",
+          "size": 46,
+          "power": 4924834,
+          "territories": 2,
+          "income_earned": 410000000,
+          "win_rate_pct": 62.5
+        },
+        {
+          "gid": 212,
+          "tier": "mid",
+          "size": 22,
+          "power": 906507,
+          "territories": 2,
+          "income_earned": 200000000,
+          "win_rate_pct": 43.8
+        },
+        {
+          "gid": 238,
+          "tier": "mega",
+          "size": 50,
+          "power": 5047580,
+          "territories": 2,
+          "income_earned": 474000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 6,
+          "tier": "large",
+          "size": 33,
+          "power": 2196403,
+          "territories": 1,
+          "income_earned": 333000000,
+          "win_rate_pct": 56.2
+        },
+        {
+          "gid": 10,
+          "tier": "small",
+          "size": 10,
+          "power": 361315,
+          "territories": 1,
+          "income_earned": 337000000,
+          "win_rate_pct": 73.3
+        },
+        {
+          "gid": 11,
+          "tier": "large",
+          "size": 37,
+          "power": 2648587,
+          "territories": 1,
+          "income_earned": 562000000,
+          "win_rate_pct": 93.8
+        },
+        {
+          "gid": 12,
+          "tier": "small",
+          "size": 7,
+          "power": 445548,
+          "territories": 1,
+          "income_earned": 258000000,
+          "win_rate_pct": 56.2
+        }
+      ],
+      "sample_conquests": [
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 865086,
+          "def": 459465
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 919143,
+          "def": 485879
+        },
+        {
+          "day": 0,
+          "attacker_tier": "micro",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 51583,
+          "def": 363864
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 793760,
+          "def": 486453
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 2537704,
+          "def": 574812
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 364400,
+          "def": 575311
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 743655,
+          "def": 600961
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 1006955,
+          "def": 721498
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 2737486,
+          "def": 880712
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 471309,
+          "def": 485594
+        },
+        {
+          "day": 0,
+          "attacker_tier": "large",
+          "defender_tier": "mega",
+          "zone": 7,
+          "atk": 2486959,
+          "def": 990829
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 812778,
+          "def": 607828
+        },
+        {
+          "day": 0,
+          "attacker_tier": "small",
+          "defender_tier": "mega",
+          "zone": 5,
+          "atk": 958152,
+          "def": 486814
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 1096644,
+          "def": 690253
+        },
+        {
+          "day": 0,
+          "attacker_tier": "mid",
+          "defender_tier": "mega",
+          "zone": 6,
+          "atk": 912020,
+          "def": 708113
+        }
+      ]
+    }
+  ]
+}

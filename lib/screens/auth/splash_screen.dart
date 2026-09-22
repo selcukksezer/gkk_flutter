@@ -23,13 +23,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     ) {
       if (!mounted) return;
 
+      // Session already persisted → no onAuthStateChange. Refresh router so
+      // redirect (ban / class / home) is the single navigation source.
       if (next.status == AuthStatus.authenticated) {
-        context.go(AppRoutes.home);
+        GoRouter.of(context).refresh();
         return;
       }
 
       if (next.status == AuthStatus.unauthenticated ||
           next.status == AuthStatus.error) {
+        // Splash is a public auth-entry route; redirect alone won't leave it.
         context.go(AppRoutes.login);
       }
     });

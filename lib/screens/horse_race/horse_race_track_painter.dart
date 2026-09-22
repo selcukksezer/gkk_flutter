@@ -6,12 +6,15 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 
 /// Vertical track geometry — start bottom, finish top; lanes left→right.
+///
+/// [size] is the race viewport (below chrome HUD), not the full screen.
 abstract final class HorseRaceTrackLayout {
   static const double leftRailFraction = 0.04;
   static const double rightRailFraction = 0.04;
   static const double trackStartY = 0.90;
-  static const double trackEndY = 0.14;
-  static const double finishLineY = 0.14;
+  /// Finish sits near top of the inset viewport (chrome lives outside).
+  static const double trackEndY = 0.10;
+  static const double finishLineY = 0.10;
 
   static Rect trackRect(Size size) {
     final double left = size.width * leftRailFraction;

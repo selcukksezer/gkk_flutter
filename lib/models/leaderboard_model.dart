@@ -15,12 +15,19 @@ class LeaderboardEntry {
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
     return LeaderboardEntry(
-      rank: (json['rank'] as num?)?.toInt() ?? 0,
+      rank: _asInt(json['rank']),
       username: (json['username'] as String?) ?? '',
-      value: (json['value'] as num?)?.toInt() ?? 0,
-      level: (json['level'] as num?)?.toInt() ?? 0,
+      value: _asInt(json['value']),
+      level: _asInt(json['level']),
       guild: json['guild'] as String?,
     );
+  }
+
+  /// PostgREST may emit bigint as num or String.
+  static int _asInt(Object? raw) {
+    if (raw is num) return raw.toInt();
+    if (raw is String) return int.tryParse(raw) ?? 0;
+    return 0;
   }
 }
 

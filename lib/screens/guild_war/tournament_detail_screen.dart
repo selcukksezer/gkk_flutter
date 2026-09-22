@@ -83,6 +83,14 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
         children: <Widget>[
           if (loading && t == null)
             const Center(child: CircularProgressIndicator(color: WarPalette.gold))
+          else if (t == null && isCurrentTournament && warState.error != null)
+            GuildWarEmptyState(
+              icon: '⚠️',
+              title: 'Turnuva yüklenemedi',
+              subtitle: warState.error!,
+              actionLabel: 'Tekrar Dene',
+              onAction: _load,
+            )
           else if (t == null)
             GuildWarEmptyState(
               icon: '🏆',
@@ -186,16 +194,17 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
                       ] else if (t.isActive && participants.length >= 2) ...[
                         const WarSectionHeader(title: 'Eşleşmeler', accent: WarPalette.fuchsia),
                         GuildWarEmptyState(
-                          icon: '⚔️',
-                          title: 'Eşleşmeler hazırlanıyor',
-                          subtitle: 'Turnuva bracket\'i kısa süre içinde oluşturulacak.',
+                          icon: '⚔',
+                          title: 'Clash başlayınca burada canlı skor',
+                          subtitle:
+                              'Bracket seed sonrası 12 saatlik Clash pencereleri açılır. Üyeler PvP / zindan / rally ile katkı verir.',
                         ),
                       ] else if (!t.isActive && participants.length >= 2) ...[
                         const WarSectionHeader(title: 'Eşleşmeler', accent: WarPalette.fuchsia),
                         GuildWarEmptyState(
                           icon: '📋',
                           title: 'Kayıt devam ediyor',
-                          subtitle: 'Eşleşmeler turnuva aktif olunca lonca sıralamasına göre oluşturulur.',
+                          subtitle: 'Eşleşmeler turnuva aktif olunca rank_score sıralamasına göre oluşturulur.',
                         ),
                       ],
                     ],
@@ -295,10 +304,22 @@ class _TournamentMatchCard extends StatelessWidget {
           Align(
             alignment: Alignment.center,
             child: WarStatusPill(
-              label: match.isPending ? 'Bekliyor' : 'Tamamlandı',
-              color: match.isPending ? WarPalette.titanium : WarPalette.neon,
+              label: match.isLive
+                  ? 'CANLI CLASH'
+                  : (match.isPending ? 'Bekliyor' : 'Tamamlandı'),
+              color: match.isLive
+                  ? WarPalette.ruby
+                  : (match.isPending ? WarPalette.titanium : WarPalette.neon),
             ),
           ),
+          if (match.isLive && match.windowEnd != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Bitiş: ${match.windowEnd!.toLocal()}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+            ),
+          ],
         ],
       ),
     );

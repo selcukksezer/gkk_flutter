@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/tutorial/tutorial_hud_anchor.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_controller.dart';
 import '../../core/tutorial/tutorial_track.dart';
@@ -24,6 +24,7 @@ import '../../theme/app_text_styles.dart';
 import '../../screens/chat/chat_screen.dart';
 import '../common/profile_avatar.dart';
 import '../common/cosmetic_title_badge.dart';
+import '../common/top_bar_health_strip.dart';
 import '../player/staff_badge.dart';
 import 'game_quick_menu.dart';
 import 'live_ticker.dart';
@@ -66,6 +67,8 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
     final int gold = profile?.gold ?? 0;
     final double gems = profile?.gems ?? 0;
     final int energy = profile?.energy ?? 0;
+    final int health = profile?.health ?? 0;
+    final int maxHealth = profile?.maxHealth ?? 0;
     final int tolerance = profile?.tolerance ?? 0;
 
     final xpProgress = buildXpProgress(
@@ -124,30 +127,27 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                       left: 15,
                       width: width * (compact ? 0.31 : 0.28),
                       height: bgHeight,
-                      child: ClipRect(
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            top: 10,
-                            left: 8,
-                            right: 4,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _tutorialHudChip(
-                                ref: ref,
-                                anchorId: TutorialAnchorId.hudGold,
-                                child: _buildStatLikeRightLeft(
-                                  _compact(gold),
-                                  Icons.paid_rounded,
-                                  Colors.orange,
-                                ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          top: 10,
+                          left: 8,
+                          right: 4,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TutorialHudAnchorChip(
+                              anchorId: TutorialAnchorId.hudGold,
+                              child: _buildStatLikeRightLeft(
+                                _compact(gold),
+                                Icons.paid_rounded,
+                                Colors.orange,
                               ),
-                              const SizedBox(height: 4),
-                              _buildToleranceStat(tolerance),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 4),
+                            _buildToleranceStat(tolerance),
+                          ],
                         ),
                       ),
                     ),
@@ -162,8 +162,7 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            _tutorialHudChip(
-                              ref: ref,
+                            TutorialHudAnchorChip(
                               anchorId: TutorialAnchorId.hudGems,
                               child: _buildStatRight(
                                 _formatGems(gems),
@@ -172,13 +171,12 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            _tutorialHudChip(
-                              ref: ref,
+                            TutorialHudAnchorChip(
                               anchorId: TutorialAnchorId.hudEnergy,
                               child: _buildStatRight(
                                 _compact(energy),
-                                Icons.bolt,
-                                Colors.yellow,
+                                Icons.bolt_rounded,
+                                AppColors.warningSolar,
                               ),
                             ),
                           ],
@@ -260,11 +258,21 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
                       top: bgHeight - cutHeight + 8,
                       left: width * (compact ? 0.16 : 0.20),
                       right: width * (compact ? 0.16 : 0.20),
-                      child: _buildStripedExpBar(
-                        level,
-                        xpPercent,
-                        xpProgress.xpInLevel,
-                        xpProgress.xpNeededInLevel,
+                      child: TutorialAnchorScope(
+                        id: TutorialAnchorId.hudHealth,
+                        onTutorialTap: () async {
+                          await ref
+                              .read(tutorialProvider.notifier)
+                              .onAnchorTap(TutorialAnchorId.hudHealth);
+                        },
+                        child: TopBarVitalsBars(
+                          level: level,
+                          xpPercent: xpPercent,
+                          currentXp: xpProgress.xpInLevel,
+                          requiredXp: xpProgress.xpNeededInLevel,
+                          health: health,
+                          maxHealth: maxHealth,
+                        ),
                       ),
                     ),
                   ],
@@ -407,115 +415,6 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
     );
   }
-
-  Widget _buildStripedExpBar(
-    int level,
-    double percent,
-    int currentXp,
-    int requiredXp,
-  ) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: 12,
-          child: CustomPaint(
-            painter: StripedProgressBarPainter(percent: percent),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: Text(
-                'LEVEL $level',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '$currentXp / $requiredXp',
-                    style: const TextStyle(color: Colors.white70, fontSize: 10),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class StripedProgressBarPainter extends CustomPainter {
-  final double percent;
-  StripedProgressBarPainter({required this.percent});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final trackRadius = const Radius.circular(6);
-
-    // Background Track (the dark gray part)
-    Paint trackPaint = Paint()
-      ..color = const Color(0xFF1E2633)
-      ..style = PaintingStyle.fill;
-
-    // Border for the track
-    Paint borderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    final trackRRect = RRect.fromRectAndRadius(Offset.zero & size, trackRadius);
-    canvas.drawRRect(trackRRect, trackPaint);
-    canvas.drawRRect(trackRRect, borderPaint);
-
-    if (percent <= 0) return;
-
-    final fillWidth = size.width * percent;
-    final fillRect = Rect.fromLTWH(0, 0, fillWidth, size.height);
-    final fillRRect = RRect.fromRectAndRadius(fillRect, trackRadius);
-
-    Paint fillPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [AppColors.cyberFuchsia, AppColors.toxicNeon],
-      ).createShader(fillRect);
-
-    canvas.save();
-    canvas.clipRRect(fillRRect);
-    canvas.drawRect(fillRect, fillPaint);
-
-    // Diagonal Stripes (Görseldeki çizgili etki)
-    Paint stripePaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-
-    for (double i = -size.height; i < fillWidth; i += 10) {
-      canvas.drawLine(
-        Offset(i, size.height),
-        Offset(i + size.height, 0),
-        stripePaint,
-      );
-    }
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 class TopBarShapePainter extends CustomPainter {
@@ -715,8 +614,15 @@ class GameSubScreenScaffold extends ConsumerWidget {
 /// [GameChatFab] square size.
 const double kGameChatFabSize = 64;
 
+/// Main nav pill height inside [GameBottomBar].
+const double kGameBottomNavPillHeight = 64;
+
+/// Gap between [GameChatFab] bottom and nav pill top.
+const double kGameChatFabNavGap = 10;
+
 /// [GameChatFab] vertical offset inside [GameBottomBar] stack.
-const double kGameChatFabStackBottom = 70;
+const double kGameChatFabStackBottom =
+    kGameBottomNavPillHeight + kGameChatFabNavGap;
 
 /// Fixed overlay height of [GameBottomBar] stack (fab offset + fab size).
 const double kGameBottomBarStackHeight =
@@ -918,28 +824,61 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
     final l10n = context.l10n;
     final List<_BottomItem> items = _items(l10n);
     final int activeIdx = _displayIndex(widget.currentRoute);
+    final String? navTutorialAnchor =
+        ref.watch(tutorialProvider).activeStep?.anchorId;
+    final bool hideFabOverlays =
+        navTutorialAnchor != null && navTutorialAnchor.startsWith('nav.');
+    final Widget? leadingOverlay = widget.leadingOverlay;
 
-    return Material(
-      type: MaterialType.transparency,
-      child: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-        child: SizedBox(
-          height: kGameBottomBarStackHeight,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: <Widget>[
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: ClipRRect(
+    // No ColoredBox — transparent ColoredBox still hit-tests and swallows
+    // taps in the FAB band under extendBody. Stack deferToChild → only
+    // nav pill / FAB / leadingOverlay receive hits; empty band → body.
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+      child: SizedBox(
+        height: kGameBottomBarStackHeight,
+        child: Stack(
+          clipBehavior: Clip.none,
+          fit: StackFit.expand,
+          children: <Widget>[
+            // Soft fade only near nav pill — IgnorePointer so gradient
+            // never steals hits from body or controls.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 88,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        AppColors.carbonVoid.withValues(alpha: 0),
+                        AppColors.carbonVoid.withValues(alpha: 0.55),
+                        AppColors.carbonVoid.withValues(alpha: 0.92),
+                      ],
+                      stops: const <double>[0.0, 0.45, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ClipRRect(
                   borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  // No BackdropFilter — Impeller SaveLayer kills SimMetal on iOS sim.
+                  child: TutorialAnchorScope(
+                    id: TutorialAnchorId.navBottomBar,
                     child: Container(
-                      height: 64,
+                      height: kGameBottomNavPillHeight,
+                      clipBehavior: Clip.hardEdge,
                       decoration: BoxDecoration(
-                        color: AppColors.spaceNavy.withValues(alpha: 0.94),
+                        color: AppColors.spaceNavy,
                         borderRadius: BorderRadius.circular(
                           AppSpacing.radiusXxl,
                         ),
@@ -960,104 +899,92 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                           final double itemW =
                               constraints.maxWidth / items.length;
                           return Stack(
+                            clipBehavior: Clip.hardEdge,
                             children: <Widget>[
-                              // Animated active indicator pill
+                              // Animated active indicator — inset inside pill.
                               AnimatedBuilder(
                                 animation: _indicatorAnim,
                                 builder: (context, _) {
                                   return Positioned(
                                     top: 8,
+                                    bottom: 8,
                                     left:
                                         _indicatorAnim.value * itemW +
-                                        itemW * 0.15,
-                                    width: itemW * 0.70,
-                                    height: 36,
-                                    child: ExcludeSemantics(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            AppSpacing.radiusMd,
-                                          ),
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: <Color>[
-                                              AppColors.liquidGold.withValues(
-                                                alpha: 0.22,
-                                              ),
-                                              AppColors.warningSolar.withValues(
-                                                alpha: 0.10,
-                                              ),
-                                            ],
-                                          ),
-                                          border: Border.all(
-                                            color: AppColors.liquidGold
-                                                .withValues(alpha: 0.42),
-                                          ),
-                                          boxShadow: <BoxShadow>[
-                                            BoxShadow(
-                                              color: AppColors.liquidGold
-                                                  .withValues(alpha: 0.12),
-                                              blurRadius: 10,
+                                        itemW * 0.10,
+                                    width: itemW * 0.80,
+                                    child: IgnorePointer(
+                                      child: ExcludeSemantics(
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              AppSpacing.radiusMd,
                                             ),
-                                          ],
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: <Color>[
+                                                AppColors.liquidGold.withValues(
+                                                  alpha: 0.22,
+                                                ),
+                                                AppColors.warningSolar
+                                                    .withValues(alpha: 0.10),
+                                              ],
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.liquidGold
+                                                  .withValues(alpha: 0.42),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   );
                                 },
                               ),
-                              // Tap targets + labels
-                              Row(
-                                children: List<Widget>.generate(items.length, (
-                                  i,
-                                ) {
-                                  final _BottomItem item = items[i];
-                                  final bool isActive = i == activeIdx;
-                                  final String? navAnchor = ref
-                                      .read(tutorialProvider.notifier)
-                                      .anchorForNavIndex(i);
-                                  Widget tabCell = Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: <Widget>[
-                                      AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 200,
-                                        ),
-                                        child: Icon(
+                              // Fill full pill height — Stack default is topLeft,
+                              // so a short Row would pin icons to the top edge.
+                              Positioned.fill(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: List<Widget>.generate(items.length, (
+                                    i,
+                                  ) {
+                                    final _BottomItem item = items[i];
+                                    final bool isActive = i == activeIdx;
+                                    final String? navAnchor = ref
+                                        .read(tutorialProvider.notifier)
+                                        .anchorForNavIndex(i);
+                                    Widget tabCell = Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.max,
+                                      children: <Widget>[
+                                        Icon(
                                           item.icon,
-                                          size: isActive ? 22 : 20,
+                                          size: 22,
                                           color: isActive
                                               ? AppColors.liquidGold
                                               : AppColors.mutedTitanium,
                                         ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      AnimatedDefaultTextStyle(
-                                        duration: const Duration(
-                                          milliseconds: 200,
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.label,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.center,
+                                          style: AppTextStyles.micro.copyWith(
+                                            color: isActive
+                                                ? AppColors.textPrimary
+                                                : AppColors.mutedTitanium,
+                                            fontWeight: isActive
+                                                ? FontWeight.w800
+                                                : FontWeight.w600,
+                                            fontSize: 9,
+                                            height: 1.0,
+                                          ),
                                         ),
-                                        style: AppTextStyles.micro.copyWith(
-                                          color: isActive
-                                              ? AppColors.textPrimary
-                                              : AppColors.mutedTitanium,
-                                          fontWeight: isActive
-                                              ? FontWeight.w800
-                                              : FontWeight.w600,
-                                          fontSize: 9,
-                                        ),
-                                        child: Text(item.label),
-                                      ),
-                                    ],
-                                  );
-                                  if (navAnchor != null) {
-                                    tabCell = TutorialAnchorScope(
-                                      id: navAnchor,
-                                      child: tabCell,
+                                      ],
                                     );
-                                  }
-                                  return Expanded(
-                                    child: GestureDetector(
+                                    Widget tabButton = GestureDetector(
                                       onTap: () async {
                                         if (widget.navigationLocked) return;
                                         final TutorialController tutorialCtrl =
@@ -1082,17 +1009,60 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                         if (path == widget.currentRoute) {
                                           return;
                                         }
-                                        if (path == AppRoutes.home) {
-                                          context.go(path);
-                                        } else {
-                                          context.push(path);
-                                        }
+                                        // Shell tabs: go() replaces stack. push()
+                                        // stacks inventory→character and confuses
+                                        // tutorial route sync / pause banner.
+                                        context.go(path);
                                       },
                                       behavior: HitTestBehavior.opaque,
                                       child: tabCell,
-                                    ),
-                                  );
-                                }),
+                                    );
+                                    if (navAnchor != null) {
+                                      // Opaque hole catcher (hasTapAction) — bottom
+                                      // bar sits under TutorialHost; pass-through
+                                      // alone often misses Character tab after
+                                      // inventory/equip overlays.
+                                      tabButton = TutorialAnchorScope(
+                                        id: navAnchor,
+                                        onTutorialTap: () async {
+                                          if (widget.navigationLocked) return;
+                                          final TutorialController tutorialCtrl =
+                                              ref.read(
+                                                tutorialProvider.notifier,
+                                              );
+                                          final String? required = ref
+                                              .read(tutorialProvider)
+                                              .activeStep
+                                              ?.anchorId;
+                                          if (required != navAnchor) return;
+                                          if (!tutorialCtrl.allowsNavTab(i)) {
+                                            tutorialCtrl.registerWrongTap();
+                                            return;
+                                          }
+                                          await tutorialCtrl.onAnchorTap(
+                                            navAnchor,
+                                          );
+                                          if (!context.mounted) return;
+                                          if (item.isMenuTrigger) {
+                                            await _openMenu();
+                                            return;
+                                          }
+                                          setState(() => _stickyTabIndex = i);
+                                          _animateIndicatorTo(i);
+                                          final String path = item.path!;
+                                          if (path != widget.currentRoute) {
+                                            context.go(path);
+                                          }
+                                        },
+                                        child: tabButton,
+                                      );
+                                    }
+                                    return Expanded(
+                                      key: ValueKey<String>('nav_tab_$i'),
+                                      child: tabButton,
+                                    );
+                                  }),
+                                ),
                               ),
                             ],
                           );
@@ -1102,19 +1072,19 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                   ),
                 ),
               ),
-              if (widget.leadingOverlay != null)
+              if (leadingOverlay != null && !hideFabOverlays)
                 Positioned(
                   left: 6,
                   bottom: kGameChatFabStackBottom,
-                  child: widget.leadingOverlay!,
+                  child: leadingOverlay,
                 ),
-              const Positioned(
-                right: 6,
-                bottom: kGameChatFabStackBottom,
-                child: GameChatFab(),
-              ),
-            ],
-          ),
+              if (!hideFabOverlays)
+                const Positioned(
+                  right: 6,
+                  bottom: kGameChatFabStackBottom,
+                  child: GameChatFab(),
+                ),
+          ],
         ),
       ),
     );
@@ -1124,21 +1094,6 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
 // ─────────────────────────────────────────────────────────────────────────────
 // Private helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-Widget _tutorialHudChip({
-  required WidgetRef ref,
-  required String anchorId,
-  required Widget child,
-}) {
-  return TutorialAnchorScope(
-    id: anchorId,
-    child: GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => ref.read(tutorialProvider.notifier).onAnchorTap(anchorId),
-      child: child,
-    ),
-  );
-}
 
 class _BottomItem {
   const _BottomItem({

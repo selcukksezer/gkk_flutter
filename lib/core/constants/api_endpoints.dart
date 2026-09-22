@@ -3,12 +3,6 @@ class ApiEndpoints {
 
   static const String _apiVersion = '/api/v1';
 
-  static const String authLogin = '/functions/v1/auth-login';
-  static const String authRegister = '/functions/v1/auth-register';
-  static const String authLogout = '/auth/v1/logout';
-  static const String authRefresh = '/auth/v1/token?grant_type=refresh_token';
-  static const String authResetPassword = '/auth/v1/recover';
-
   static const String playerProfile = '/functions/v1/player-profile';
   static const String playerUpdate = '$_apiVersion/player/update';
   static const String playerStats = '$_apiVersion/player/stats';

@@ -57,6 +57,21 @@ String formatRestrictionCountdown(Duration duration) {
       '${seconds.toString().padLeft(2, '0')}';
 }
 
+/// Human-readable hospital stay length from RPC `hospital_minutes`.
+String formatHospitalDurationMinutes(int minutes, {bool english = false}) {
+  final int safe = minutes < 0 ? 0 : minutes;
+  final int hours = safe ~/ 60;
+  final int mins = safe % 60;
+  if (english) {
+    if (hours > 0 && mins > 0) return '${hours}h ${mins}m';
+    if (hours > 0) return '${hours}h';
+    return '${mins}m';
+  }
+  if (hours > 0 && mins > 0) return '${hours}s ${mins}dk';
+  if (hours > 0) return '${hours}s';
+  return '${mins}dk';
+}
+
 String formatRestrictionRelease(DateTime? releaseTime) {
   if (releaseTime == null) return '—';
   return '${releaseTime.year.toString().padLeft(4, '0')}-'

@@ -11,8 +11,12 @@ import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
 import '../../providers/box_opening_provider.dart';
 import 'widgets/inventory_item_detail_flow.dart';
+import 'widgets/inventory_power_badge.dart';
 import '../../providers/inventory_provider.dart';
+import '../../providers/player_provider.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../core/tutorial/tutorial_inventory_target.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
@@ -112,7 +116,48 @@ class _InventoryReadyInteractiveState
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(boxOpeningProvider.notifier).load();
       await TutorialTriggers.onRouteEnter(ref, AppRoutes.inventory);
+      if (mounted) _syncEquipCoachBypass();
     });
+  }
+
+  /// No unequipped gear → Devam (can't spotlight empty inventory / equip).
+  void _syncEquipCoachBypass() {
+    if (!mounted) return;
+    final TutorialState tut = ref.read(tutorialProvider);
+    final String? stepId = tut.activeStep?.id;
+    final TutorialController ctrl = ref.read(tutorialProvider.notifier);
+
+    if (stepId == 'enhance_open_item' || stepId == 'enhance_equip') {
+      final bool hasEquippable =
+          TutorialInventoryTarget.lootEquippableRowId(widget.state) != null;
+      if (!hasEquippable) {
+        ctrl.setCoachBypass(
+          enabled: true,
+          body: context.l10n.tut_enhance_bypass_no_equip_body,
+        );
+      } else {
+        ctrl.setCoachBypass(enabled: false);
+      }
+      return;
+    }
+
+    if (tut.forceShowManualCta) {
+      ctrl.setCoachBypass(enabled: false);
+    }
+  }
+
+  /// open_item Devam (boş çanta) → enhance_equip'i de atla (ikinci Devam yok).
+  Future<void> _maybeAutoSkipEmptyEquip(String? previous, String? next) async {
+    if (previous != 'enhance_open_item' || next != 'enhance_equip') return;
+    if (TutorialInventoryTarget.lootEquippableRowId(widget.state) != null) {
+      return;
+    }
+    final TutorialController ctrl = ref.read(tutorialProvider.notifier);
+    ctrl.setCoachBypass(
+      enabled: true,
+      body: context.l10n.tut_enhance_bypass_no_equip_body,
+    );
+    await ctrl.completeActiveManual();
   }
 
   Future<void> _openItemActionsPopup(InventoryItem item) async {
@@ -135,6 +180,27 @@ class _InventoryReadyInteractiveState
       return;
     }
 
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Kuşanı çıkar'),
+          content: const Text('Bu eşyayı çıkarmak istiyor musun?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('İptal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Çıkar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
     final ok = await ref
         .read(inventoryProvider.notifier)
         .unequipItem(slot: slot);
@@ -147,6 +213,12 @@ class _InventoryReadyInteractiveState
   Future<void> _handleEquip(InventoryItem item) async {
     final String slot = item.equipSlot.name;
     if (slot == 'none') return;
+
+    final int playerLevel = ref.read(playerProvider).profile?.level ?? 1;
+    if (playerLevel < item.requiredLevel) {
+      _showSnack('Level yetersiz. Gereken: ${item.requiredLevel}');
+      return;
+    }
 
     final InventoryItem? occupied =
         ref.read(inventoryProvider).equippedItems[slot];
@@ -314,6 +386,17 @@ class _InventoryReadyInteractiveState
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(tutorialProvider.select((TutorialState s) => s.activeStep?.id));
+    ref.listen<String?>(
+      tutorialProvider.select((TutorialState s) => s.activeStep?.id),
+      (String? previous, String? next) {
+        unawaited(_maybeAutoSkipEmptyEquip(previous, next));
+      },
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncEquipCoachBypass();
+    });
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final state = widget.state;
@@ -362,6 +445,11 @@ class _InventoryReadyInteractiveState
                                   style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
                                 const SizedBox(height: 10),
+                                const Align(
+                                  alignment: Alignment.center,
+                                  child: InventoryPowerBadge(),
+                                ),
+                                const SizedBox(height: 10),
                                 _EquippedPanel(
                                   equippedItems: state.equippedItems,
                                   onUnequip: _handleUnequip,
@@ -395,6 +483,11 @@ class _InventoryReadyInteractiveState
                               'Kusanilanlar',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Align(
+                            alignment: Alignment.center,
+                            child: InventoryPowerBadge(),
                           ),
                           const SizedBox(height: 10),
                           ConstrainedBox(
@@ -500,44 +593,39 @@ class _InventoryReadyInteractiveState
     );
   }
 
-  String? _tutorialFirstWeaponRowId(InventoryState state) {
-    final List<InventoryItem> weapons = state.items
-        .where(
-          (InventoryItem item) =>
-              item.itemType == ItemType.weapon &&
-              !item.isEquipped &&
-              item.quantity > 0,
-        )
-        .toList(growable: false);
-    if (weapons.isEmpty) return null;
-    weapons.sort(
-      (InventoryItem a, InventoryItem b) =>
-          a.slotPosition.compareTo(b.slotPosition),
-    );
-    return weapons.first.rowId;
-  }
+  String? _tutorialLootEquippableRowId(InventoryState state) =>
+      TutorialInventoryTarget.lootEquippableRowId(state);
 
   Widget _buildInventorySlot(BuildContext context, InventoryState state, int index) {
     final rawItem = _getItemBySlot(state.items, index);
     final item = (rawItem != null && _matchesFilter(rawItem, _activeFilter)) ? rawItem : null;
+    Future<void> openSlot() async {
+      if (item == null) return;
+      final bool isTutorialLoot =
+          item.rowId == _tutorialLootEquippableRowId(state);
+      final TutorialStepV2? activeStep =
+          ref.read(tutorialProvider).activeStep;
+      if (isTutorialLoot &&
+          activeStep?.anchorId == TutorialAnchorId.inventoryFirstWeapon) {
+        await TutorialTriggers.onAnchorTap(
+          ref,
+          TutorialAnchorId.inventoryFirstWeapon,
+        );
+      }
+      setState(() {
+        _selectedRowId = item.rowId;
+      });
+      // Always open detail. Old gate (`enhance_equip || !isTutorialLoot`)
+      // skipped popup for highest-slot gear even when tutorial inactive —
+      // vault/distributed equippables looked "untappable".
+      await _openItemActionsPopup(item);
+    }
+
     final card = _InventorySlotCard(
       item: item,
       slotIndex: index,
       isSelected: item != null && item.rowId == _selectedRowId,
-      onTap: item == null
-          ? null
-          : () async {
-              if (item.rowId == _tutorialFirstWeaponRowId(state)) {
-                await TutorialTriggers.onAnchorTap(
-                  ref,
-                  TutorialAnchorId.inventoryFirstWeapon,
-                );
-              }
-              setState(() {
-                _selectedRowId = item.rowId;
-              });
-              await _openItemActionsPopup(item);
-            },
+      onTap: item == null ? null : openSlot,
     );
 
     final Widget draggable = item == null
@@ -587,10 +675,13 @@ class _InventoryReadyInteractiveState
           ),
           child: draggable,
         );
-        final String? tutorialWeaponRow = _tutorialFirstWeaponRowId(state);
-        if (item != null && item.rowId == tutorialWeaponRow) {
+        final String? tutorialLootRow = _tutorialLootEquippableRowId(state);
+        if (item != null && item.rowId == tutorialLootRow) {
           return TutorialAnchorScope(
             id: TutorialAnchorId.inventoryFirstWeapon,
+            // Overlay hole catcher — DragTarget/LongPressDraggable block
+            // fall-through taps during spotlight.
+            onTutorialTap: openSlot,
             child: slot,
           );
         }
@@ -616,6 +707,9 @@ class _InventoryReadyInteractiveState
   }
 
   InventoryItem? _getItemBySlot(List<InventoryItem> items, int slot) {
+    // Prefer O(1) map from provider state when list matches current snapshot.
+    final InventoryItem? mapped = ref.read(inventoryProvider).itemsBySlot[slot];
+    if (mapped != null) return mapped;
     for (final item in items) {
       if (item.slotPosition == slot) return item;
     }

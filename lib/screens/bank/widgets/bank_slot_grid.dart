@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../components/common/item_icon_view.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../../models/inventory_model.dart';
+import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../theme/app_colors.dart';
 import 'bank_design.dart';
 
@@ -50,6 +51,7 @@ class BankInventorySlot extends StatelessWidget {
     this.onDragStarted,
     this.onDragUpdate,
     this.onDragEnd,
+    this.tutorialAnchorId,
   });
 
   final InventoryItem? item;
@@ -61,6 +63,7 @@ class BankInventorySlot extends StatelessWidget {
   final VoidCallback? onDragStarted;
   final DragUpdateCallback? onDragUpdate;
   final DragEndCallback? onDragEnd;
+  final String? tutorialAnchorId;
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +115,9 @@ class BankInventorySlot extends StatelessWidget {
         child: SizedBox(width: 74, height: 86, child: slotBody),
       ),
       childWhenDragging: Opacity(opacity: 0.35, child: interactive),
-      child: interactive,
+      child: tutorialAnchorId == null
+          ? interactive
+          : TutorialAnchorScope(id: tutorialAnchorId!, child: interactive),
     );
   }
 }

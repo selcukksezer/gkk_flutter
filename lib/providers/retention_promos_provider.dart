@@ -108,6 +108,7 @@ class RetentionPromosNotifier extends Notifier<RetentionPromosState> {
     if (controller.hasActiveTrack) return;
     if (controller.isTrackComplete(TutorialTrackId.retentionIntro)) return;
     await controller.startTrack(TutorialTrackId.retentionIntro);
+    await controller.navigateToActiveStepRoute();
   }
 }
 

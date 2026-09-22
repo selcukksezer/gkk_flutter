@@ -1,0 +1,74 @@
+{
+  "character_allocate_stat": {
+    "SKIP": 400
+  },
+  "chat_dm_reply": {
+    "PASS": 400
+  },
+  "chat_dm_send": {
+    "SKIP": 400
+  },
+  "chat_global_send": {
+    "PASS": 400
+  },
+  "daily_reward_claim": {
+    "SKIP": 400
+  },
+  "dungeon_attack_win": {
+    "PASS": 400
+  },
+  "dungeon_enter_confirm": {
+    "PASS": 400
+  },
+  "dungeon_list_load": {
+    "PASS": 400
+  },
+  "enhancement_equip_upgraded": {
+    "PASS": 400
+  },
+  "enhancement_forge": {
+    "PASS": 400
+  },
+  "friends_send_request": {
+    "PASS": 400
+  },
+  "guild_create_or_join": {
+    "PASS": 400
+  },
+  "guild_monument_donate": {
+    "PASS": 400
+  },
+  "guild_war_hub": {
+    "PASS": 400
+  },
+  "inventory_equip_item": {
+    "PASS": 400
+  },
+  "inventory_open": {
+    "PASS": 400
+  },
+  "legal_accept": {
+    "PASS": 400
+  },
+  "market_browse": {
+    "PASS": 400
+  },
+  "market_buy_listing": {
+    "SKIP": 400
+  },
+  "market_list_item": {
+    "PASS": 400
+  },
+  "market_search": {
+    "PASS": 400
+  },
+  "quests_list": {
+    "PASS": 400
+  },
+  "reputation_overview": {
+    "PASS": 400
+  },
+  "shop_buy_qa_gem_pack": {
+    "PASS": 400
+  }
+}

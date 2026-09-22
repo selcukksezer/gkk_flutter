@@ -414,6 +414,47 @@ class DungeonMilestoneReward {
   }
 }
 
+class DungeonXpBreakdown {
+  const DungeonXpBreakdown({
+    this.base = 0,
+    this.criticalMult = 1,
+    this.luckMult = 1,
+    this.farmMult = 1,
+    this.monumentPct = 0,
+    this.monumentXp = 0,
+    this.finalXp = 0,
+  });
+
+  final int base;
+  final double criticalMult;
+  final double luckMult;
+  final double farmMult;
+  final double monumentPct;
+  final int monumentXp;
+  final int finalXp;
+
+  bool get hasMonumentBonus => monumentPct > 0.001 || monumentXp > 0;
+  bool get hasLuckBonus => luckMult > 1.001;
+  bool get hasCriticalBonus => criticalMult > 1.001;
+  bool get hasVisibleBonuses =>
+      hasMonumentBonus || hasLuckBonus || hasCriticalBonus;
+
+  factory DungeonXpBreakdown.fromJson(Map<String, dynamic>? json) {
+    if (json == null || json.isEmpty) {
+      return const DungeonXpBreakdown();
+    }
+    return DungeonXpBreakdown(
+      base: DungeonResult._asInt(json['base']),
+      criticalMult: DungeonResult._asDouble(json['critical_mult'], fallback: 1),
+      luckMult: DungeonResult._asDouble(json['luck_mult'], fallback: 1),
+      farmMult: DungeonResult._asDouble(json['farm_mult'], fallback: 1),
+      monumentPct: DungeonResult._asDouble(json['monument_pct']),
+      monumentXp: DungeonResult._asInt(json['monument_xp']),
+      finalXp: DungeonResult._asInt(json['final']),
+    );
+  }
+}
+
 class DungeonResult {
   const DungeonResult({
     required this.success,
@@ -435,6 +476,7 @@ class DungeonResult {
     this.reputationBuffs = const <ReputationActiveBuff>[],
     this.tutorialWrapperLootCount = 0,
     this.codexNew = const <CodexDiscovery>[],
+    this.xpBreakdown,
   });
 
   final bool success;
@@ -456,6 +498,7 @@ class DungeonResult {
   final List<ReputationActiveBuff> reputationBuffs;
   final int tutorialWrapperLootCount;
   final List<CodexDiscovery> codexNew;
+  final DungeonXpBreakdown? xpBreakdown;
 
   factory DungeonResult.fromJson(Map<String, dynamic> json) {
     final dynamic itemsRaw = json['items'] ?? json['items_dropped'] ?? json['item_details'];
@@ -532,6 +575,11 @@ class DungeonResult {
       reputationBuffs: repBuffs,
       tutorialWrapperLootCount: _asInt(json['tutorial_wrapper_loot_count']),
       codexNew: codexNew,
+      xpBreakdown: json['xp_breakdown'] is Map
+          ? DungeonXpBreakdown.fromJson(
+              Map<String, dynamic>.from(json['xp_breakdown'] as Map),
+            )
+          : null,
     );
   }
 

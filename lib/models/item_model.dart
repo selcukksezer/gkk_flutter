@@ -323,7 +323,9 @@ class ItemData {
       isDirectTradeable: json['is_direct_tradeable'] as bool,
       potionType: PotionTypeParsing.fromValue(json['potion_type'] as String),
       energyRestore: (json['energy_restore'] as num).toInt(),
-      healthRestore: (json['health_restore'] as num).toInt(),
+      healthRestore: ((json['health_restore'] as num?)?.toInt() ?? 0) > 0
+          ? (json['health_restore'] as num).toInt()
+          : ((json['heal_amount'] as num?)?.toInt() ?? 0),
       manaRestore: (json['mana_restore'] as num).toInt(),
       toleranceIncrease: (json['tolerance_increase'] as num).toInt(),
       overdoseRisk: (json['overdose_risk'] as num).toDouble(),

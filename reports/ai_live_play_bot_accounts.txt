@@ -1,0 +1,9 @@
+# AI Live-Play bot accounts (pre-launch QA — wipe before launch)
+# Password (all): QaLivePlay300!
+# Email pattern: qa_bot_NNN@sim.local  (NNN = 001..400)
+# Example:
+#   qa_bot_001@sim.local / QaLivePlay300!
+#   qa_bot_400@sim.local / QaLivePlay300!
+AI_BOT_PASSWORD=QaLivePlay300!
+AI_BOT_COUNT=400
+AI_BOT_EMAIL_TEMPLATE=qa_bot_{NNN}@sim.local

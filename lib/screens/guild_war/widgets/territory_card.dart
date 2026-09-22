@@ -85,7 +85,7 @@ class TerritoryCard extends StatelessWidget {
             const SizedBox(height: 6),
             WarStatChip(
               emoji: '💎',
-              label: '+${territory.gemDefenseBoost} prime savunma',
+              label: '+${territory.gemDefenseBoost} elmas savunma',
               accent: WarPalette.neon,
             ),
           ],
@@ -104,11 +104,20 @@ class TerritoryCard extends StatelessWidget {
             const SizedBox(height: 6),
             WarStatChip(
               emoji: '💰',
-              label: '${territory.tradeIncome}/gün ticaret',
+              label: territory.tradeIncomeHourly > 0
+                  ? '${territory.tradeIncome}/gün (~${territory.tradeIncomeHourly.round()}/saat)'
+                  : '${territory.tradeIncome}/gün ticaret',
               accent: WarPalette.neon,
             ),
           ],
-          if (territory.reward.isNotEmpty) ...<Widget>[
+          if (territory.hasTerritoryLoot) ...<Widget>[
+            const SizedBox(height: 6),
+            WarStatChip(
+              emoji: '📦',
+              label: '${territory.lootItemName ?? territory.lootItemId} · ${territory.lootChanceLabel}',
+              accent: WarPalette.gold,
+            ),
+          ] else if (territory.reward.isNotEmpty) ...<Widget>[
             const SizedBox(height: 6),
             Text(
               '🎁 ${territory.reward}',

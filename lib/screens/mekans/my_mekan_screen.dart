@@ -8,6 +8,7 @@ import '../../components/common/gkk_tab_bar.dart';
 import '../../components/common/gkk_tab_page_shell.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../components/common/item_icon_view.dart';
+import '../../l10n/l10n.dart';
 import '../../models/mekan_model.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
@@ -239,13 +240,24 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                 const SizedBox(width: 10),
                 Expanded(
                   child: NeonButton(
-                    label: mekan.happyHourActive ? 'Happy Bitir' : 'Happy Hour',
+                    label: mekan.happyHourActive
+                        ? context.l10n.end_party
+                        : context.l10n.start_party,
                     icon: Icons.celebration_rounded,
                     accent: MekanPalette.coral,
                     busy: _busy,
                     onPressed: () => _run(
-                        () => _repo.setHappyHour(mekanId: mekan.id, active: !mekan.happyHourActive),
-                        success: mekan.happyHourActive ? 'Happy Hour bitti' : 'Happy Hour basladi!'),
+                      () async {
+                        if (mekan.happyHourActive) {
+                          await _repo.setHappyHour(mekanId: mekan.id, active: false);
+                        } else {
+                          await _repo.startParty(mekanId: mekan.id);
+                        }
+                      },
+                      success: mekan.happyHourActive
+                          ? context.l10n.end_party
+                          : context.l10n.party_live,
+                    ),
                   ),
                 ),
               ],
@@ -319,7 +331,11 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
           ),
           if (mekan.happyHourActive) ...<Widget>[
             const SizedBox(height: 12),
-            HappyHourBanner(until: DateTime.parse(mekan.happyHourUntil!)),
+            HappyHourBanner(
+              until: DateTime.parse(mekan.happyHourUntil!),
+              title: context.l10n.party_live,
+              subtitle: context.l10n.party_live_subtitle,
+            ),
           ],
           const SizedBox(height: 12),
           _rentCard(mekan, s),

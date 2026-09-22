@@ -36,6 +36,8 @@ class PlayerProfile {
     required this.pvpLosses,
     required this.addictionLevel,
     required this.tolerance,
+    this.nightlifeTickets = 0,
+    this.nightlifeVibe = 0,
     required this.lastPotionUsedAt,
     required this.warriorBloodlustUntil,
     required this.hospitalUntil,
@@ -57,9 +59,11 @@ class PlayerProfile {
     this.agility,
     this.intelligence,
     this.luck,
+    this.equipBonusLuck = 0,
     this.characterClass,
-    this.hp,
     this.statPoints = 0,
+    this.craftingQueueSlots = 1,
+    this.healthLastUpdated,
   });
 
   final String id;
@@ -92,6 +96,9 @@ class PlayerProfile {
   final int pvpLosses;
   final int addictionLevel;
   final int tolerance;
+  /// Nightlife refill tickets (Crims-like daily limiter).
+  final int nightlifeTickets;
+  final int nightlifeVibe;
   final String? lastPotionUsedAt;
   final String? warriorBloodlustUntil;
   final String? hospitalUntil;
@@ -115,11 +122,18 @@ class PlayerProfile {
   final int? agility;
   final int? intelligence;
   final int? luck;
+  /// Raw gear luck sum (`equip_bonus_luck`). Loot softcap input — not baked into [luck].
+  final int equipBonusLuck;
   final CharacterClass? characterClass;
-  final int? hp;
 
   /// Level atlayarak kazanılan, henüz dağıtılmamış stat puanları.
   final int statPoints;
+
+  /// Eşzamanlı zanaat kuyruğu slot sayısı (1 bedava, max 5).
+  final int craftingQueueSlots;
+
+  /// Son can regen zaman damgası (pasif iyileşme ETA için).
+  final String? healthLastUpdated;
 
   PlayerProfile copyWith({
     String? id,
@@ -153,6 +167,8 @@ class PlayerProfile {
     int? pvpLosses,
     int? addictionLevel,
     int? tolerance,
+    int? nightlifeTickets,
+    int? nightlifeVibe,
     String? lastPotionUsedAt,
     String? warriorBloodlustUntil,
     String? hospitalUntil,
@@ -174,9 +190,10 @@ class PlayerProfile {
     int? agility,
     int? intelligence,
     int? luck,
+    int? equipBonusLuck,
     CharacterClass? characterClass,
-    int? hp,
     int? statPoints,
+    int? craftingQueueSlots,
     bool clearDisplayName = false,
     bool clearAvatarUrl = false,
     bool clearGuildId = false,
@@ -228,6 +245,8 @@ class PlayerProfile {
       pvpLosses: pvpLosses ?? this.pvpLosses,
       addictionLevel: addictionLevel ?? this.addictionLevel,
       tolerance: tolerance ?? this.tolerance,
+      nightlifeTickets: nightlifeTickets ?? this.nightlifeTickets,
+      nightlifeVibe: nightlifeVibe ?? this.nightlifeVibe,
       lastPotionUsedAt:
           clearLastPotionUsedAt ? null : (lastPotionUsedAt ?? this.lastPotionUsedAt),
       warriorBloodlustUntil: clearWarriorBloodlustUntil
@@ -254,10 +273,11 @@ class PlayerProfile {
       agility: agility ?? this.agility,
       intelligence: intelligence ?? this.intelligence,
       luck: luck ?? this.luck,
+      equipBonusLuck: equipBonusLuck ?? this.equipBonusLuck,
       characterClass:
           clearCharacterClass ? null : (characterClass ?? this.characterClass),
-      hp: hp ?? this.hp,
       statPoints: statPoints ?? this.statPoints,
+      craftingQueueSlots: craftingQueueSlots ?? this.craftingQueueSlots,
     );
   }
 
@@ -294,6 +314,8 @@ class PlayerProfile {
       pvpLosses: (json['pvp_losses'] as num).toInt(),
       addictionLevel: (json['addiction_level'] as num).toInt(),
       tolerance: (json['tolerance'] as num).toInt(),
+      nightlifeTickets: (json['nightlife_tickets'] as num?)?.toInt() ?? 0,
+      nightlifeVibe: (json['nightlife_vibe'] as num?)?.toInt() ?? 0,
       lastPotionUsedAt: json['last_potion_used_at'] as String?,
       warriorBloodlustUntil: json['warrior_bloodlust_until'] as String?,
       hospitalUntil: json['hospital_until'] as String?,
@@ -315,9 +337,11 @@ class PlayerProfile {
       agility: (json['agility'] as num?)?.toInt(),
       intelligence: (json['intelligence'] as num?)?.toInt(),
       luck: (json['luck'] as num?)?.toInt(),
+      equipBonusLuck: (json['equip_bonus_luck'] as num?)?.toInt() ?? 0,
       characterClass: CharacterClassParsing.fromNullable(rawCharacterClass),
-      hp: (json['hp'] as num?)?.toInt(),
       statPoints: (json['stat_points'] as num?)?.toInt() ?? 0,
+      craftingQueueSlots: (json['crafting_queue_slots'] as num?)?.toInt() ?? 1,
+      healthLastUpdated: json['health_last_updated'] as String?,
     );
   }
 
@@ -374,9 +398,11 @@ class PlayerProfile {
       'agility': agility,
       'intelligence': intelligence,
       'luck': luck,
+      'equip_bonus_luck': equipBonusLuck,
       'character_class': characterClass?.name,
-      'hp': hp,
       'stat_points': statPoints,
+      'crafting_queue_slots': craftingQueueSlots,
+      'health_last_updated': healthLastUpdated,
     };
   }
 }

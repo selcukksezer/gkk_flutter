@@ -1,5 +1,7 @@
 import '../../models/inventory_model.dart';
 import '../../models/player_model.dart';
+import 'effective_luck.dart';
+import 'enhancement_stats.dart';
 
 class PowerBreakdown {
   const PowerBreakdown({
@@ -24,15 +26,14 @@ PowerBreakdown calculateTotalPower({
   int equipmentPower = 0;
   for (final InventoryItem? item in equippedItems) {
     if (item == null) continue;
-    final double base =
-        item.attack + item.defense + (item.health / 10.0) + (item.luck * 2.0);
-    final double multiplier = 1 + (item.enhancementLevel * 0.15);
-    equipmentPower += (base * multiplier).floor();
+    equipmentPower += enhancedItemPowerContribution(item);
   }
 
   final int levelPower = player.level * 500;
   final int reputationPower = ((player.reputation ?? 0) * 0.1).floor();
-  final int luckPower = ((player.luck ?? 0) * 50).floor();
+  // Faz 1: users.luck is base-only. Gear luck already in item_power (luck*2*enh).
+  final int baseLuck = (player.luck ?? 0).clamp(0, 1 << 30);
+  final int luckPower = (baseLuck * 50).floor();
 
   return PowerBreakdown(
     totalPower: equipmentPower + levelPower + reputationPower + luckPower,
@@ -41,6 +42,51 @@ PowerBreakdown calculateTotalPower({
     reputationPower: reputationPower,
     luckPower: luckPower,
   );
+}
+
+/// Matches [attack_dungeon] RPC — cached [PlayerProfile.power] first, live equip fallback.
+int resolveDungeonCombatPower({
+  required PlayerProfile profile,
+  Iterable<InventoryItem?>? equippedItems,
+}) {
+  final int cached = profile.power;
+  if (cached > 0) return cached;
+
+  if (equippedItems != null) {
+    return calculateTotalPower(
+      player: profile,
+      equippedItems: equippedItems,
+    ).totalPower;
+  }
+
+  // Cached power missing — base luck only (never equip_bonus_luck ×50).
+  return profile.level * 500 +
+      ((profile.reputation ?? 0) * 0.1).floor() +
+      ((profile.luck ?? 0) * 50).floor();
+}
+
+/// Single source for dungeon success % — list screen + battle VS intro.
+int computeDungeonSuccessPercent({
+  required PlayerProfile profile,
+  required int dungeonPowerRequirement,
+  Iterable<InventoryItem?>? equippedItems,
+}) {
+  if (dungeonPowerRequirement <= 0) return 100;
+
+  final int power = resolveDungeonCombatPower(
+    profile: profile,
+    equippedItems: equippedItems,
+  );
+
+  return (calculateDungeonSuccessRate(
+            playerTotalPower: power,
+            dungeonPowerRequirement: dungeonPowerRequirement,
+            playerLuck: effectivePlayerLuckFromProfile(profile),
+            reputation: profile.reputation ?? 0,
+            characterClass: profile.characterClass,
+          ) *
+          100)
+      .round();
 }
 
 double calculateDungeonSuccessRate({

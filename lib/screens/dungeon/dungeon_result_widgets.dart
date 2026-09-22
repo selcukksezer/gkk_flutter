@@ -280,20 +280,56 @@ class DungeonResultBalanceNotes extends StatelessWidget {
     this.rewardMultiplier,
     this.tutorialWrapperLootCount = 0,
     this.siegeBonusApplied = false,
+    this.xpBreakdown,
   });
 
   final double? rewardMultiplier;
   final int tutorialWrapperLootCount;
   final bool siegeBonusApplied;
+  final DungeonXpBreakdown? xpBreakdown;
 
   @override
   Widget build(BuildContext context) {
     final bool hasFarmPenalty = rewardMultiplier != null && rewardMultiplier! < 0.99;
     final bool hasWrapperLoot = tutorialWrapperLootCount > 0;
-    if (!hasFarmPenalty && !hasWrapperLoot) return const SizedBox.shrink();
+    final DungeonXpBreakdown? xp = xpBreakdown;
+    final bool hasXpBonus = xp != null && xp.hasVisibleBonuses;
+    if (!hasFarmPenalty && !hasWrapperLoot && !hasXpBonus) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       children: <Widget>[
+        if (hasXpBonus) ...<Widget>[
+          const SizedBox(height: 10),
+          if (xp.hasMonumentBonus)
+            Text(
+              'Lonca anıtı XP +%${xp.monumentPct.toStringAsFixed(xp.monumentPct % 1 == 0 ? 0 : 1)}'
+              '${xp.monumentXp > 0 ? ' (+${xp.monumentXp})' : ''}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFFF2D74C).withValues(alpha: 0.9),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          if (xp.hasLuckBonus) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              'Şans XP ×${xp.luckMult.toStringAsFixed(3)}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white54, fontSize: 10),
+            ),
+          ],
+          if (xp.hasCriticalBonus) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              'Kritik zafer XP ×${xp.criticalMult.toStringAsFixed(1)}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white54, fontSize: 10),
+            ),
+          ],
+        ],
         if (hasFarmPenalty) ...<Widget>[
           const SizedBox(height: 10),
           Text(
@@ -398,7 +434,7 @@ class _DungeonItemRevealListState extends State<DungeonItemRevealList> {
           final Color color = dungeonRarityColor(item.rarity);
           final bool epicPlus = isEpicPlusRarity(item.rarity);
           return TweenAnimationBuilder<double>(
-            key: ValueKey<String>(item.itemId),
+            key: ValueKey<String>('${item.itemId}_$i'),
             tween: Tween<double>(begin: 0, end: 1),
             duration: Duration(milliseconds: epicPlus ? 700 : 400),
             curve: epicPlus ? Curves.elasticOut : Curves.easeOutBack,

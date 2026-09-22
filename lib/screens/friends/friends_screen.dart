@@ -9,6 +9,7 @@ import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../core/services/supabase_service.dart';
 import '../../providers/notification_inbox_provider.dart';
+import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../utils/logout_helper.dart';
 
@@ -66,6 +67,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   String _referralCode = '';
   int _claimableGems = 0;
   List<Map<String, dynamic>> _referred = const <Map<String, dynamic>>[];
+  bool _referralListExpanded = false;
 
   @override
   void initState() {
@@ -133,6 +135,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           gems > 0 ? '💎 $gems gem kazandın!' : 'Tahsil edilecek ödül yok.',
         );
         await _load();
+        unawaited(ref.read(playerProvider.notifier).loadProfile());
+        unawaited(ref.read(notificationInboxProvider.notifier).refresh());
       } else {
         AppMessenger.showError(context, 'Ödül alınamadı.');
       }
@@ -462,6 +466,162 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w900)),
                 ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => setState(
+                () => _referralListExpanded = !_referralListExpanded,
+              ),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    const Expanded(
+                      child: Text(
+                        'DAVET LİSTESİ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: Color(0xFFDDA8FF),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${_referred.length}',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    AnimatedRotation(
+                      turns: _referralListExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white54,
+                        size: 22,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: _referralListExpanded
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: _referred.isEmpty
+                        ? const Text(
+                            'Henüz senin kodunla kayıt olan yok. Kodunu paylaş!',
+                            style:
+                                TextStyle(color: Colors.white38, fontSize: 11),
+                          )
+                        : Column(
+                            children: _referred
+                                .map(_buildReferredTile)
+                                .toList(growable: false),
+                          ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReferredTile(Map<String, dynamic> row) {
+    final String name = (row['display_name'] ?? row['username'] ?? '?').toString();
+    final int level = (row['level'] as num?)?.toInt() ?? 1;
+    final int power = (row['power'] as num?)?.toInt() ?? 0;
+    final int progressPct = (row['progress_pct'] as num?)?.toInt() ??
+        ((level * 100) / 5).floor().clamp(0, 100);
+    final bool claimed = row['claimed'] == true;
+    final bool eligible = row['eligible'] == true;
+    final bool rewardReady = row['reward_ready'] == true || (eligible && !claimed);
+    final String cls = (row['character_class'] ?? '—').toString();
+    final Color accent = claimed
+        ? const Color(0xFF22C55E)
+        : rewardReady
+            ? const Color(0xFFC34BFF)
+            : const Color(0xFFF5C842);
+
+    String statusLabel;
+    if (claimed) {
+      statusLabel = 'Ödül alındı';
+    } else if (rewardReady) {
+      statusLabel = '50 💎 hazır — yukarıdan topla';
+    } else {
+      statusLabel = 'Lv.$level / 5  ·  ilerleme %$progressPct';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.black38,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                claimed
+                    ? '✓'
+                    : rewardReady
+                        ? '💎'
+                        : '⏳',
+                style: TextStyle(color: accent, fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Lv.$level  ·  ⚡ $power  ·  $cls',
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (progressPct / 100).clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: Colors.white10,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            statusLabel,
+            style: TextStyle(color: accent.withValues(alpha: 0.9), fontSize: 11),
           ),
         ],
       ),

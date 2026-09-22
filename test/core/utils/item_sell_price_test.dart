@@ -4,7 +4,7 @@ import 'package:gkk_flutter/models/item_model.dart';
 
 void main() {
   group('computeNpcSellPrice', () {
-    test('common Lv1 sword — KO-scale, not inflated table price', () {
+    test('common Lv1 sword — equip ×6 floor (~990)', () {
       final int price = computeNpcSellPrice(
         itemId: 'wpn_sword_common',
         rarity: Rarity.common,
@@ -20,11 +20,48 @@ void main() {
         isTradeable: true,
         isHanOnly: false,
       );
-      expect(price, greaterThan(50));
-      expect(price, lessThan(300));
+      // Prior capped ~165; equip path ×6 → ~990
+      expect(price, 990);
     });
 
-    test('rare Lv15 gear — mid-tier gold', () {
+    test('common sword +10 sell = +0 × 2.5', () {
+      final int base = computeNpcSellPrice(
+        itemId: 'wpn_sword_common',
+        rarity: Rarity.common,
+        itemType: ItemType.weapon,
+        requiredLevel: 1,
+        basePrice: 1680,
+        attack: 1100,
+        defense: 0,
+        power: 0,
+        luck: 0,
+        energyRestore: 0,
+        healthRestore: 0,
+        isTradeable: true,
+        isHanOnly: false,
+      );
+      final int plus10 = computeNpcSellPrice(
+        itemId: 'wpn_sword_common',
+        rarity: Rarity.common,
+        itemType: ItemType.weapon,
+        requiredLevel: 1,
+        basePrice: 1680,
+        attack: 1100,
+        defense: 0,
+        power: 0,
+        luck: 0,
+        energyRestore: 0,
+        healthRestore: 0,
+        isTradeable: true,
+        isHanOnly: false,
+        enhancementLevel: 10,
+      );
+      expect(base, 990);
+      expect(plus10, (990 * 2.5).floor()); // 2475
+      expect(plus10, greaterThan(base));
+    });
+
+    test('rare Lv15 gear — mid-tier gold ×6', () {
       final int price = computeNpcSellPrice(
         itemId: 'wpn_sword_rare',
         rarity: Rarity.rare,
@@ -40,11 +77,11 @@ void main() {
         isTradeable: true,
         isHanOnly: false,
       );
-      expect(price, greaterThan(200));
-      expect(price, lessThan(1200));
+      // Prior ~650 → ×6 = 3900
+      expect(price, 3900);
     });
 
-    test('mythic material — hard capped low', () {
+    test('mythic material — hard capped low (unchanged)', () {
       final int price = computeNpcSellPrice(
         itemId: 'res_mining_mythic',
         rarity: Rarity.mythic,
@@ -122,39 +159,28 @@ void main() {
       );
     });
 
-    test('enhancement adds small bonus when below cap', () {
-      final int base = computeNpcSellPrice(
-        itemId: 'wpn_sword_rare',
-        rarity: Rarity.rare,
-        itemType: ItemType.weapon,
-        requiredLevel: 15,
-        basePrice: 7280,
-        attack: 3500,
-        defense: 0,
-        power: 0,
-        luck: 0,
-        energyRestore: 0,
-        healthRestore: 0,
-        isTradeable: true,
-        isHanOnly: false,
-      );
-      final int plus3 = computeNpcSellPrice(
-        itemId: 'wpn_sword_rare',
-        rarity: Rarity.rare,
-        itemType: ItemType.weapon,
-        requiredLevel: 15,
-        basePrice: 7280,
-        attack: 3500,
-        defense: 0,
-        power: 0,
-        luck: 0,
-        energyRestore: 0,
-        healthRestore: 0,
-        isTradeable: true,
-        isHanOnly: false,
-        enhancementLevel: 3,
-      );
-      expect(plus3, greaterThan(base));
+    test('equip enhancement monotonic +0..+10', () {
+      int prev = 0;
+      for (int enh = 0; enh <= 10; enh++) {
+        final int price = computeNpcSellPrice(
+          itemId: 'wpn_sword_rare',
+          rarity: Rarity.rare,
+          itemType: ItemType.weapon,
+          requiredLevel: 15,
+          basePrice: 7280,
+          attack: 3500,
+          defense: 0,
+          power: 0,
+          luck: 0,
+          energyRestore: 0,
+          healthRestore: 0,
+          isTradeable: true,
+          isHanOnly: false,
+          enhancementLevel: enh,
+        );
+        if (enh > 0) expect(price, greaterThan(prev));
+        prev = price;
+      }
     });
   });
 }

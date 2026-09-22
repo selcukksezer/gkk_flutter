@@ -92,6 +92,16 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
   List<dynamic> _shopRows = <dynamic>[];
   List<dynamic> _nightRows = <dynamic>[];
   List<dynamic> _marketRows = <dynamic>[];
+  bool _dailyLoading = false;
+  bool _dailyLoaded = false;
+  bool _bpLoading = false;
+  bool _bpLoaded = false;
+  bool _shopLoading = false;
+  bool _shopLoaded = false;
+  bool _nightLoading = false;
+  bool _nightLoaded = false;
+  bool _marketLoading = false;
+  bool _marketSearched = false;
   StaffItemCatalogEntry? _dailySelectedItem;
   StaffItemCatalogEntry? _bpSelectedItem;
   StaffItemCatalogEntry? _nightSelectedItem;
@@ -314,70 +324,155 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
   }
 
   Future<void> _loadDaily() async {
-    final dynamic raw = await SupabaseService.client.rpc('staff_liveops_get_daily_rewards');
-    if (!mounted) return;
-    if (raw is Map && raw['success'] == false) {
-      AppMessenger.showError(context, raw['error']?.toString() ?? 'Daily yüklenemedi');
-      return;
-    }
-    if (raw is Map && raw['items'] is List) {
-      setState(() => _dailyRows = raw['items'] as List);
+    setState(() => _dailyLoading = true);
+    try {
+      final dynamic raw = await SupabaseService.client.rpc('staff_liveops_get_daily_rewards');
+      if (!mounted) return;
+      if (raw is Map && raw['success'] == false) {
+        AppMessenger.showError(context, raw['error']?.toString() ?? 'Daily yüklenemedi');
+        return;
+      }
+      if (raw is Map && raw['items'] is List) {
+        setState(() => _dailyRows = raw['items'] as List);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _dailyLoading = false;
+          _dailyLoaded = true;
+        });
+      }
     }
   }
 
   Future<void> _loadBp() async {
-    final dynamic raw = await SupabaseService.client.rpc(
-      'staff_liveops_get_bp_rewards',
-      params: <String, dynamic>{
-        if (_bpSeasonId.text.trim().isNotEmpty) 'p_season_id': _bpSeasonId.text.trim(),
-      },
-    );
-    if (raw is Map && raw['success'] == false && mounted) {
-      AppMessenger.showError(context, raw['error']?.toString() ?? 'BP yüklenemedi');
-      return;
-    }
-    if (raw is Map && raw['items'] is List && mounted) {
-      setState(() => _bpRows = raw['items'] as List);
+    setState(() => _bpLoading = true);
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'staff_liveops_get_bp_rewards',
+        params: <String, dynamic>{
+          if (_bpSeasonId.text.trim().isNotEmpty) 'p_season_id': _bpSeasonId.text.trim(),
+        },
+      );
+      if (raw is Map && raw['success'] == false && mounted) {
+        AppMessenger.showError(context, raw['error']?.toString() ?? 'BP yüklenemedi');
+        return;
+      }
+      if (raw is Map && raw['items'] is List && mounted) {
+        setState(() => _bpRows = raw['items'] as List);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _bpLoading = false;
+          _bpLoaded = true;
+        });
+      }
     }
   }
 
   Future<void> _loadShop() async {
-    final dynamic raw = await SupabaseService.client.rpc('staff_liveops_list_shop_items', params: <String, dynamic>{'p_limit': 200});
-    if (!mounted) return;
-    if (raw is Map && raw['success'] == false) {
-      AppMessenger.showError(context, raw['error']?.toString() ?? 'Mağaza yüklenemedi');
-      return;
-    }
-    if (raw is Map && raw['items'] is List) {
-      setState(() => _shopRows = raw['items'] as List);
+    setState(() => _shopLoading = true);
+    try {
+      final dynamic raw = await SupabaseService.client.rpc('staff_liveops_list_shop_items', params: <String, dynamic>{'p_limit': 200});
+      if (!mounted) return;
+      if (raw is Map && raw['success'] == false) {
+        AppMessenger.showError(context, raw['error']?.toString() ?? 'Mağaza yüklenemedi');
+        return;
+      }
+      if (raw is Map && raw['items'] is List) {
+        setState(() => _shopRows = raw['items'] as List);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _shopLoading = false;
+          _shopLoaded = true;
+        });
+      }
     }
   }
 
   Future<void> _loadNightMarket() async {
-    final dynamic raw = await SupabaseService.client.rpc('staff_liveops_list_night_market_offers', params: <String, dynamic>{'p_limit': 100});
-    if (!mounted) return;
-    if (raw is Map && raw['success'] == false) {
-      AppMessenger.showError(context, raw['error']?.toString() ?? 'Gece pazarı yüklenemedi');
-      return;
-    }
-    if (raw is Map && raw['items'] is List) {
-      setState(() => _nightRows = raw['items'] as List);
+    setState(() => _nightLoading = true);
+    try {
+      final dynamic raw = await SupabaseService.client.rpc('staff_liveops_list_night_market_offers', params: <String, dynamic>{'p_limit': 100});
+      if (!mounted) return;
+      if (raw is Map && raw['success'] == false) {
+        AppMessenger.showError(context, raw['error']?.toString() ?? 'Gece pazarı yüklenemedi');
+        return;
+      }
+      if (raw is Map && raw['items'] is List) {
+        setState(() => _nightRows = raw['items'] as List);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _nightLoading = false;
+          _nightLoaded = true;
+        });
+      }
     }
   }
 
   Future<void> _loadMarketOrders() async {
-    final dynamic raw = await SupabaseService.client.rpc(
-      'staff_liveops_list_market_orders',
-      params: <String, dynamic>{'p_query': _marketQuery.text.trim(), 'p_limit': 100},
-    );
-    if (!mounted) return;
-    if (raw is Map && raw['success'] == false) {
-      AppMessenger.showError(context, raw['error']?.toString() ?? 'Pazar yüklenemedi');
-      return;
+    setState(() => _marketLoading = true);
+    try {
+      final dynamic raw = await SupabaseService.client.rpc(
+        'staff_liveops_list_market_orders',
+        params: <String, dynamic>{'p_query': _marketQuery.text.trim(), 'p_limit': 100},
+      );
+      if (!mounted) return;
+      if (raw is Map && raw['success'] == false) {
+        AppMessenger.showError(context, raw['error']?.toString() ?? 'Pazar yüklenemedi');
+        return;
+      }
+      if (raw is Map && raw['items'] is List) {
+        setState(() => _marketRows = raw['items'] as List);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _marketLoading = false;
+          _marketSearched = true;
+        });
+      }
     }
-    if (raw is Map && raw['items'] is List) {
-      setState(() => _marketRows = raw['items'] as List);
+  }
+
+  /// Liste altı durum satırı: yükleniyor / boş.
+  Widget _listState({
+    required bool loading,
+    required bool loaded,
+    required bool isEmpty,
+    required String emptyText,
+    String? notLoadedText,
+  }) {
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(color: SettingsPalette.gold, strokeWidth: 2),
+          ),
+        ),
+      );
     }
+    if (!loaded && notLoadedText != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(notLoadedText, style: supportCaptionStyle),
+      );
+    }
+    if (loaded && isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(emptyText, style: supportCaptionStyle),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   List<dynamic> get _filteredShopRows {
@@ -913,6 +1008,12 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
               StaffActionButton(label: 'Ödül kaydet', onPressed: _upsertBpReward),
               const SizedBox(height: 10),
               Text('Kayıtlı ödüller (${_bpRows.length})', style: supportBodyStyle.copyWith(fontWeight: FontWeight.w700)),
+              _listState(
+                loading: _bpLoading,
+                loaded: _bpLoaded,
+                isEmpty: _bpRows.isEmpty,
+                emptyText: 'Bu sezonda kayıtlı BP ödülü yok.',
+              ),
               ..._bpRows.map((dynamic row) {
                 if (row is! Map) return const SizedBox.shrink();
                 return _rowTile(
@@ -1023,6 +1124,12 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
             StaffActionButton(label: 'Kaydet', onPressed: _upsertDailyReward),
             const SizedBox(height: 10),
             Text('Tablo (${_dailyRows.length})', style: supportBodyStyle.copyWith(fontWeight: FontWeight.w700)),
+            _listState(
+              loading: _dailyLoading,
+              loaded: _dailyLoaded,
+              isEmpty: _dailyRows.isEmpty,
+              emptyText: 'Tanımlı günlük ödül yok.',
+            ),
             ..._dailyRows.map((dynamic row) {
               if (row is! Map) return const SizedBox.shrink();
               return _rowTile(
@@ -1096,6 +1203,12 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
             ),
             const SizedBox(height: 8),
             StaffActionButton(label: 'Teklifleri yenile', outlined: true, onPressed: _loadNightMarket),
+            _listState(
+              loading: _nightLoading,
+              loaded: _nightLoaded,
+              isEmpty: _nightRows.isEmpty,
+              emptyText: 'Kayıtlı gece pazarı teklifi yok.',
+            ),
             ..._nightRows.map((dynamic row) {
               if (row is! Map) return const SizedBox.shrink();
               return _rowTile(
@@ -1151,6 +1264,12 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
             ),
             const SizedBox(height: 8),
             StaffActionButton(label: 'Kataloğu yenile', outlined: true, onPressed: _loadShop),
+            _listState(
+              loading: _shopLoading,
+              loaded: _shopLoaded,
+              isEmpty: _filteredShopRows.isEmpty,
+              emptyText: _shopRows.isEmpty ? 'Katalog boş.' : 'Filtreye uyan item yok.',
+            ),
             ..._filteredShopRows.map((dynamic row) {
               if (row is! Map) return const SizedBox.shrink();
               return _rowTile(
@@ -1210,6 +1329,13 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
             ),
             const SizedBox(height: 8),
             StaffActionButton(label: 'İlanları ara', onPressed: _loadMarketOrders),
+            _listState(
+              loading: _marketLoading,
+              loaded: _marketSearched,
+              isEmpty: _marketRows.isEmpty,
+              emptyText: 'Sonuç bulunamadı.',
+              notLoadedText: 'Satıcı adı, item adı veya UUID ile arama yap.',
+            ),
             ..._marketRows.map((dynamic row) {
               if (row is! Map) return const SizedBox.shrink();
               return _rowTile(

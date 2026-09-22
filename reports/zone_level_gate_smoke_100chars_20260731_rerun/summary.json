@@ -1,0 +1,497 @@
+{
+  "seed": 20260731,
+  "n_chars": 100,
+  "n_attempts": 789,
+  "allow_ok": 424,
+  "deny_ok": 365,
+  "false_positives": 0,
+  "false_negatives": 0,
+  "softlock_ok": 54,
+  "softlock_warn": 46,
+  "softlock_fail": 0,
+  "pre_gate_char_n": 29,
+  "can_always_farm": true,
+  "healthy": true,
+  "verdict": "HEALTHY",
+  "assumptions": {
+    "daily_energy": 100,
+    "xp_curve": "floor(100 * L * (1 + L * 0.15))",
+    "farm_strategy": "always farm highest-XP enterable dungeon (ignore power/death)",
+    "multipliers": "no monument/farm/class XP mult (base xp_reward only)",
+    "other_xp_sources": "quests/craft/arena NOT modeled → dungeon-only lower bound",
+    "pre_gate_window": 3,
+    "softlock_warn_days": 4.0,
+    "softlock_fail_days": 10.0,
+    "days_per_level_warn": 2.0
+  },
+  "zones": [
+    {
+      "zone": 1,
+      "name": "Gölgeli Orman",
+      "dungeon_min": 1,
+      "dungeon_max": 10,
+      "required_level": 1
+    },
+    {
+      "zone": 2,
+      "name": "Derin Mağara",
+      "dungeon_min": 11,
+      "dungeon_max": 20,
+      "required_level": 15
+    },
+    {
+      "zone": 3,
+      "name": "Ateş Çölü",
+      "dungeon_min": 21,
+      "dungeon_max": 30,
+      "required_level": 25
+    },
+    {
+      "zone": 4,
+      "name": "Fırtına Dağı",
+      "dungeon_min": 31,
+      "dungeon_max": 40,
+      "required_level": 35
+    },
+    {
+      "zone": 5,
+      "name": "Yeraltı Cehennemi",
+      "dungeon_min": 41,
+      "dungeon_max": 50,
+      "required_level": 45
+    },
+    {
+      "zone": 6,
+      "name": "Kırık Gökyüzü",
+      "dungeon_min": 51,
+      "dungeon_max": 60,
+      "required_level": 55
+    },
+    {
+      "zone": 7,
+      "name": "Efsanevi Tehlikeler",
+      "dungeon_min": 61,
+      "dungeon_max": 65,
+      "required_level": 65
+    }
+  ],
+  "zone_xp": [
+    {
+      "zone": 1,
+      "name": "Gölgeli Orman",
+      "required_level": 1,
+      "dungeon_count": 10,
+      "xp_min": 30,
+      "xp_max": 160,
+      "xp_avg": 87,
+      "energy_at_max_xp": 8
+    },
+    {
+      "zone": 2,
+      "name": "Derin Mağara",
+      "required_level": 15,
+      "dungeon_count": 10,
+      "xp_min": 180,
+      "xp_max": 470,
+      "xp_avg": 306,
+      "energy_at_max_xp": 12
+    },
+    {
+      "zone": 3,
+      "name": "Ateş Çölü",
+      "required_level": 25,
+      "dungeon_count": 10,
+      "xp_min": 520,
+      "xp_max": 1200,
+      "xp_avg": 821,
+      "energy_at_max_xp": 18
+    },
+    {
+      "zone": 4,
+      "name": "Fırtına Dağı",
+      "required_level": 35,
+      "dungeon_count": 10,
+      "xp_min": 1320,
+      "xp_max": 3080,
+      "xp_avg": 2089,
+      "energy_at_max_xp": 25
+    },
+    {
+      "zone": 5,
+      "name": "Yeraltı Cehennemi",
+      "required_level": 45,
+      "dungeon_count": 10,
+      "xp_min": 3380,
+      "xp_max": 7960,
+      "xp_avg": 5385,
+      "energy_at_max_xp": 35
+    },
+    {
+      "zone": 6,
+      "name": "Kırık Gökyüzü",
+      "required_level": 55,
+      "dungeon_count": 10,
+      "xp_min": 8760,
+      "xp_max": 20650,
+      "xp_avg": 13949,
+      "energy_at_max_xp": 45
+    },
+    {
+      "zone": 7,
+      "name": "Efsanevi Tehlikeler",
+      "required_level": 65,
+      "dungeon_count": 5,
+      "xp_min": 22700,
+      "xp_max": 33200,
+      "xp_avg": 27720,
+      "energy_at_max_xp": 50
+    }
+  ],
+  "band_agg": {
+    "01-14_Z1_only": {
+      "n_chars": 22,
+      "levels": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8,
+        10,
+        12,
+        13,
+        14
+      ],
+      "open_zones_sample": "1",
+      "median_open_dungeons": 10,
+      "median_daily_xp": 1920,
+      "median_days_to_next_gate": 12.64,
+      "softlock_counts": {
+        "OK": 17,
+        "WARN_SLOW_LEVEL": 1,
+        "WARN_SLOW_TO_GATE": 4
+      },
+      "worst_days_to_gate": 13.4
+    },
+    "15-24_Z1-2": {
+      "n_chars": 15,
+      "levels": [
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        23,
+        24
+      ],
+      "open_zones_sample": "1,2",
+      "median_open_dungeons": 20,
+      "median_daily_xp": 3760,
+      "median_days_to_next_gate": 14.56,
+      "softlock_counts": {
+        "OK": 8,
+        "WARN_SLOW_LEVEL": 4,
+        "WARN_SLOW_TO_GATE": 3
+      },
+      "worst_days_to_gate": 20.68
+    },
+    "25-34_Z1-3": {
+      "n_chars": 13,
+      "levels": [
+        25,
+        26,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34
+      ],
+      "open_zones_sample": "1,2,3",
+      "median_open_dungeons": 30,
+      "median_daily_xp": 6000,
+      "median_days_to_next_gate": 9.82,
+      "softlock_counts": {
+        "OK": 1,
+        "WARN_SLOW_LEVEL": 8,
+        "WARN_SLOW_TO_GATE": 4
+      },
+      "worst_days_to_gate": 26.88
+    },
+    "35-44_Z1-4": {
+      "n_chars": 15,
+      "levels": [
+        35,
+        36,
+        37,
+        38,
+        40,
+        41,
+        42,
+        43,
+        44
+      ],
+      "open_zones_sample": "1,2,3,4",
+      "median_open_dungeons": 40,
+      "median_daily_xp": 12320,
+      "median_days_to_next_gate": 18.66,
+      "softlock_counts": {
+        "OK": 8,
+        "WARN_SLOW_LEVEL": 5,
+        "WARN_SLOW_TO_GATE": 2
+      },
+      "worst_days_to_gate": 22.3
+    },
+    "45-54_Z1-5": {
+      "n_chars": 14,
+      "levels": [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        53,
+        54
+      ],
+      "open_zones_sample": "1,2,3,4,5",
+      "median_open_dungeons": 50,
+      "median_daily_xp": 15920,
+      "median_days_to_next_gate": 19.42,
+      "softlock_counts": {
+        "WARN_SLOW_LEVEL": 13,
+        "WARN_SLOW_TO_GATE": 1
+      },
+      "worst_days_to_gate": 26.27
+    },
+    "55-64_Z1-6": {
+      "n_chars": 10,
+      "levels": [
+        55,
+        56,
+        57,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "open_zones_sample": "1,2,3,4,5,6",
+      "median_open_dungeons": 60,
+      "median_daily_xp": 41300,
+      "median_days_to_next_gate": 7.73,
+      "softlock_counts": {
+        "OK": 9,
+        "WARN_SLOW_TO_GATE": 1
+      },
+      "worst_days_to_gate": 14.33
+    },
+    "65-70_all": {
+      "n_chars": 11,
+      "levels": [
+        65,
+        66,
+        67,
+        68,
+        69,
+        70
+      ],
+      "open_zones_sample": "1,2,3,4,5,6,7",
+      "median_open_dungeons": 65,
+      "median_daily_xp": 66400,
+      "median_days_to_next_gate": 0.0,
+      "softlock_counts": {
+        "OK": 11
+      },
+      "worst_days_to_gate": 0.0
+    }
+  },
+  "pre_gate": {
+    "14": {
+      "open_dungeons": 10,
+      "open_zones": [
+        1
+      ],
+      "best_xp": 160,
+      "best_dungeon": "dng_010",
+      "best_energy": 8,
+      "daily_runs": 12,
+      "daily_xp": 1920,
+      "xp_to_next_level": 4340,
+      "runs_to_next_level": 28,
+      "days_to_next_level": 2.26,
+      "next_gate": "Z2@15",
+      "xp_to_next_gate": 4340,
+      "days_to_next_gate": 2.26,
+      "in_pre_gate_window": true,
+      "softlock": "WARN_SLOW_LEVEL"
+    },
+    "24": {
+      "open_dungeons": 20,
+      "open_zones": [
+        1,
+        2
+      ],
+      "best_xp": 470,
+      "best_dungeon": "dng_020",
+      "best_energy": 12,
+      "daily_runs": 8,
+      "daily_xp": 3760,
+      "xp_to_next_level": 11040,
+      "runs_to_next_level": 24,
+      "days_to_next_level": 2.94,
+      "next_gate": "Z3@25",
+      "xp_to_next_gate": 11040,
+      "days_to_next_gate": 2.94,
+      "in_pre_gate_window": true,
+      "softlock": "WARN_SLOW_LEVEL"
+    },
+    "34": {
+      "open_dungeons": 30,
+      "open_zones": [
+        1,
+        2,
+        3
+      ],
+      "best_xp": 1200,
+      "best_dungeon": "dng_030",
+      "best_energy": 18,
+      "daily_runs": 5,
+      "daily_xp": 6000,
+      "xp_to_next_level": 20740,
+      "runs_to_next_level": 18,
+      "days_to_next_level": 3.46,
+      "next_gate": "Z4@35",
+      "xp_to_next_gate": 20740,
+      "days_to_next_gate": 3.46,
+      "in_pre_gate_window": true,
+      "softlock": "WARN_SLOW_LEVEL"
+    },
+    "44": {
+      "open_dungeons": 40,
+      "open_zones": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "best_xp": 3080,
+      "best_dungeon": "dng_040",
+      "best_energy": 25,
+      "daily_runs": 4,
+      "daily_xp": 12320,
+      "xp_to_next_level": 33440,
+      "runs_to_next_level": 11,
+      "days_to_next_level": 2.71,
+      "next_gate": "Z5@45",
+      "xp_to_next_gate": 33440,
+      "days_to_next_gate": 2.71,
+      "in_pre_gate_window": true,
+      "softlock": "WARN_SLOW_LEVEL"
+    },
+    "54": {
+      "open_dungeons": 50,
+      "open_zones": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "best_xp": 7960,
+      "best_dungeon": "dng_050",
+      "best_energy": 35,
+      "daily_runs": 2,
+      "daily_xp": 15920,
+      "xp_to_next_level": 49140,
+      "runs_to_next_level": 7,
+      "days_to_next_level": 3.09,
+      "next_gate": "Z6@55",
+      "xp_to_next_gate": 49140,
+      "days_to_next_gate": 3.09,
+      "in_pre_gate_window": true,
+      "softlock": "WARN_SLOW_LEVEL"
+    },
+    "64": {
+      "open_dungeons": 60,
+      "open_zones": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "best_xp": 20650,
+      "best_dungeon": "dng_060",
+      "best_energy": 45,
+      "daily_runs": 2,
+      "daily_xp": 41300,
+      "xp_to_next_level": 67840,
+      "runs_to_next_level": 4,
+      "days_to_next_level": 1.64,
+      "next_gate": "Z7@65",
+      "xp_to_next_gate": 67840,
+      "days_to_next_gate": 1.64,
+      "in_pre_gate_window": true,
+      "softlock": "OK"
+    }
+  },
+  "band_clear": {
+    "1": {
+      "next_gate": "Z2@15",
+      "days_to_next_gate": 13.4,
+      "open_dungeons": 10,
+      "best_dungeon": "dng_010",
+      "daily_xp": 1920
+    },
+    "15": {
+      "next_gate": "Z3@25",
+      "days_to_next_gate": 20.68,
+      "open_dungeons": 20,
+      "best_dungeon": "dng_020",
+      "daily_xp": 3760
+    },
+    "25": {
+      "next_gate": "Z4@35",
+      "days_to_next_gate": 26.88,
+      "open_dungeons": 30,
+      "best_dungeon": "dng_030",
+      "daily_xp": 6000
+    },
+    "35": {
+      "next_gate": "Z5@45",
+      "days_to_next_gate": 22.3,
+      "open_dungeons": 40,
+      "best_dungeon": "dng_040",
+      "daily_xp": 12320
+    },
+    "45": {
+      "next_gate": "Z6@55",
+      "days_to_next_gate": 26.27,
+      "open_dungeons": 50,
+      "best_dungeon": "dng_050",
+      "daily_xp": 15920
+    },
+    "55": {
+      "next_gate": "Z7@65",
+      "days_to_next_gate": 14.33,
+      "open_dungeons": 60,
+      "best_dungeon": "dng_060",
+      "daily_xp": 41300
+    },
+    "65": {
+      "next_gate": null,
+      "days_to_next_gate": 0.0,
+      "open_dungeons": 65,
+      "best_dungeon": "dng_065",
+      "daily_xp": 66400
+    }
+  },
+  "tweaks": [
+    "Pacing (not softlock): Lv25 → Z4@35 ≈ 26.88d dungeon-only. Quests/other XP unmodeled."
+  ]
+}

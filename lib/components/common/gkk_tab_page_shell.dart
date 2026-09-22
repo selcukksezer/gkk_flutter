@@ -121,6 +121,7 @@ class GkkTabPageShell extends StatelessWidget {
     this.sectionTitle,
     this.sectionAccent = AppColors.liquidGold,
     this.padding,
+    this.animateEntrance = true,
   });
 
   final int tabIndex;
@@ -128,9 +129,34 @@ class GkkTabPageShell extends StatelessWidget {
   final String? sectionTitle;
   final Color sectionAccent;
   final EdgeInsetsGeometry? padding;
+  final bool animateEntrance;
 
   @override
   Widget build(BuildContext context) {
+    final Widget body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (sectionTitle != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+            child: GkkTabSectionTitle(sectionTitle!, accent: sectionAccent),
+          ),
+        Expanded(
+          child: DismissKeyboard(
+            child: CustomPaint(
+              foregroundPainter: const DotGridPainter(spacing: 16, dotOpacity: 0.045),
+              child: Padding(
+                padding: padding ?? EdgeInsets.zero,
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (!animateEntrance) return body;
+
     return TweenAnimationBuilder<double>(
       key: ValueKey<int>(tabIndex),
       tween: Tween<double>(begin: 0, end: 1),
@@ -145,27 +171,7 @@ class GkkTabPageShell extends StatelessWidget {
           ),
         );
       },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          if (sectionTitle != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-              child: GkkTabSectionTitle(sectionTitle!, accent: sectionAccent),
-            ),
-          Expanded(
-            child: DismissKeyboard(
-              child: CustomPaint(
-                foregroundPainter: const DotGridPainter(spacing: 16, dotOpacity: 0.045),
-                child: Padding(
-                  padding: padding ?? EdgeInsets.zero,
-                  child: child,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: body,
     );
   }
 }

@@ -29,6 +29,13 @@ class LegalDocument {
   }
 }
 
+/// Legal docs accepted only on the register screen — never block gameplay UI.
+const Set<String> kRegisterOnlyLegalDocTypes = <String>{
+  'community',
+  'terms',
+  'privacy',
+};
+
 class PolicyStatus {
   const PolicyStatus({
     required this.allAccepted,
@@ -37,6 +44,11 @@ class PolicyStatus {
 
   final bool allAccepted;
   final List<String> missing;
+
+  /// Missing docs that still block gameplay (none — all register-only).
+  List<String> get missingForGameplay => missing
+      .where((String t) => !kRegisterOnlyLegalDocTypes.contains(t))
+      .toList(growable: false);
 
   factory PolicyStatus.fromJson(Map<String, dynamic> json) {
     final dynamic rawMissing = json['missing'];

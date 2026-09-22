@@ -267,13 +267,30 @@ class AppLocalizationsTr extends AppLocalizations {
   String get auth_password_required => 'Şifre zorunludur.';
 
   @override
-  String get auth_password_min_length => 'Şifre en az 6 karakter olmalı.';
+  String get auth_password_min_length => 'Şifre en az 8 karakter olmalı.';
+
+  @override
+  String get auth_password_strength =>
+      'Şifre en az bir harf ve bir rakam içermeli.';
+
+  @override
+  String get auth_password_confirm => 'Şifre Tekrar';
+
+  @override
+  String get auth_password_confirm_required => 'Şifre tekrarı zorunludur.';
+
+  @override
+  String get auth_password_mismatch => 'Şifreler eşleşmiyor.';
 
   @override
   String get auth_username => 'Kullanıcı Adı';
 
   @override
   String get auth_username_required => 'Kullanıcı adı zorunludur.';
+
+  @override
+  String get auth_username_invalid =>
+      'Kullanıcı adı 3–16 karakter; harf, rakam veya _ olmalı.';
 
   @override
   String get auth_referral_code => 'Referans Kodu (opsiyonel)';
@@ -292,6 +309,107 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get auth_register_subtitle => 'Yeni hesap oluştur ve krallığa katıl.';
+
+  @override
+  String get auth_forgot_password_link => 'Şifremi unuttum';
+
+  @override
+  String get auth_forgot_password_title => 'Şifre Sıfırlama';
+
+  @override
+  String get auth_forgot_password_subtitle =>
+      'E-posta adresini gir; sıfırlama bağlantısı gönderelim.';
+
+  @override
+  String get auth_forgot_password_button => 'Sıfırlama Bağlantısı Gönder';
+
+  @override
+  String get auth_forgot_password_loading => 'Gönderiliyor...';
+
+  @override
+  String get auth_forgot_password_sent =>
+      'Sıfırlama bağlantısı gönderildi. E-posta kutunu kontrol et.';
+
+  @override
+  String get auth_update_password_title => 'Yeni Şifre';
+
+  @override
+  String get auth_update_password_subtitle =>
+      'Hesabın için yeni bir şifre belirle.';
+
+  @override
+  String get auth_update_password_button => 'Şifreyi Güncelle';
+
+  @override
+  String get auth_update_password_loading => 'Güncelleniyor...';
+
+  @override
+  String get auth_update_password_success =>
+      'Şifre güncellendi. Yeni şifrenle giriş yap.';
+
+  @override
+  String get auth_email_confirm_title => 'E-posta Onayı Gerekli';
+
+  @override
+  String get auth_email_confirm_body =>
+      'Hesabın oluşturuldu. Giriş yapmadan önce e-postandaki onay bağlantısına tıkla.';
+
+  @override
+  String get auth_email_confirm_waiting_subtitle =>
+      'Onay e-postasını gönderdik. Gelen kutunu (ve spam klasörünü) kontrol et.';
+
+  @override
+  String get auth_email_confirm_resend => 'Onay E-postasını Yeniden Gönder';
+
+  @override
+  String get auth_email_confirm_resend_loading => 'Gönderiliyor...';
+
+  @override
+  String get auth_email_confirm_resent => 'Onay e-postası yeniden gönderildi.';
+
+  @override
+  String get auth_username_taken =>
+      'Bu kullanıcı adı alınmış. Başka bir ad dene.';
+
+  @override
+  String get auth_referral_validating => 'Referans kodu kontrol ediliyor...';
+
+  @override
+  String get auth_referral_invalid => 'Geçersiz referans kodu.';
+
+  @override
+  String auth_referral_bonus_preview(int level, int referred, int referrer) {
+    return 'Geçerli kod! Seviye $level olunca sen +$referred elmas, davet eden +$referrer elmas kazanır.';
+  }
+
+  @override
+  String get auth_apple_button => 'Apple ile Giriş Yap';
+
+  @override
+  String get auth_apple_unavailable =>
+      'Apple ile giriş bu cihazda kullanılamıyor.';
+
+  @override
+  String get auth_first_dungeon_title => 'İlk zindan seni bekliyor';
+
+  @override
+  String get auth_first_dungeon_body =>
+      'Sınıfın hazır. İlk savaşın için zindana gir — loot ve güç orada başlar.';
+
+  @override
+  String get auth_first_dungeon_cta => 'İlk zindan';
+
+  @override
+  String get auth_first_dungeon_home => 'Ana sayfaya git';
+
+  @override
+  String get auth_policy_retry => 'Sözleşmeleri Tekrar Dene';
+
+  @override
+  String get auth_policy_logout => 'Çıkış Yap';
+
+  @override
+  String get auth_policy_stuck_title => 'Sözleşme kaydı tamamlanamadı';
 
   @override
   String get auth_toggle_password_show => 'Şifreyi göster';
@@ -1295,6 +1413,14 @@ class AppLocalizationsTr extends AppLocalizations {
   String get hastaneye_kaldirildin => 'Hastaneye kaldirildin';
 
   @override
+  String overdose_hospitalized(String duration) {
+    return '$duration süre aşırı dozdan dolayı hastaneye düştün';
+  }
+
+  @override
+  String get overdose_hospitalized_title => 'Aşırı doz';
+
+  @override
   String get pvp_arena => 'PvP Arena';
 
   @override
@@ -1460,6 +1586,105 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tum_alimlarda_20_indirim => 'Tum alimlarda %20 indirim';
+
+  @override
+  String get party_live => 'PARTİ CANLI';
+
+  @override
+  String get party_live_subtitle =>
+      'Gece special — %20 refill indirimi + kendi mekanda güvenli doldurma';
+
+  @override
+  String get nightlife_floor => 'Gece Salonu';
+
+  @override
+  String get nightlife_floor_subtitle =>
+      'Gir → içecek/bilet al → enerji doldur';
+
+  @override
+  String get hang_out => 'Takıl';
+
+  @override
+  String get join_party => 'Partiye Katıl';
+
+  @override
+  String get start_party => 'Parti Başlat';
+
+  @override
+  String get end_party => 'Partiyi Bitir';
+
+  @override
+  String get who_is_here => 'Kim burada';
+
+  @override
+  String get nightlife_result => 'Gece sonucu';
+
+  @override
+  String get nightlife_good_night => 'İyi gece';
+
+  @override
+  String get nightlife_neutral => 'Sakin gece';
+
+  @override
+  String get nightlife_scam => 'Dolandırıldın';
+
+  @override
+  String get nightlife_fight => 'Kavga';
+
+  @override
+  String get nightlife_hospital_cta => 'Hastaneye Git';
+
+  @override
+  String get nightlife_vibe => 'Vibe';
+
+  @override
+  String get nightlife_energy_cost => 'Enerji';
+
+  @override
+  String get nightlife_cooldown => 'Bekleme';
+
+  @override
+  String get nightlife_no_party => 'Şu an parti yok';
+
+  @override
+  String get nightlife_busy => 'Gece aksiyonu...';
+
+  @override
+  String get nightlife_buy_drink => 'İçecek Al / Doldur';
+
+  @override
+  String get nightlife_refill => 'Enerji Doldur';
+
+  @override
+  String get nightlife_tickets => 'Bilet';
+
+  @override
+  String get nightlife_addiction => 'Bağımlılık';
+
+  @override
+  String get nightlife_own_safe => 'Kendi mekanın — güvenli doldurma';
+
+  @override
+  String get nightlife_od_warning => 'Dikkat: ikinci doldurma aşırı doz riski';
+
+  @override
+  String get nightlife_overdose => 'Aşırı doz';
+
+  @override
+  String get nightlife_refill_ok => 'Enerji doldu';
+
+  @override
+  String get nightlife_gate_locked => 'Kapı kilitli';
+
+  @override
+  String get nightlife_enter_free => 'Giriş ücretsiz — bilet sadece doldurmada';
+
+  @override
+  String get nightlife_no_refill_stock =>
+      'Doldurma menüsü boş — sahip stok koymalı';
+
+  @override
+  String get nightlife_price_mult => 'Fiyat çarpanı';
 
   @override
   String get polis_suphesi => 'Polis Suphesi';
@@ -2129,6 +2354,48 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsReferralCopied => 'Referans kodu kopyalandı.';
 
   @override
+  String get settingsSectionSupport => 'Destek';
+
+  @override
+  String get settingsSectionSupportHint => 'Ticket ve bug bildirimi';
+
+  @override
+  String get settingsSupportMyTickets => 'Destek taleplerim';
+
+  @override
+  String get settingsSupportNewTicket => 'Yeni ticket aç';
+
+  @override
+  String get settingsSupportMyBugReports => 'Bug raporlarım';
+
+  @override
+  String get settingsSupportEmailCopied => 'E-posta adresi kopyalandı.';
+
+  @override
+  String get settingsSectionLegal => 'Yasal';
+
+  @override
+  String get settingsSectionLegalHint => 'Koşullar ve gizlilik';
+
+  @override
+  String get settingsLegalLoadFailed => 'Belgeler yüklenemedi.';
+
+  @override
+  String get settingsDisplayNameShopHint =>
+      'Görünen isim mağazadan değiştirilir';
+
+  @override
+  String get settingsDisplayNameItemHint =>
+      'İsim Değiştirme Kağıdı (elmas) → envanterden kullan.';
+
+  @override
+  String get settingsNotifPermissionWarn =>
+      'Sistem bildirim izni kapalı — telefon ayarlarından aç.';
+
+  @override
+  String get settingsDeleteFailed => 'Hesap silinemedi.';
+
+  @override
   String errorWithDetail(String detail) {
     return 'Hata: $detail';
   }
@@ -2143,18 +2410,31 @@ class AppLocalizationsTr extends AppLocalizations {
   String get tutSkipAll => 'Tümünü atla';
 
   @override
+  String get tutOptInTitle => 'Rehber turu';
+
+  @override
+  String get tutOptInBody =>
+      'Kısa bir öğretici ile oyunu tanımak ister misin? Hayır dersen bir daha sorulmaz.';
+
+  @override
+  String get tutOptInYes => 'Evet, göster';
+
+  @override
+  String get tutOptInNo => 'Hayır, atla';
+
+  @override
   String get settingsSectionTutorial => 'Öğretici';
 
   @override
   String get settingsSectionTutorialHint =>
-      'İlerlemeyi yeniden oynat veya atla';
+      'Kaldığın yerden devam et veya atla';
 
   @override
-  String get settingsTutorialReplay => 'Öğreticiyi yeniden başlat';
+  String get settingsTutorialReplay => 'Öğreticiyi baştan başlat';
 
   @override
   String get settingsTutorialReplayHint =>
-      'İlerlemeyi sıfırlar ve ana sayfa rehberini açar';
+      'İlerlemeyi sıfırlar — sadece sıfırdan istiyorsan';
 
   @override
   String get settingsTutorialSkip => 'Öğreticiyi atla';
@@ -2171,10 +2451,34 @@ class AppLocalizationsTr extends AppLocalizations {
       'Tüm öğretici adımları atlanacak. Emin misin?';
 
   @override
-  String get settingsTutorialReplayDone => 'Öğretici yeniden başladı.';
+  String get settingsTutorialReplayDone => 'Öğretici baştan başladı.';
 
   @override
-  String get settingsTutorialSkipDone => 'Öğretici atlandı.';
+  String get settingsTutorialSkipDone =>
+      'Öğretici atlandı. Ayarlar → Kaldığı yerden devam ile açabilirsin.';
+
+  @override
+  String get settingsTutorialSkippedReplayHint =>
+      'Öğreticiyi atladın. Devam için baştan başlat veya atamayı kaldır.';
+
+  @override
+  String get settingsTutorialResume => 'Kaldığı yerden devam';
+
+  @override
+  String get settingsTutorialResumeHint =>
+      'Sıfırlamaz — son kaldığın adıma gider';
+
+  @override
+  String get settingsTutorialResumeConfirm =>
+      'Rehber kaldığın adımdan açılsın mı?';
+
+  @override
+  String get settingsTutorialResumeDone =>
+      'Rehber kaldığın yerden devam ediyor.';
+
+  @override
+  String get settingsTutorialResumeNothing =>
+      'Temel rehber zaten tamam. Baştan için alttaki butonu kullan.';
 
   @override
   String get tut_onboarding_welcome_title => 'Gölge Krallığı\'na hoş geldin';
@@ -2188,85 +2492,96 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tut_onboarding_home_promo_body =>
-      'Burada Gece Pazarı, Nemesis ve sezon fırsatları döner.';
+      'Parlak bölgeye dokun. Gece Pazarı, Nemesis ve sezon fırsatları burada döner.';
 
   @override
   String get tut_onboarding_home_hero_title => 'Kahraman vitrini';
 
   @override
   String get tut_onboarding_home_hero_body =>
-      'Kuşandığın ekipman ve güç buradan görünür.';
+      'Parlak bölgeye dokun. Kuşandığın ekipman, toplam güç ve itibar burada.';
 
   @override
   String get tut_onboarding_hud_energy_title => 'Enerji';
 
   @override
   String get tut_onboarding_hud_energy_body =>
-      'Zindan ve aktiviteler enerji harcar. Dokunarak devam et.';
+      'Sağ üstteki parlak enerji göstergesi. Zindan ve aktiviteler enerji harcar. Devam\'a bas.';
 
   @override
   String get tut_onboarding_hud_gold_title => 'Altın';
 
   @override
   String get tut_onboarding_hud_gold_body =>
-      'Pazar, craft ve güçlendirme için altın kullanılır.';
+      'Sol üstteki parlak altın. Pazar, craft ve güçlendirme için kullanılır. Devam\'a bas.';
 
   @override
   String get tut_onboarding_hud_gems_title => 'Elmas (Gem)';
 
   @override
   String get tut_onboarding_hud_gems_body =>
-      'Premium hızlandırma ve özel eşyalar için.';
+      'Sağ üstteki parlak elmas. Premium hızlandırma ve özel eşyalar için. Devam\'a bas.';
+
+  @override
+  String get tut_onboarding_nav_intro_title => 'Alt menü';
+
+  @override
+  String get tut_onboarding_nav_intro_body =>
+      'Parlak alt menü: Envanter, Zindan, Karakter ve Menü. Hazırım\'a bas; sonraki adımda Zindan sekmesine dokun.';
 
   @override
   String get tut_onboarding_tap_dungeon_tab_title => 'İlk hedef: Zindan';
 
   @override
-  String get tut_onboarding_tap_dungeon_tab_body => 'Zindan sekmesine dokun.';
+  String get tut_onboarding_tap_dungeon_tab_body =>
+      'Alttaki bottom bar\'da parlak Zindan sekmesine dokun.';
 
   @override
   String get tut_dungeon_pick_zone_title => 'Bölge seç';
 
   @override
   String get tut_dungeon_pick_zone_body =>
-      'Zone 1 ile başla — düşük risk, iyi loot.';
+      'Parlak B1 sekmesine dokun. Zone 1 ile başla — düşük risk, iyi loot.';
 
   @override
   String get tut_dungeon_enter_btn_title => 'Gir';
 
   @override
-  String get tut_dungeon_enter_btn_body => 'Seçili zindana girmek için dokun.';
+  String get tut_dungeon_enter_btn_body => 'Parlak Gir butonuna dokun.';
 
   @override
   String get tut_dungeon_confirm_enter_title => 'Onayla';
 
   @override
   String get tut_dungeon_confirm_enter_body =>
-      'Enerji maliyetini kontrol et, onayla.';
+      'Enerji maliyetini kontrol et ve parlak Gir\'e dokun.';
 
   @override
   String get tut_dungeon_tap_attack_title => 'Saldır';
 
   @override
-  String get tut_dungeon_tap_attack_body => 'Saldır butonuna dokun.';
+  String get tut_dungeon_tap_attack_body => 'Parlak Saldır butonuna dokun.';
 
   @override
   String get tut_dungeon_first_win_title => 'Zafer!';
 
   @override
-  String get tut_dungeon_first_win_body => 'Loot düştü. Envantere bak.';
+  String get tut_dungeon_first_win_body =>
+      'Loot düştü. Devam\'a bas, sonra alttaki Envanter sekmesine dokun.';
 
   @override
   String get tut_dungeon_to_inventory_title => 'Envanter';
 
   @override
-  String get tut_dungeon_to_inventory_body => 'Envanter sekmesine git.';
+  String get tut_dungeon_to_inventory_body =>
+      'Parlak Envanter sekmesine dokun. Loot envanterine gitti.';
 
   @override
-  String get tut_inventory_first_item_title => 'Eşyana dokun';
+  String get tut_inventory_first_item_title => 'Loot geldi';
 
   @override
-  String get tut_inventory_first_item_body => 'Silahına dokunarak detayı aç.';
+  String get tut_inventory_first_item_body =>
+      'Zindan eşyan envanterde. Önce yükselt, sonra kuşan — kuşanınca geliştirme listesinde görünmez.';
 
   @override
   String get tut_inventory_equip_title => 'Kuşan';
@@ -2286,26 +2601,41 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tut_character_check_power_body =>
-      'Power skorun savaşlarda belirleyici.';
+      'Parlak Güç kartına dokun. Power skorun savaşlarda belirleyici.';
 
   @override
   String get tut_character_stat_panel_title => 'Stat puanı';
 
   @override
-  String get tut_character_stat_panel_body => 'Level atladıkça puan dağıt.';
+  String get tut_character_stat_panel_body =>
+      'Parlak stat paneli. Level atladıkça puan kazanırsın. Şu an puanın yoksa normal — Devam\'a bas.';
 
   @override
-  String get tut_character_to_enhance_title => 'Geliştirme ocağı';
+  String get tut_character_class_abilities_title => 'Sınıf yeteneklerin';
 
   @override
-  String get tut_character_to_enhance_body =>
-      'Menü → Geliştirme ile eşyanı +1 yükselt.';
+  String get tut_character_class_abilities_body =>
+      'Parlak bölgede sınıf pasiflerini oku. Devam\'a bas.';
+
+  @override
+  String get tut_character_open_menu_title => 'Menü';
+
+  @override
+  String get tut_character_open_menu_body => 'Alttaki Menü sekmesine dokun.';
+
+  @override
+  String get tut_character_tap_enhance_title => 'Geliştirme ocağı';
+
+  @override
+  String get tut_character_tap_enhance_body =>
+      'Geliştirme\'ye dokun — eşyanı +1 yükselt.';
 
   @override
   String get tut_enhance_pick_item_title => 'Eşya seç';
 
   @override
-  String get tut_enhance_pick_item_body => 'Kuşandığın silahı seç.';
+  String get tut_enhance_pick_item_body =>
+      'Alttaki envanterden yükselteceğin eşyaya dokun.';
 
   @override
   String get tut_enhance_tap_forge_title => 'Geliştir';
@@ -2315,17 +2645,36 @@ class AppLocalizationsTr extends AppLocalizations {
       '+1 dene — parşömen otomatik seçilir.';
 
   @override
+  String get tut_enhance_bypass_no_item_body =>
+      'Yükseltilecek eşya yok. Devam\'a bas, sonra devam et.';
+
+  @override
+  String get tut_enhance_bypass_no_scroll_body =>
+      'Parşömen veya eşya yok — geliştirme yapılamaz. Devam\'a bas.';
+
+  @override
+  String get tut_enhance_bypass_no_equip_body =>
+      'Kuşanılacak eşya yok. Bu sekmeden sonra kuşanabilirsin — Devam\'a bas.';
+
+  @override
   String get tut_enhance_result_title => 'Sonuç';
 
   @override
-  String get tut_enhance_result_body => 'Başarı veya yanma normal.';
+  String get tut_enhance_result_body =>
+      'Başarı veya yanma normal. Şimdi yükseltilmiş eşyayı kuşan.';
 
   @override
-  String get tut_enhance_season_cta_title => 'Sezon ve görevler';
+  String get tut_enhance_tap_season_title => 'Sezon';
 
   @override
-  String get tut_enhance_season_cta_body =>
-      'Battle Pass ve günlük görevler seni bekliyor — Sezon / Görevler menüsünden aç.';
+  String get tut_enhance_tap_season_body => 'Battle Pass için Sezon\'a dokun.';
+
+  @override
+  String get tut_bank_select_item_title => 'Eşya seç';
+
+  @override
+  String get tut_bank_select_item_body =>
+      'Alttaki envanterden yatıracağın eşyaya dokun.';
 
   @override
   String get tut_bank_deposit_coach_title => 'Bankaya yatır';
@@ -2376,7 +2725,42 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tut_season_l20_badge_body =>
-      'Free track L20 — claim etmeyi unutma!';
+      'Free track L20 rozeti burada. Şimdi uzak — hedef bu. Parlak satıra dokun.';
+
+  @override
+  String get tut_season_reset_warn_title => 'Sezon bitince';
+
+  @override
+  String get tut_season_reset_warn_body =>
+      'Claim etmediğin ödüller sezon sonunda sıfırlanır. L20 rozetini kaçırma!';
+
+  @override
+  String get tut_season_to_hospital_title => 'Hastane';
+
+  @override
+  String get tut_season_to_hospital_body =>
+      'Sırada can ve hapishane. Can bitince hastaneye düşersin — orayı tanıyalım.';
+
+  @override
+  String get tut_season_core_done_title => 'Rehber tamam';
+
+  @override
+  String get tut_season_core_done_body =>
+      'Temel tur bitti. Menüden zindan, craft, pazar, lonca seni bekliyor. İyi oyunlar!';
+
+  @override
+  String get tut_hospital_to_prison_title => 'Hapishane';
+
+  @override
+  String get tut_hospital_to_prison_body =>
+      'Baskın ve riskli işler hapishaneye düşürebilir — orayı da görelim.';
+
+  @override
+  String get tut_prison_core_done_title => 'Rehber tamam';
+
+  @override
+  String get tut_prison_core_done_body =>
+      'Temel tur bitti. Menüden zindan, craft, pazar, lonca seni bekliyor. İyi oyunlar!';
 
   @override
   String get tut_quests_claim_intro_title => 'Görevler';
@@ -2571,4 +2955,286 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get tut_night_offer_browse_body =>
       'Gem ile özel paketler — stok bitince gider.';
+
+  @override
+  String get tut_hospital_health_intro_title => 'Can sistemi';
+
+  @override
+  String get tut_hospital_health_intro_body =>
+      'Üst bardaki can şeridine dokun. Savaşlar can götürür; can tükenirse hastaneye düşersin.';
+
+  @override
+  String get tut_hospital_wounded_penalty_title => 'Yaralılık cezası';
+
+  @override
+  String get tut_hospital_wounded_penalty_body =>
+      'Hastaneden çıkınca yaralı sayılırsın — canın %50 altındayken arenada %15 güç cezası yersin.';
+
+  @override
+  String get tut_hospital_ad_timer_title => 'Reklam ile hızlan';
+
+  @override
+  String get tut_hospital_ad_timer_body =>
+      'Hastanedeyken reklam izleyerek süreyi 30 DK kısaltırsın (günde 3 hak). Şu an sağlıklıysan buton yok — Devam\'a bas.';
+
+  @override
+  String get tut_prison_intro_title => 'Hapishane';
+
+  @override
+  String get tut_prison_intro_body =>
+      'Baskın ve riskli işler seni hapse atabilir. Süre dolunca otomatik çıkarsın.';
+
+  @override
+  String get tut_prison_escape_title => 'Erken çıkış';
+
+  @override
+  String get tut_prison_escape_body =>
+      'Hapisteyken Kefalet Öde veya Kaçmayı Dene — Gölge sınıfı kaçışta avantajlı. Özgürsen parlak karta dokun.';
+
+  @override
+  String get tut_prison_ad_timer_title => 'Reklam ile çabuk çık';
+
+  @override
+  String get tut_prison_ad_timer_body =>
+      'Hapisteyken reklam izleyerek ceza süreni 30 DK kısaltırsın (günde 3 hak). Özgürsen buton yok — Devam\'a bas.';
+
+  @override
+  String get tut_facilities_intro_title => 'Yasadışı tesisler';
+
+  @override
+  String get tut_facilities_intro_body =>
+      'Tesisler pasif gelir üretir — sen oyunda olmasan bile kazanç birikir.';
+
+  @override
+  String get tut_facilities_suspicion_title => 'Şüphe ve baskın riski';
+
+  @override
+  String get tut_facilities_suspicion_body =>
+      'Şüphe yükselirse baskın yersin. Rüşvetle şüpheyi düşür; Simyacı sınıfı avantajlı.';
+
+  @override
+  String get tut_facilities_collect_title => 'Tesis seç';
+
+  @override
+  String get tut_facilities_collect_body =>
+      'Bir tesis kartına dokun — gelir toplamayı öğren.';
+
+  @override
+  String get tut_trade_intro_title => 'Oyuncuyla takas';
+
+  @override
+  String get tut_trade_intro_body =>
+      'Başka bir oyuncuyla birebir eşya ve altın takası yap.';
+
+  @override
+  String get tut_trade_safety_title => 'Oyuncu ara';
+
+  @override
+  String get tut_trade_safety_body =>
+      'Ticaret yapacağın oyuncu adını yaz — Ara\'ya bas.';
+
+  @override
+  String get sys2_doctor_visit_title => 'Doktor Ziyareti';
+
+  @override
+  String get sys2_doctor_visit_body =>
+      'Günde 1 kez (TR takvim). %45 −20dk / %30 −10dk / %25 etkisiz.';
+
+  @override
+  String get sys2_doctor_visit_confirm => 'Ziyaret Et';
+
+  @override
+  String sys2_doctor_cut(int minutes) {
+    return 'Doktor süresi $minutes dk kısalttı.';
+  }
+
+  @override
+  String get sys2_doctor_noop => 'Doktor etkisiz — süre değişmedi.';
+
+  @override
+  String get sys2_doctor_released => 'Doktor ziyareti sonrası taburcu oldun.';
+
+  @override
+  String get sys2_guild_doctor_btn => 'Lonca Kliniği Doktoru';
+
+  @override
+  String get sys2_guild_doctor_ok => 'Lonca doktoru süreyi kısalttı.';
+
+  @override
+  String get sys2_guild_lawyer_btn => 'Lonca Bürosu Avukatı';
+
+  @override
+  String get sys2_guild_lawyer_ok =>
+      'Avukat süreyi kısalttı. Gardiyan ikna +%5.';
+
+  @override
+  String get sys2_guard_bribe_title => 'Gardiyan ikna';
+
+  @override
+  String get sys2_guard_bribe_body =>
+      'Altın ile gardiyanı ikna et (kalışta 1 hak). Başarı: süre −%20 (10–60 dk). Başarısız: +8 şüphe.';
+
+  @override
+  String get sys2_guard_bribe_confirm => 'İkna Et';
+
+  @override
+  String sys2_guard_bribe_cost(int cost) {
+    return 'Gardiyan ikna ($cost altın)';
+  }
+
+  @override
+  String sys2_guard_bribe_ok(int minutes) {
+    return 'Gardiyan ikna başarılı (−$minutes dk).';
+  }
+
+  @override
+  String get sys2_guard_bribe_fail => 'İkna başarısız. Şüphe arttı.';
+
+  @override
+  String get sys2_clinic_title => 'Lonca Kliniği';
+
+  @override
+  String sys2_clinic_level(int level) {
+    return 'Klinik seviye $level';
+  }
+
+  @override
+  String get sys2_clinic_upgrade => 'Klinik yükselt';
+
+  @override
+  String get sys2_clinic_donate => 'Kliniğe bağış';
+
+  @override
+  String get sys2_clinic_flavor =>
+      'Anıtla ortak günlük bağış limiti ve lonca kasası. Altın kasaya; kaynaklar klinik yükseltme havuzuna.';
+
+  @override
+  String get sys2_clinic_shared_limit_hint =>
+      'Anıt + klinik = aynı günlük bağış limiti.';
+
+  @override
+  String sys2_clinic_owned_left(int owned, int left) {
+    return 'elde $owned · kalan $left';
+  }
+
+  @override
+  String get sys2_clinic_cut_none =>
+      'Kesinti yok — önce klinik yükselt (doktor/avukat).';
+
+  @override
+  String sys2_clinic_cut_preview(String pct) {
+    return 'Kesinti ~$pct% (5–45 dk, asla anında değil)';
+  }
+
+  @override
+  String get sys2_clinic_daily_ready =>
+      'Bugün 1 klinik hak hazır (doktor | avukat paylaşık).';
+
+  @override
+  String sys2_clinic_daily_used(String kind) {
+    return 'Bugünkü klinik hakkı kullanıldı ($kind).';
+  }
+
+  @override
+  String get sys2_clinic_monument_soft =>
+      'Anıt ≥60 → kesinti ×0.9 soft bonus aktif.';
+
+  @override
+  String get sys2_clinic_pool_title => 'Klinik havuzu · sonraki seviye';
+
+  @override
+  String get sys2_clinic_upgrade_role => 'Yükseltme: lider / subay / komutan.';
+
+  @override
+  String sys2_clinic_donate_ok(String resource, int amount) {
+    return '$resource: $amount kliniğe bağışlandı';
+  }
+
+  @override
+  String get sys2_clinic_eyebrow => 'LONCA BAKIMI';
+
+  @override
+  String get sys2_clinic_bands_title => 'KESİNTİ BANDLARI';
+
+  @override
+  String sys2_clinic_band_lv(int level, String pct) {
+    return 'Sv$level · %$pct';
+  }
+
+  @override
+  String sys2_clinic_band_now(String pct) {
+    return 'Şimdi · %$pct';
+  }
+
+  @override
+  String get sys2_clinic_services_title => 'HİZMETLER';
+
+  @override
+  String get sys2_clinic_service_doctor => 'Doktor';
+
+  @override
+  String get sys2_clinic_service_doctor_sub => 'Hastane — süre kes';
+
+  @override
+  String get sys2_clinic_service_lawyer => 'Avukat';
+
+  @override
+  String get sys2_clinic_service_lawyer_sub => 'Hapishane — kes + rüşvet bonus';
+
+  @override
+  String get sys2_clinic_maxed => 'Max seviye';
+
+  @override
+  String get sys2_clinic_pool_ready => 'Hazır';
+
+  @override
+  String get sys2_clinic_upgrade_cost_hint =>
+      'Havuzları doldur, subaylar yükseltsin.';
+
+  @override
+  String sys2_clinic_owned(int amount) {
+    return 'elde $amount';
+  }
+
+  @override
+  String get sys2_clinic_compact_hint =>
+      'Bağış, yükseltme ve kesinti bandları Lonca sekmesinde.';
+
+  @override
+  String get sys2_clinic_open_on_guild => 'Lonca sekmesinde aç';
+
+  @override
+  String get sys2_clinic_cut_none_short => 'Kesinti yok';
+
+  @override
+  String get sys2_clinic_daily_ready_short => 'Hak hazır';
+
+  @override
+  String sys2_clinic_daily_used_short(String kind) {
+    return 'Kullanıldı ($kind)';
+  }
+
+  @override
+  String get sys2_clinic_section_sub =>
+      'Doktor & avukat · günde 1 paylaşık hak';
+
+  @override
+  String get escape_fail_title => 'KAÇIŞ BAŞARISIZ';
+
+  @override
+  String get prison_escape_ok => 'Hapishaneden başarılı bir şekilde kaçtın!';
+
+  @override
+  String prison_escape_fail(int minutes) {
+    return 'Kaçma planı başarısız oldu! Bu hapis sürecinde tekrar kaçamazsın ve cezana $minutes dakika eklendi.';
+  }
+
+  @override
+  String get hospital_escape_ok =>
+      'Gizlice hastaneden kaçmayı başardın! Artık özgürsün.';
+
+  @override
+  String hospital_escape_fail(int minutes) {
+    return 'Doktorlar seni koridorda yakaladı! Bu hastane sürecinde tekrar kaçamazsın. Tedavin +$minutes dakika uzatıldı.';
+  }
 }

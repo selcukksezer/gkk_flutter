@@ -7,6 +7,7 @@ import '../../core/utils/reputation_tier.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../common/player_health_bar.dart';
 import '../layout/game_screen_background.dart';
 
 /// Combat stats — compact grid, AppColors + AppTextStyles (tasarım skill).
@@ -14,10 +15,12 @@ class CharacterCombatStatsPanel extends StatelessWidget {
   const CharacterCombatStatsPanel({
     super.key,
     required this.power,
+    required this.health,
     required this.maxHealth,
     required this.attack,
     required this.defense,
     required this.luck,
+    this.luckSubtitle,
     required this.pvpWinRate,
     required this.pvpRating,
     this.reputation,
@@ -26,10 +29,13 @@ class CharacterCombatStatsPanel extends StatelessWidget {
   });
 
   final String power;
-  final String maxHealth;
+  final int health;
+  final int maxHealth;
   final String attack;
   final String defense;
   final String luck;
+  /// Optional second line under Şans (e.g. base luck after Faz 1 unbake).
+  final String? luckSubtitle;
   final String pvpWinRate;
   final String pvpRating;
   final int? reputation;
@@ -54,8 +60,8 @@ class CharacterCombatStatsPanel extends StatelessWidget {
         icon: '${_iconBase}gucicon.png',
       ),
       _CombatStatDef(
-        label: 'HP',
-        value: maxHealth,
+        label: 'Can Kapasitesi',
+        value: _fmtCompact(maxHealth),
         icon: '${_iconBase}canicon.png',
       ),
       _CombatStatDef(
@@ -72,6 +78,8 @@ class CharacterCombatStatsPanel extends StatelessWidget {
         label: 'Şans',
         value: luck,
         icon: '${_iconBase}sansicon.png',
+        subtitle: luckSubtitle,
+        subtitleColor: AppColors.toxicNeon,
       ),
       _CombatStatDef(
         label: 'PvP Kazanma',
@@ -115,6 +123,10 @@ class CharacterCombatStatsPanel extends StatelessWidget {
               ),
             ),
           ),
+          if (maxHealth > 0) ...<Widget>[
+            const SizedBox(height: 10),
+            PlayerHealthBar(health: health, maxHealth: maxHealth, height: 9),
+          ],
           GameFixedGrid(
             crossAxisCount: 4,
             spacing: 4,

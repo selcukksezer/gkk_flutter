@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Personal Team (free) cannot provision Sign In with Apple.
+  com.apple.developer.applesignin removed so flutter run / device signing works.
+
+  Production SIWA restore checklist:
+  1) Paid Apple Developer Program (org or individual)
+  2) Enable "Sign In with Apple" on App ID com.gkk.gkkFlutter
+  3) Restore entitlement:
+     <key>com.apple.developer.applesignin</key>
+     <array><string>Default</string></array>
+  4) Regenerated provisioning profile must include the capability
+-->
+<plist version="1.0">
+<dict/>
+</plist>

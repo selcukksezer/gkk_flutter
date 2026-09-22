@@ -28,6 +28,11 @@ class SupabasePlayerRepository implements PlayerRepository {
       } catch (_) {
         // Presence heartbeat also applies regen; profile load still works.
       }
+      try {
+        await SupabaseService.client.rpc('apply_health_regen');
+      } catch (_) {
+        // Same as energy — optional until migration applied.
+      }
 
       final response = await SupabaseService.client
           .from('users')

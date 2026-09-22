@@ -1,21 +1,25 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../components/common/app_messenger.dart';
 import '../../../components/common/item_icon_view.dart';
 import '../../../components/common/gkk_tab_page_shell.dart';
+import '../../../components/kingdom/kingdom_market_blessing_banner.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../../core/services/retention_analytics.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
+import '../../../models/kingdom_market_blessing_model.dart';
 import '../../../models/night_market_model.dart';
+import '../../../providers/kingdom_market_blessing_provider.dart';
 import '../../../qa/qa_flags.dart';
 import '../../../theme/app_colors.dart';
 
-class NightMarketTab extends StatefulWidget {
+class NightMarketTab extends ConsumerStatefulWidget {
   const NightMarketTab({
     super.key,
     required this.onPurchased,
@@ -24,10 +28,11 @@ class NightMarketTab extends StatefulWidget {
   final VoidCallback onPurchased;
 
   @override
-  State<NightMarketTab> createState() => _NightMarketTabState();
+  ConsumerState<NightMarketTab> createState() => _NightMarketTabState();
 }
 
-class _NightMarketTabState extends State<NightMarketTab> with SingleTickerProviderStateMixin {
+class _NightMarketTabState extends ConsumerState<NightMarketTab>
+    with SingleTickerProviderStateMixin {
   NightMarketStatus _status = NightMarketStatus.closed;
   bool _loading = true;
   String? _buyingId;
@@ -176,6 +181,7 @@ class _NightMarketTabState extends State<NightMarketTab> with SingleTickerProvid
         ),
         children: <Widget>[
           _buildTimerBanner(),
+          const KingdomMarketBlessingBanner(locationLabel: 'Gece Pazarı'),
           if (_status.shadowBonus) ...<Widget>[
             const SizedBox(height: 10),
             DottedPanel(
@@ -200,12 +206,19 @@ class _NightMarketTabState extends State<NightMarketTab> with SingleTickerProvid
           else
             ..._status.offers.asMap().entries.map(
               (MapEntry<int, NightMarketOffer> entry) {
+                final KingdomMarketBlessingStatus blessing =
+                    ref.watch(kingdomMarketBlessingProvider);
                 final Widget card = GkkTabStaggerItem(
                   index: entry.key,
                   child: _NightMarketOfferCard(
                     offer: entry.value,
                     active: _status.active,
                     buyingId: _buyingId,
+                    displayGemPrice: blessing.applyDiscount(
+                      entry.value.gemPrice,
+                      'gems',
+                    ),
+                    baseGemPrice: entry.value.gemPrice,
                     onBuy: () => _buy(entry.value, 1),
                   ),
                 );
@@ -344,12 +357,16 @@ class _NightMarketOfferCard extends StatefulWidget {
     required this.active,
     required this.buyingId,
     required this.onBuy,
+    required this.displayGemPrice,
+    required this.baseGemPrice,
   });
 
   final NightMarketOffer offer;
   final bool active;
   final String? buyingId;
   final VoidCallback onBuy;
+  final int displayGemPrice;
+  final int baseGemPrice;
 
   @override
   State<_NightMarketOfferCard> createState() => _NightMarketOfferCardState();
@@ -471,13 +488,40 @@ class _NightMarketOfferCardState extends State<_NightMarketOfferCard>
                           ),
                         ],
                       ),
-                      Text(
-                        '💎 ${offer.gemPrice}',
-                        style: const TextStyle(
-                          color: AppColors.accentCyan,
-                          fontWeight: FontWeight.w700,
+                      if (widget.displayGemPrice < widget.baseGemPrice)
+                        Row(
+                          children: <Widget>[
+                            Text(
+                              '💎 ${widget.baseGemPrice}',
+                              style: TextStyle(
+                                color: AppColors.mutedTitanium.withValues(alpha: 0.7),
+                                fontSize: 11,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '💎 ${widget.displayGemPrice}',
+                              style: const TextStyle(
+                                color: AppColors.liquidGold,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '👑',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        )
+                      else
+                        Text(
+                          '💎 ${widget.displayGemPrice}',
+                          style: const TextStyle(
+                            color: AppColors.accentCyan,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

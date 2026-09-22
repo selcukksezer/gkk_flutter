@@ -1,3 +1,5 @@
+import 'dart:ui' show Color;
+
 import 'tutorial_step.dart';
 
 /// Known tutorial track identifiers.
@@ -21,14 +23,21 @@ abstract final class TutorialTrackId {
   static const String horseRace = 'horse_race';
   static const String mekans = 'mekans';
   static const String nightMarket = 'night_market';
+  static const String facilities = 'facilities';
+  static const String trade = 'trade';
+  static const String hospital = 'hospital';
+  static const String prison = 'prison';
 
-  /// Core path: home → dungeon → equip → character → enhance (+ season CTA).
+  /// Core path: home → dungeon → enhance → equip → character → season → hospital → prison.
   static const List<String> coreTracks = <String>[
     onboarding,
     dungeon,
     inventory,
-    character,
     enhancement,
+    character,
+    season,
+    hospital,
+    prison,
   ];
 
   static const List<String> dailyChainStepIds = <String>[
@@ -52,12 +61,27 @@ abstract final class TutorialAnchorId {
   static const String navDungeonTab = 'nav.dungeon_tab';
   static const String navCharacterTab = 'nav.character_tab';
   static const String navMenuTab = 'nav.menu_tab';
+  static const String navMenuEnhancement = 'nav.menu_enhancement';
+  static const String navMenuSeason = 'nav.menu_season';
+  static const String navMenuQuests = 'nav.menu_quests';
+  static const String navMenuShop = 'nav.menu_shop';
+  static const String navMenuCraft = 'nav.menu_craft';
+  static const String navMenuBank = 'nav.menu_bank';
+  static const String navMenuMarket = 'nav.menu_market';
+  static const String navMenuGuild = 'nav.menu_guild';
+  static const String navMenuPvp = 'nav.menu_pvp';
+  static const String navMenuFacilities = 'nav.menu_facilities';
+  static const String navMenuTrade = 'nav.menu_trade';
+  static const String navMenuHospital = 'nav.menu_hospital';
+  static const String navMenuPrison = 'nav.menu_prison';
+  static const String navBottomBar = 'nav.bottom_bar';
   static const String homePromo = 'home.promo';
   static const String homeHero = 'home.hero';
   static const String homeHotspot = 'home.hotspot';
   static const String homeCamp = 'home.camp';
   static const String homePantheon = 'home.pantheon';
   static const String dungeonZone0 = 'dungeon.zone_0';
+  static const String dungeonZone1Tab = 'dungeon.zone_1_tab';
   static const String dungeonEnterBtn = 'dungeon.enter_btn';
   static const String dungeonConfirmOk = 'dungeon.confirm_ok';
   static const String dungeonAttackBtn = 'dungeon.attack_btn';
@@ -65,9 +89,22 @@ abstract final class TutorialAnchorId {
   static const String inventoryEquipBtn = 'inventory.equip_btn';
   static const String characterPowerStat = 'character.power_stat';
   static const String characterStatPanel = 'character.stat_panel';
+  static const String characterClassAbilities = 'character.class_abilities';
   static const String enhanceItemSlot = 'enhance.item_slot';
+  static const String enhanceInventoryWeapon = 'enhance.inventory_weapon';
   static const String enhanceForgeBtn = 'enhance.forge_btn';
+  static const String bankInventoryItem = 'bank.inventory_item';
   static const String bankDepositBtn = 'bank.deposit_btn';
+  static const String craftRecipeFirst = 'craft.recipe_first';
+  static const String craftStartBtn = 'craft.start_btn';
+  static const String shopNightTabBar = 'shop.night_tab_bar';
+  static const String hudHealth = 'hud.health';
+  static const String facilitiesHubCard = 'facilities.hub_card';
+  static const String tradeSearchField = 'trade.search_field';
+  static const String hospitalHealBtn = 'hospital.heal_btn';
+  static const String prisonBailBtn = 'prison.bail_btn';
+  static const String hospitalAdTimerBtn = 'hospital.ad_timer_btn';
+  static const String prisonAdTimerBtn = 'prison.ad_timer_btn';
   static const String marketBrowseTab = 'market.browse_tab';
   static const String shopPotionRow = 'shop.potion_row';
   static const String shopNightTab = 'shop.night_tab';
@@ -80,8 +117,6 @@ abstract final class TutorialAnchorId {
   static const String characterCodexTile = 'character.codex_tile';
   static const String pvpNemesisPanel = 'pvp.nemesis_panel';
   static const String pvpFindMatch = 'pvp.find_match';
-  static const String craftRecipeList = 'craft.recipe_list';
-  static const String craftStartBtn = 'craft.start_btn';
   static const String guildHeader = 'guild.header';
   static const String guildJoinBtn = 'guild.join_btn';
   static const String siegeHubPanel = 'siege.hub_panel';
@@ -91,6 +126,58 @@ abstract final class TutorialAnchorId {
   static const String mekansList = 'mekans.list';
   static const String mekansMyCta = 'mekans.my_cta';
   static const String mekansArenaCta = 'mekans.arena_cta';
+}
+
+/// Track başına görsel kimlik — kart madalyonu, etiket ve accent rengi.
+class TutorialTrackMeta {
+  const TutorialTrackMeta(this.emoji, this.label, this.accent);
+
+  final String emoji;
+  final String label;
+  final Color accent;
+
+  static const Color _gold = Color(0xFFFFB800);
+  static const Color _cyan = Color(0xFF22D3EE);
+  static const Color _ruby = Color(0xFFE01E5A);
+  static const Color _green = Color(0xFF4ADE80);
+  static const Color _purple = Color(0xFFC084FC);
+  static const Color _orange = Color(0xFFFB923C);
+
+  static const Map<String, TutorialTrackMeta> _byTrack =
+      <String, TutorialTrackMeta>{
+    TutorialTrackId.onboarding: TutorialTrackMeta('🏕️', 'Başlangıç', _gold),
+    TutorialTrackId.dungeon: TutorialTrackMeta('🏰', 'Zindan', _ruby),
+    TutorialTrackId.inventory: TutorialTrackMeta('🎒', 'Envanter', _cyan),
+    TutorialTrackId.character: TutorialTrackMeta('🧙', 'Karakter', _purple),
+    TutorialTrackId.enhancement:
+        TutorialTrackMeta('⚒️', 'Geliştirme', _orange),
+    TutorialTrackId.bank: TutorialTrackMeta('🏦', 'Banka', _green),
+    TutorialTrackId.market: TutorialTrackMeta('💰', 'Pazar', _green),
+    TutorialTrackId.shop: TutorialTrackMeta('🛒', 'Mağaza', _cyan),
+    TutorialTrackId.season: TutorialTrackMeta('🎖️', 'Sezon', _gold),
+    TutorialTrackId.quests: TutorialTrackMeta('📋', 'Görevler', _purple),
+    TutorialTrackId.craft: TutorialTrackMeta('🔨', 'Üretim', _orange),
+    TutorialTrackId.guild: TutorialTrackMeta('🛡️', 'Lonca', _cyan),
+    TutorialTrackId.pvp: TutorialTrackMeta('⚔️', 'Arena', _ruby),
+    TutorialTrackId.siege: TutorialTrackMeta('🏯', 'Kuşatma', _ruby),
+    TutorialTrackId.dailyChain:
+        TutorialTrackMeta('📅', 'Günlük Rehber', _green),
+    TutorialTrackId.retentionIntro:
+        TutorialTrackMeta('✨', 'Keşifler', _purple),
+    TutorialTrackId.horseRace: TutorialTrackMeta('🐎', 'At Yarışı', _gold),
+    TutorialTrackId.mekans: TutorialTrackMeta('🍺', 'Mekanlar', _orange),
+    TutorialTrackId.nightMarket:
+        TutorialTrackMeta('🌙', 'Gece Pazarı', _purple),
+    TutorialTrackId.facilities: TutorialTrackMeta('🏭', 'Tesisler', _orange),
+    TutorialTrackId.trade: TutorialTrackMeta('🤝', 'Ticaret', _green),
+    TutorialTrackId.hospital: TutorialTrackMeta('🏥', 'Sağlık', _ruby),
+    TutorialTrackId.prison: TutorialTrackMeta('⛓️', 'Hapishane', _orange),
+  };
+
+  static TutorialTrackMeta forTrack(String trackId) {
+    return _byTrack[trackId] ??
+        const TutorialTrackMeta('✨', 'Rehber', _gold);
+  }
 }
 
 enum TutorialMode {
@@ -129,6 +216,7 @@ class TutorialStepV2 {
     this.requiresPrior = const <String>[],
     this.navigateToRoute,
     this.autoNavigateWhenPaused = false,
+    this.allowsBackgroundInteraction = false,
   });
 
   final String id;
@@ -145,8 +233,34 @@ class TutorialStepV2 {
   final String? navigateToRoute;
   final bool autoNavigateWhenPaused;
 
+  /// When true, narrative overlay dim ignores pointer events so the page can
+  /// scroll while the bottom coach card stays tappable.
+  final bool allowsBackgroundInteraction;
+
   bool get needsAnchor =>
       mode == TutorialMode.spotlightTap || mode == TutorialMode.highlightOnly;
+
+  /// Spotlight/highlight target must be tapped — no Devam / Sonra on card.
+  bool get requiresTargetTap =>
+      completion == TutorialCompletion.onTapAnchor &&
+      (mode == TutorialMode.spotlightTap ||
+          mode == TutorialMode.highlightOnly);
+
+  /// Bottom-nav tab must be tapped.
+  bool get requiresNavTap =>
+      requiresTargetTap &&
+      anchorId != null &&
+      anchorId!.startsWith('nav.');
+
+  /// Coach shows Devam/Sonra only for narrative / manual-dismiss steps.
+  bool get showsManualCta =>
+      mode == TutorialMode.narrative ||
+      completion == TutorialCompletion.onManualDismiss;
+
+  /// Waiting for a game event — never show Devam.
+  bool get waitsForGameEvent =>
+      completion == TutorialCompletion.onGameEvent ||
+      mode == TutorialMode.waitEvent;
 
   String? get preferredRoute {
     if (navigateToRoute != null && navigateToRoute!.isNotEmpty) {
@@ -205,6 +319,10 @@ abstract final class TutorialRouteTracks {
         route == TutorialRoutes.myMekan) {
       return TutorialTrackId.mekans;
     }
+    if (route == TutorialRoutes.facilities) return TutorialTrackId.facilities;
+    if (route == TutorialRoutes.trade) return TutorialTrackId.trade;
+    if (route == TutorialRoutes.hospital) return TutorialTrackId.hospital;
+    if (route == TutorialRoutes.prison) return TutorialTrackId.prison;
     return null;
   }
 }

@@ -11,17 +11,24 @@ import '../../core/utils/provider_scheduling.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/utils/crafting_queue_slots.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/crafting_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/crafting_provider.dart';
 import '../../providers/inventory_provider.dart';
+import '../../components/common/gkk_card.dart';
+import '../../components/common/universal_game_dialog.dart';
+import '../../theme/app_text_styles.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_controller.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../utils/logout_helper.dart';
 import 'crafting_utils.dart';
+import 'widgets/crafting_queue_slots_panel.dart';
 import 'widgets/crafting_main_ui.dart';
 import 'widgets/crafting_recipe_preview_dialog.dart';
 
@@ -196,6 +203,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
           recipeId: craftState.selectedRecipeId!,
           batchCount: craftState.selectedBatchCount,
           inventoryItems: ref.read(inventoryProvider).items,
+          maxQueueSlots: playerCraftingQueueSlots(ref.read(playerProvider).profile),
         );
 
     if (ok) {
@@ -211,12 +219,51 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
     }
   }
 
+  Future<bool> _expandCraftQueue() async {
+    final int currentSlots =
+        playerCraftingQueueSlots(ref.read(playerProvider).profile);
+    final int? gemCost = nextCraftQueueSlotUnlockCost(currentSlots);
+    if (gemCost == null) return false;
+
+    if (!mounted) return false;
+    final bool confirmed = await showCraftQueueSlotUnlockDialog(
+      context,
+      nextSlot: currentSlots + 1,
+      gemCost: gemCost,
+      currentSlots: currentSlots,
+    );
+    if (!confirmed) return false;
+
+    final bool ok =
+        await ref.read(craftingProvider.notifier).expandCraftQueueSlot();
+    if (ok) {
+      await ref.read(playerProvider.notifier).loadProfile();
+      if (mounted) {
+        final int slots =
+            playerCraftingQueueSlots(ref.read(playerProvider).profile);
+        AppMessenger.showSuccess(
+          context,
+          'Üretim kuyruğu genişletildi · $slots/$craftingQueueMaxSlots slot',
+          title: 'Slot Açıldı',
+        );
+      }
+    } else {
+      final String? err = ref.read(craftingProvider).error;
+      if (err != null) _showSnack(err);
+    }
+    return ok;
+  }
+
   Future<void> _openRecipePreview(CraftRecipe recipe) async {
     await showCraftingRecipePreviewDialog(
       context: context,
       ref: ref,
       recipe: recipe,
-      onCraft: _craft,
+      onCraft: () async {
+        await TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.craftStartBtn);
+        return _craft();
+      },
+      onExpandQueue: _expandCraftQueue,
     );
   }
 
@@ -247,6 +294,9 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
   Widget build(BuildContext context) {
     final craftState = ref.watch(craftingProvider);
     final hasMaterials = ref.watch(hasMaterialsProvider);
+    final int queueMax =
+        playerCraftingQueueSlots(ref.watch(playerProvider).profile);
+    final double playerGems = ref.watch(playerProvider).profile?.gems ?? 0;
 
     Future<void> onLogout() async {
       await performLogout(ref);
@@ -255,7 +305,9 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
     // Filtered recipes
     final List<CraftRecipe> filtered = craftState.recipes
         .where((CraftRecipe r) => _recipeMatchesTab(r, craftState.selectedTab))
-        .toList();
+        .toList(growable: false);
+    final bool craftPickCoach =
+        ref.watch(tutorialProvider).activeStep?.id == 'craft_browse_recipes';
 
     return Scaffold(
       appBar: GameTopBar(title: context.l10n.routeCrafting, onLogout: onLogout),
@@ -284,16 +336,14 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                   style: TextStyle(color: AppColors.mutedTitanium.withValues(alpha: 0.7)),
                                 ),
                               )
-                            : TutorialAnchorScope(
-                                id: TutorialAnchorId.craftRecipeList,
-                                child: GridView.builder(
+                            : GridView.builder(
                                 padding: GameScrollLayout.withClearance(
                                   context,
                                   EdgeInsets.fromLTRB(
                                     12,
                                     0,
                                     12,
-                                    12 + (craftState.queue.isNotEmpty ? 88 : 0),
+                                    12 + 96,
                                   ),
                                 ),
                                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -306,7 +356,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                 itemBuilder: (context, index) {
                                   final CraftRecipe recipe = filtered[index];
                                   final bool isSelected = craftState.selectedRecipeId == recipe.id;
-                                  return CraftingRecipeGridTile(
+                                  Widget tile = CraftingRecipeGridTile(
                                     index: index,
                                     recipe: recipe,
                                     isSelected: isSelected,
@@ -315,12 +365,20 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                       batchCount: craftState.selectedBatchCount,
                                     ),
                                     onTap: () {
-                                      unawaited(
-                                        TutorialTriggers.onAnchorTap(
-                                          ref,
-                                          TutorialAnchorId.craftRecipeList,
-                                        ),
-                                      );
+                                      if (craftPickCoach && index != 0) {
+                                        ref
+                                            .read(tutorialProvider.notifier)
+                                            .registerWrongTap();
+                                        return;
+                                      }
+                                      if (index == 0) {
+                                        unawaited(
+                                          TutorialTriggers.onAnchorTap(
+                                            ref,
+                                            TutorialAnchorId.craftRecipeFirst,
+                                          ),
+                                        );
+                                      }
                                       if (isSelected) {
                                         ref.read(craftingProvider.notifier).selectRecipe(null);
                                         return;
@@ -328,32 +386,41 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                                       _openRecipePreview(recipe);
                                     },
                                   );
+                                  if (index == 0) {
+                                    tile = TutorialAnchorScope(
+                                      id: TutorialAnchorId.craftRecipeFirst,
+                                      child: tile,
+                                    );
+                                  }
+                                  return tile;
                                 },
-                              ),
                               ),
                       ),
                     ],
                   ),
-                  if (craftState.queue.isNotEmpty)
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: GameScrollLayout.bottomInset(context) - MediaQuery.paddingOf(context).bottom + 4,
-                      child: Align(
-                        alignment: Alignment.bottomRight,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
-                          child: _QueueSection(
-                            queue: craftState.queue,
-                            isCancelling: craftState.isCancelling,
-                            queueTick: _queueTick,
-                            onClaim: _claim,
-                            onAcknowledge: _acknowledge,
-                            onCancel: _cancel,
-                          ),
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: GameScrollLayout.bottomInset(context) - MediaQuery.paddingOf(context).bottom + 4,
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: _QueueSection(
+                          queue: craftState.queue,
+                          queueMax: queueMax,
+                          playerGems: playerGems,
+                          isCancelling: craftState.isCancelling,
+                          isExpandingQueue: craftState.isExpandingQueue,
+                          queueTick: _queueTick,
+                          onClaim: _claim,
+                          onAcknowledge: _acknowledge,
+                          onCancel: _cancel,
+                          onExpandQueue: _expandCraftQueue,
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
       ),
@@ -367,19 +434,27 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
 class _QueueSection extends StatefulWidget {
   const _QueueSection({
     required this.queue,
+    required this.queueMax,
+    required this.playerGems,
     required this.isCancelling,
+    required this.isExpandingQueue,
     required this.queueTick,
     required this.onClaim,
     required this.onAcknowledge,
     required this.onCancel,
+    required this.onExpandQueue,
   });
 
   final List<CraftQueueItem> queue;
+  final int queueMax;
+  final double playerGems;
   final bool isCancelling;
+  final bool isExpandingQueue;
   final ValueNotifier<int> queueTick;
   final Future<void> Function(String) onClaim;
   final Future<void> Function(String) onAcknowledge;
   final Future<void> Function(String) onCancel;
+  final Future<bool> Function() onExpandQueue;
 
   @override
   State<_QueueSection> createState() => _QueueSectionState();
@@ -392,142 +467,197 @@ class _QueueSectionState extends State<_QueueSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.18)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            GameScreenBackground.spaceNavy.withValues(alpha: 0.95),
-            AppColors.carbonVoid.withValues(alpha: 0.92),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              AppColors.spaceNavy.withValues(alpha: 0.97),
+              AppColors.carbonVoid.withValues(alpha: 0.99),
+            ],
+          ),
+          border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.28)),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: AppColors.liquidGold.withValues(alpha: 0.12),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AppColors.carbonVoid.withValues(alpha: 0.5),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Row(
-                children: <Widget>[
-                  Text(
-                    '📦 Üretim Kuyruğu (${widget.queue.length})',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      color: AppColors.liquidGold,
-                    ),
-                  ),
-                  const Spacer(),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Text(
-                      '▼',
-                      style: TextStyle(color: Colors.white60),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 220),
-            firstChild: const SizedBox.shrink(),
-            secondChild: Container(
-              constraints: const BoxConstraints(maxHeight: 390),
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-              child: ValueListenableBuilder<int>(
-                valueListenable: widget.queueTick,
-                builder: (BuildContext context, int _, Widget? __) {
-                  return ListView.separated(
-                shrinkWrap: true,
-                itemCount: widget.queue.length,
-                separatorBuilder: (_, separatorIndex) =>
-                    const SizedBox(height: 8),
-                itemBuilder: (BuildContext context, int index) {
-                  final CraftQueueItem item = widget.queue[index];
-                  final bool claimPending = _pendingClaims.contains(item.id);
-                  final bool ackPending = _pendingAcks.contains(item.id);
-                  return _QueueItemTile(
-                    item: item,
-                    isCancelling: widget.isCancelling,
-                    claimPending: claimPending,
-                    ackPending: ackPending,
-                    onClaim: () async {
-                      if (claimPending) return;
-                      setState(() => _pendingClaims.add(item.id));
-                      try {
-                        await widget.onClaim(item.id);
-                      } finally {
-                        if (mounted) {
-                          setState(() => _pendingClaims.remove(item.id));
-                        }
-                      }
-                    },
-                    onAcknowledge: () async {
-                      if (ackPending) return;
-                      setState(() => _pendingAcks.add(item.id));
-                      try {
-                        await widget.onAcknowledge(item.id);
-                      } finally {
-                        if (mounted) {
-                          setState(() => _pendingAcks.remove(item.id));
-                        }
-                      }
-                    },
-                    onCancel: () async {
-                      final bool? ok = await showDialog<bool>(
-                        context: context,
-                        builder: (BuildContext c) => AlertDialog(
-                          backgroundColor: const Color(0xFF111827),
-                          title: const Text('⚠️ Üretim İptal Et?'),
-                          content: const Text(
-                            'Bu işlem geri alınamaz. Ödül geri verilmeyecektir!',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.pop(c, false),
-                              child: const Text('Vazgeç'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(c, true),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.red,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.precision_manufacturing_rounded,
+                        size: 18,
+                        color: AppColors.liquidGold.withValues(alpha: 0.95),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'Üretim Kuyruğu',
+                              style: AppTextStyles.captionBold.copyWith(
+                                color: AppColors.liquidGold,
                               ),
-                              child: const Text('Evet, İptal Et'),
+                            ),
+                            Text(
+                              '${widget.queue.length} / ${widget.queueMax} slot dolu',
+                              style: AppTextStyles.micro.copyWith(
+                                color: AppColors.mutedTitanium,
+                              ),
                             ),
                           ],
                         ),
-                      );
-                      if (ok == true) {
-                        await widget.onCancel(item.id);
-                      }
-                    },
-                  );
-                },
-              );
-                },
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          color: AppColors.darkObsidian.withValues(alpha: 0.75),
+                          border: Border.all(
+                            color: AppColors.mutedTitanium.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Text(
+                          '${widget.queueMax}/$craftingQueueMaxSlots',
+                          style: AppTextStyles.micro.copyWith(
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: AppColors.mutedTitanium.withValues(alpha: 0.9),
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-          ),
-        ],
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 220),
+              firstChild: const SizedBox.shrink(),
+              secondChild: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: ValueListenableBuilder<int>(
+                  valueListenable: widget.queueTick,
+                  builder: (BuildContext context, int _, Widget? __) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        CraftingQueueSlotsPanel(
+                          unlockedSlots: widget.queueMax,
+                          queueLength: widget.queue.length,
+                          playerGems: widget.playerGems,
+                          isExpanding: widget.isExpandingQueue,
+                          onRequestUnlock: () => widget.onExpandQueue(),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        if (widget.queue.isEmpty)
+                          GkkCard(
+                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                            accentColor: AppColors.mutedTitanium,
+                            borderRadius: AppSpacing.radiusMd,
+                            child: Text(
+                              'Kuyruk boş — açık slotlara üretim ekleyebilirsin.',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          )
+                        else
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 260),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              physics: const ClampingScrollPhysics(),
+                              itemCount: widget.queue.length,
+                              separatorBuilder: (_, int separatorIndex) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (BuildContext context, int index) {
+                                final CraftQueueItem item = widget.queue[index];
+                                final bool claimPending = _pendingClaims.contains(item.id);
+                                final bool ackPending = _pendingAcks.contains(item.id);
+                                return _QueueItemTile(
+                                  item: item,
+                                  isCancelling: widget.isCancelling,
+                                  claimPending: claimPending,
+                                  ackPending: ackPending,
+                                  onClaim: () async {
+                                    if (claimPending) return;
+                                    setState(() => _pendingClaims.add(item.id));
+                                    try {
+                                      await widget.onClaim(item.id);
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _pendingClaims.remove(item.id));
+                                      }
+                                    }
+                                  },
+                                  onAcknowledge: () async {
+                                    if (ackPending) return;
+                                    setState(() => _pendingAcks.add(item.id));
+                                    try {
+                                      await widget.onAcknowledge(item.id);
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _pendingAcks.remove(item.id));
+                                      }
+                                    }
+                                  },
+                                  onCancel: () async {
+                                    final bool? ok = await UniversalGameDialog.show(
+                                      context,
+                                      title: 'Üretimi İptal Et?',
+                                      message:
+                                          'Bu işlem geri alınamaz. Harcanan malzemeler iade edilmez.',
+                                      confirmLabel: 'İptal Et',
+                                      cancelLabel: 'Vazgeç',
+                                      accent: AppColors.mysticRuby,
+                                    );
+                                    if (ok == true) {
+                                      await widget.onCancel(item.id);
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              crossFadeState: _expanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -585,34 +715,37 @@ class _QueueItemTile extends StatelessWidget {
     final bool awaitingFinalize =
         !item.isCompleted && remainSec == 0 && !isFailed;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isFailed
-            ? Colors.red.withValues(alpha: 0.12)
-            : isReady
-            ? Colors.green.withValues(alpha: 0.12)
-            : Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isFailed
-              ? Colors.red.withValues(alpha: 0.4)
-              : isReady
-              ? Colors.green.withValues(alpha: 0.4)
-              : Colors.white12,
-        ),
+    final Color accent = isFailed
+        ? AppColors.mysticRuby
+        : isReady
+            ? AppColors.toxicNeon
+            : AppColors.accentPurple;
+
+    return GkkCard(
+      padding: const EdgeInsets.all(10),
+      accentColor: accent,
+      borderGlow: isReady || isFailed,
+      borderRadius: AppSpacing.radiusMd,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          accent.withValues(alpha: isReady || isFailed ? 0.14 : 0.08),
+          AppColors.darkObsidian.withValues(alpha: 0.92),
+        ],
       ),
       child: Column(
         children: <Widget>[
           Row(
             children: <Widget>[
               Container(
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.spaceNavy.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  border: Border.all(color: accent.withValues(alpha: 0.35)),
                 ),
                 child: ItemIconView(
                   iconValue: item.recipeIcon?.trim().isNotEmpty == true
@@ -632,10 +765,7 @@ class _QueueItemTile extends StatelessWidget {
                       item.outputName?.isNotEmpty == true
                           ? item.outputName!
                           : item.recipeName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTextStyles.captionBold,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -643,9 +773,9 @@ class _QueueItemTile extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           'x${item.batchCount} adet',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white60,
+                          style: AppTextStyles.micro.copyWith(
+                            color: AppColors.mutedTitanium,
+                            letterSpacing: 0.2,
                           ),
                         ),
                         if (item.isCompleted &&
@@ -658,14 +788,17 @@ class _QueueItemTile extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: const Color(0x33D97706),
+                              borderRadius: BorderRadius.circular(999),
+                              color: AppColors.liquidGold.withValues(alpha: 0.16),
+                              border: Border.all(
+                                color: AppColors.liquidGold.withValues(alpha: 0.35),
+                              ),
                             ),
                             child: Text(
                               '+${(item.xpReward ?? 0) * item.batchCount} XP',
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Color(0xFFFDE68A),
+                              style: AppTextStyles.micro.copyWith(
+                                color: AppColors.liquidGold,
+                                letterSpacing: 0.2,
                               ),
                             ),
                           ),
@@ -676,112 +809,137 @@ class _QueueItemTile extends StatelessWidget {
               ),
               if (!isFailed && !isClaimed)
                 Text(
-                  item.isCompleted ? 'Hazır!' : _formatDuration(remainSec),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: item.isCompleted
-                        ? Colors.greenAccent
-                        : Colors.yellowAccent,
-                    fontWeight: FontWeight.w700,
+                  item.isCompleted ? 'Hazır' : _formatDuration(remainSec),
+                  style: AppTextStyles.captionBold.copyWith(
+                    fontSize: 11,
+                    color: item.isCompleted ? AppColors.toxicNeon : AppColors.liquidGold,
                   ),
                 ),
             ],
           ),
           if (!item.isCompleted && !isFailed) ...<Widget>[
-            const SizedBox(height: 7),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
-                minHeight: 6,
+                minHeight: 5,
                 value: progress,
-                backgroundColor: Colors.white.withValues(alpha: 0.10),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  AppColors.cyberFuchsia,
-                ),
+                backgroundColor: AppColors.darkObsidian,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentPurple),
               ),
             ),
           ],
           const SizedBox(height: 8),
           if (isReady)
-            FilledButton(
+            _QueueActionButton(
+              label: claimPending ? 'Talep ediliyor...' : 'Talep Et',
               onPressed: claimPending ? null : onClaim,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF15803D),
-                minimumSize: const Size.fromHeight(32),
-              ),
-              child: Text(claimPending ? 'Talep Ediliyor...' : '✓ Talep Et'),
+              accent: AppColors.toxicNeon,
             )
           else if (isFailed)
-            FilledButton(
+            _QueueActionButton(
+              label: ackPending ? 'İşleniyor...' : 'Tamam',
               onPressed: ackPending ? null : onAcknowledge,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1D4ED8),
-                minimumSize: const Size.fromHeight(32),
-              ),
-              child: Text(ackPending ? 'İşleniyor...' : 'Tamam'),
+              accent: AppColors.accentCyan,
             )
           else if (isClaimed)
-            Container(
-              width: double.infinity,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white.withValues(alpha: 0.10),
-              ),
-              child: const Text(
-                '✓ Talep Edildi',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-              ),
-            )
+            _QueueStatusChip(label: 'Talep edildi', color: AppColors.mutedTitanium)
           else if (awaitingFinalize)
-            Container(
-              width: double.infinity,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white.withValues(alpha: 0.10),
-              ),
-              child: const Text(
-                'Tamamlanıyor...',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-              ),
-            )
+            _QueueStatusChip(label: 'Tamamlanıyor...', color: AppColors.mutedTitanium)
           else if (!isClaimed)
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Container(
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white.withValues(alpha: 0.10),
-                    ),
-                    child: const Text(
-                      'Üretiliyor...',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+                  child: _QueueStatusChip(label: 'Üretiliyor...', color: AppColors.mutedTitanium),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 SizedBox(
-                  height: 32,
-                  child: FilledButton(
+                  width: 40,
+                  height: 36,
+                  child: IconButton(
                     onPressed: isCancelling ? null : onCancel,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0x7FD32F2F),
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.mysticRuby.withValues(alpha: 0.18),
+                      foregroundColor: AppColors.mysticRuby,
                     ),
-                    child: const Text('✕'),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    tooltip: 'İptal',
                   ),
                 ),
               ],
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _QueueActionButton extends StatelessWidget {
+  const _QueueActionButton({
+    required this.label,
+    required this.onPressed,
+    required this.accent,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        child: Ink(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            gradient: onPressed == null
+                ? null
+                : LinearGradient(
+                    colors: <Color>[accent, accent.withValues(alpha: 0.75)],
+                  ),
+            color: onPressed == null ? AppColors.darkObsidian : null,
+            border: Border.all(color: accent.withValues(alpha: 0.45)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.captionBold.copyWith(
+                color: onPressed == null ? AppColors.mutedTitanium : AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QueueStatusChip extends StatelessWidget {
+  const _QueueStatusChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        color: AppColors.darkObsidian.withValues(alpha: 0.75),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.captionBold.copyWith(color: color, fontSize: 11),
       ),
     );
   }

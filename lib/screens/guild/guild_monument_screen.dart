@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/utils/gold_format.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../models/guild_model.dart';
 import '../../providers/guild_monument_provider.dart';
@@ -16,6 +17,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/logout_helper.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import 'widgets/guild_clinic_card.dart';
 import 'widgets/guild_monument_hero_card.dart';
 import 'widgets/guild_monument_ui.dart';
 import 'widgets/monument_donate_amount_dialog.dart';
@@ -28,6 +30,8 @@ class GuildMonumentScreen extends ConsumerStatefulWidget {
 }
 
 class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
+  bool _bonusesExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -79,11 +83,17 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
       };
 
   Future<void> _upgrade() async {
-    final int? newLevel = await ref.read(guildMonumentProvider.notifier).upgradeMonument();
+    final result = await ref.read(guildMonumentProvider.notifier).upgradeMonument();
     if (!mounted) return;
 
-    if (newLevel != null) {
-      AppMessenger.show(context, 'Anıt seviye $newLevel oldu');
+    if (result != null) {
+      final String vaultNote = result.goldFromVault > 0
+          ? ' · Kasadan −${formatCompactGold(result.goldFromVault)}g'
+          : '';
+      AppMessenger.show(
+        context,
+        'Anıt seviye ${result.newLevel} oldu$vaultNote',
+      );
       return;
     }
 
@@ -91,6 +101,64 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
     if (error != null) {
       AppMessenger.showError(context, error);
     }
+  }
+
+  Widget _contributorRow({
+    required int rank,
+    required MonumentContributor contributor,
+    required bool isMe,
+  }) {
+    final String rankLabel = switch (rank) {
+      1 => '🥇',
+      2 => '🥈',
+      3 => '🥉',
+      _ => '#$rank',
+    };
+    final Widget row = Row(
+      children: <Widget>[
+        SizedBox(
+          width: 30,
+          child: Text(
+            rankLabel,
+            style: AppTextStyles.body.copyWith(
+              fontSize: rank <= 3 ? 15 : 12,
+              color: AppColors.mutedTitanium,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            isMe ? '${contributor.username} (sen)' : contributor.username,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 13,
+              fontWeight: isMe ? FontWeight.w800 : FontWeight.w500,
+              color: isMe ? AppColors.toxicNeon : null,
+            ),
+          ),
+        ),
+        Text(
+          '${contributor.contributionScore}',
+          style: TextStyle(
+            color: isMe ? AppColors.toxicNeon : AppColors.liquidGold,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+
+    if (!isMe) return row;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.toxicNeon.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.toxicNeon.withValues(alpha: 0.3)),
+      ),
+      child: row,
+    );
   }
 
   @override
@@ -166,6 +234,12 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                 onUpgrade: _upgrade,
                               ),
                             ),
+                            GameScrollSection(
+                              child: GuildClinicCard(
+                                canUpgrade: canUpgrade,
+                                mode: GuildClinicCardMode.compact,
+                              ),
+                            ),
                             if (dashboard.nextCost != null &&
                                 dashboard.nextCost!['max_level'] == true)
                               GameScrollSection(
@@ -235,11 +309,22 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                 ],
                               ),
                             ),
+                            if (upgradeProgress != null)
+                              GameScrollSection(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    monumentSectionTitle('Sonraki seviye kaynakları'),
+                                    MonumentUi.titleSpacer,
+                                    monumentNextLevelResourcePanel(progress: upgradeProgress),
+                                  ],
+                                ),
+                              ),
                             GameScrollSection(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: <Widget>[
-                                  monumentSectionTitle('Lonca Anıt Havuzu'),
+                                  monumentSectionTitle('Lonca anıt stoğu'),
                                   MonumentUi.titleSpacer,
                                   GameGridColumns(
                                     crossAxisCount: 2,
@@ -262,8 +347,8 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                         valueColor: AppColors.coralFlare,
                                       ),
                                       monumentResourceTile(
-                                        label: 'Altın Havuzu',
-                                        shortLabel: 'Altın',
+                                        label: 'Lonca Kasası',
+                                        shortLabel: 'Kasa 🪙',
                                         value: guild.goldPool,
                                         valueColor: AppColors.liquidGold,
                                       ),
@@ -276,16 +361,52 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: <Widget>[
-                                  monumentSectionTitle('✨ Anıt Bonusları', accent: AppColors.cyberFuchsia),
-                                  MonumentUi.titleSpacer,
-                                  for (int i = 0; i < kMonumentBonuses.length; i++) ...<Widget>[
-                                    if (i > 0) MonumentUi.itemSpacer,
-                                    monumentBonusRow(
-                                      level: kMonumentBonuses[i].$1,
-                                      title: kMonumentBonuses[i].$2,
-                                      effect: kMonumentBonuses[i].$3,
-                                      unlocked: monLevel >= kMonumentBonuses[i].$1,
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => setState(() => _bonusesExpanded = !_bonusesExpanded),
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        child: Row(
+                                          children: <Widget>[
+                                            Expanded(
+                                              child: monumentSectionTitle(
+                                                '✨ Anıt Bonusları',
+                                                accent: AppColors.cyberFuchsia,
+                                              ),
+                                            ),
+                                            Text(
+                                              '${kMonumentBonuses.where((b) => monLevel >= b.$1).length}/${kMonumentBonuses.length}',
+                                              style: AppTextStyles.caption.copyWith(
+                                                color: AppColors.mutedTitanium,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              _bonusesExpanded
+                                                  ? Icons.expand_less_rounded
+                                                  : Icons.expand_more_rounded,
+                                              color: AppColors.cyberFuchsia,
+                                              size: 22,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
+                                  ),
+                                  if (_bonusesExpanded) ...<Widget>[
+                                    MonumentUi.titleSpacer,
+                                    for (int i = 0; i < kMonumentBonuses.length; i++) ...<Widget>[
+                                      if (i > 0) MonumentUi.itemSpacer,
+                                      monumentBonusRow(
+                                        level: kMonumentBonuses[i].$1,
+                                        title: kMonumentBonuses[i].$2,
+                                        effect: kMonumentBonuses[i].$3,
+                                        unlocked: monLevel >= kMonumentBonuses[i].$1,
+                                      ),
+                                    ],
                                   ],
                                 ],
                               ),
@@ -300,7 +421,7 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                     borderColor: AppColors.liquidGold.withValues(alpha: 0.28),
                                     child: dashboard.contributors.isEmpty
                                         ? Text(
-                                            'Henüz katkı kaydı bulunmuyor.',
+                                            'Henüz katkı kaydı bulunmuyor. İlk bağışı yap, listenin başına geç!',
                                             style: AppTextStyles.caption.copyWith(
                                               color: AppColors.mutedTitanium,
                                             ),
@@ -314,23 +435,50 @@ class _GuildMonumentScreenState extends ConsumerState<GuildMonumentScreen> {
                                                         ? 0
                                                         : 6,
                                                   ),
+                                                  child: _contributorRow(
+                                                    rank: i + 1,
+                                                    contributor: dashboard.contributors[i],
+                                                    isMe: dashboard.contributors[i].userId ==
+                                                        profile?.authId,
+                                                  ),
+                                                ),
+                                              if (dashboard.myStats.contributionScore > 0 &&
+                                                  !dashboard.contributors.any(
+                                                    (MonumentContributor c) =>
+                                                        c.userId == profile?.authId,
+                                                  )) ...<Widget>[
+                                                const SizedBox(height: 8),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 10, vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.toxicNeon
+                                                        .withValues(alpha: 0.08),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    border: Border.all(
+                                                      color: AppColors.toxicNeon
+                                                          .withValues(alpha: 0.3),
+                                                    ),
+                                                  ),
                                                   child: Row(
                                                     children: <Widget>[
                                                       Text(
-                                                        '#${i + 1} ${dashboard.contributors[i].username}',
-                                                        style: AppTextStyles.body.copyWith(fontSize: 13),
+                                                        'Sen (liste dışı)',
+                                                        style: AppTextStyles.body
+                                                            .copyWith(fontSize: 13),
                                                       ),
                                                       const Spacer(),
                                                       Text(
-                                                        '${dashboard.contributors[i].contributionScore}',
+                                                        '${dashboard.myStats.contributionScore}',
                                                         style: const TextStyle(
-                                                          color: AppColors.liquidGold,
+                                                          color: AppColors.toxicNeon,
                                                           fontWeight: FontWeight.w800,
                                                         ),
                                                       ),
                                                     ],
                                                   ),
                                                 ),
+                                              ],
                                             ],
                                           ),
                                   ),

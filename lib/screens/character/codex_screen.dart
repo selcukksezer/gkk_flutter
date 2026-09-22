@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/retention_analytics.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/codex_model.dart';
@@ -30,11 +31,17 @@ class CodexScreen extends ConsumerStatefulWidget {
 class _CodexScreenState extends ConsumerState<CodexScreen> {
   CodexDashboard? _dashboard;
   final Map<String, List<CodexEntry>> _entries = <String, List<CodexEntry>>{};
+  final Map<String, bool> _truncated = <String, bool>{};
   bool _loading = true;
   bool _claiming = false;
   String? _error;
   late int _categoryIndex;
   String _rarityFilter = 'all';
+  String _searchQuery = '';
+  final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _milestoneScroll = ScrollController();
+
+  static const int _pageLimit = 200;
 
   static final List<(String type, String label, IconData icon)> _tabs =
       <(String, String, IconData)>[
@@ -49,6 +56,13 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
     final int idx = _tabs.indexWhere((t) => t.$1 == widget.initialCategory);
     _categoryIndex = idx >= 0 ? idx : 0;
     _loadAll();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _milestoneScroll.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAll() async {
@@ -69,23 +83,30 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
           params: <String, dynamic>{
             'p_type': type,
             'p_offset': 0,
-            'p_limit': 120,
+            'p_limit': _pageLimit,
           },
         );
         if (raw is Map && raw['success'] == true) {
           final List<dynamic> rows =
               raw['entries'] is List ? raw['entries'] as List : const <dynamic>[];
-          _entries[type] = rows
+          final List<CodexEntry> list = rows
               .whereType<Map>()
               .map(
                 (dynamic r) =>
                     CodexEntry.fromJson(Map<String, dynamic>.from(r)),
               )
               .toList(growable: false);
+          _entries[type] = list;
+          final int? total = (raw['total'] as num?)?.toInt();
+          _truncated[type] =
+              total != null ? list.length < total : list.length >= _pageLimit;
         }
       }
       if (!mounted) return;
       setState(() => _loading = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToClaimableMilestone();
+      });
       if (widget.autoClaim && (_dashboard?.claimableMilestones ?? 0) > 0) {
         await _claimNextMilestone();
       }
@@ -93,10 +114,25 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = userFacingErrorMessage(e);
         });
       }
     }
+  }
+
+  void _scrollToClaimableMilestone() {
+    final CodexDashboard? dash = _dashboard;
+    if (dash == null || !_milestoneScroll.hasClients) return;
+    final int idx =
+        dash.milestones.indexWhere((CodexMilestone m) => m.claimable);
+    if (idx < 0) return;
+    const double cardW = 64 + 7;
+    final double target = (idx * cardW) - 24;
+    _milestoneScroll.animateTo(
+      target.clamp(0.0, _milestoneScroll.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Future<void> _claimNextMilestone() async {
@@ -105,7 +141,6 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
 
     setState(() => _claiming = true);
     try {
-      // Always claim-all — button shows N ödül, must pay all N.
       final dynamic res =
           await SupabaseService.client.rpc('claim_all_codex_milestones');
       if (!mounted) return;
@@ -135,8 +170,10 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
           (res is Map ? res['error']?.toString() : null) ?? 'Ödül alınamadı.',
         );
       }
-    } catch (_) {
-      if (mounted) AppMessenger.showError(context, 'Ödül alınamadı.');
+    } catch (e) {
+      if (mounted) {
+        AppMessenger.showError(context, userFacingErrorMessage(e));
+      }
     } finally {
       if (mounted) setState(() => _claiming = false);
     }
@@ -174,24 +211,42 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
 
   List<CodexEntry> get _filteredEntries {
     final List<CodexEntry> all = _activeEntries;
-    return switch (_rarityFilter) {
-      'legendary' => all
-          .where(
-            (CodexEntry e) =>
-                e.isDiscovered &&
-                (e.rarity == 'legendary' || e.rarity == 'mythic'),
-          )
-          .toList(growable: false),
-      'epic' => all
-          .where((CodexEntry e) => e.isDiscovered && e.rarity == 'epic')
-          .toList(growable: false),
-      'rare' => all
-          .where((CodexEntry e) => e.isDiscovered && e.rarity == 'rare')
-          .toList(growable: false),
-      'hidden' =>
-        all.where((CodexEntry e) => !e.isDiscovered).toList(growable: false),
+    final String q = _searchQuery.trim().toLowerCase();
+    Iterable<CodexEntry> base = switch (_rarityFilter) {
+      'legendary' => all.where(
+          (CodexEntry e) =>
+              e.isDiscovered &&
+              (e.rarity == 'legendary' || e.rarity == 'mythic'),
+        ),
+      'epic' => all.where(
+          (CodexEntry e) => e.isDiscovered && e.rarity == 'epic',
+        ),
+      'rare' => all.where(
+          (CodexEntry e) => e.isDiscovered && e.rarity == 'rare',
+        ),
+      'common' => all.where(
+          (CodexEntry e) =>
+              e.isDiscovered &&
+              (e.rarity == 'common' ||
+                  e.rarity == 'uncommon' ||
+                  e.rarity == null ||
+                  e.rarity!.isEmpty),
+        ),
+      'hidden' => all.where((CodexEntry e) => !e.isDiscovered),
       _ => all,
     };
+    if (q.isNotEmpty) {
+      base = base.where((CodexEntry e) {
+        if (!e.isDiscovered) {
+          return e.hintLabel.toLowerCase().contains(q) ||
+              e.entryKey.toLowerCase().contains(q);
+        }
+        return e.displayName.toLowerCase().contains(q) ||
+            e.hintLabel.toLowerCase().contains(q) ||
+            e.entryKey.toLowerCase().contains(q);
+      });
+    }
+    return base.toList(growable: false);
   }
 
   Map<String, (int, int)> get _categoryCounts {
@@ -229,6 +284,18 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
         count((CodexEntry e) => e.isDiscovered && e.rarity == 'rare'),
       ),
       (
+        'common',
+        'Yaygın',
+        count(
+          (CodexEntry e) =>
+              e.isDiscovered &&
+              (e.rarity == 'common' ||
+                  e.rarity == 'uncommon' ||
+                  e.rarity == null ||
+                  e.rarity!.isEmpty),
+        ),
+      ),
+      (
         'hidden',
         'Gizli',
         count((CodexEntry e) => !e.isDiscovered),
@@ -255,10 +322,37 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.mysticRuby),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Icon(
+                            Icons.menu_book_rounded,
+                            size: 40,
+                            color: CodexPalette.titanium,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.mysticRuby,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          FilledButton.icon(
+                            onPressed: _loadAll,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: CodexPalette.gold,
+                              foregroundColor: CodexPalette.void_,
+                            ),
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text(
+                              'Tekrar Dene',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -280,6 +374,7 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
                             dashboard: _dashboard!,
                             claiming: _claiming,
                             onClaim: _claimNextMilestone,
+                            milestoneScrollController: _milestoneScroll,
                           ),
                         const SizedBox(height: 6),
                         CodexCategoryBar(
@@ -290,7 +385,16 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
                             setState(() {
                               _categoryIndex = i;
                               _rarityFilter = 'all';
+                              _searchQuery = '';
+                              _searchCtrl.clear();
                             });
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        CodexSearchField(
+                          controller: _searchCtrl,
+                          onChanged: (String v) {
+                            setState(() => _searchQuery = v);
                           },
                         ),
                         const SizedBox(height: 6),
@@ -311,11 +415,12 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
   }
 
   List<Widget> _buildGridSection() {
-    final (String _, String label, IconData icon) = _activeTab;
+    final (String type, String label, IconData icon) = _activeTab;
     final List<CodexEntry> entries = _filteredEntries;
     final List<CodexEntry> all = _activeEntries;
     final int discovered =
         all.where((CodexEntry e) => e.isDiscovered).length;
+    final bool truncated = _truncated[type] == true;
 
     if (all.isEmpty) {
       return <Widget>[
@@ -334,9 +439,13 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
           subtitle: '$discovered / ${all.length} keşfedildi',
         ),
         const SizedBox(height: 24),
-        const CodexEmptyState(
-          label: 'Bu filtrede kayıt yok',
-          icon: Icons.filter_alt_off_rounded,
+        CodexEmptyState(
+          label: _searchQuery.trim().isNotEmpty
+              ? 'Arama sonucu yok'
+              : 'Bu filtrede kayıt yok',
+          icon: _searchQuery.trim().isNotEmpty
+              ? Icons.search_off_rounded
+              : Icons.filter_alt_off_rounded,
         ),
       ];
     }
@@ -344,8 +453,21 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
     return <Widget>[
       CodexSectionHeader(
         title: '${label.toUpperCase()} KOLEKSİYONU',
-        subtitle: '$discovered / ${all.length} keşfedildi · ${entries.length} gösteriliyor',
+        subtitle:
+            '$discovered / ${all.length} keşfedildi · ${entries.length} gösteriliyor',
       ),
+      if (truncated)
+        const Padding(
+          padding: EdgeInsets.fromLTRB(14, 4, 14, 0),
+          child: Text(
+            'Liste kısaltıldı — sonraki sürümde sayfalama eklenecek.',
+            style: TextStyle(
+              color: CodexPalette.titanium,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       const SizedBox(height: 8),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),

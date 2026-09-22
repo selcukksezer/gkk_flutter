@@ -9,9 +9,12 @@ import '../qa/qa_flags.dart';
 // Removed achievements_screen.dart
 import '../screens/auth/banned_screen.dart';
 import '../screens/auth/character_select_screen.dart';
+import '../screens/auth/email_confirm_waiting_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/splash_screen.dart';
+import '../screens/auth/update_password_screen.dart';
 import '../screens/bank/bank_screen.dart';
 import '../screens/character/character_screen.dart';
 import '../screens/character/codex_screen.dart';
@@ -60,6 +63,7 @@ import '../screens/quests/quests_screen.dart';
 import '../screens/reputation/reputation_screen.dart';
 import '../screens/season/season_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../core/legal/legal_document_content.dart';
 import '../screens/legal/legal_document_screen.dart';
 import '../screens/support/bug_report_detail_screen.dart';
 import '../screens/support/support_screens.dart';
@@ -68,6 +72,7 @@ import '../screens/staff/staff_gem_reward_approvals_screen.dart';
 import '../screens/staff/staff_hub_screen.dart';
 import '../screens/staff/staff_liveops_screen.dart';
 import '../screens/staff/staff_route_guard.dart';
+import '../core/tutorial/tutorial_modal_suppress.dart';
 import '../providers/policy_provider.dart';
 import '../models/policy_model.dart';
 import '../screens/shop/shop_screen.dart';
@@ -80,6 +85,9 @@ class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
+  static const String updatePassword = '/update-password';
+  static const String emailConfirm = '/email-confirm';
   static const String home = '/home';
   static const String inventory = '/inventory';
   static const String dungeon = '/dungeon';
@@ -187,6 +195,7 @@ final GlobalKey<NavigatorState> appRootNavigatorKey = GlobalKey<NavigatorState>(
 GoRouter createAppRouter({Listenable? refreshListenable}) {
   return GoRouter(
   navigatorKey: appRootNavigatorKey,
+  observers: <NavigatorObserver>[TutorialModalRouteObserver.instance],
   initialLocation: AppRoutes.splash,
   refreshListenable: refreshListenable,
   errorBuilder: (BuildContext context, GoRouterState state) => const HomeScreen(),
@@ -200,14 +209,28 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     final bool hasSession = SupabaseService.isInitialized &&
         SupabaseService.client.auth.currentSession != null;
 
+    final bool isLegalPublic = path.startsWith('${AppRoutes.legal}/');
+    final bool isForgotPassword = path == AppRoutes.forgotPassword;
+    final bool isUpdatePassword = path == AppRoutes.updatePassword;
+    final bool isEmailConfirm = path == AppRoutes.emailConfirm;
+    final bool isAuthEntryRoute = path == AppRoutes.splash ||
+        path == AppRoutes.login ||
+        path == AppRoutes.register ||
+        isForgotPassword ||
+        isEmailConfirm;
     final bool isPublicRoute =
-        path == AppRoutes.splash || path == AppRoutes.login || path == AppRoutes.register;
+        isAuthEntryRoute || isLegalPublic || isForgotPassword || isEmailConfirm;
 
     if (!hasSession && !isPublicRoute) {
       return AppRoutes.login;
     }
 
     if (hasSession) {
+      // Recovery / in-session password change — skip ban/class gates.
+      if (isUpdatePassword) {
+        return null;
+      }
+
       final bool isOnboardingRoute = path == AppRoutes.characterSelect;
       final currentUser = SupabaseService.client.auth.currentUser;
       if (currentUser != null) {
@@ -235,14 +258,13 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
             return AppRoutes.home;
           }
         } catch (e) {
-          // Profil sorgusu düştü (ör. internet yok / timeout). Sınıf seçimine
-          // ZORLAMA — kullanıcı olduğu ekranda kalsın, bağlantı dönünce
-          // sonraki redirect doğru kararı verir.
+          // Offline/timeout: stay put. Home also enforces class gate once
+          // playerProvider loads (empty class → character-select).
           return null;
         }
       }
 
-      if (isPublicRoute) {
+      if (isAuthEntryRoute) {
         return AppRoutes.home;
       }
     }
@@ -267,6 +289,23 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
     gameRoute(
       path: AppRoutes.register,
       build: (BuildContext context, GoRouterState state) => const RegisterScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.forgotPassword,
+      build: (BuildContext context, GoRouterState state) =>
+          const ForgotPasswordScreen(),
+    ),
+    gameRoute(
+      path: AppRoutes.emailConfirm,
+      build: (BuildContext context, GoRouterState state) {
+        final String? email = state.uri.queryParameters['email'];
+        return EmailConfirmWaitingScreen(email: email);
+      },
+    ),
+    gameRoute(
+      path: AppRoutes.updatePassword,
+      build: (BuildContext context, GoRouterState state) =>
+          const UpdatePasswordScreen(),
     ),
     gameRoute(
       path: AppRoutes.home,
@@ -540,10 +579,9 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
                 break;
               }
             }
-            if (doc == null) {
-              return const Scaffold(body: Center(child: Text('Belge yükleniyor…')));
-            }
-            return LegalDocumentScreen(document: doc);
+            // Unauthenticated / empty policy cache → canonical body (never hang).
+            doc ??= LegalDocument(type: type, version: 1, title: '', bodyMd: '');
+            return LegalDocumentScreen(document: LegalDocumentContent.resolve(doc));
           },
         );
       },

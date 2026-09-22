@@ -583,10 +583,18 @@ class NeonButton extends StatelessWidget {
   }
 }
 
-/// Ruby/gold urgency banner with a live countdown (Happy Hour / raid lockout).
+/// Ruby/gold urgency banner with a live countdown (Party / Happy Hour / raid).
 class HappyHourBanner extends StatelessWidget {
-  const HappyHourBanner({super.key, required this.until});
+  const HappyHourBanner({
+    super.key,
+    required this.until,
+    this.title = 'PARTİ CANLI',
+    this.subtitle = 'Gece special — %20 menü indirimi + parti',
+  });
+
   final DateTime until;
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -601,12 +609,27 @@ class HappyHourBanner extends StatelessWidget {
         children: <Widget>[
           const Icon(Icons.celebration_rounded, color: Colors.white, size: 24),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('HAPPY HOUR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
-                Text('Tum alimlarda %20 indirim', style: TextStyle(fontSize: 11.5, color: Colors.white70, fontWeight: FontWeight.w600)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 1,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),

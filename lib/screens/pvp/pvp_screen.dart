@@ -8,6 +8,7 @@ import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/combat_restriction.dart';
+import '../../core/utils/player_health.dart';
 import '../../core/utils/provider_scheduling.dart';
 import '../../core/matchmaking/matchmaking_offer.dart';
 import '../../core/matchmaking/matchmaking_service.dart';
@@ -90,6 +91,7 @@ class PvpScreen extends ConsumerStatefulWidget {
 class _PvpScreenState extends ConsumerState<PvpScreen> {
   List<OnlinePlayer> _onlinePlayers = const <OnlinePlayer>[];
   bool _loadingOnline = false;
+  String? _onlineError;
   final ValueNotifier<int> _refreshInSec = ValueNotifier<int>(0);
   Timer? _refreshTicker;
   String? _invitingId;
@@ -260,6 +262,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       if (!mounted) return;
       setState(() {
         _loadingOnline = false;
+        _onlineError = null;
         _onlinePlayers = result.offers
             .map(OnlinePlayer.fromOffer)
             .toList(growable: false);
@@ -268,11 +271,11 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       _maybeOpenRevengeInvite();
     } catch (e) {
       if (mounted) {
-        setState(() => _loadingOnline = false);
-        AppMessenger.showError(
-          context,
-          e is MatchmakingException ? e.message : 'Rakip listesi alınamadı.',
-        );
+        setState(() {
+          _loadingOnline = false;
+          _onlineError =
+              e is MatchmakingException ? e.message : 'Rakip listesi alınamadı.';
+        });
       }
     }
   }
@@ -282,7 +285,9 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     String source = 'discovery',
   }) async {
     final PlayerProfile? profile = ref.read(playerProvider).profile;
-    final String? combatBlock = combatRestrictionMessage(
+    final String? combatBlock = combatRestrictionForProfile(
+      health: profile?.health ?? 0,
+      maxHealth: profile?.maxHealth ?? 0,
       hospitalUntil: profile?.hospitalUntil,
       prisonUntil: profile?.prisonUntil,
     );
@@ -493,6 +498,9 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     final pvpWins = profile?.pvpWins ?? 0;
     final pvpLosses = profile?.pvpLosses ?? 0;
     final energy = profile?.energy ?? 0;
+    final int health = profile?.health ?? 0;
+    final int maxHealth = profile?.maxHealth ?? 0;
+    final bool lowHealthCombat = isHealthTooLowForCombat(health: health, maxHealth: maxHealth);
     final isHospitalized = _isRestricted(profile?.hospitalUntil);
     final isImprisoned = _isRestricted(profile?.prisonUntil);
 
@@ -523,7 +531,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                     rival: _nemesis,
                     dismissLoading: _dismissLoading,
                     onDismiss: _dismissNemesisBanner,
-                    onRevenge: (isHospitalized || isImprisoned)
+                    onRevenge: (isHospitalized || isImprisoned || lowHealthCombat)
                         ? null
                         : (String rivalId) {
                             unawaited(
@@ -555,6 +563,17 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                             label: context.l10n.enerji_2, value: '$energy', color: const Color(0xFF00D7D7)),
                       ],
                     ),
+                    if (hasWoundedCombatPenalty(health: health, maxHealth: maxHealth)) ...<Widget>[
+                      const SizedBox(height: 10),
+                      Text(
+                        'Yaralı: PvP gücü -${(woundedPvpPowerPenalty * 100).round()}%',
+                        style: const TextStyle(
+                          color: AppColors.warningSolar,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     Row(
                       children: <Widget>[
@@ -614,6 +633,15 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   color: Colors.orangeAccent,
                 ),
               ],
+              if (lowHealthCombat && !isHospitalized && !isImprisoned) ...<Widget>[
+                const SizedBox(height: 12),
+                _warningBanner(
+                  icon: Icons.favorite_border_rounded,
+                  message:
+                      'Canın çok düşük. PvP öncesi can iksiri kullan veya dinlen.',
+                  color: AppColors.mysticRuby,
+                ),
+              ],
               const SizedBox(height: 20),
               TutorialAnchorScope(
                 id: TutorialAnchorId.pvpFindMatch,
@@ -623,10 +651,24 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
               const GkkTabSectionTitle('Rakip Teklifleri', accent: AppColors.toxicNeon),
               Row(
                 children: <Widget>[
-                  const Expanded(
-                    child: Text(
-                      'Sunucu rastgele eşleşme · tam liste yok',
-                      style: TextStyle(color: Colors.white38, fontSize: 11),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _showMatchmakingInfo,
+                      child: const Row(
+                        children: <Widget>[
+                          Flexible(
+                            child: Text(
+                              'Sunucu rastgele eşleşme · tam liste yok',
+                              style:
+                                  TextStyle(color: Colors.white38, fontSize: 11),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(Icons.info_outline_rounded,
+                              color: Colors.white38, size: 14),
+                        ],
+                      ),
                     ),
                   ),
                   ListenableBuilder(
@@ -670,6 +712,12 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   padding: EdgeInsets.all(16),
                   child: CircularProgressIndicator(),
                 ))
+              else if (_onlineError != null && _onlinePlayers.isEmpty)
+                _emptyStateCard(
+                  message: '⚠️ $_onlineError',
+                  ctaLabel: 'Tekrar Dene',
+                  onPressed: () => _loadOnlinePlayers(),
+                )
               else if (_onlinePlayers.isEmpty)
                 ListenableBuilder(
                   listenable: _refreshInSec,
@@ -697,6 +745,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                         inviteOpen: _openInviteTargets.contains(p.authId),
                         onInvite: (isHospitalized ||
                                 isImprisoned ||
+                                lowHealthCombat ||
                                 _isInviteBlocked(p.authId))
                             ? null
                             : () {
@@ -819,17 +868,72 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     );
   }
 
+  void _showMatchmakingInfo() {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1025),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        title: const Row(
+          children: <Widget>[
+            Icon(Icons.info_outline_rounded, color: AppColors.toxicNeon, size: 20),
+            SizedBox(width: 8),
+            Text('Eşleşme Nasıl Çalışır?',
+                style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _MatchmakingInfoRow(
+              emoji: '🎯',
+              text:
+                  'Önce sana yakın rakipler aranır: ±5 seviye veya ±250 rating.',
+            ),
+            SizedBox(height: 10),
+            _MatchmakingInfoRow(
+              emoji: '📈',
+              text:
+                  'Uygun rakip yoksa band genişler: ±10 seviye veya ±500 rating.',
+            ),
+            SizedBox(height: 10),
+            _MatchmakingInfoRow(
+              emoji: '🌍',
+              text: 'Hâlâ bulunamazsa tüm oyunculardan rastgele seçilir.',
+            ),
+            SizedBox(height: 10),
+            _MatchmakingInfoRow(
+              emoji: '🛡️',
+              text:
+                  'Yeni oyuncular korunur: düşük seviyeler yüksek seviyelerle eşleşmez.',
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Anladım',
+                style: TextStyle(color: AppColors.toxicNeon)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _goToFirstArena(List<PvpArena> arenas) {
     final PlayerProfile? profile = ref.read(playerProvider).profile;
-    final bool hospitalized = _isRestricted(profile?.hospitalUntil);
-    final bool imprisoned = _isRestricted(profile?.prisonUntil);
-    if (hospitalized || imprisoned) {
-      AppMessenger.showError(
-        context,
-        hospitalized
-            ? '🏥 Hastanedeyken arenaya giremezsiniz!'
-            : '👮 Cezaevindeyken arenaya giremezsiniz!',
-      );
+    final String? combatBlock = combatRestrictionForProfile(
+      health: profile?.health ?? 0,
+      maxHealth: profile?.maxHealth ?? 0,
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.showError(context, combatBlock);
       return;
     }
     if (arenas.isEmpty) {
@@ -1193,6 +1297,31 @@ class _MatchStat extends StatelessWidget {
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
         const SizedBox(width: 3),
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.white38)),
+      ],
+    );
+  }
+}
+
+class _MatchmakingInfoRow extends StatelessWidget {
+  const _MatchmakingInfoRow({required this.emoji, required this.text});
+
+  final String emoji;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+                color: Colors.white70, fontSize: 13, height: 1.35),
+          ),
+        ),
       ],
     );
   }

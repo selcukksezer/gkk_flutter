@@ -10,6 +10,7 @@ import '../../screens/dungeon/dungeon_result_widgets.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../common/app_messenger.dart';
+import '../common/item_icon_view.dart';
 import '../layout/game_screen_background.dart';
 
 abstract final class _DailyRewardTheme {
@@ -88,22 +89,30 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
     final bool ok = await ref.read(dailyRewardProvider.notifier).claim();
     if (!mounted) return;
 
-    if (ok) {
-      setState(() => _celebrating = true);
-      final String? warning = ref.read(dailyRewardProvider).lastClaimWarning;
-      if (warning != null && warning.isNotEmpty) {
-        AppMessenger.show(context, warning);
-      } else {
-        AppMessenger.showSuccess(context, 'Günlük ödül alındı!');
+    if (!ok) {
+      final String? error = ref.read(dailyRewardProvider).error;
+      if (error != null) {
+        AppMessenger.showError(context, error);
       }
-      await Future<void>.delayed(const Duration(milliseconds: 1200));
-      if (mounted) Navigator.of(context).pop();
       return;
     }
 
-    final String? error = ref.read(dailyRewardProvider).error;
-    if (error != null) {
-      AppMessenger.showError(context, error);
+    setState(() => _celebrating = true);
+    final String? warning = ref.read(dailyRewardProvider).lastClaimWarning;
+    final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
+
+    // Short celebrate → auto-close dialog (no blocking alert on top of it).
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (overlay != null && overlay.mounted) {
+      final BuildContext overlayContext = overlay.context;
+      if (warning != null && warning.isNotEmpty) {
+        AppMessenger.show(overlayContext, warning);
+      } else {
+        AppMessenger.showSuccess(overlayContext, 'Günlük ödül alındı!');
+      }
     }
   }
 
@@ -539,11 +548,22 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
   }
 
   Widget _rewardPreviewIcon(DailyRewardGrant reward, {required bool dimmed}) {
+    if (reward.hasItem && reward.itemId != null) {
+      return Opacity(
+        opacity: dimmed ? 0.45 : 1.0,
+        child: ItemIconView(
+          iconValue: reward.itemId!,
+          itemId: reward.itemId,
+          size: reward.isMilestone ? 56 : 48,
+          fallback: '📦',
+        ),
+      );
+    }
     final String emoji = _primaryEmoji(reward);
     return Text(
       emoji,
       style: TextStyle(
-        fontSize: reward.isMilestone ? 22 : 18,
+        fontSize: reward.isMilestone ? 42 : 34,
         color: dimmed ? Colors.white.withValues(alpha: 0.55) : null,
       ),
     );
@@ -662,12 +682,41 @@ class _DailyRewardPanelState extends ConsumerState<_DailyRewardPanel>
                   AppColors.accentCyan,
                 ),
               if (grant.hasItem)
-                _rewardChip(
-                  '📦',
-                  '${grant.itemName ?? grant.itemId} x${grant.itemQuantity}',
-                  AppColors.textSecondary,
-                ),
+                _rewardItemChip(grant),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rewardItemChip(DailyRewardGrant grant) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.textSecondary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          ItemIconView(
+            iconValue: grant.itemId ?? '',
+            itemId: grant.itemId,
+            size: 16,
+            fallback: '📦',
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${grant.itemName ?? grant.itemId} x${grant.itemQuantity}',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

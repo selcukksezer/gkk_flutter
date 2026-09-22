@@ -46,4 +46,5 @@ abstract final class TutorialRoutes {
   static const String horseRace = '/horse-race';
   static const String mekans = '/mekans';
   static const String myMekan = '/my-mekan';
+  static const String trade = '/trade';
 }

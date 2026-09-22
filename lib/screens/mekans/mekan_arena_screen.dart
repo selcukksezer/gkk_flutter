@@ -183,7 +183,9 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
       return;
     }
     final profile = ref.read(playerProvider).profile;
-    final String? combatBlock = combatRestrictionMessage(
+    final String? combatBlock = combatRestrictionForProfile(
+      health: profile?.health ?? 0,
+      maxHealth: profile?.maxHealth ?? 0,
       hospitalUntil: profile?.hospitalUntil,
       prisonUntil: profile?.prisonUntil,
     );
@@ -196,7 +198,9 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
 
   Future<void> _openBetSheet(ArenaOpponent opp) async {
     final profile = ref.read(playerProvider).profile;
-    final String? combatBlock = combatRestrictionMessage(
+    final String? combatBlock = combatRestrictionForProfile(
+      health: profile?.health ?? 0,
+      maxHealth: profile?.maxHealth ?? 0,
       hospitalUntil: profile?.hospitalUntil,
       prisonUntil: profile?.prisonUntil,
     );
@@ -258,7 +262,9 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
   Widget build(BuildContext context) {
     final profile = ref.watch(playerProvider).profile;
     final int energy = profile?.energy ?? 0;
-    final String? combatBlock = combatRestrictionMessage(
+    final String? combatBlock = combatRestrictionForProfile(
+      health: profile?.health ?? 0,
+      maxHealth: profile?.maxHealth ?? 0,
       hospitalUntil: profile?.hospitalUntil,
       prisonUntil: profile?.prisonUntil,
     );

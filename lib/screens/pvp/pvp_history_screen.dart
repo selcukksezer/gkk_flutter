@@ -48,6 +48,24 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
     });
   }
 
+  /// Error/empty durumlarında da pull-to-refresh çalışsın.
+  Widget _scrollableState({required Widget child}) {
+    return RefreshIndicator(
+      onRefresh: () => ref.read(pvpHistoryProvider.notifier).load(),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(child: child),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   String _timeAgo(String iso) {
     try {
       final dt = DateTime.parse(iso);
@@ -142,7 +160,7 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
               child: history.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : history.error != null
-                      ? Center(
+                      ? _scrollableState(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -158,7 +176,7 @@ class _PvpHistoryScreenState extends ConsumerState<PvpHistoryScreen> {
                           ),
                         )
                       : filtered.isEmpty
-                          ? Center(
+                          ? _scrollableState(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

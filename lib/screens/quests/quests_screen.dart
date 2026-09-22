@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,9 +9,11 @@ import '../../components/layout/game_screen_background.dart';
 import '../../components/common/gkk_tab_bar.dart';
 import '../../components/common/gkk_tab_page_shell.dart';
 import '../../l10n/l10n.dart';
+import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/quest_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notification_inbox_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_track.dart';
@@ -24,7 +27,6 @@ enum _QuestCategory { all, daily, weekly, main }
 
 // ── Premium color palette ─────────────────────────────────────────────────────
 class _QColors {
-  static const surface = Color(0xFF131826);
   static const border = Color(0x18FFFFFF);
   static const gold = Color(0xFFFBBF24);
   static const accent = AppColors.cyberFuchsia;
@@ -44,7 +46,7 @@ class QuestsScreen extends ConsumerStatefulWidget {
 }
 
 class _QuestsScreenState extends ConsumerState<QuestsScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   List<QuestData> _quests = [];
   bool _loading = true;
   String? _error;
@@ -57,6 +59,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabCtrl = TabController(length: 4, vsync: this);
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) return;
@@ -67,16 +70,26 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadQuests() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_loadQuests(silent: true));
+    }
+  }
+
+  Future<void> _loadQuests({bool silent = false}) async {
     if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final level = ref.read(playerProvider).profile?.level ?? 1;
       final res = await SupabaseService.client.rpc(
@@ -102,18 +115,20 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         setState(() {
           _quests = list;
           _loading = false;
+          _error = null;
         });
         if (redirectSeasonQuestId != null) {
           _snack('🏆 Sezon görevi tamamlandı! Ödülü sezon sayfasından al.');
           context.go(AppRoutes.season);
         }
         await TutorialTriggers.onRouteEnter(ref, AppRoutes.quests);
+        unawaited(ref.read(notificationInboxProvider.notifier).refresh());
       }
     } catch (e) {
       if (mounted)
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = userFacingErrorMessage(e, fallback: 'Görevler yüklenemedi.');
         });
     }
   }
@@ -125,12 +140,22 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         'claim_quest_reward',
         params: {'p_quest_id': quest.questId},
       );
-      _snack('🎁 Ödül alındı: 🪙${quest.goldReward} + ✨${quest.xpReward} XP');
+      final List<String> parts = <String>[
+        if (quest.goldReward > 0) '🪙${quest.goldReward}',
+        if (quest.xpReward > 0) '✨${quest.xpReward} XP',
+        if (quest.gemReward > 0) '💎${quest.gemReward}',
+      ];
+      _snack(
+        parts.isEmpty ? '🎁 Ödül alındı!' : '🎁 Ödül alındı: ${parts.join(' + ')}',
+      );
       _quests.removeWhere((q) => q.questId == quest.questId);
       if (mounted) setState(() {});
       ref.read(playerProvider.notifier).loadProfile();
     } catch (e) {
-      _snack('Hata: $e', isError: true);
+      _snack(
+        userFacingErrorMessage(e, fallback: 'Ödül alınamadı.'),
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _actionLoading = false);
     }
@@ -147,7 +172,10 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
       await _loadQuests();
       ref.read(playerProvider.notifier).loadProfile();
     } catch (e) {
-      _snack('Hata: $e', isError: true);
+      _snack(
+        userFacingErrorMessage(e, fallback: 'Görev tamamlanamadı.'),
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _actionLoading = false);
     }
@@ -208,8 +236,25 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
 
   double get _completionRate {
     if (_quests.isEmpty) return 0;
-    final done = _quests.where((q) => q.status == QuestStatus.completed).length;
-    return done / _quests.length;
+    double sum = 0;
+    for (final QuestData q in _quests) {
+      if (q.status == QuestStatus.completed) {
+        sum += 1;
+        continue;
+      }
+      if (q.progressMax <= 0) continue;
+      sum += (q.progress / q.progressMax).clamp(0.0, 1.0);
+    }
+    return sum / _quests.length;
+  }
+
+  int get _completedOrReadyCount {
+    return _quests.where((QuestData q) {
+      if (q.status == QuestStatus.completed) return true;
+      return q.status == QuestStatus.active &&
+          q.progressMax > 0 &&
+          q.progress >= q.progressMax;
+    }).length;
   }
 
   Future<void> _doLogout() async {
@@ -219,9 +264,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final completedCount = _quests
-        .where((q) => q.status == QuestStatus.completed)
-        .length;
+    final completedCount = _completedOrReadyCount;
     final sorted = _sortedFiltered;
     final int? claimTutorialIndex = () {
       for (int i = 0; i < sorted.length; i++) {
@@ -335,13 +378,39 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Genel Tamamlanma',
-                  style: TextStyle(
-                    color: _QColors.text,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Genel Tamamlanma',
+                      style: TextStyle(
+                        color: _QColors.text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (completedCount > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _QColors.green.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _QColors.green.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          '🎁 $completedCount ödül hazır',
+                          style: const TextStyle(
+                            color: _QColors.green,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 10),
                 ClipRRect(
@@ -357,7 +426,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '$completedCount / $total görev tamamlandı · %$pct',
+                  '$completedCount / $total görev · %$pct ilerleme',
                   style: const TextStyle(
                     color: _QColors.textMuted,
                     fontSize: 11,
@@ -449,7 +518,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         const Icon(Icons.wifi_off_rounded, color: _QColors.textMuted, size: 48),
         const SizedBox(height: 12),
         Text(
-          'Yüklenemedi: $_error',
+          _error ?? 'Görevler yüklenemedi.',
           style: const TextStyle(color: _QColors.textMuted),
           textAlign: TextAlign.center,
         ),

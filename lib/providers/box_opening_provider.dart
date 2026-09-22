@@ -46,6 +46,7 @@ class BoxOpeningActionResult {
     this.openingId,
     this.rewardName,
     this.rewardQuantity = 0,
+    this.gemsSpent = 0,
   });
 
   final bool success;
@@ -53,6 +54,7 @@ class BoxOpeningActionResult {
   final String? openingId;
   final String? rewardName;
   final int rewardQuantity;
+  final int gemsSpent;
 }
 
 List<dynamic> _parseBoxOpeningRows(dynamic res) {
@@ -144,8 +146,13 @@ class BoxOpeningNotifier extends Notifier<List<BoxOpening>> {
           Map<String, dynamic>.from(res);
       final String? openingId =
           (data['opening_id'] ?? data['openingId'])?.toString();
+      final int gemsSpent = _parseGemsSpent(data['gems_spent']);
       await load();
-      return BoxOpeningActionResult(success: true, openingId: openingId);
+      return BoxOpeningActionResult(
+        success: true,
+        openingId: openingId,
+        gemsSpent: gemsSpent,
+      );
     } catch (_) {
       return const BoxOpeningActionResult(
           success: false, error: 'Kutu açma başlatılamadı.');
@@ -204,6 +211,13 @@ class BoxOpeningNotifier extends Notifier<List<BoxOpening>> {
           success: false, error: 'Kutu silinemedi.');
     }
   }
+}
+
+int _parseGemsSpent(dynamic value) {
+  if (value is int) return value.clamp(0, 999999);
+  if (value is num) return value.toInt().clamp(0, 999999);
+  if (value is String) return (int.tryParse(value) ?? 0).clamp(0, 999999);
+  return 0;
 }
 
 final NotifierProvider<BoxOpeningNotifier, List<BoxOpening>>

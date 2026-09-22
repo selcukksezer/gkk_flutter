@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
 import '../core/services/device_session_service.dart';
+import '../core/services/supabase_service.dart';
 import '../models/auth_model.dart';
+import '../models/referral_preview_model.dart';
 import '../repositories/auth_repository.dart';
 
 enum AuthStatus {
@@ -10,6 +12,8 @@ enum AuthStatus {
   loading,
   authenticated,
   unauthenticated,
+  pendingEmailConfirmation,
+  passwordResetSent,
   error,
 }
 
@@ -19,12 +23,14 @@ class AuthState {
     this.session,
     this.user,
     this.errorMessage,
+    this.pendingEmail,
   });
 
   final AuthStatus status;
   final AuthSession? session;
   final AuthUser? user;
   final String? errorMessage;
+  final String? pendingEmail;
 
   factory AuthState.initial() => const AuthState(status: AuthStatus.initial);
 
@@ -33,15 +39,19 @@ class AuthState {
     AuthSession? session,
     AuthUser? user,
     String? errorMessage,
+    String? pendingEmail,
     bool clearSession = false,
     bool clearUser = false,
     bool clearError = false,
+    bool clearPendingEmail = false,
   }) {
     return AuthState(
       status: status ?? this.status,
       session: clearSession ? null : (session ?? this.session),
       user: clearUser ? null : (user ?? this.user),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      pendingEmail:
+          clearPendingEmail ? null : (pendingEmail ?? this.pendingEmail),
     );
   }
 }
@@ -83,9 +93,18 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
 
+      final String? authId = SupabaseService.isInitialized
+          ? SupabaseService.client.auth.currentUser?.id
+          : null;
+      AuthUser? user;
+      if (authId != null) {
+        user = await _repository.fetchProfileUser(authId);
+      }
+
       state = state.copyWith(
         status: AuthStatus.authenticated,
         session: session,
+        user: user,
       );
       await DeviceSessionService.syncRequestHeaders();
     } catch (e) {
@@ -107,10 +126,20 @@ class AuthNotifier extends Notifier<AuthState> {
         LoginRequest(email: email, password: password, deviceId: deviceId),
       );
 
+      if (!response.hasSession) {
+        state = state.copyWith(
+          status: AuthStatus.error,
+          clearSession: true,
+          errorMessage: 'Giris basarisiz. Oturum olusturulamadi.',
+        );
+        return;
+      }
+
       state = state.copyWith(
         status: AuthStatus.authenticated,
         session: response.session,
         user: response.user,
+        clearPendingEmail: true,
       );
       await DeviceSessionService.syncRequestHeaders();
     } on AppException catch (e) {
@@ -119,6 +148,42 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(
         status: AuthStatus.error,
         errorMessage: 'Giris sirasinda beklenmeyen bir hata olustu.',
+      );
+    }
+  }
+
+  Future<void> signInWithApple({required String deviceId}) async {
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
+    try {
+      final response = await _repository.signInWithApple(deviceId: deviceId);
+      if (!response.hasSession) {
+        state = state.copyWith(
+          status: AuthStatus.error,
+          clearSession: true,
+          errorMessage: 'Apple ile giriş başarısız.',
+        );
+        return;
+      }
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        session: response.session,
+        user: response.user,
+        clearPendingEmail: true,
+      );
+      await DeviceSessionService.syncRequestHeaders();
+    } on AppException catch (e) {
+      if (e.code == 'APPLE_CANCELED') {
+        state = state.copyWith(
+          status: AuthStatus.unauthenticated,
+          clearError: true,
+        );
+        return;
+      }
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+    } catch (_) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: 'Apple ile giriş sırasında hata oluştu.',
       );
     }
   }
@@ -142,10 +207,22 @@ class AuthNotifier extends Notifier<AuthState> {
         ),
       );
 
+      if (response.requiresEmailConfirmation || !response.hasSession) {
+        state = state.copyWith(
+          status: AuthStatus.pendingEmailConfirmation,
+          clearSession: true,
+          user: response.user,
+          pendingEmail: email.trim(),
+          clearError: true,
+        );
+        return;
+      }
+
       state = state.copyWith(
         status: AuthStatus.authenticated,
         session: response.session,
         user: response.user,
+        clearPendingEmail: true,
       );
       await DeviceSessionService.syncRequestHeaders();
     } on AppException catch (e) {
@@ -156,6 +233,93 @@ class AuthNotifier extends Notifier<AuthState> {
         errorMessage: 'Kayit sirasinda beklenmeyen bir hata olustu.',
       );
     }
+  }
+
+  Future<void> requestPasswordReset({required String email}) async {
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
+    try {
+      await _repository.requestPasswordReset(email);
+      state = state.copyWith(
+        status: AuthStatus.passwordResetSent,
+        clearSession: true,
+        clearUser: true,
+      );
+    } on AppException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+    } catch (_) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: 'Sifre sifirlama istegi gonderilemedi.',
+      );
+    }
+  }
+
+  Future<void> updatePassword({required String newPassword}) async {
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
+    try {
+      await _repository.updatePassword(newPassword);
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearSession: true,
+        clearUser: true,
+        clearError: true,
+      );
+      // Force re-login with new password (recovery session discarded).
+      try {
+        await _repository.logout();
+      } catch (_) {}
+    } on AppException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+    } catch (_) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: 'Sifre guncellenemedi.',
+      );
+    }
+  }
+
+  Future<void> resendSignupConfirmation({String? email}) async {
+    final String? target = (email ?? state.pendingEmail ?? state.user?.email)
+        ?.trim();
+    if (target == null || target.isEmpty) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: 'Onay e-postası için adres bulunamadı.',
+      );
+      return;
+    }
+    try {
+      await _repository.resendSignupConfirmation(target);
+      state = state.copyWith(
+        status: AuthStatus.pendingEmailConfirmation,
+        pendingEmail: target,
+        clearError: true,
+      );
+    } on AppException catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.pendingEmailConfirmation,
+        pendingEmail: target,
+        errorMessage: e.message,
+      );
+    } catch (_) {
+      state = state.copyWith(
+        status: AuthStatus.pendingEmailConfirmation,
+        pendingEmail: target,
+        errorMessage: 'Onay e-postası yeniden gönderilemedi.',
+      );
+    }
+  }
+
+  Future<bool> isUsernameAvailable(String username) {
+    return _repository.isUsernameAvailable(username);
+  }
+
+  Future<ReferralPreview> validateReferralCode(String code) {
+    return _repository.validateReferralCode(code);
+  }
+
+  Future<bool> isAppleSignInAvailable() {
+    return _repository.isAppleSignInAvailable();
   }
 
   Future<void> logout() async {
@@ -169,6 +333,20 @@ class AuthNotifier extends Notifier<AuthState> {
         status: AuthStatus.unauthenticated,
         clearSession: true,
         clearUser: true,
+        clearPendingEmail: true,
+      );
+    }
+  }
+
+  /// Clears error / transient statuses back to unauthenticated (forms).
+  void acknowledgeTransient() {
+    if (state.status == AuthStatus.passwordResetSent ||
+        state.status == AuthStatus.pendingEmailConfirmation ||
+        state.status == AuthStatus.error) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearError: true,
+        clearPendingEmail: true,
       );
     }
   }

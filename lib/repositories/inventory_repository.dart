@@ -1,5 +1,6 @@
 import '../core/errors/app_exception.dart';
 import '../core/services/supabase_service.dart';
+import '../core/utils/inventory_rpc.dart';
 import '../models/inventory_model.dart';
 
 class InventorySnapshot {
@@ -44,10 +45,30 @@ class UseItemResult {
   const UseItemResult({
     required this.success,
     this.message,
+    this.overdose = false,
+    this.hospitalMinutes,
   });
 
   final bool success;
   final String? message;
+  final bool overdose;
+  final int? hospitalMinutes;
+}
+
+class UsePotionResult {
+  const UsePotionResult({
+    required this.success,
+    this.overdose = false,
+    this.hospitalMinutes,
+    this.savedFromOverdose = false,
+    this.error,
+  });
+
+  final bool success;
+  final bool overdose;
+  final int? hospitalMinutes;
+  final bool savedFromOverdose;
+  final String? error;
 }
 
 bool isInventoryLootBox(String itemId) => itemId.startsWith('box_');
@@ -65,7 +86,7 @@ abstract class InventoryRepository {
   Future<bool> moveItemToSlot({required String rowId, required int targetSlot});
   Future<bool> unequipItemToSlot({required String rowId, required String slot, required int targetSlot});
   Future<bool> swapEquipWithSlot({required String equipSlot, required int targetSlot});
-  Future<bool> usePotion({required String rowId});
+  Future<UsePotionResult> usePotion({required String rowId});
   Future<OpenLootBoxResult> openLootBox({required String rowId});
   Future<bool> useDetox({required String rowId});
   Future<UseItemResult> useStatResetScroll({required String rowId});
@@ -81,6 +102,7 @@ abstract class InventoryRepository {
 
 class SupabaseInventoryRepository implements InventoryRepository {
   @override
+  @Deprecated('Client mint disabled — use server RPCs (shop/loot/craft).')
   Future<bool> addItemToServer({required String itemId, required int quantity, int? slotPosition}) async {
     // Client must not call mint RPC (add_inventory_item_v2 EXECUTE revoked).
     // Inventory grants happen only via secure server RPCs (shop, collect, loot…).
@@ -127,8 +149,27 @@ class SupabaseInventoryRepository implements InventoryRepository {
           .where((item) => !equippedRowIds.contains(item.rowId))
           .toList();
 
+      final List<Map<String, dynamic>> positionFixes = <Map<String, dynamic>>[];
+      final List<InventoryItem> normalized =
+          _ensureSlotPositions(filtered, positionFixes: positionFixes);
+      if (positionFixes.isNotEmpty) {
+        // Persist ghost remaps so drag uses same slots as DB.
+        try {
+          final dynamic fixResponse = await SupabaseService.client.rpc(
+            'update_item_positions',
+            params: <String, dynamic>{'p_updates': positionFixes},
+          );
+          inventoryRpcSucceeded(
+            fixResponse,
+            fallbackError: 'Slot duzeltme basarisiz.',
+          );
+        } catch (_) {
+          // UI still usable with normalized slots; next load may retry.
+        }
+      }
+
       return InventorySnapshot(
-        items: _ensureSlotPositions(filtered),
+        items: normalized,
         equippedItems: equipped,
       );
     } catch (_) {
@@ -150,7 +191,11 @@ class SupabaseInventoryRepository implements InventoryRepository {
         'p_row_id': rowId,
         'p_slot': slot.toLowerCase(),
       });
-      return _rpcSucceeded(response, fallbackError: 'Kusanma islemi basarisiz.');
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Kusanma islemi basarisiz.',
+        code: 'INVENTORY_EQUIP_FAILED',
+      );
     } on AppException {
       rethrow;
     } catch (_) {
@@ -171,7 +216,11 @@ class SupabaseInventoryRepository implements InventoryRepository {
       final dynamic response = await SupabaseService.client.rpc('unequip_item', params: <String, dynamic>{
         'p_slot': slot.toLowerCase(),
       });
-      return _rpcSucceeded(response, fallbackError: 'Kusani cikarma islemi basarisiz.');
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Kusani cikarma islemi basarisiz.',
+        code: 'INVENTORY_UNEQUIP_FAILED',
+      );
     } on AppException {
       rethrow;
     } catch (_) {
@@ -197,17 +246,11 @@ class SupabaseInventoryRepository implements InventoryRepository {
         },
       );
 
-      if (response is Map) {
-        final Map<String, dynamic> data = Map<String, dynamic>.from(response);
-        final dynamic successValue = data['success'];
-        if (successValue is bool && successValue == false) {
-          throw AppException(
-            (data['error'] as String?) ?? 'Slot degistirme islemi basarisiz.',
-            code: 'INVENTORY_SWAP_FAILED',
-          );
-        }
-      }
-      return true;
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Slot degistirme islemi basarisiz.',
+        code: 'INVENTORY_SWAP_FAILED',
+      );
     } catch (e) {
       final bool fallback = await _swapSlotsFallback(fromSlot: fromSlot, toSlot: toSlot);
       if (fallback) return true;
@@ -226,12 +269,21 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('update_item_positions', params: <String, dynamic>{
-        'p_updates': <Map<String, dynamic>>[
-          <String, dynamic>{'row_id': rowId, 'slot_position': targetSlot},
-        ],
-      });
-      return true;
+      final dynamic response = await SupabaseService.client.rpc(
+        'update_item_positions',
+        params: <String, dynamic>{
+          'p_updates': <Map<String, dynamic>>[
+            <String, dynamic>{'row_id': rowId, 'slot_position': targetSlot},
+          ],
+        },
+      );
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Item tasima basarisiz.',
+        code: 'INVENTORY_MOVE_FAILED',
+      );
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Item tasima basarisiz.', code: 'INVENTORY_MOVE_FAILED');
     }
@@ -251,9 +303,10 @@ class SupabaseInventoryRepository implements InventoryRepository {
         'p_slot': slot.toLowerCase(),
         'p_target_slot': targetSlot,
       });
-      return _rpcSucceeded(
+      return inventoryRpcSucceeded(
         response,
         fallbackError: 'Kusani hedef slota birakma basarisiz.',
+        code: 'INVENTORY_UNEQUIP_TO_SLOT_FAILED',
       );
     } on AppException {
       rethrow;
@@ -272,18 +325,27 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('swap_equip_with_slot', params: <String, dynamic>{
-        'p_equip_slot': equipSlot.toLowerCase(),
-        'p_target_slot': targetSlot,
-      });
-      return true;
+      final dynamic response = await SupabaseService.client.rpc(
+        'swap_equip_with_slot',
+        params: <String, dynamic>{
+          'p_equip_slot': equipSlot.toLowerCase(),
+          'p_target_slot': targetSlot,
+        },
+      );
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Kusanilan item swap basarisiz.',
+        code: 'INVENTORY_SWAP_EQUIP_FAILED',
+      );
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Kusanilan item swap basarisiz.', code: 'INVENTORY_SWAP_EQUIP_FAILED');
     }
   }
 
   @override
-  Future<bool> usePotion({required String rowId}) async {
+  Future<UsePotionResult> usePotion({required String rowId}) async {
     if (!SupabaseService.isConfigured || !SupabaseService.isInitialized) {
       throw AppException(
         'Supabase baglantisi hazir degil. Once app_constants.dart degerlerini guncelleyin.',
@@ -305,11 +367,25 @@ class SupabaseInventoryRepository implements InventoryRepository {
         },
       );
 
-      if (result is Map && result['error'] != null) {
-        throw AppException(result['error'].toString(), code: 'INVENTORY_USE_POTION_FAILED');
+      if (result is! Map) {
+        throw AppException('Iksir kullanimi basarisiz.', code: 'INVENTORY_USE_POTION_FAILED');
       }
 
-      return true;
+      final Map<String, dynamic> data = Map<String, dynamic>.from(result);
+      if (data['error'] != null) {
+        throw AppException(data['error'].toString(), code: 'INVENTORY_USE_POTION_FAILED');
+      }
+
+      final int? hospitalMinutes = data['hospital_minutes'] is num
+          ? (data['hospital_minutes'] as num).toInt()
+          : int.tryParse('${data['hospital_minutes'] ?? ''}');
+
+      return UsePotionResult(
+        success: data['success'] == true || data['error'] == null,
+        overdose: data['overdose'] == true,
+        hospitalMinutes: hospitalMinutes,
+        savedFromOverdose: data['saved_from_overdose'] == true,
+      );
     } on AppException {
       rethrow;
     } catch (_) {
@@ -518,12 +594,21 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('split_stack_item', params: <String, dynamic>{
-        'p_row_id': rowId,
-        'p_split_quantity': splitQuantity,
-        'p_target_slot': targetSlot,
-      });
-      return true;
+      final dynamic response = await SupabaseService.client.rpc(
+        'split_stack_item',
+        params: <String, dynamic>{
+          'p_row_id': rowId,
+          'p_split_quantity': splitQuantity,
+          'p_target_slot': targetSlot,
+        },
+      );
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Stack bolme basarisiz.',
+        code: 'INVENTORY_SPLIT_FAILED',
+      );
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Stack bolme basarisiz.', code: 'INVENTORY_SPLIT_FAILED');
     }
@@ -547,23 +632,21 @@ class SupabaseInventoryRepository implements InventoryRepository {
         },
       );
 
-      if (response is Map) {
-        final Map<String, dynamic> data = Map<String, dynamic>.from(response);
-        final bool success = data['success'] != false;
-        if (!success) {
-          return SellItemResult(
-            success: false,
-            error: (data['error'] as String?) ?? 'Satis basarisiz.',
-          );
-        }
-
+      if (!inventoryRpcSuccessFlag(response)) {
+        final String? error = response is Map
+            ? Map<String, dynamic>.from(response)['error']?.toString()
+            : null;
         return SellItemResult(
-          success: true,
-          goldEarned: _asInt(data['gold_earned']),
+          success: false,
+          error: error ?? 'Satis basarisiz.',
         );
       }
 
-      return const SellItemResult(success: true, goldEarned: 0);
+      final Map<String, dynamic> data = Map<String, dynamic>.from(response as Map);
+      return SellItemResult(
+        success: true,
+        goldEarned: _asInt(data['gold_earned']),
+      );
     } catch (_) {
       throw AppException('Satis islemi basarisiz.', code: 'INVENTORY_SELL_FAILED');
     }
@@ -579,10 +662,17 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('trash_item', params: <String, dynamic>{
-        'p_row_id': rowId,
-      });
-      return true;
+      final dynamic response = await SupabaseService.client.rpc(
+        'trash_item',
+        params: <String, dynamic>{'p_row_id': rowId},
+      );
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Item silme basarisiz.',
+        code: 'INVENTORY_TRASH_FAILED',
+      );
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Item silme basarisiz.', code: 'INVENTORY_TRASH_FAILED');
     }
@@ -598,11 +688,20 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
 
     try {
-      await SupabaseService.client.rpc('toggle_item_favorite', params: <String, dynamic>{
-        'p_row_id': rowId,
-        'p_is_favorite': isFavorite,
-      });
-      return true;
+      final dynamic response = await SupabaseService.client.rpc(
+        'toggle_item_favorite',
+        params: <String, dynamic>{
+          'p_row_id': rowId,
+          'p_is_favorite': isFavorite,
+        },
+      );
+      return inventoryRpcSucceeded(
+        response,
+        fallbackError: 'Favori islemi basarisiz.',
+        code: 'INVENTORY_FAVORITE_FAILED',
+      );
+    } on AppException {
+      rethrow;
     } catch (_) {
       throw AppException('Favori islemi basarisiz.', code: 'INVENTORY_FAVORITE_FAILED');
     }
@@ -708,7 +807,11 @@ class SupabaseInventoryRepository implements InventoryRepository {
         : _asBool(normalized['is_direct_tradeable']);
     normalized['potion_type'] = (normalized['potion_type'] ?? 'none').toString();
     normalized['energy_restore'] = _asInt(normalized['energy_restore']);
-    normalized['health_restore'] = _asInt(normalized['health_restore']);
+    // Server historically stored heals in heal_amount; client reads health_restore.
+    final int healthRestore = _asInt(normalized['health_restore']);
+    final int healAmount = _asInt(normalized['heal_amount']);
+    normalized['health_restore'] =
+        healthRestore > 0 ? healthRestore : healAmount;
     normalized['tolerance_increase'] = _asInt(normalized['tolerance_increase']);
 
     return normalized;
@@ -755,21 +858,25 @@ class SupabaseInventoryRepository implements InventoryRepository {
 
       if (updates.isEmpty) return false;
 
-      await SupabaseService.client.rpc('update_item_positions', params: <String, dynamic>{
-        'p_updates': updates,
-      });
-      return true;
+      final dynamic response = await SupabaseService.client.rpc(
+        'update_item_positions',
+        params: <String, dynamic>{'p_updates': updates},
+      );
+      return inventoryRpcSuccessFlag(response);
     } catch (_) {
       return false;
     }
   }
 
-  List<InventoryItem> _ensureSlotPositions(List<InventoryItem> items) {
+  List<InventoryItem> _ensureSlotPositions(
+    List<InventoryItem> items, {
+    List<Map<String, dynamic>>? positionFixes,
+  }) {
     final Set<int> used = <int>{};
     final List<InventoryItem> normalized = <InventoryItem>[];
 
     for (final item in items) {
-      int slot = item.slotPosition;
+      final int slot = item.slotPosition;
       if (slot >= 0 && slot < inventoryCapacity && !used.contains(slot)) {
         used.add(slot);
         normalized.add(item.copyWith(slotPosition: slot));
@@ -778,6 +885,12 @@ class SupabaseInventoryRepository implements InventoryRepository {
         if (nextFree >= 0) {
           used.add(nextFree);
           normalized.add(item.copyWith(slotPosition: nextFree));
+          if (nextFree != slot) {
+            positionFixes?.add(<String, dynamic>{
+              'row_id': item.rowId,
+              'slot_position': nextFree,
+            });
+          }
         }
       }
     }
@@ -792,18 +905,4 @@ class SupabaseInventoryRepository implements InventoryRepository {
     }
     return -1;
   }
-}
-
-bool _rpcSucceeded(dynamic response, {required String fallbackError}) {
-  if (response is Map) {
-    final Map<String, dynamic> data = Map<String, dynamic>.from(response);
-    final dynamic successValue = data['success'];
-    if (successValue is bool && successValue == false) {
-      throw AppException(
-        (data['error'] as String?) ?? fallbackError,
-        code: 'INVENTORY_RPC_FAILED',
-      );
-    }
-  }
-  return true;
 }

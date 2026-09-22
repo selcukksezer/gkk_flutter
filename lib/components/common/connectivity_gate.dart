@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/connectivity_service.dart';
+import '../../core/tutorial/tutorial_modal_suppress.dart';
 import '../../theme/app_colors.dart';
 import '../layout/game_screen_background.dart';
 
@@ -70,18 +71,23 @@ class _ConnectivityGateState extends State<ConnectivityGate>
     return ValueListenableBuilder<ConnectivityStatus>(
       valueListenable: ConnectivityService.instance.status,
       builder: (BuildContext context, ConnectivityStatus status, Widget? _) {
-        return Stack(
-          textDirection: TextDirection.ltr,
-          fit: StackFit.expand,
-          children: <Widget>[
-            widget.child,
-            if (status == ConnectivityStatus.slow)
-              _buildSlowOverlay()
-            else if (status == ConnectivityStatus.offline)
+        final bool blocking = status == ConnectivityStatus.slow ||
+            status == ConnectivityStatus.offline;
+        return TutorialSuppressScope(
+          active: blocking,
+          child: Stack(
+            textDirection: TextDirection.ltr,
+            fit: StackFit.expand,
+            children: <Widget>[
+              widget.child,
+              if (status == ConnectivityStatus.slow)
+                _buildSlowOverlay()
+              else if (status == ConnectivityStatus.offline)
               _buildOfflineOverlay()
             else if (status == ConnectivityStatus.reconnected)
               _buildReconnectedBanner(),
-          ],
+            ],
+          ),
         );
       },
     );

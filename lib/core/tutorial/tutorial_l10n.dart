@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
 
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n.dart';
 import 'tutorial_track.dart';
 
@@ -39,6 +38,8 @@ abstract final class TutorialL10n {
         return l10n.tut_onboarding_hud_gold_title;
       case 'onboarding_hud_gems':
         return l10n.tut_onboarding_hud_gems_title;
+      case 'onboarding_nav_intro':
+        return l10n.tut_onboarding_nav_intro_title;
       case 'onboarding_tap_dungeon_tab':
         return l10n.tut_onboarding_tap_dungeon_tab_title;
       case 'dungeon_pick_zone':
@@ -47,32 +48,42 @@ abstract final class TutorialL10n {
         return l10n.tut_dungeon_enter_btn_title;
       case 'dungeon_confirm_enter':
         return l10n.tut_dungeon_confirm_enter_title;
-      case 'dungeon_tap_attack':
-        return l10n.tut_dungeon_tap_attack_title;
       case 'dungeon_first_win':
         return l10n.tut_dungeon_first_win_title;
       case 'dungeon_to_inventory':
         return l10n.tut_dungeon_to_inventory_title;
       case 'inventory_first_item':
         return l10n.tut_inventory_first_item_title;
-      case 'inventory_equip':
-        return l10n.tut_inventory_equip_title;
-      case 'inventory_to_character':
-        return l10n.tut_inventory_to_character_title;
+      case 'inventory_open_menu':
+        return l10n.tut_character_open_menu_title;
+      case 'inventory_tap_enhance':
+        return l10n.tut_character_tap_enhance_title;
       case 'character_check_power':
         return l10n.tut_character_check_power_title;
       case 'character_stat_panel':
         return l10n.tut_character_stat_panel_title;
-      case 'character_to_enhance':
-        return l10n.tut_character_to_enhance_title;
+      case 'character_class_abilities':
+        return l10n.tut_character_class_abilities_title;
+      case 'character_open_menu':
+        return l10n.tut_character_open_menu_title;
+      case 'character_tap_season':
+        return l10n.tut_enhance_tap_season_title;
       case 'enhance_pick_item':
         return l10n.tut_enhance_pick_item_title;
       case 'enhance_tap_forge':
         return l10n.tut_enhance_tap_forge_title;
       case 'enhance_result':
         return l10n.tut_enhance_result_title;
-      case 'enhance_season_cta':
-        return l10n.tut_enhance_season_cta_title;
+      case 'enhance_to_inventory':
+        return l10n.tut_dungeon_to_inventory_title;
+      case 'enhance_open_item':
+        return l10n.tut_inventory_first_item_title;
+      case 'enhance_equip':
+        return l10n.tut_inventory_equip_title;
+      case 'enhance_to_character':
+        return l10n.tut_inventory_to_character_title;
+      case 'bank_select_item':
+        return l10n.tut_bank_select_item_title;
       case 'bank_deposit_coach':
         return l10n.tut_bank_deposit_coach_title;
       case 'bank_deposit_done':
@@ -89,6 +100,12 @@ abstract final class TutorialL10n {
         return l10n.tut_season_quests_tab_title;
       case 'season_l20_badge':
         return l10n.tut_season_l20_badge_title;
+      case 'season_reset_warn':
+        return l10n.tut_season_reset_warn_title;
+      case 'season_to_hospital':
+        return l10n.tut_season_to_hospital_title;
+      case 'season_core_done':
+        return l10n.tut_season_core_done_title;
       case 'quests_claim_intro':
         return l10n.tut_quests_claim_intro_title;
       case 'craft_browse_recipes':
@@ -147,6 +164,32 @@ abstract final class TutorialL10n {
         return l10n.tut_night_window_title;
       case 'night_offer_browse':
         return l10n.tut_night_offer_browse_title;
+      case 'hospital_health_intro':
+        return l10n.tut_hospital_health_intro_title;
+      case 'hospital_wounded_penalty':
+        return l10n.tut_hospital_wounded_penalty_title;
+      case 'hospital_ad_timer':
+        return l10n.tut_hospital_ad_timer_title;
+      case 'hospital_to_prison':
+        return l10n.tut_hospital_to_prison_title;
+      case 'prison_intro':
+        return l10n.tut_prison_intro_title;
+      case 'prison_escape':
+        return l10n.tut_prison_escape_title;
+      case 'prison_ad_timer':
+        return l10n.tut_prison_ad_timer_title;
+      case 'prison_core_done':
+        return l10n.tut_prison_core_done_title;
+      case 'facilities_intro':
+        return l10n.tut_facilities_intro_title;
+      case 'facilities_suspicion':
+        return l10n.tut_facilities_suspicion_title;
+      case 'facilities_collect':
+        return l10n.tut_facilities_collect_title;
+      case 'trade_intro':
+        return l10n.tut_trade_intro_title;
+      case 'trade_safety':
+        return l10n.tut_trade_safety_title;
       default:
         return step.title;
     }
@@ -166,6 +209,8 @@ abstract final class TutorialL10n {
         return l10n.tut_onboarding_hud_gold_body;
       case 'onboarding_hud_gems':
         return l10n.tut_onboarding_hud_gems_body;
+      case 'onboarding_nav_intro':
+        return l10n.tut_onboarding_nav_intro_body;
       case 'onboarding_tap_dungeon_tab':
         return l10n.tut_onboarding_tap_dungeon_tab_body;
       case 'dungeon_pick_zone':
@@ -174,32 +219,44 @@ abstract final class TutorialL10n {
         return l10n.tut_dungeon_enter_btn_body;
       case 'dungeon_confirm_enter':
         return l10n.tut_dungeon_confirm_enter_body;
-      case 'dungeon_tap_attack':
-        return l10n.tut_dungeon_tap_attack_body;
       case 'dungeon_first_win':
         return l10n.tut_dungeon_first_win_body;
       case 'dungeon_to_inventory':
         return l10n.tut_dungeon_to_inventory_body;
       case 'inventory_first_item':
         return l10n.tut_inventory_first_item_body;
-      case 'inventory_equip':
-        return l10n.tut_inventory_equip_body;
-      case 'inventory_to_character':
-        return l10n.tut_inventory_to_character_body;
+      case 'inventory_open_menu':
+        return l10n.tut_character_open_menu_body;
+      case 'inventory_tap_enhance':
+        return l10n.tut_character_tap_enhance_body;
       case 'character_check_power':
         return l10n.tut_character_check_power_body;
       case 'character_stat_panel':
         return l10n.tut_character_stat_panel_body;
-      case 'character_to_enhance':
-        return l10n.tut_character_to_enhance_body;
+      case 'character_class_abilities':
+        return l10n.tut_character_class_abilities_body;
+      case 'character_open_menu':
+        return l10n.tut_character_open_menu_body;
+      case 'character_tap_season':
+        return l10n.tut_enhance_tap_season_body;
       case 'enhance_pick_item':
         return l10n.tut_enhance_pick_item_body;
       case 'enhance_tap_forge':
         return l10n.tut_enhance_tap_forge_body;
       case 'enhance_result':
         return l10n.tut_enhance_result_body;
-      case 'enhance_season_cta':
-        return l10n.tut_enhance_season_cta_body;
+      case 'enhance_to_inventory':
+        return l10n.tut_dungeon_to_inventory_body;
+      case 'enhance_open_item':
+        return l10n.tut_inventory_first_item_body;
+      case 'enhance_equip':
+        return l10n.tut_inventory_equip_body;
+      case 'enhance_to_character':
+        return l10n.tut_inventory_to_character_body;
+      case 'enhance_tap_season':
+        return l10n.tut_enhance_tap_season_body;
+      case 'bank_select_item':
+        return l10n.tut_bank_select_item_body;
       case 'bank_deposit_coach':
         return l10n.tut_bank_deposit_coach_body;
       case 'bank_deposit_done':
@@ -216,6 +273,12 @@ abstract final class TutorialL10n {
         return l10n.tut_season_quests_tab_body;
       case 'season_l20_badge':
         return l10n.tut_season_l20_badge_body;
+      case 'season_reset_warn':
+        return l10n.tut_season_reset_warn_body;
+      case 'season_to_hospital':
+        return l10n.tut_season_to_hospital_body;
+      case 'season_core_done':
+        return l10n.tut_season_core_done_body;
       case 'quests_claim_intro':
         return l10n.tut_quests_claim_intro_body;
       case 'craft_browse_recipes':
@@ -274,6 +337,32 @@ abstract final class TutorialL10n {
         return l10n.tut_night_window_body;
       case 'night_offer_browse':
         return l10n.tut_night_offer_browse_body;
+      case 'hospital_health_intro':
+        return l10n.tut_hospital_health_intro_body;
+      case 'hospital_wounded_penalty':
+        return l10n.tut_hospital_wounded_penalty_body;
+      case 'hospital_ad_timer':
+        return l10n.tut_hospital_ad_timer_body;
+      case 'hospital_to_prison':
+        return l10n.tut_hospital_to_prison_body;
+      case 'prison_intro':
+        return l10n.tut_prison_intro_body;
+      case 'prison_escape':
+        return l10n.tut_prison_escape_body;
+      case 'prison_ad_timer':
+        return l10n.tut_prison_ad_timer_body;
+      case 'prison_core_done':
+        return l10n.tut_prison_core_done_body;
+      case 'facilities_intro':
+        return l10n.tut_facilities_intro_body;
+      case 'facilities_suspicion':
+        return l10n.tut_facilities_suspicion_body;
+      case 'facilities_collect':
+        return l10n.tut_facilities_collect_body;
+      case 'trade_intro':
+        return l10n.tut_trade_intro_body;
+      case 'trade_safety':
+        return l10n.tut_trade_safety_body;
       default:
         return step.body;
     }

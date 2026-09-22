@@ -207,6 +207,35 @@ Future<void> showGuildMinJoinPowerDialog({
   controller.dispose();
 }
 
+Future<bool?> showGuildTransferLeadershipConfirmDialog(
+  BuildContext context, {
+  required String username,
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (BuildContext ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF171E2C),
+      title: const Text('Liderliği Devret'),
+      content: Text(
+        'Liderliği $username adlı üyeye devretmek istediğine emin misin?\n\n'
+        'Sen subay olursun; yeni lider tüm lider yetkilerini alır. Bu işlem geri alınamaz '
+        '(yeni lider tekrar sana devretmedikçe).',
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('İptal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFFB800)),
+          child: const Text('Devret'),
+        ),
+      ],
+    ),
+  );
+}
+
 Future<void> showGuildMemberActionsSheet({
   required BuildContext context,
   required GuildMemberData member,
@@ -223,10 +252,11 @@ Future<void> showGuildMemberActionsSheet({
 
   final bool canPromote = myRole == GuildRole.leader && member.role == GuildRole.member;
   final bool canDemote = myRole == GuildRole.leader && member.role == GuildRole.officer;
+  final bool canTransfer = myRole == GuildRole.leader;
   final bool canKick =
       myRole == GuildRole.leader || (myRole == GuildRole.officer && member.role == GuildRole.member);
 
-  if (!canPromote && !canDemote && !canKick) return;
+  if (!canPromote && !canDemote && !canKick && !canTransfer) return;
 
   await showModalBottomSheet<void>(
     context: context,
@@ -264,6 +294,25 @@ Future<void> showGuildMemberActionsSheet({
                   memberId: member.playerId,
                   action: 'demote_guild_member',
                   successMsg: '${member.username} üye yapıldı.',
+                );
+              },
+            ),
+          if (canTransfer)
+            ListTile(
+              leading: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFB800)),
+              title: const Text('Liderliği Devret'),
+              subtitle: const Text('Bu üye yeni lonca lideri olur'),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                final bool? ok = await showGuildTransferLeadershipConfirmDialog(
+                  context,
+                  username: member.username,
+                );
+                if (ok != true) return;
+                await onMemberAction(
+                  memberId: member.playerId,
+                  action: 'transfer_guild_leadership',
+                  successMsg: 'Liderlik ${member.username} adlı üyeye devredildi.',
                 );
               },
             ),

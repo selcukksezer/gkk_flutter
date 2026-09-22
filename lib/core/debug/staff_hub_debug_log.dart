@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 /// Debug-mode NDJSON logger for staff hub audit (session a3bc69).
+/// No-op outside [kDebugMode] — never write/print in release/profile.
 abstract final class StaffHubDebugLog {
   static const String _logPath =
       '/Users/selcuk/Documents/gkk-web/gkk_flutter/.cursor/debug-a3bc69.log';
@@ -14,6 +17,8 @@ abstract final class StaffHubDebugLog {
     Map<String, Object?> data = const <String, Object?>{},
     String runId = 'staff-audit',
   }) {
+    if (!kDebugMode) return;
+
     // #region agent log
     try {
       final Map<String, Object?> payload = <String, Object?>{

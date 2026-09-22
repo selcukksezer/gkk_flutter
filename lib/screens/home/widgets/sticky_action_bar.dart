@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -246,72 +245,69 @@ class _StickyActionBarState extends ConsumerState<StickyActionBar>
 
     return ClipRRect(
       borderRadius: const BorderRadius.horizontal(right: Radius.circular(20)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          height: kGameChatFabSize,
-          padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF121826).withValues(alpha: 0.82),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            borderRadius: const BorderRadius.horizontal(
-              right: Radius.circular(20),
+      child: Container(
+        height: kGameChatFabSize,
+        padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xF0121826),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          borderRadius: const BorderRadius.horizontal(
+            right: Radius.circular(20),
+          ),
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _onPanelTap(() {
+                  final promos = ref.read(retentionPromosProvider).promos;
+                  if (promos.nemesis.hasRival && promos.nemesis.rivalId != null) {
+                    context.push('${AppRoutes.pvp}?revenge=${promos.nemesis.rivalId}');
+                  } else {
+                    context.push(AppRoutes.leaderboard);
+                  }
+                }),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      _rankLabel,
+                      style: const TextStyle(
+                        color: Color(0xFF00B4FF),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _subtitleLabel,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.54),
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _onPanelTap(() {
-                    final promos = ref.read(retentionPromosProvider).promos;
-                    if (promos.nemesis.hasRival && promos.nemesis.rivalId != null) {
-                      context.push('${AppRoutes.pvp}?revenge=${promos.nemesis.rivalId}');
-                    } else {
-                      context.push(AppRoutes.leaderboard);
-                    }
-                  }),
-                  behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        _rankLabel,
-                        style: const TextStyle(
-                          color: Color(0xFF00B4FF),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _subtitleLabel,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.54),
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+            const SizedBox(width: 8),
+            ScaleTransition(
+              scale: _pulseAnimation,
+              child: GestureDetector(
+                onTap: () => _onPanelTap(
+                  () => context.push(AppRoutes.inventory),
                 ),
+                behavior: HitTestBehavior.opaque,
+                child: strengthenButton,
               ),
-              const SizedBox(width: 8),
-              ScaleTransition(
-                scale: _pulseAnimation,
-                child: GestureDetector(
-                  onTap: () => _onPanelTap(
-                    () => context.push(AppRoutes.inventory),
-                  ),
-                  behavior: HitTestBehavior.opaque,
-                  child: strengthenButton,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

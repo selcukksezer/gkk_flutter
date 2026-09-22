@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_spacing.dart';
 import 'auth_design.dart';
 
-enum AuthScreenKind { login, register }
+enum AuthScreenKind { login, register, forgotPassword, updatePassword }
 
 class AuthFormShell extends StatelessWidget {
   const AuthFormShell({
@@ -25,10 +25,29 @@ class AuthFormShell extends StatelessWidget {
   final Widget child;
   final Widget footer;
 
-  Color get _accent => kind == AuthScreenKind.login ? AuthDesign.gold : AuthDesign.fuchsia;
+  Color get _accent {
+    switch (kind) {
+      case AuthScreenKind.login:
+      case AuthScreenKind.forgotPassword:
+      case AuthScreenKind.updatePassword:
+        return AuthDesign.gold;
+      case AuthScreenKind.register:
+        return AuthDesign.fuchsia;
+    }
+  }
 
-  IconData get _icon =>
-      kind == AuthScreenKind.login ? Icons.castle_rounded : Icons.person_add_alt_1_rounded;
+  IconData get _icon {
+    switch (kind) {
+      case AuthScreenKind.login:
+        return Icons.castle_rounded;
+      case AuthScreenKind.register:
+        return Icons.person_add_alt_1_rounded;
+      case AuthScreenKind.forgotPassword:
+        return Icons.lock_reset_rounded;
+      case AuthScreenKind.updatePassword:
+        return Icons.password_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +55,9 @@ class AuthFormShell extends StatelessWidget {
       backgroundColor: AuthDesign.void_,
       body: AuthBackdrop(
         accent: _accent,
-        secondaryAccent: kind == AuthScreenKind.login ? AuthDesign.fuchsia : AuthDesign.gold,
+        secondaryAccent: kind == AuthScreenKind.register
+            ? AuthDesign.gold
+            : AuthDesign.fuchsia,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(

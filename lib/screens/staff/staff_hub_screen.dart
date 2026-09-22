@@ -537,6 +537,13 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
       AppMessenger.showError(context, 'Bug detayı yüklenemedi.');
       return;
     }
+    final bool gemSuggested = detail.suggestedGems != null && detail.suggestedGems! > 0;
+    final bool gemApproved =
+        detail.status == 'approved' ||
+        (detail.rewardGemsApproved != null && detail.rewardGemsApproved! > 0);
+    // Öneri zaten varsa veya onaylandıysa tekrar "Elmas öner" gösterme.
+    final bool canSuggestGems = !gemSuggested && !gemApproved;
+
     await showStaffBottomSheet<void>(
       context: context,
       accent: StaffDesign.statusAccent(detail.status),
@@ -553,10 +560,12 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
             ),
             const SizedBox(height: 8),
             StaffStatusPill(status: detail.status),
-            if (detail.suggestedGems != null) ...<Widget>[
+            if (gemSuggested) ...<Widget>[
               const SizedBox(height: 8),
               Text(
-                'Önerilen: ${detail.suggestedGems}💎',
+                gemApproved
+                    ? 'Onaylanan: ${detail.rewardGemsApproved ?? detail.suggestedGems}💎'
+                    : 'Önerilen: ${detail.suggestedGems}💎',
                 style: supportBodyStyle.copyWith(color: SettingsPalette.gold),
               ),
             ],
@@ -670,7 +679,8 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
                 },
               ),
             ],
-            if (ref.read(staffProvider).profile.has('bug.triage')) ...<Widget>[
+            if (canSuggestGems &&
+                ref.read(staffProvider).profile.has('bug.triage')) ...<Widget>[
               const SizedBox(height: 8),
               StaffActionButton(
                 label: 'Elmas öner',
@@ -710,7 +720,12 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
             ],
             if (ref.read(staffProvider).profile.isAdmin) ...<Widget>[
               const SizedBox(height: 8),
-              if (detail.suggestedGems == null)
+              if (gemApproved)
+                Text(
+                  'Elmas ödülü onaylandı — yeni öneri gerekmez.',
+                  style: supportCaptionStyle.copyWith(color: SettingsPalette.neon),
+                )
+              else if (!gemSuggested)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/utils/character_class_abilities.dart';
 import '../core/services/app_foreground_service.dart';
 import '../core/services/game_notification_scheduler.dart';
 import '../core/services/local_notification_service.dart';
@@ -233,6 +234,9 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
     if (_isFuture(profile.hospitalUntil) || _isFuture(profile.prisonUntil)) {
       return true;
     }
+    if (isWarriorBloodlustActive(profile)) {
+      return true;
+    }
 
     for (final GameNotificationItem item in _remoteItems) {
       if (item.kind == NotificationKind.facilityReady) return true;
@@ -433,10 +437,29 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
             id: 'health:low',
             kind: NotificationKind.lowHealth,
             title: 'Canın düşük',
-            body: 'Canın %${((profile.health / profile.maxHealth) * 100).round()} — hastaneye git.',
+            body: 'Canın %${((profile.health / profile.maxHealth) * 100).round()} — envanterden can iksiri kullan.',
             createdAt: now,
-            routePath: AppRoutes.hospital,
+            routePath: AppRoutes.inventory,
             priority: 55,
+          ),
+        );
+      }
+      if (isWarriorBloodlustActive(profile)) {
+        final String? untilRaw = profile.warriorBloodlustUntil;
+        final DateTime? until =
+            untilRaw == null ? null : DateTime.tryParse(untilRaw);
+        final int minsLeft = until == null
+            ? 0
+            : until.difference(DateTime.now()).inMinutes.clamp(0, 999);
+        out.add(
+          GameNotificationItem(
+            id: 'buff:bloodlust:${untilRaw ?? 'active'}',
+            kind: NotificationKind.classBuff,
+            title: 'Kan Hırsı aktif',
+            body: 'Saldırı +%10–20 · ~$minsLeft dk kaldı.',
+            createdAt: now,
+            routePath: AppRoutes.character,
+            priority: 70,
           ),
         );
       }
@@ -462,6 +485,7 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
         SupabaseService.client.rpc('get_player_facilities_with_queue'),
         SupabaseService.client.rpc('get_unseen_friendship_events'),
         SupabaseService.client.rpc('get_retention_promos'),
+        SupabaseService.client.rpc('get_craft_queue'),
       ]);
 
       final dynamic friendsRaw = results[0];
@@ -541,15 +565,22 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
           if (row is! Map) continue;
           final QuestData quest =
               QuestData.fromJson(Map<String, dynamic>.from(row));
-          if (quest.status != QuestStatus.completed) continue;
+          final bool rewardReady = quest.status == QuestStatus.completed ||
+              (quest.status == QuestStatus.active &&
+                  quest.progressMax > 0 &&
+                  quest.progress >= quest.progressMax);
+          if (!rewardReady) continue;
           out.add(
             GameNotificationItem(
               id: 'quest:${quest.questId}',
               kind: NotificationKind.questReward,
-              title: 'Görev ödülü hazır',
+              title: quest.status == QuestStatus.completed
+                  ? 'Görev ödülü hazır'
+                  : 'Görev tamamlandı',
               body: '${quest.name} — ödülü al.',
               createdAt: now,
-              routePath: quest.isSeasonQuest ? AppRoutes.season : AppRoutes.quests,
+              routePath:
+                  quest.isSeasonQuest ? AppRoutes.season : AppRoutes.quests,
               priority: 68,
             ),
           );
@@ -578,6 +609,7 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
 
       out.addAll(_friendshipEventItems(results[5]));
       out.addAll(await _retentionPromoItems(results[6]));
+      out.addAll(_craftReadyItems(results[7]));
     } catch (_) {
       // Son bilinen remote liste korunur.
     }
@@ -723,14 +755,43 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
           if (map['created_at'] is String) {
             createdAt = DateTime.tryParse(map['created_at'] as String) ?? now;
           }
+          final String inboxKind = (map['kind'] ?? '').toString();
+          final (NotificationKind kind, String route, String fallbackTitle) =
+              switch (inboxKind) {
+            'market_sale' => (
+                NotificationKind.marketSale,
+                AppRoutes.market,
+                'İlanın satıldı',
+              ),
+            'craft_ready' => (
+                NotificationKind.craftReady,
+                AppRoutes.crafting,
+                'Üretim tamamlandı',
+              ),
+            'health_full' => (
+                NotificationKind.healthFull,
+                AppRoutes.character,
+                'Canın doldu',
+              ),
+            'hospital_discharge' => (
+                NotificationKind.hospitalDischarge,
+                AppRoutes.home,
+                'Hastaneden çıktın',
+              ),
+            _ => (
+                NotificationKind.bugReportUpdate,
+                AppRoutes.myBugReports,
+                'Bug bildirimi',
+              ),
+          };
           out.add(
             GameNotificationItem(
               id: 'player_inbox:$id',
-              kind: NotificationKind.bugReportUpdate,
-              title: (map['title'] ?? 'Bug bildirimi').toString(),
+              kind: kind,
+              title: (map['title'] ?? fallbackTitle).toString(),
               body: (map['body'] ?? '').toString(),
               createdAt: createdAt,
-              routePath: AppRoutes.myBugReports,
+              routePath: route,
               priority: 86,
             ),
           );
@@ -883,6 +944,45 @@ class NotificationInboxNotifier extends Notifier<NotificationInboxState> {
       'fishing' => 'Balıkçılık',
       _ => typeKey.isEmpty ? 'Tesis' : typeKey,
     };
+  }
+
+  /// Kuyrukta süresi dolmuş, henüz toplanmamış üretimler.
+  List<GameNotificationItem> _craftReadyItems(dynamic raw) {
+    final List<dynamic> rows = _unwrapJsonList(raw);
+    final List<GameNotificationItem> out = <GameNotificationItem>[];
+    final DateTime now = DateTime.now();
+
+    for (final dynamic row in rows) {
+      if (row is! Map) continue;
+      final Map<String, dynamic> map = Map<String, dynamic>.from(row);
+      if (map['claimed'] == true) continue;
+
+      bool ready = map['is_completed'] == true;
+      final DateTime? completesAt =
+          DateTime.tryParse((map['completes_at'] ?? '').toString())?.toLocal();
+      if (!ready && completesAt != null && !completesAt.isAfter(now)) {
+        ready = true;
+      }
+      if (!ready) continue;
+
+      final String id = (map['id'] ?? '').toString();
+      if (id.isEmpty) continue;
+      final String name =
+          (map['output_name'] ?? map['recipe_name'] ?? 'Üretim').toString();
+      out.add(
+        GameNotificationItem(
+          id: 'craft:$id',
+          kind: NotificationKind.craftReady,
+          title: 'Üretim tamamlandı',
+          body: '$name hazır — atölyeden topla.',
+          createdAt: completesAt ?? now,
+          routePath: AppRoutes.crafting,
+          priority: 66,
+        ),
+      );
+    }
+
+    return out;
   }
 
   List<GameNotificationItem> _friendshipEventItems(dynamic raw) {

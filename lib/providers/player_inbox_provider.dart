@@ -40,6 +40,8 @@ class PlayerInboxItem {
 }
 
 class PlayerInboxNotifier extends Notifier<List<PlayerInboxItem>> {
+  Future<void>? _inFlight;
+
   @override
   List<PlayerInboxItem> build() {
     Future<void>.microtask(refresh);
@@ -47,6 +49,18 @@ class PlayerInboxNotifier extends Notifier<List<PlayerInboxItem>> {
   }
 
   Future<void> refresh() async {
+    if (_inFlight != null) {
+      return _inFlight!;
+    }
+    _inFlight = _performRefresh();
+    try {
+      await _inFlight;
+    } finally {
+      _inFlight = null;
+    }
+  }
+
+  Future<void> _performRefresh() async {
     if (!SupabaseService.isInitialized ||
         SupabaseService.client.auth.currentSession == null) {
       state = const <PlayerInboxItem>[];

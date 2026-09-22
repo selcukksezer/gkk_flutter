@@ -252,24 +252,35 @@ class AuthUser {
 
 class AuthResponse {
   const AuthResponse({
-    required this.session,
     required this.user,
+    this.session,
+    this.requiresEmailConfirmation = false,
   });
 
-  final AuthSession session;
+  final AuthSession? session;
   final AuthUser user;
+  final bool requiresEmailConfirmation;
+
+  bool get hasSession =>
+      session != null && session!.accessToken.isNotEmpty;
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    final Object? sessionRaw = json['session'];
     return AuthResponse(
-      session: AuthSession.fromJson(json['session'] as Map<String, dynamic>),
+      session: sessionRaw is Map<String, dynamic>
+          ? AuthSession.fromJson(sessionRaw)
+          : null,
       user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
+      requiresEmailConfirmation:
+          json['requires_email_confirmation'] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      'session': session.toJson(),
+      if (session != null) 'session': session!.toJson(),
       'user': user.toJson(),
+      'requires_email_confirmation': requiresEmailConfirmation,
     };
   }
 }

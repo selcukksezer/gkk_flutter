@@ -36,6 +36,30 @@ const List<MarketFilterOption> marketRarityFilters = <MarketFilterOption>[
   MarketFilterOption('mythic', 'Mitik'),
 ];
 
+/// Static category pills (counts omitted — server paginates browse data).
+List<MarketPillOption> marketStaticCategoryPillOptions() {
+  return marketCategoryFilters
+      .map(
+        (MarketFilterOption f) => MarketPillOption(
+          key: f.key,
+          label: f.label,
+          icon: f.icon,
+        ),
+      )
+      .toList();
+}
+
+List<MarketPillOption> marketStaticRarityPillOptions() {
+  return marketRarityFilters
+      .map(
+        (MarketFilterOption f) => MarketPillOption(
+          key: f.key,
+          label: f.label,
+        ),
+      )
+      .toList();
+}
+
 /// Category pills with Turkish labels + counts for browse UI.
 List<MarketPillOption> marketCategoryPillOptions(List<MarketTicker> tickers) {
   return <MarketPillOption>[

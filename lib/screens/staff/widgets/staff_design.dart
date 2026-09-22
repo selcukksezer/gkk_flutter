@@ -649,6 +649,7 @@ Future<T?> showStaffBottomSheet<T>({
   required BuildContext context,
   required Widget child,
   Color accent = SettingsPalette.gold,
+  bool showCloseButton = true,
 }) {
   return showModalBottomSheet<T>(
     context: context,
@@ -698,12 +699,35 @@ Future<T?> showStaffBottomSheet<T>({
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            showCloseButton ? 40 : 12,
+                            16,
+                            16,
+                          ),
                           child: SizedBox(
                             width: mq.size.width - 24,
                             child: child,
                           ),
                         ),
+                        if (showCloseButton)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: IconButton(
+                              tooltip: 'Kapat',
+                              onPressed: () => Navigator.of(ctx).maybePop(),
+                              style: IconButton.styleFrom(
+                                foregroundColor: SettingsPalette.titanium,
+                                backgroundColor:
+                                    SettingsPalette.void_.withValues(alpha: 0.55),
+                                minimumSize: const Size(36, 36),
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                            ),
+                          ),
                       ],
                     ),
                   ),

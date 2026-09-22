@@ -245,12 +245,12 @@ class _MekansScreenState extends ConsumerState<MekansScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'HAN TICARET AGI',
+              'GECE HAYATI',
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: MekanPalette.textHi, letterSpacing: 0.5, height: 1.05),
             ),
             const SizedBox(height: 6),
             const Text(
-              'Mekan ac, iksir sat, sohret kazan. Arenada dovus, kacak ticaretle imparatorluk kur.',
+              'Kulube gir, takil, partiye katil. Vibe topla, menuden icecek al, arenada dovus.',
               style: TextStyle(fontSize: 13, color: MekanPalette.textMid, height: 1.4),
             ),
             const SizedBox(height: 14),
@@ -492,6 +492,14 @@ class _MekanRowCard extends StatelessWidget {
                       GlowChip(icon: Icons.military_tech_rounded, label: 'Lv ${mekan.level}', color: accent),
                       const SizedBox(width: 6),
                       GlowChip(icon: Icons.star_rounded, label: '${mekan.fame}', color: MekanPalette.gold),
+                      if (mekan.happyHourActive) ...<Widget>[
+                        const SizedBox(width: 6),
+                        GlowChip(
+                          icon: Icons.celebration_rounded,
+                          label: context.l10n.party_live,
+                          color: MekanPalette.coral,
+                        ),
+                      ],
                     ],
                   ),
                   if (stockPeek.isNotEmpty) ...<Widget>[

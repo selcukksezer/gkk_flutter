@@ -118,7 +118,7 @@ Ember Wand, An elegant wand made of charred elderwood, brilliant ruby core radia
 ```
 Alchemists Rod, A complex alchemical rod, swirling gold and silver pipes, glowing blue vial of liquid mana built into the tip, golden steam clouds. legendary rarity, divine 3D MMORPG game item icon, magnificent intricate filigree, shifting iridescent color gradients on the item body, internal luminous lines, stunning god-ray lighting, three-quarter isometric view, 45-degree angle, pointing towards upper right, centered composition, single isolated asset with neat outlines, sharp boundaries, completely isolated on a solid clean pure white background, no shadows, no outer glow, no outer sparkles, no external particles, no floating particles outside the item --ar 1:1 --v 6.0
 ```
-
+node scripts/generate-meta-ai-items.mjs --from wpn_staff_mythic
 **wpn_staff_mythic** (Demon Blood)
 ```
 Demon Blood, A terrifying dark magic staff, crown shaped like demon horns holding a pulsing core of molten blood, internal pulsing blood core, glowing red veins, no outer droplets, no outer particles. mythic rarity, transcendent god-tier 3D MMORPG game item icon, cosmic nebula texture on the item surface, internal glowing sigils, breathtaking divine sparkles within the item, ethereal volumetric lighting, three-quarter isometric view, 45-degree angle, pointing towards upper right, centered composition, single isolated asset with neat outlines, sharp boundaries, completely isolated on a solid clean pure white background, no shadows, no outer glow, no outer sparkles, no external particles, no floating particles outside the item --ar 1:1 --v 6.0

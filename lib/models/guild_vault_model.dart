@@ -5,6 +5,9 @@ class GuildVaultItem {
     required this.itemName,
     required this.quantity,
     this.rarity,
+    this.icon = '',
+    this.itemType = 'misc',
+    this.enhancementLevel = 0,
     this.sourceType,
     this.createdAt,
   });
@@ -14,6 +17,9 @@ class GuildVaultItem {
   final String itemName;
   final int quantity;
   final String? rarity;
+  final String icon;
+  final String itemType;
+  final int enhancementLevel;
   final String? sourceType;
   final DateTime? createdAt;
 
@@ -29,6 +35,9 @@ class GuildVaultItem {
       itemName: (json['item_name'] ?? json['item_id'] ?? '—').toString(),
       quantity: _asInt(json['quantity'], fallback: 1),
       rarity: json['rarity']?.toString(),
+      icon: (json['icon'] ?? '').toString(),
+      itemType: (json['item_type'] ?? json['type'] ?? 'misc').toString(),
+      enhancementLevel: _asInt(json['enhancement_level']),
       sourceType: json['source_type']?.toString(),
       createdAt: createdAt,
     );
@@ -48,12 +57,16 @@ class GuildVaultLedgerEntry {
     required this.action,
     this.payload = const <String, dynamic>{},
     this.createdAt,
+    this.actorId,
+    this.actorName,
   });
 
   final String id;
   final String action;
   final Map<String, dynamic> payload;
   final DateTime? createdAt;
+  final String? actorId;
+  final String? actorName;
 
   factory GuildVaultLedgerEntry.fromJson(Map<String, dynamic> json) {
     DateTime? createdAt;
@@ -68,6 +81,8 @@ class GuildVaultLedgerEntry {
           ? Map<String, dynamic>.from(json['payload'] as Map)
           : const <String, dynamic>{},
       createdAt: createdAt,
+      actorId: json['actor_id']?.toString(),
+      actorName: json['actor_name']?.toString(),
     );
   }
 }
@@ -108,12 +123,17 @@ class GuildVaultTerritorySummary {
 class GuildVaultState {
   const GuildVaultState({
     this.isLoading = false,
+    this.hydrated = false,
     this.vaultGold = 0,
     this.vaultGoldPending = 0,
     this.monumentGoldPool = 0,
     this.isLeader = false,
     this.isOfficer = false,
     this.canManage = false,
+    this.canCollect = false,
+    this.vaultAutoPayoutWeekly = false,
+    this.vaultTaxRate = 0.05,
+    this.guildRole,
     this.items = const <GuildVaultItem>[],
     this.ledger = const <GuildVaultLedgerEntry>[],
     this.territories = const <GuildVaultTerritorySummary>[],
@@ -121,29 +141,40 @@ class GuildVaultState {
   });
 
   final bool isLoading;
+  /// True after at least one successful [GuildVaultNotifier.load].
+  final bool hydrated;
   final int vaultGold;
   final int vaultGoldPending;
   final int monumentGoldPool;
   final bool isLeader;
   final bool isOfficer;
   final bool canManage;
+  final bool canCollect;
+  final bool vaultAutoPayoutWeekly;
+  final double vaultTaxRate;
+  final String? guildRole;
   final List<GuildVaultItem> items;
   final List<GuildVaultLedgerEntry> ledger;
   final List<GuildVaultTerritorySummary> territories;
   final String? error;
 
-  int get totalGold => vaultGold + vaultGoldPending;
+  int get totalGold => vaultGold;
 
   factory GuildVaultState.initial() => const GuildVaultState();
 
   GuildVaultState copyWith({
     bool? isLoading,
+    bool? hydrated,
     int? vaultGold,
     int? vaultGoldPending,
     int? monumentGoldPool,
     bool? isLeader,
     bool? isOfficer,
     bool? canManage,
+    bool? canCollect,
+    bool? vaultAutoPayoutWeekly,
+    double? vaultTaxRate,
+    String? guildRole,
     List<GuildVaultItem>? items,
     List<GuildVaultLedgerEntry>? ledger,
     List<GuildVaultTerritorySummary>? territories,
@@ -152,12 +183,17 @@ class GuildVaultState {
   }) {
     return GuildVaultState(
       isLoading: isLoading ?? this.isLoading,
+      hydrated: hydrated ?? this.hydrated,
       vaultGold: vaultGold ?? this.vaultGold,
       vaultGoldPending: vaultGoldPending ?? this.vaultGoldPending,
       monumentGoldPool: monumentGoldPool ?? this.monumentGoldPool,
       isLeader: isLeader ?? this.isLeader,
       isOfficer: isOfficer ?? this.isOfficer,
       canManage: canManage ?? this.canManage,
+      canCollect: canCollect ?? this.canCollect,
+      vaultAutoPayoutWeekly: vaultAutoPayoutWeekly ?? this.vaultAutoPayoutWeekly,
+      vaultTaxRate: vaultTaxRate ?? this.vaultTaxRate,
+      guildRole: guildRole ?? this.guildRole,
       items: items ?? this.items,
       ledger: ledger ?? this.ledger,
       territories: territories ?? this.territories,
@@ -183,13 +219,22 @@ class GuildVaultState {
                 GuildVaultTerritorySummary.fromJson(Map<String, dynamic>.from(e)))
             .toList();
 
+    final bool isLeader = json['is_leader'] == true;
+    final bool isOfficer = json['is_officer'] == true;
     return GuildVaultState(
+      hydrated: true,
       vaultGold: GuildVaultItem._asInt(json['vault_gold']),
       vaultGoldPending: GuildVaultItem._asInt(json['vault_gold_pending']),
       monumentGoldPool: GuildVaultItem._asInt(json['monument_gold_pool']),
-      isLeader: json['is_leader'] == true,
-      isOfficer: json['is_officer'] == true,
-      canManage: json['can_manage'] == true || json['is_leader'] == true,
+      isLeader: isLeader,
+      isOfficer: isOfficer,
+      canManage: json['can_manage'] == true || isLeader,
+      canCollect: false,
+      vaultAutoPayoutWeekly: json['vault_auto_payout_weekly'] == true,
+      vaultTaxRate: json['vault_tax_rate'] is num
+          ? (json['vault_tax_rate'] as num).toDouble()
+          : 0.05,
+      guildRole: json['guild_role']?.toString(),
       items: items,
       ledger: ledger,
       territories: territories,

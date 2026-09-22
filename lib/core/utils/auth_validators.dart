@@ -2,6 +2,13 @@ import '../../l10n/app_localizations.dart';
 
 abstract final class AuthValidators {
   static final RegExp emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+  static final RegExp usernamePattern = RegExp(r'^[a-zA-Z0-9_]{3,16}$');
+  static final RegExp passwordLetter = RegExp(r'[A-Za-z]');
+  static final RegExp passwordDigit = RegExp(r'[0-9]');
+
+  static const int minPasswordLength = 8;
+  static const int minUsernameLength = 3;
+  static const int maxUsernameLength = 16;
 
   static String? validateEmail(String? value, AppLocalizations l10n) {
     final String email = value?.trim() ?? '';
@@ -14,13 +21,41 @@ abstract final class AuthValidators {
     return null;
   }
 
+  /// Login: non-empty only (existing short passwords must still work).
+  static String? validatePasswordLogin(String? value, AppLocalizations l10n) {
+    final String password = value ?? '';
+    if (password.isEmpty) {
+      return l10n.auth_password_required;
+    }
+    return null;
+  }
+
+  /// Register / reset: min 8 + letter + digit.
   static String? validatePassword(String? value, AppLocalizations l10n) {
     final String password = value ?? '';
     if (password.isEmpty) {
       return l10n.auth_password_required;
     }
-    if (password.length < 6) {
+    if (password.length < minPasswordLength) {
       return l10n.auth_password_min_length;
+    }
+    if (!passwordLetter.hasMatch(password) || !passwordDigit.hasMatch(password)) {
+      return l10n.auth_password_strength;
+    }
+    return null;
+  }
+
+  static String? validatePasswordConfirm(
+    String? value,
+    String password,
+    AppLocalizations l10n,
+  ) {
+    final String confirm = value ?? '';
+    if (confirm.isEmpty) {
+      return l10n.auth_password_confirm_required;
+    }
+    if (confirm != password) {
+      return l10n.auth_password_mismatch;
     }
     return null;
   }
@@ -29,6 +64,11 @@ abstract final class AuthValidators {
     final String username = value?.trim() ?? '';
     if (username.isEmpty) {
       return l10n.auth_username_required;
+    }
+    if (username.length < minUsernameLength ||
+        username.length > maxUsernameLength ||
+        !usernamePattern.hasMatch(username)) {
+      return l10n.auth_username_invalid;
     }
     return null;
   }

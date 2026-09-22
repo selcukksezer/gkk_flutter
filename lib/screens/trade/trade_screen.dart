@@ -16,6 +16,9 @@ import '../../models/item_model.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/trade_invite_provider.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -441,6 +444,11 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
     final int amount = int.tryParse(_goldController.text.trim()) ?? 0;
     if (amount < 0) {
       AppMessenger.showWarning(context, 'Geçersiz altın miktarı');
+      return;
+    }
+    final int myBalance = ref.read(playerProvider).profile?.gold ?? 0;
+    if (amount > myBalance) {
+      AppMessenger.showWarning(context, 'Yeterli altının yok ($myBalance altın)');
       return;
     }
     setState(() => _processing = true);
@@ -911,9 +919,24 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: GameScrollLayout.pagePadding(context),
-                  child: _tabIndex == 0 ? _buildTradeTab() : _buildHistoryTab(),
+                child: RefreshIndicator(
+                  color: AppColors.liquidGold,
+                  onRefresh: () async {
+                    if (_tabIndex == 0) {
+                      await Future.wait(<Future<void>>[
+                        _loadBlockedTradeUsers(silent: true),
+                        ref.read(inventoryProvider.notifier).loadInventory(silent: true),
+                        if (_sessionId != null) _refreshTradeSession(),
+                      ]);
+                    } else {
+                      await _loadHistory();
+                    }
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: GameScrollLayout.pagePadding(context),
+                    child: _tabIndex == 0 ? _buildTradeTab() : _buildHistoryTab(),
+                  ),
                 ),
               ),
             ],
@@ -982,14 +1005,99 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         _buildPlayerSearchPanel(),
+        if (_recentPartners.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 12),
+          _buildRecentPartnersPanel(),
+        ],
         const SizedBox(height: 12),
         _buildBlockedUsersPanel(),
       ],
     );
   }
 
-  Widget _buildPlayerSearchPanel() {
+  /// Tamamlanan işlemlerden benzersiz son partnerler (en fazla 5).
+  List<String> get _recentPartners {
+    final Set<String> blocked = _blockedTradeUsers
+        .map((Map<String, dynamic> row) => (row['username'] as String?) ?? '')
+        .where((String u) => u.isNotEmpty)
+        .toSet();
+    final List<String> out = <String>[];
+    for (final Map<String, dynamic> entry in _history) {
+      if (entry['status'] != 'completed') continue;
+      final String partner = (entry['partner'] as String?) ?? '';
+      if (partner.isEmpty || blocked.contains(partner) || out.contains(partner)) {
+        continue;
+      }
+      out.add(partner);
+      if (out.length >= 5) break;
+    }
+    return out;
+  }
+
+  Widget _buildRecentPartnersPanel() {
     return TradeNeonPanel(
+      accent: AppColors.toxicNeon,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            '🕐 Son Ticaret Yaptıkların',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _recentPartners.map((String partner) {
+              return GestureDetector(
+                onTap: _processing
+                    ? null
+                    : () {
+                        _searchController.text = partner;
+                        unawaited(_handleSearch());
+                      },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.carbonVoid.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: AppColors.toxicNeon.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const Icon(Icons.handshake_outlined,
+                          size: 14, color: AppColors.toxicNeon),
+                      const SizedBox(width: 6),
+                      Text(
+                        partner,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayerSearchPanel() {
+    return TutorialAnchorScope(
+      id: TutorialAnchorId.tradeSearchField,
+      child: TradeNeonPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -1030,13 +1138,22 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
                 width: 88,
                 child: TradePrimaryButton(
                   label: '🔍 Ara',
-                  onPressed: _processing ? null : _handleSearch,
+                  onPressed: _processing
+                      ? null
+                      : () async {
+                          await TutorialTriggers.onAnchorTap(
+                            ref,
+                            TutorialAnchorId.tradeSearchField,
+                          );
+                          await _handleSearch();
+                        },
                 ),
               ),
             ],
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1258,7 +1375,21 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
         TradeNeonPanel(
           accent: AppColors.liquidGold,
           padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6, left: 2),
+                child: Text(
+                  'Bakiyen: ${ref.watch(playerProvider).profile?.gold ?? 0} altın',
+                  style: const TextStyle(
+                    color: AppColors.mutedTitanium,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Row(
             children: <Widget>[
               Expanded(
                 child: TextField(
@@ -1297,6 +1428,8 @@ class _TradeScreenState extends ConsumerState<TradeScreen> with WidgetsBindingOb
                   onPressed: _processing ? null : _applyGold,
                 ),
               ),
+            ],
+          ),
             ],
           ),
         ),

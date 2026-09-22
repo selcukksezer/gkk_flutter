@@ -51,7 +51,9 @@ class MekanRepository {
   Future<List<MekanStockEntry>> fetchStock(String mekanId, {bool onlyAvailable = false}) async {
     var query = SupabaseService.client
         .from('mekan_stock')
-        .select('*, items(name, name_tr, type, sub_type, rarity, is_han_only, icon)')
+        .select(
+          '*, items(name, name_tr, type, sub_type, rarity, is_han_only, icon, energy_restore)',
+        )
         .eq('mekan_id', mekanId);
     if (onlyAvailable) {
       query = query.gt('quantity', 0).gt('sell_price', 0);
@@ -237,6 +239,62 @@ class MekanRepository {
   Future<void> setHappyHour({required String mekanId, required bool active}) =>
       _rpc('set_mekan_happy_hour', <String, dynamic>{'p_mekan_id': mekanId, 'p_active': active});
 
+  /// Crims-like status: tickets, addiction mult, level/rep gates.
+  Future<MekanNightlifeStatus> getNightlifeStatus({String? mekanId}) async {
+    final Map<String, dynamic> res = await _rpc(
+      'get_nightlife_status',
+      <String, dynamic>{'p_mekan_id': mekanId},
+    );
+    return MekanNightlifeStatus.fromJson(res);
+  }
+
+  Future<Map<String, dynamic>> refillQuote({
+    required String mekanId,
+    required String itemId,
+  }) =>
+      _rpc('mekan_refill_quote', <String, dynamic>{
+        'p_mekan_id': mekanId,
+        'p_item_id': itemId,
+      });
+
+  /// Core loop: spend 1 ticket + buy bar consumable → energy to max.
+  Future<MekanRefillResult> refill({
+    required String mekanId,
+    required String itemId,
+  }) async {
+    final Map<String, dynamic> res = await _rpc('mekan_refill', <String, dynamic>{
+      'p_mekan_id': mekanId,
+      'p_item_id': itemId,
+    });
+    return MekanRefillResult.fromJson(res);
+  }
+
+  /// Nightlife: owner starts a party window (reuses happy_hour_until).
+  Future<Map<String, dynamic>> startParty({
+    required String mekanId,
+    int durationMinutes = 60,
+  }) =>
+      _rpc('mekan_start_party', <String, dynamic>{
+        'p_mekan_id': mekanId,
+        'p_duration_minutes': durationMinutes,
+      });
+
+  @Deprecated('Use refill — hang_out deprecated server-side')
+  Future<MekanNightlifeResult> hangOut(String mekanId) async {
+    final Map<String, dynamic> res = await _rpc('mekan_hang_out', <String, dynamic>{
+      'p_mekan_id': mekanId,
+    });
+    return MekanNightlifeResult.fromJson(res);
+  }
+
+  @Deprecated('Use refill — join_party deprecated server-side')
+  Future<MekanNightlifeResult> joinParty(String mekanId) async {
+    final Map<String, dynamic> res = await _rpc('mekan_join_party', <String, dynamic>{
+      'p_mekan_id': mekanId,
+    });
+    return MekanNightlifeResult.fromJson(res);
+  }
+
   Future<Map<String, dynamic>> pvpBet({
     required String mekanId,
     required String defenderId,
@@ -312,6 +370,191 @@ class MekanException implements Exception {
   String toString() => message;
 }
 
+/// Result of deprecated hang/party RPCs (kept for type compat).
+class MekanNightlifeResult {
+  const MekanNightlifeResult({
+    required this.mode,
+    required this.outcome,
+    required this.message,
+    required this.energyDelta,
+    required this.energyCost,
+    required this.goldDelta,
+    required this.coverPaid,
+    required this.vibeDelta,
+    required this.nightlifeVibe,
+    required this.hospital,
+    required this.hospitalMinutes,
+    this.hospitalReason,
+    this.cooldownUntil,
+    required this.cooldownSeconds,
+    required this.partyActive,
+  });
+
+  final String mode;
+  final String outcome;
+  final String message;
+  final int energyDelta;
+  final int energyCost;
+  final int goldDelta;
+  final int coverPaid;
+  final int vibeDelta;
+  final int nightlifeVibe;
+  final bool hospital;
+  final int hospitalMinutes;
+  final String? hospitalReason;
+  final String? cooldownUntil;
+  final int cooldownSeconds;
+  final bool partyActive;
+
+  bool get isGood => outcome == 'good';
+  bool get isScam => outcome == 'scam';
+  bool get isFight => outcome == 'fight';
+
+  factory MekanNightlifeResult.fromJson(Map<String, dynamic> json) => MekanNightlifeResult(
+        mode: (json['mode'] ?? 'hang').toString(),
+        outcome: (json['outcome'] ?? 'neutral').toString(),
+        message: (json['message'] ?? '').toString(),
+        energyDelta: _toInt(json['energy_delta']),
+        energyCost: _toInt(json['energy_cost']),
+        goldDelta: _toInt(json['gold_delta']),
+        coverPaid: _toInt(json['cover_paid']),
+        vibeDelta: _toInt(json['vibe_delta']),
+        nightlifeVibe: _toInt(json['nightlife_vibe']),
+        hospital: json['hospital'] == true,
+        hospitalMinutes: _toInt(json['hospital_minutes']),
+        hospitalReason: json['hospital_reason']?.toString(),
+        cooldownUntil: json['cooldown_until']?.toString(),
+        cooldownSeconds: _toInt(json['cooldown_seconds']),
+        partyActive: json['party_active'] == true,
+      );
+}
+
+class MekanNightlifeStatus {
+  const MekanNightlifeStatus({
+    required this.tickets,
+    required this.ticketsMax,
+    required this.dailyGrant,
+    required this.addictionLevel,
+    required this.tolerance,
+    required this.addictionPriceMult,
+    required this.energy,
+    required this.maxEnergy,
+    required this.nightlifeVibe,
+    required this.sessionRefills,
+    required this.canEnter,
+    this.gateError,
+    required this.isOwn,
+    required this.partyActive,
+    required this.reqLevel,
+    required this.reqReputation,
+  });
+
+  final int tickets;
+  final int ticketsMax;
+  final int dailyGrant;
+  final int addictionLevel;
+  final int tolerance;
+  final double addictionPriceMult;
+  final int energy;
+  final int maxEnergy;
+  final int nightlifeVibe;
+  final int sessionRefills;
+  final bool canEnter;
+  final String? gateError;
+  final bool isOwn;
+  final bool partyActive;
+  final int reqLevel;
+  final int reqReputation;
+
+  factory MekanNightlifeStatus.fromJson(Map<String, dynamic> json) => MekanNightlifeStatus(
+        tickets: _toInt(json['tickets']),
+        ticketsMax: _toInt(json['tickets_max'], fallback: 100),
+        dailyGrant: _toInt(json['daily_grant'], fallback: 24),
+        addictionLevel: _toInt(json['addiction_level']),
+        tolerance: _toInt(json['tolerance']),
+        addictionPriceMult: _toDouble(json['addiction_price_mult'], fallback: 1),
+        energy: _toInt(json['energy']),
+        maxEnergy: _toInt(json['max_energy'], fallback: 100),
+        nightlifeVibe: _toInt(json['nightlife_vibe']),
+        sessionRefills: _toInt(json['session_refills']),
+        canEnter: json['can_enter'] != false,
+        gateError: json['gate_error']?.toString(),
+        isOwn: json['is_own'] == true,
+        partyActive: json['party_active'] == true,
+        reqLevel: _toInt(json['req_level'], fallback: 1),
+        reqReputation: _toInt(json['req_reputation']),
+      );
+}
+
+class MekanRefillResult {
+  const MekanRefillResult({
+    required this.outcome,
+    required this.message,
+    required this.hospital,
+    required this.hospitalMinutes,
+    this.hospitalReason,
+    required this.energyBefore,
+    required this.energyAfter,
+    required this.energyDelta,
+    required this.goldPaid,
+    required this.ticketSpent,
+    required this.ticketsLeft,
+    required this.addictionLevel,
+    required this.tolerance,
+    required this.addictionPriceMult,
+    required this.isOwn,
+    required this.partyActive,
+    required this.vibeDelta,
+    required this.nightlifeVibe,
+    required this.odNextWarning,
+  });
+
+  final String outcome;
+  final String message;
+  final bool hospital;
+  final int hospitalMinutes;
+  final String? hospitalReason;
+  final int energyBefore;
+  final int energyAfter;
+  final int energyDelta;
+  final int goldPaid;
+  final int ticketSpent;
+  final int ticketsLeft;
+  final int addictionLevel;
+  final int tolerance;
+  final double addictionPriceMult;
+  final bool isOwn;
+  final bool partyActive;
+  final int vibeDelta;
+  final int nightlifeVibe;
+  final bool odNextWarning;
+
+  bool get isOverdose => outcome == 'overdose';
+  bool get isRefill => outcome == 'refill';
+
+  factory MekanRefillResult.fromJson(Map<String, dynamic> json) => MekanRefillResult(
+        outcome: (json['outcome'] ?? 'refill').toString(),
+        message: (json['message'] ?? '').toString(),
+        hospital: json['hospital'] == true,
+        hospitalMinutes: _toInt(json['hospital_minutes']),
+        hospitalReason: json['hospital_reason']?.toString(),
+        energyBefore: _toInt(json['energy_before']),
+        energyAfter: _toInt(json['energy_after']),
+        energyDelta: _toInt(json['energy_delta']),
+        goldPaid: _toInt(json['gold_paid']),
+        ticketSpent: _toInt(json['ticket_spent'], fallback: 1),
+        ticketsLeft: _toInt(json['tickets_left']),
+        addictionLevel: _toInt(json['addiction_level']),
+        tolerance: _toInt(json['tolerance']),
+        addictionPriceMult: _toDouble(json['addiction_price_mult'], fallback: 1),
+        isOwn: json['is_own'] == true,
+        partyActive: json['party_active'] == true,
+        vibeDelta: _toInt(json['vibe_delta']),
+        nightlifeVibe: _toInt(json['nightlife_vibe']),
+        odNextWarning: json['od_next_warning'] == true,
+      );
+}
+
 // ── Row models ───────────────────────────────────────────────────────────────
 
 bool mekanItemEligible({required bool isHanOnly, required String? type}) =>
@@ -321,6 +564,13 @@ int _toInt(dynamic v, {int fallback = 0}) {
   if (v is int) return v;
   if (v is num) return v.toInt();
   if (v is String) return int.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+double _toDouble(dynamic v, {double fallback = 0}) {
+  if (v is double) return v;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v) ?? fallback;
   return fallback;
 }
 
@@ -336,6 +586,8 @@ class MekanStockEntry {
     required this.quantity,
     required this.sellPrice,
     required this.eligible,
+    this.energyRestore = 0,
+    this.itemType,
   });
 
   final String stockId;
@@ -348,6 +600,12 @@ class MekanStockEntry {
   final int quantity;
   final int sellPrice;
   final bool eligible;
+  final int energyRestore;
+  final String? itemType;
+
+  /// Bar refill shelf (Crims drink/ticket) — energy / han / potion.
+  bool get canRefill =>
+      eligible && isListedForSale && (energyRestore > 0 || isHanOnly || (itemType ?? '').toLowerCase() == 'potion');
 
   factory MekanStockEntry.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic> it =
@@ -366,6 +624,8 @@ class MekanStockEntry {
       quantity: _toInt(json['quantity']),
       sellPrice: _toInt(json['sell_price']),
       eligible: mekanItemEligible(isHanOnly: han, type: type),
+      energyRestore: _toInt(it['energy_restore']),
+      itemType: type,
     );
   }
 }

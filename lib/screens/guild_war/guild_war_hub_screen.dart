@@ -10,6 +10,7 @@ import '../../core/tutorial/tutorial_triggers.dart';
 import '../../models/guild_war_model.dart';
 import '../../providers/guild_war_provider.dart';
 import '../../providers/guild_provider.dart';
+import '../../providers/guild_vault_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
 import '../../routing/app_router.dart';
@@ -29,6 +30,7 @@ import 'widgets/ranking_podium.dart';
 import 'widgets/territory_card.dart';
 import 'widgets/territory_map_view.dart';
 import 'widgets/tournament_card.dart';
+import 'widgets/live_clash_banner.dart';
 import '../dungeon/widgets/dungeon_siege_design.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
@@ -42,7 +44,9 @@ class GuildWarHubScreen extends ConsumerStatefulWidget {
 class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _kingdomRefreshToken = 0;
   bool _territoryMapView = true;
+  LiveGuildWarClash? _liveClash;
 
   static const List<String> _tabLabels = <String>['Sıralama', 'Turnuva', 'Bölge', 'Krallık'];
   static const List<String> _tabIcons = <String>['🏅', '🏆', '🗺', '👑'];
@@ -50,7 +54,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     'Lonca Sıralaması',
     'Aktif Turnuvalar',
     'Bölge Haritası',
-    'Krallık Seçimi',
+    'Krallık',
   ];
 
   @override
@@ -62,12 +66,22 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
       await Future.wait<void>(<Future<void>>[
         ref.read(guildProvider.notifier).loadGuild(),
         ref.read(guildWarProvider.notifier).loadAll(),
+        ref.read(guildVaultProvider.notifier).load(),
         ref.read(dungeonSiegeProvider.notifier).loadHub(silent: true),
       ]);
+      await _loadClash();
       if (mounted) {
         await TutorialTriggers.onRouteEnter(ref, AppRoutes.guildWar);
       }
     });
+  }
+
+  Future<void> _loadClash() async {
+    final String? guildId = ref.read(playerProvider).profile?.guildId;
+    final LiveGuildWarClash? clash =
+        await ref.read(guildWarProvider.notifier).loadLiveClash(guildId: guildId);
+    if (!mounted) return;
+    setState(() => _liveClash = clash);
   }
 
   void _onTabChanged() {
@@ -84,7 +98,12 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
 
   Future<void> _refresh() async {
     if (!mounted) return;
-    await ref.read(guildWarProvider.notifier).loadAll();
+    setState(() => _kingdomRefreshToken++);
+    await Future.wait<void>(<Future<void>>[
+      ref.read(guildWarProvider.notifier).loadAll(),
+      ref.read(guildVaultProvider.notifier).load(),
+      _loadClash(),
+    ]);
   }
 
   GuildWarRanking? _findMyRanking(
@@ -121,6 +140,8 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     final String? combatBlock = combatRestrictionMessage(
       hospitalUntil: profile?.hospitalUntil,
       prisonUntil: profile?.prisonUntil,
+      health: profile?.health,
+      maxHealth: profile?.maxHealth,
     );
     if (combatBlock != null) {
       AppMessenger.showError(context, combatBlock);
@@ -134,18 +155,16 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
 
   Future<void> _addDefense(TerritoryData territory) async {
     final profile = ref.read(playerProvider).profile;
-    final GuildWarDefenseRequest? req = await showGuildWarDefenseSheet(
+    final int? gems = await showGuildWarDefenseSheet(
       context,
       minDefenseGems: territory.minDefenseGems,
-      vaultGold: territory.vaultSummary?.vaultGold,
       playerGems: profile?.gems,
     );
-    if (req == null || req.amount <= 0) return;
+    if (gems == null || gems <= 0) return;
     if (!mounted) return;
 
-    final String? error = req.mode == GuildWarDefenseMode.gems
-        ? await ref.read(guildWarProvider.notifier).addDefense(territory.id, req.amount)
-        : await ref.read(guildWarProvider.notifier).addDefenseGold(territory.id, req.amount);
+    final String? error =
+        await ref.read(guildWarProvider.notifier).addDefense(territory.id, gems);
     if (!mounted) return;
     if (error != null) {
       AppMessenger.showError(context, error);
@@ -198,10 +217,34 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
                       child: GuildWarSeasonHeader(
                         season: warState.season,
                         myRank: myRanking?.rank,
-                        myPoints: myRanking?.points,
+                        myPoints: myRanking?.rankScore ?? myRanking?.points,
                         guildName: guildName,
                       ),
                     ),
+                    if (_liveClash != null)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
+                          child: LiveClashBanner(
+                            clash: _liveClash!,
+                            onRally: _liveClash!.matchId == null
+                                ? null
+                                : () async {
+                                    final String? err = await ref
+                                        .read(guildWarProvider.notifier)
+                                        .rallyClash(_liveClash!.matchId!);
+                                    if (!mounted) return;
+                                    if (err != null) {
+                                      AppMessenger.showError(context, err);
+                                    } else {
+                                      AppMessenger.showSuccess(context, 'Rally kaydı alındı!');
+                                      await _loadClash();
+                                    }
+                                  },
+                            onOpenPvp: () => context.push(AppRoutes.pvp),
+                          ),
+                        ),
+                      ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
@@ -283,7 +326,7 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
         );
       case 3:
       default:
-        return const KingdomElectionPanel();
+        return KingdomElectionPanel(refreshToken: _kingdomRefreshToken);
     }
   }
 
@@ -338,9 +381,70 @@ class _GuildWarHubScreenState extends ConsumerState<GuildWarHubScreen>
     String? guildId, {
     required bool combatLocked,
   }) {
+    final vault = ref.watch(guildVaultProvider);
+    final List<TerritoryData> owned = guildId == null
+        ? const <TerritoryData>[]
+        : territories
+            .where((TerritoryData t) => t.ownerGuildId == guildId)
+            .toList(growable: false);
+    final int totalTradeIncome = owned.fold<int>(
+      0,
+      (int sum, TerritoryData t) => sum + t.tradeIncome,
+    );
+    final int hourlyIncome = owned.fold<int>(
+      0,
+      (int sum, TerritoryData t) => sum + (t.tradeIncomeHourly > 0 ? t.tradeIncomeHourly.round() : (t.tradeIncome / 24).round()),
+    );
+    final int vaultItems = vault.items.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (owned.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: WarNeonCard(
+              accent: WarPalette.gold,
+              child: Row(
+                children: <Widget>[
+                  const Text('💰', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          '${owned.length} bölge · $totalTradeIncome altın/gün (~$hourlyIncome/saat)',
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Kasa: ${vault.vaultGold}g · Gelir otomatik · Günlük vergi %5',
+                          style: const TextStyle(color: WarPalette.titanium, fontSize: 11),
+                        ),
+                        if (vaultItems > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Kasada $vaultItems bölge eşyası',
+                              style: const TextStyle(color: WarPalette.neon, fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go(AppRoutes.guildVault),
+                    child: const Text('Kasa'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         if (combatLocked)
           const Padding(
             padding: EdgeInsets.only(bottom: AppSpacing.sm),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -6,15 +7,21 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/common/universal_game_dialog.dart';
 import '../../components/restriction/restriction_screen_ui.dart';
+import '../../components/restriction/ward_panel.dart';
 import '../../core/services/ad_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/restriction_reason_labels.dart';
 import '../../core/utils/restriction_time.dart';
+import '../../core/utils/system2_restriction_math.dart';
 import '../../l10n/l10n.dart';
 import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
@@ -127,18 +134,59 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen>
   Future<void> _watchAdToReduce() async {
     if (_paying) return;
 
+    setState(() => _paying = true);
+    String? challengeToken;
+    try {
+      final dynamic challenge = await SupabaseService.client.rpc(
+        'issue_ad_timer_challenge',
+        params: <String, dynamic>{
+          'p_timer': 'prison',
+          'p_placement': 'prison_timer',
+        },
+      );
+      if (!mounted) return;
+      if (challenge is! Map || challenge['success'] != true) {
+        final String msg = challenge is Map
+            ? (challenge['message'] ?? challenge['error'] ?? 'Reklam açılamadı')
+                .toString()
+            : 'Reklam açılamadı';
+        AppMessenger.showError(context, msg);
+        return;
+      }
+      challengeToken = challenge['challenge_token']?.toString();
+      if (challengeToken == null || challengeToken.isEmpty) {
+        AppMessenger.showError(context, 'Reklam doğrulama başarısız.');
+        return;
+      }
+    } catch (_) {
+      if (mounted) AppMessenger.showError(context, 'Reklam açılamadı.');
+      return;
+    } finally {
+      if (mounted && challengeToken == null) {
+        setState(() => _paying = false);
+      }
+    }
+
+    final String token = challengeToken;
+    if (!mounted) return;
+
     final AdResult adResult = await AdService.instance
         .showRewardedAd(context, placement: 'prison_timer');
     if (adResult != AdResult.rewarded) {
-      if (mounted) AppMessenger.show(context, 'Reklam tamamlanmadı.');
+      if (mounted) {
+        setState(() => _paying = false);
+        AppMessenger.show(context, 'Reklam tamamlanmadı.');
+      }
       return;
     }
 
-    setState(() => _paying = true);
     try {
       final dynamic res = await SupabaseService.client.rpc(
         'reduce_timer_with_ad',
-        params: <String, dynamic>{'p_timer': 'prison'},
+        params: <String, dynamic>{
+          'p_timer': 'prison',
+          'p_challenge_token': token,
+        },
       );
       final bool ok = res is Map && res['success'] == true;
       if (!mounted) return;
@@ -166,6 +214,94 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen>
     }
   }
 
+  Future<void> _bribeGuard() async {
+    if (_paying) return;
+    final int mins =
+        max(1, (restrictionRemainingDuration.inSeconds / 60).ceil());
+    final int cost = System2RestrictionMath.prisonGuardBribeCost(mins);
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    if (profile == null) return;
+    if (profile.gold < cost) {
+      if (mounted) {
+        AppMessenger.showError(
+          context,
+          'Yetersiz altın. Gerekli: $cost',
+        );
+      }
+      return;
+    }
+
+    final bool? confirm = await UniversalGameDialog.show(
+      context,
+      title: context.l10n.sys2_guard_bribe_title,
+      message: '${context.l10n.sys2_guard_bribe_body}\n\nMaliyet: $cost altın',
+      confirmLabel: context.l10n.sys2_guard_bribe_confirm,
+      cancelLabel: 'İptal',
+    );
+    if (confirm != true) return;
+
+    setState(() => _paying = true);
+    try {
+      final dynamic raw =
+          await SupabaseService.client.rpc('bribe_prison_guard');
+      final Map<String, dynamic> res = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
+      await ref.read(playerProvider.notifier).loadProfile();
+      if (!mounted) return;
+      if (res['success'] != true) {
+        AppMessenger.showError(
+          context,
+          (res['message'] ?? res['error'] ?? 'Gardiyan ikna başarısız')
+              .toString(),
+        );
+      } else if (res['bribed'] == true) {
+        final int cut = (res['cut_minutes'] as num?)?.toInt() ?? 0;
+        AppMessenger.showSuccess(
+          context,
+          context.l10n.sys2_guard_bribe_ok(cut),
+        );
+      } else {
+        AppMessenger.showError(context, context.l10n.sys2_guard_bribe_fail);
+      }
+      startRestrictionTimer();
+    } catch (_) {
+      if (mounted) {
+        AppMessenger.showError(context, 'Gardiyan ikna başarısız.');
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  Future<void> _useGuildLawyer() async {
+    if (_paying) return;
+    setState(() => _paying = true);
+    try {
+      final dynamic raw =
+          await SupabaseService.client.rpc('use_guild_lawyer');
+      final Map<String, dynamic> res = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
+      await ref.read(playerProvider.notifier).loadProfile();
+      if (!mounted) return;
+      if (res['success'] != true) {
+        AppMessenger.showError(
+          context,
+          (res['message'] ?? res['error'] ?? 'Avukat kullanılamadı')
+              .toString(),
+        );
+      } else {
+        AppMessenger.showSuccess(context, context.l10n.sys2_guild_lawyer_ok);
+      }
+      startRestrictionTimer();
+    } catch (_) {
+      if (mounted) AppMessenger.showError(context, 'Avukat kullanılamadı.');
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
+
   Future<void> _attemptEscape() async {
     setState(() => _paying = true);
     try {
@@ -182,11 +318,21 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen>
           (response['message'] ?? response['error'] ?? 'İşlem tamamlandı')
               .toString();
 
+      // RPC: success=true means call ok; escape outcome is [escaped].
       if (mounted) {
-        if (success) {
-          AppMessenger.showSuccess(context, message);
-        } else {
+        if (!success) {
           AppMessenger.showError(context, message);
+        } else if (escaped) {
+          AppMessenger.showSuccess(context, context.l10n.prison_escape_ok);
+        } else {
+          final int? minutes = _escapePenaltyMinutes(message);
+          AppMessenger.showError(
+            context,
+            minutes != null
+                ? context.l10n.prison_escape_fail(minutes)
+                : message,
+            title: context.l10n.escape_fail_title,
+          );
         }
       }
 
@@ -205,6 +351,13 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen>
         AppMessenger.showError(context, 'Kaçış denemesi başarısız.');
       }
     }
+  }
+
+  int? _escapePenaltyMinutes(String message) {
+    final Match? match =
+        RegExp(r'(\d+)\s*dakika', caseSensitive: false).firstMatch(message);
+    if (match == null) return null;
+    return int.tryParse(match.group(1)!);
   }
 
   @override
@@ -230,27 +383,91 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen>
         },
       ),
       body: RestrictionScreenScaffold(
-        child: inPrison && profile != null
-            ? _buildInPrison(profile)
-            : _buildFree(),
+        child: profile == null
+            ? const RestrictionLoadingCard()
+            : inPrison
+                ? _buildInPrison(profile)
+                : _buildFree(),
       ),
     );
   }
 
   Widget _buildFree() {
-    return RestrictionFreeCard(
+    final bool prisonCoach =
+        ref.watch(tutorialProvider).activeStep?.id == 'prison_escape';
+    Widget card = RestrictionFreeCard(
       emoji: '🕊️',
       title: 'Özgürsün',
       message: 'Şu an cezaevinde değilsin.',
       accent: RestrictionScreenUi.healAccent,
       detail: 'Yasalara uyduğun sürece özgür kalırsın.',
     );
+    if (prisonCoach) {
+      card = TutorialAnchorScope(
+        id: TutorialAnchorId.prisonBailBtn,
+        child: GestureDetector(
+          onTap: () => unawaited(
+            TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.prisonBailBtn),
+          ),
+          behavior: HitTestBehavior.opaque,
+          child: card,
+        ),
+      );
+    }
+    return card;
   }
 
   Widget _buildInPrison(PlayerProfile profile) {
     final DateTime? releaseTime = parseRestrictionUntil(profile.prisonUntil);
     final int bailCost = _bailCost();
     final bool canAfford = profile.gems >= bailCost;
+    final int remMins =
+        max(1, (restrictionRemainingDuration.inSeconds / 60).ceil());
+    final int guardCost = System2RestrictionMath.prisonGuardBribeCost(remMins);
+
+    final List<RestrictionActionTile> tiles = <RestrictionActionTile>[
+      RestrictionActionTile(
+        label: context.l10n.sys2_guard_bribe_cost(guardCost),
+        subtitle: 'Altın · ikna',
+        icon: Icons.handshake_outlined,
+        accent: AppColors.liquidGold,
+        loading: _paying,
+        onPressed: _paying ? null : _bribeGuard,
+      ),
+      RestrictionActionTile(
+        label: context.l10n.sys2_guild_lawyer_btn,
+        subtitle: 'Lonca klinik',
+        icon: Icons.gavel_rounded,
+        accent: AppColors.accentCyan,
+        loading: _paying,
+        onPressed: _paying ? null : _useGuildLawyer,
+      ),
+      if (MockAdService.allowMockReward)
+        RestrictionActionTile(
+          label: 'Reklam (−30dk)',
+          subtitle: 'Günlük hak',
+          icon: Icons.play_circle_rounded,
+          accent: AppColors.liquidGold,
+          loading: _paying,
+          onPressed: _paying ? null : _watchAdToReduce,
+          wrap: (Widget child) => TutorialAnchorScope(
+            id: TutorialAnchorId.prisonAdTimerBtn,
+            onTutorialTap: () => TutorialTriggers.onAnchorTap(
+              ref,
+              TutorialAnchorId.prisonAdTimerBtn,
+            ),
+            child: child,
+          ),
+        ),
+      RestrictionActionTile(
+        label: 'Kaçış dene',
+        subtitle: 'Risk · +15dk',
+        icon: Icons.directions_run_rounded,
+        accent: RestrictionScreenUi.hospitalAccent,
+        loading: _paying,
+        onPressed: _paying ? null : _attemptEscape,
+      ),
+    ];
 
     return RestrictionActivePanel(
       accent: RestrictionScreenUi.prisonAccent,
@@ -261,54 +478,38 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen>
       releaseLabel: formatRestrictionRelease(releaseTime),
       countdown: formatRestrictionCountdown(restrictionRemainingDuration),
       progress: restrictionProgress(),
-      actions: <Widget>[
-        RestrictionFilledButton(
-          label: 'Kefalet Öde ($bailCost Elmas)',
-          color: canAfford
-              ? RestrictionScreenUi.prisonAccent
-              : AppColors.darkObsidian,
-          icon: Icons.paid_rounded,
-          loading: _paying,
-          onPressed: (!_paying && canAfford) ? _payBail : null,
-        ),
-        if (!canAfford) ...<Widget>[
-          const SizedBox(height: 6),
-          Text(
-            'Yeterli elmasın yok (${profile.gems} / $bailCost)',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: RestrictionScreenUi.hospitalAccent,
-              fontSize: 12,
+      statusChip: canAfford ? null : 'Elmas yetersiz',
+      extraInfo: canAfford
+          ? null
+          : const Center(
+              child: RestrictionShopLink(message: 'Elmas → Dükkan'),
             ),
-          ),
-          const Center(
-            child: RestrictionShopLink(
-              message: 'Elmas satın al → Dükkan',
-            ),
-          ),
-        ],
-        const SizedBox(height: 10),
-        RestrictionOutlineButton(
-          label: 'Reklam İzle — Süreni 30 DK Kısalt',
-          borderColor: AppColors.liquidGold,
-          foregroundColor: AppColors.liquidGold,
-          icon: Icons.play_circle_rounded,
-          loading: _paying,
-          onPressed: _paying ? null : _watchAdToReduce,
+      primaryAction: RestrictionActionTile(
+        label: 'Kefalet ($bailCost Elmas)',
+        icon: Icons.paid_rounded,
+        accent: canAfford
+            ? RestrictionScreenUi.prisonAccent
+            : AppColors.darkObsidian,
+        filled: true,
+        loading: _paying,
+        onPressed: (!_paying && canAfford)
+            ? () async {
+                await TutorialTriggers.onAnchorTap(
+                  ref,
+                  TutorialAnchorId.prisonBailBtn,
+                );
+                await _payBail();
+              }
+            : null,
+        wrap: (Widget child) => TutorialAnchorScope(
+          id: TutorialAnchorId.prisonBailBtn,
+          child: child,
         ),
-        const RestrictionSectionDivider(),
-        RestrictionOutlineButton(
-          label: 'Hapishaneden Kaçmayı Dene',
-          borderColor: RestrictionScreenUi.hospitalAccent,
-          icon: Icons.directions_run_rounded,
-          loading: _paying,
-          onPressed: _paying ? null : _attemptEscape,
-        ),
-      ],
-      footer: const Text(
-        'Başarırsan özgürsün, yakalanırsan +15 DK ceza alırsın!',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
+      ),
+      actionTiles: tiles,
+      footer: WardPanel(
+        wardType: 'prison',
+        accent: RestrictionScreenUi.prisonAccent,
       ),
     );
   }

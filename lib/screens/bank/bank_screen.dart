@@ -14,6 +14,7 @@ import '../../models/inventory_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_controller.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
@@ -732,6 +733,8 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
   Widget _buildInventoryArea() {
     final InventoryState inventoryState = ref.watch(inventoryProvider);
+    final bool bankSelectCoach =
+        ref.watch(tutorialProvider).activeStep?.id == 'bank_select_item';
     final List<InventoryItem> items = inventoryState.items
         .where((InventoryItem item) => !item.isEquipped)
         .where((InventoryItem item) => item.quantity > 0)
@@ -748,6 +751,9 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       currentPage,
     );
     final int pageStart = (currentPage - 1) * bankInventoryPerPage;
+    final String? tutorialItemRowId = bankSelectCoach && items.isNotEmpty
+        ? items.first.rowId
+        : null;
 
     return DottedPanel(
       padding: EdgeInsets.zero,
@@ -824,7 +830,14 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                           onDragEnd: _dragScrollCoordinator.handleDragEnd,
                           onTap: item == null
                               ? null
-                              : () {
+                              : () async {
+                                  if (bankSelectCoach &&
+                                      item.rowId != tutorialItemRowId) {
+                                    ref
+                                        .read(tutorialProvider.notifier)
+                                        .registerWrongTap();
+                                    return;
+                                  }
                                   setState(() {
                                     if (selected) {
                                       _selectedInventoryRowIds.remove(item.rowId);
@@ -832,9 +845,19 @@ class _BankScreenState extends ConsumerState<BankScreen> {
                                       _selectedInventoryRowIds.add(item.rowId);
                                     }
                                   });
+                                  if (item.rowId == tutorialItemRowId) {
+                                    await TutorialTriggers.onAnchorTap(
+                                      ref,
+                                      TutorialAnchorId.bankInventoryItem,
+                                    );
+                                  }
                                 },
                           onLongPress:
                               item == null ? null : () => _depositSingle(item),
+                          tutorialAnchorId:
+                              item != null && item.rowId == tutorialItemRowId
+                              ? TutorialAnchorId.bankInventoryItem
+                              : null,
                         );
                       },
                 );

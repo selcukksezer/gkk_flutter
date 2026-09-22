@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/guild_model.dart';
 import '../guild_helpers.dart';
+import 'guild_design.dart';
 
 class GuildNoGuildView extends StatelessWidget {
   const GuildNoGuildView({
@@ -40,149 +42,333 @@ class GuildNoGuildView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final List<GuildData> list = (_hasSearchQuery && searchResults.isNotEmpty)
+        ? searchResults
+        : (!_hasSearchQuery ? recommendedGuilds : const <GuildData>[]);
+
     return SafeArea(
       child: RefreshIndicator(
+        color: GuildPalette.gold,
+        backgroundColor: GuildPalette.navy,
         onRefresh: onRefresh,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: <Widget>[
             TutorialAnchorScope(
               id: TutorialAnchorId.guildHeader,
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Lonca',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Henüz bir loncaya üye değilsin.',
-                    style: TextStyle(color: Colors.white54),
-                  ),
-                ],
+              child: GuildNeonPanel(
+                accent: GuildPalette.fuchsia,
+                glow: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: GuildPalette.fuchsia.withValues(alpha: 0.55),
+                        ),
+                        color: GuildPalette.fuchsia.withValues(alpha: 0.12),
+                      ),
+                      child: Text(
+                        'LONCA AĞI',
+                        style: GoogleFonts.urbanist(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.4,
+                          color: GuildPalette.fuchsia,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'LONCA ARA',
+                      style: GoogleFonts.urbanist(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: GuildPalette.textHi,
+                        height: 1.05,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Henüz loncada değilsin. Ara, önerilenlere katıl veya kendi loncanı kur.',
+                      style: GoogleFonts.urbanist(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: GuildPalette.titanium,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: <Widget>[
+                        GuildStatPill(
+                          icon: Icons.bolt_rounded,
+                          label: 'Güç ${formatGuildCompact(myPower)}',
+                          accent: GuildPalette.gold,
+                          filled: true,
+                        ),
+                        GuildStatPill(
+                          icon: Icons.groups_rounded,
+                          label: '${recommendedGuilds.length} öneri',
+                          accent: GuildPalette.neon,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(height: 14),
+            Row(
               children: <Widget>[
-                TextField(
-                  controller: searchController,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: context.l10n.lonca_ara,
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
+                Expanded(
+                  child: GuildPressable(
+                    onTap: onCreate,
+                    child: TutorialAnchorScope(
+                      id: TutorialAnchorId.guildJoinBtn,
+                      child: Container(
+                        height: 52,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          gradient: GuildPalette.goldGrad,
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: GuildPalette.gold.withValues(alpha: 0.35),
+                              blurRadius: 16,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            const Icon(Icons.add_rounded, color: Color(0xFF1A1200), size: 20),
+                            const SizedBox(width: 6),
+                            Text(
+                              context.l10n.lonca_kur.toUpperCase(),
+                              style: GoogleFonts.urbanist(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.6,
+                                color: const Color(0xFF1A1200),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  onSubmitted: (_) => onSearch(),
                 ),
-                const SizedBox(height: 10),
-                FilledButton(
-                  onPressed: isSearching ? null : onSearch,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GuildPressable(
+                    onTap: isSearching ? null : onSearch,
+                    enabled: !isSearching,
+                    child: Container(
+                      height: 52,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: GuildPalette.surfaceHi,
+                        border: Border.all(
+                          color: GuildPalette.fuchsia.withValues(alpha: 0.45),
+                          width: 1.2,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: GuildPalette.fuchsia.withValues(alpha: 0.12),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: isSearching
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: GuildPalette.fuchsia,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.search_rounded,
+                                  color: GuildPalette.fuchsia,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'ARA',
+                                  style: GoogleFonts.urbanist(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.6,
+                                    color: GuildPalette.fuchsia,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
                   ),
-                  child: isSearching
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Ara'),
                 ),
               ],
             ),
-            if (isSearching && searchResults.isEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              const Text(
-                'Aranıyor…',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white38, fontSize: 13),
-              ),
-            ],
-            if (isMutating) ...<Widget>[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(minHeight: 2),
-            ],
-            const SizedBox(height: 16),
-            if (searchResults.isNotEmpty && _hasSearchQuery) ...<Widget>[
-              const Text(
-                'Sonuçlar',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white54),
-              ),
-              const SizedBox(height: 8),
-              ...searchResults.map(
-                (GuildData guild) => GuildResultTile(
-                  guild: guild,
-                  myPower: myPower,
-                  onJoin: onJoin,
+            const SizedBox(height: 14),
+            GuildNeonPanel(
+              accent: GuildPalette.gold,
+              glow: false,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: TextField(
+                controller: searchController,
+                textInputAction: TextInputAction.search,
+                style: GoogleFonts.urbanist(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: GuildPalette.textHi,
                 ),
-              ),
-              const SizedBox(height: 16),
-            ] else if (_hasSearchQuery && !isSearching) ...<Widget>[
-              const Text(
-                'Aramanızla eşleşen lonca bulunamadı.',
-                style: TextStyle(color: Colors.white38, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-            ] else if (isLoadingRecommended) ...<Widget>[
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            ] else if (recommendedGuilds.isNotEmpty) ...<Widget>[
-              const Row(
-                children: <Widget>[
-                  Icon(Icons.recommend_rounded, size: 16, color: Color(0xFF4B6FFF)),
-                  SizedBox(width: 6),
-                  Text(
-                    'Önerilen Loncalar',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white54),
+                cursorColor: GuildPalette.gold,
+                decoration: InputDecoration(
+                  hintText: context.l10n.lonca_ara,
+                  hintStyle: GoogleFonts.urbanist(
+                    fontSize: 13,
+                    color: GuildPalette.titanium.withValues(alpha: 0.75),
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Katılabileceğiniz, yer açık loncalar',
-                style: TextStyle(fontSize: 11, color: Colors.white38),
-              ),
-              const SizedBox(height: 8),
-              ...recommendedGuilds.map(
-                (GuildData guild) => GuildResultTile(
-                  guild: guild,
-                  myPower: myPower,
-                  onJoin: onJoin,
+                  prefixIcon: const Icon(
+                    Icons.travel_explore_rounded,
+                    color: GuildPalette.gold,
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(error!, style: const TextStyle(color: Colors.red)),
-              ),
-            TutorialAnchorScope(
-              id: TutorialAnchorId.guildJoinBtn,
-              child: OutlinedButton.icon(
-                onPressed: onCreate,
-                icon: const Icon(Icons.add_rounded),
-                label: Text(context.l10n.lonca_kur),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF4B6FFF)),
-                  foregroundColor: const Color(0xFF4B6FFF),
-                ),
+                onSubmitted: (_) => onSearch(),
               ),
             ),
+            if (isMutating) ...<Widget>[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: const LinearProgressIndicator(
+                  minHeight: 3,
+                  color: GuildPalette.gold,
+                  backgroundColor: GuildPalette.obsidian,
+                ),
+              ),
+            ],
+            if (error != null) ...<Widget>[
+              const SizedBox(height: 10),
+              Text(
+                error!,
+                style: GoogleFonts.urbanist(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: GuildPalette.ruby,
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
+            GuildSectionTitle(
+              title: _hasSearchQuery ? 'ARAMA SONUÇLARI' : 'ÖNERİLEN LONCALAR',
+              subtitle: _hasSearchQuery
+                  ? 'Sorguna uyan loncalar'
+                  : 'Katılabileceğin, yer açık loncalar',
+              accent: _hasSearchQuery ? GuildPalette.fuchsia : GuildPalette.gold,
+            ),
+            const SizedBox(height: 12),
+            if (isSearching && searchResults.isEmpty)
+              _GuildEmptyState(
+                icon: Icons.hourglass_top_rounded,
+                label: 'Aranıyor…',
+                accent: GuildPalette.fuchsia,
+              )
+            else if (isLoadingRecommended && !_hasSearchQuery)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 28),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: GuildPalette.gold,
+                  ),
+                ),
+              )
+            else if (_hasSearchQuery && !isSearching && searchResults.isEmpty)
+              const _GuildEmptyState(
+                icon: Icons.search_off_rounded,
+                label: 'Eşleşen lonca yok',
+                accent: GuildPalette.titanium,
+              )
+            else if (list.isEmpty)
+              const _GuildEmptyState(
+                icon: Icons.groups_outlined,
+                label: 'Öneri bulunamadı',
+                accent: GuildPalette.titanium,
+              )
+            else
+              ...List<Widget>.generate(list.length, (int i) {
+                return TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  duration: Duration(milliseconds: 220 + (i * 45).clamp(0, 360)),
+                  curve: Curves.easeOutCubic,
+                  builder: (BuildContext context, double t, Widget? child) {
+                    return Opacity(
+                      opacity: t,
+                      child: Transform.translate(
+                        offset: Offset(0, 14 * (1 - t)),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: GuildResultTile(
+                    guild: list[i],
+                    myPower: myPower,
+                    onJoin: onJoin,
+                    rank: i + 1,
+                  ),
+                );
+              }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _GuildEmptyState extends StatelessWidget {
+  const _GuildEmptyState({
+    required this.icon,
+    required this.label,
+    required this.accent,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return GuildNeonPanel(
+      accent: accent,
+      glow: false,
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: accent, size: 22),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: GoogleFonts.urbanist(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: GuildPalette.titanium,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -194,80 +380,183 @@ class GuildResultTile extends StatelessWidget {
     required this.guild,
     required this.myPower,
     required this.onJoin,
+    this.rank,
   });
 
   final GuildData guild;
   final int myPower;
   final Future<void> Function(String) onJoin;
+  final int? rank;
 
   bool get _powerTooLow => guild.minJoinPower > 0 && myPower < guild.minJoinPower;
+  bool get _full => guild.memberCount >= guild.maxMembers && guild.maxMembers > 0;
+
+  Color get _accent {
+    if (_powerTooLow || _full) return GuildPalette.titanium;
+    if ((rank ?? 99) <= 3) return GuildPalette.gold;
+    return GuildPalette.fuchsia;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  guild.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+    final Color accent = _accent;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GuildNeonPanel(
+        accent: accent,
+        glow: !( _powerTooLow || _full),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            if (rank != null) ...<Widget>[
+              SizedBox(
+                width: 34,
+                child: Text(
+                  '#$rank',
+                  style: GoogleFonts.urbanist(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: accent,
+                  ),
                 ),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: <Widget>[
-                    _guildInfoChip('Sv. ${guild.level}'),
-                    _guildInfoChip('Anıt ${guild.monumentLevel}'),
-                    _guildInfoChip('${guild.memberCount}/${guild.maxMembers} üye'),
-                    _guildInfoChip('${formatGuildCompact(guild.totalPower)} güç'),
-                    if (guild.minJoinPower > 0)
-                      _guildInfoChip('Min. ${formatGuildCompact(guild.minJoinPower)}'),
+              ),
+            ],
+            Container(
+              width: 48,
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    accent.withValues(alpha: 0.28),
+                    GuildPalette.navy,
                   ],
                 ),
-                if (_powerTooLow)
+                border: Border.all(color: accent.withValues(alpha: 0.5)),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 10),
+                ],
+              ),
+              child: Text(
+                guild.name.isNotEmpty ? guild.name.characters.first.toUpperCase() : 'L',
+                style: GoogleFonts.urbanist(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: accent,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
                   Text(
-                    'Gücün yetersiz ($myPower / ${guild.minJoinPower})',
-                    style: TextStyle(fontSize: 10, color: Colors.orange.shade300),
+                    guild.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.urbanist(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: GuildPalette.textHi,
+                    ),
                   ),
-              ],
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: <Widget>[
+                      GuildStatPill(
+                        icon: Icons.military_tech_rounded,
+                        label: 'Sv.${guild.level}',
+                        accent: GuildPalette.gold,
+                      ),
+                      GuildStatPill(
+                        icon: Icons.account_balance_rounded,
+                        label: 'Anıt ${guild.monumentLevel}',
+                        accent: GuildPalette.coral,
+                      ),
+                      GuildStatPill(
+                        icon: Icons.groups_rounded,
+                        label: '${guild.memberCount}/${guild.maxMembers}',
+                        accent: GuildPalette.neon,
+                      ),
+                      GuildStatPill(
+                        icon: Icons.flash_on_rounded,
+                        label: formatGuildCompact(guild.totalPower),
+                        accent: GuildPalette.fuchsia,
+                      ),
+                    ],
+                  ),
+                  if (_powerTooLow) ...<Widget>[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Güç yetersiz · ${formatGuildCompact(myPower)} / ${formatGuildCompact(guild.minJoinPower)}',
+                      style: GoogleFonts.urbanist(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: GuildPalette.solar,
+                      ),
+                    ),
+                  ] else if (_full) ...<Widget>[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Lonca dolu',
+                      style: GoogleFonts.urbanist(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: GuildPalette.titanium,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-          FilledButton(
-            onPressed: _powerTooLow ? null : () => onJoin(guild.guildId),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF4B6FFF),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 12),
+            const SizedBox(width: 8),
+            GuildPressable(
+              enabled: !_powerTooLow && !_full,
+              onTap: (_powerTooLow || _full) ? null : () => onJoin(guild.guildId),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: (_powerTooLow || _full)
+                      ? null
+                      : GuildPalette.goldGrad,
+                  color: (_powerTooLow || _full) ? GuildPalette.obsidian : null,
+                  border: Border.all(
+                    color: (_powerTooLow || _full)
+                        ? GuildPalette.titanium.withValues(alpha: 0.35)
+                        : GuildPalette.gold.withValues(alpha: 0.7),
+                  ),
+                  boxShadow: (_powerTooLow || _full)
+                      ? null
+                      : <BoxShadow>[
+                          BoxShadow(
+                            color: GuildPalette.gold.withValues(alpha: 0.28),
+                            blurRadius: 10,
+                          ),
+                        ],
+                ),
+                child: Text(
+                  context.l10n.kat_l.toUpperCase(),
+                  style: GoogleFonts.urbanist(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                    color: (_powerTooLow || _full)
+                        ? GuildPalette.titanium
+                        : const Color(0xFF1A1200),
+                  ),
+                ),
+              ),
             ),
-            child: Text(context.l10n.kat_l),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _guildInfoChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 10, color: Colors.white70),
+          ],
+        ),
       ),
     );
   }

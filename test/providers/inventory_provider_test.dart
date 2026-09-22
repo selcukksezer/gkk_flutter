@@ -71,7 +71,8 @@ class FakeInventoryRepository implements InventoryRepository {
       throw UnimplementedError();
 
   @override
-  Future<bool> usePotion({required String rowId}) async => throw UnimplementedError();
+  Future<UsePotionResult> usePotion({required String rowId}) async =>
+      throw UnimplementedError();
 
   @override
   Future<OpenLootBoxResult> openLootBox({required String rowId}) async => throw UnimplementedError();
@@ -81,6 +82,13 @@ class FakeInventoryRepository implements InventoryRepository {
 
   @override
   Future<UseItemResult> useStatResetScroll({required String rowId}) async => throw UnimplementedError();
+
+  @override
+  Future<UseItemResult> useNameChangeScroll({
+    required String rowId,
+    required String newDisplayName,
+  }) async =>
+      const UseItemResult(success: false, message: 'Not implemented');
 
   @override
   Future<bool> splitStack({required String rowId, required int splitQuantity, required int targetSlot}) async =>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../components/common/item_icon_view.dart';
+import '../../../core/utils/enhancement_stats.dart';
 import '../../../core/utils/gold_format.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
@@ -21,6 +22,7 @@ class InventoryItemDetailActions {
     this.onPrimaryOverride,
     this.descriptionOverride,
     this.showFavorite = true,
+    this.consumableEffectLabel,
   });
 
   final Future<void> Function(InventoryItem item)? onEquip;
@@ -34,6 +36,7 @@ class InventoryItemDetailActions {
   final Future<void> Function(InventoryItem item)? onPrimaryOverride;
   final String? descriptionOverride;
   final bool showFavorite;
+  final String? consumableEffectLabel;
 }
 
 /// Envanter grid tap popup — birebir tasarım.
@@ -46,6 +49,9 @@ class InventoryItemDetailPanel extends StatelessWidget {
     this.infoOnly = false,
     this.canDirectUnequip = true,
     this.unequipBlockedReason,
+    this.boxGemOpenCost,
+    this.attachTutorialEquipAnchor = false,
+    this.playerLevel,
   });
 
   static const Color cardBg = Color(0xFFFFFFFF);
@@ -61,6 +67,10 @@ class InventoryItemDetailPanel extends StatelessWidget {
   final bool infoOnly;
   final bool canDirectUnequip;
   final String? unequipBlockedReason;
+  final int? boxGemOpenCost;
+  final bool attachTutorialEquipAnchor;
+  /// When set, equip is blocked if below [InventoryItem.requiredLevel].
+  final int? playerLevel;
 
   Widget _buildActionButton({
     required String label,
@@ -171,12 +181,18 @@ class InventoryItemDetailPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final int enh = item.enhancementLevel;
     final List<(String, String)> stats = <(String, String)>[
-      ('SALDIRI', '${item.attack}'),
-      ('SAVUNMA', '${item.defense}'),
-      ('GUC', '${item.power}'),
+      if (item.attack > 0) ('SALDIRI', formatEnhancedStat(item.attack, enh)),
+      if (item.defense > 0) ('SAVUNMA', formatEnhancedStat(item.defense, enh)),
+      if (item.health > 0) ('CAN', formatEnhancedStat(item.health, enh)),
+      if (item.luck > 0) ('SANS', formatEnhancedStat(item.luck, enh)),
+      ('GUC', '${enhancedItemPowerContribution(item)}'),
+      if (enh > 0) ('YUKSELTME', '+$enh'),
       ('SEVIYE', 'Lv. ${item.requiredLevel}'),
       ('DEGER', item.vendorSellPrice > 0 ? '${formatCompactGold(item.vendorSellPrice)}g' : '-'),
+      if (actions.consumableEffectLabel != null)
+        ('ETKI', actions.consumableEffectLabel!),
     ];
 
     final String footerRight = item.vendorSellPrice > 0
@@ -300,6 +316,8 @@ class InventoryItemDetailPanel extends StatelessWidget {
     }
 
     final bool canEquip = item.equipSlot != EquipSlot.none;
+    final bool levelOk =
+        playerLevel == null || playerLevel! >= item.requiredLevel;
     final bool canUse =
         isStatResetScroll(item.itemId) ||
         isNameChangeScroll(item.itemId) ||
@@ -334,14 +352,22 @@ class InventoryItemDetailPanel extends StatelessWidget {
         primaryAction = null;
       }
     } else if (isInventoryLootBox(item.itemId) && actions.onUse != null) {
-      primaryLabel = 'AC (💎 / 📺)';
+      final int? gemCost = boxGemOpenCost;
+      primaryLabel = gemCost != null
+          ? 'AC ($gemCost ELMAS / REKLAM)'
+          : 'AC (ELMAS / REKLAM)';
       primaryAction = () => actions.onUse!(item);
     } else if (canUse && actions.onUse != null) {
       primaryLabel = 'KULLAN';
       primaryAction = () => actions.onUse!(item);
     } else if (canEquip && actions.onEquip != null) {
-      primaryLabel = 'KUSAN (${item.equipSlot.name.toUpperCase()})';
-      primaryAction = () => actions.onEquip!(item);
+      if (!levelOk) {
+        primaryLabel = 'SEVIYE YETERSIZ (Lv.${item.requiredLevel})';
+        primaryAction = null;
+      } else {
+        primaryLabel = 'KUSAN (${item.equipSlot.name.toUpperCase()})';
+        primaryAction = () => actions.onEquip!(item);
+      }
     } else {
       primaryLabel = 'KULLANILAMAZ';
       primaryAction = null;
@@ -352,9 +378,14 @@ class InventoryItemDetailPanel extends StatelessWidget {
       onPressed: primaryAction,
       isPrimary: true,
     );
-    if (primaryLabel.startsWith('KUSAN')) {
+    if (primaryLabel.startsWith('KUSAN') && attachTutorialEquipAnchor) {
       primaryButton = TutorialAnchorScope(
         id: TutorialAnchorId.inventoryEquipBtn,
+        onTutorialTap: primaryAction == null
+            ? null
+            : () async {
+                primaryAction!();
+              },
         child: primaryButton,
       );
     }

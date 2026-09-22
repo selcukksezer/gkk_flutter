@@ -42,7 +42,7 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
     ]);
   }
 
-  (double progress, String nextTier) _tierProgress(int rep) {
+  (double progress, String nextTier, int remaining) _tierProgress(int rep) {
     const List<int> thresholds = <int>[5000, 20000, 80000, 170000, 280000, 356000];
     const List<String> names = <String>[
       'Tanınan',
@@ -52,16 +52,16 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
       'Destansı',
       'İmparator',
     ];
-    if (rep >= 356000) return (1.0, 'Maksimum');
+    if (rep >= 356000) return (1.0, 'Maksimum', 0);
     int prev = 0;
     for (int i = 0; i < thresholds.length; i++) {
       if (rep < thresholds[i]) {
         final double p = (rep - prev) / (thresholds[i] - prev);
-        return (p, names[i]);
+        return (p, names[i], thresholds[i] - rep);
       }
       prev = thresholds[i];
     }
-    return (1.0, 'İmparator');
+    return (1.0, 'İmparator', 0);
   }
 
   Future<void> _purchase(ReputationShopItem item) async {
@@ -82,7 +82,8 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
     final ReputationOverview overview = state.overview;
     final int globalRep = overview.globalReputation;
     final ReputationTier tier = reputationTierFor(globalRep);
-    final (double progress, String nextTier) = _tierProgress(globalRep);
+    final (double progress, String nextTier, int remaining) =
+        _tierProgress(globalRep);
     final List<String> buffLabels =
         overview.activeBuffs.map((ReputationActiveBuff b) => b.label()).toList();
 
@@ -113,6 +114,7 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
                       nextTierTitle: nextTier,
                       progress: progress,
                       activeBuffs: buffLabels,
+                      remainingToNext: remaining,
                     ),
                     const SizedBox(height: 16),
                     ReputationTabBar(index: _tab, onChanged: (int i) => setState(() => _tab = i)),
@@ -149,6 +151,8 @@ class _ReputationScreenState extends ConsumerState<ReputationScreen> {
                           const SizedBox(height: 8),
                           if (_tab == 0) ...<Widget>[
                             ReputationEarnSection(),
+                            const SizedBox(height: 16),
+                            ReputationTierLadder(currentRep: globalRep),
                           ] else if (_tab == 1) ...<Widget>[
                             ReputationShopGrid(
                               items: overview.shopItems,

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../core/utils/provider_scheduling.dart';
@@ -15,6 +16,7 @@ import '../../core/staff/staff_player_entry.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/staff_provider.dart';
 import '../../routing/app_router.dart';
+import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'widgets/guild_dialogs.dart';
 import 'widgets/guild_member_view.dart';
@@ -175,6 +177,9 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
         _showSnack(ref.read(guildProvider).error ?? 'İşlem başarısız.');
         return;
       }
+      if (action == 'transfer_guild_leadership') {
+        await ref.read(playerProvider.notifier).loadProfile();
+      }
       _showSnack(successMsg);
     } catch (e) {
       _showSnack('İşlem başarısız: ${e.toString()}');
@@ -204,16 +209,9 @@ class _GuildScreenState extends ConsumerState<GuildScreen> {
       appBar: GameTopBar(title: context.l10n.routeGuild, onLogout: onLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.guild, onLogout: onLogout),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF10131D), Color(0xFF171E2C), Color(0xFF10131D)],
-          ),
-        ),
+      body: GameScreenBackground(
         child: guildState.isLoading && !guildState.hasValidGuild
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator(color: AppColors.liquidGold))
             : !guildState.hasValidGuild
                 ? GuildNoGuildView(
                     searchController: _searchController,

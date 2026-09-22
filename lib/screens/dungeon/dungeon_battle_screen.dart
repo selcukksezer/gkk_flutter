@@ -19,10 +19,13 @@ import '../../models/dungeon_model.dart';
 import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dungeon_provider.dart';
+import '../../models/dungeon_siege_model.dart';
+import '../../providers/dungeon_siege_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import 'dungeon_item_utils.dart';
+import 'dungeon_zone_data.dart';
 import 'widgets/codex_discovery_chip.dart';
 import 'dungeon_result_widgets.dart';
 import '../reputation/widgets/reputation_gain_banner.dart';
@@ -51,6 +54,9 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
   int _logIndex = 0;
   final List<String> _battleLog = <String>[];
   int _battleGeneration = 0;
+  bool _battleInFlight = false;
+  bool _captchaRetryUsed = false;
+  bool _rpcAttempted = false;
 
   /// Ambient loop: embers, sweep bar, ring rotation, breathing.
   late final AnimationController _ambient;
@@ -98,13 +104,46 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
   // ===========================================================================
 
   void _resetForRetry() {
+    if (_battleInFlight) return;
     _logTimer?.cancel();
+    _captchaRetryUsed = false;
+    _rpcAttempted = false;
     setState(() {
       _result = null;
       _battleLog.clear();
       _logIndex = 0;
     });
     _startCountdown();
+  }
+
+  /// Hub ile aynı kapılar — deep-link /auto bypass engeli.
+  String? _preflightBlockReason(PlayerProfile player) {
+    final DungeonZone? entryZone = zoneDataFor(_zone);
+    if (entryZone != null && !isZoneUnlockedForLevel(entryZone, player.level)) {
+      return zoneLevelGateMessage(entryZone.requiredLevel);
+    }
+    if (_isRestricted(player.hospitalUntil)) {
+      return 'Hastanedeyken zindana giriş yapılamaz.';
+    }
+    if (_isRestricted(player.prisonUntil)) {
+      return 'Hapisteyken zindana giriş yapılamaz.';
+    }
+    if (_energyCost > 0 && player.energy < _energyCost) {
+      return 'Enerji yetersiz.';
+    }
+    final siegeStatus = ref.read(dungeonSiegeProvider).status;
+    if (isSiegeDungeon(_dungeonId, status: siegeStatus) &&
+        siegeStatus.isBannedForDungeon(_dungeonId)) {
+      return 'Kuşatma kaybı banı — bu zindana giremezsin.';
+    }
+    return null;
+  }
+
+  bool _isRestricted(String? untilRaw) {
+    if (untilRaw == null || untilRaw.isEmpty) return false;
+    final DateTime? until = DateTime.tryParse(untilRaw);
+    if (until == null) return false;
+    return until.isAfter(DateTime.now());
   }
 
   void _startCountdown() {
@@ -114,8 +153,9 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
       context.pop();
       return;
     }
-    if (_energyCost > 0 && player.energy < _energyCost) {
-      AppMessenger.show(context, 'Enerji yetersiz.');
+    final String? blocked = _preflightBlockReason(player);
+    if (blocked != null) {
+      AppMessenger.show(context, blocked);
       context.pop();
       return;
     }
@@ -151,6 +191,12 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
   bool get _battleLocked => _phase == 'counting' || _phase == 'fighting';
 
   Future<void> _startBattle() async {
+    if (_battleInFlight) return;
+    _battleInFlight = true;
+
+    unawaited(
+      TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.dungeonAttackBtn),
+    );
     final int generation = ++_battleGeneration;
     final DateTime battleStart = DateTime.now();
     setState(() {
@@ -173,6 +219,21 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
     });
 
     try {
+      final PlayerProfile? preflightPlayer = ref.read(playerProvider).profile;
+      if (preflightPlayer == null) {
+        _logTimer?.cancel();
+        AppMessenger.showError(context, 'Oyuncu bilgisi yüklenemedi.');
+        context.pop();
+        return;
+      }
+      final String? blocked = _preflightBlockReason(preflightPlayer);
+      if (blocked != null) {
+        _logTimer?.cancel();
+        AppMessenger.show(context, blocked);
+        context.pop();
+        return;
+      }
+
       final int elapsedBeforeRpc =
           DateTime.now().difference(battleStart).inMilliseconds;
       if (elapsedBeforeRpc < _kMinFightMs) {
@@ -186,6 +247,7 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
         return;
       }
 
+      _rpcAttempted = true;
       final dynamic raw = await SupabaseService.client.rpc(
         'attack_dungeon',
         params: <String, dynamic>{'p_dungeon_id': _dungeonId},
@@ -202,7 +264,18 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
           final bool solved = await CaptchaGuard.solve(context, 'dungeon');
           if (!mounted) return;
           if (solved) {
-            unawaited(_startBattle());
+            if (_captchaRetryUsed) {
+              AppMessenger.showError(
+                context,
+                'Doğrulama sonrası tekrar deneme limiti. Enerjini kontrol edip tekrar dene.',
+              );
+              context.pop();
+              return;
+            }
+            _captchaRetryUsed = true;
+            _rpcAttempted = false;
+            _battleInFlight = false;
+            await _startBattle();
           } else {
             context.pop();
           }
@@ -249,6 +322,8 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
 
         if (parsed.success) {
           unawaited(TutorialTriggers.onDungeonWin(ref));
+        } else {
+          TutorialTriggers.onDungeonLoss(ref);
         }
 
         if (parsed.inventoryFull) {
@@ -263,11 +338,13 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
     } catch (e) {
       _logTimer?.cancel();
       if (!mounted) return;
-      AppMessenger.showError(
-        context,
-        userFacingErrorMessage(e, fallback: 'Savaş başlatılamadı.'),
-      );
+      final String msg = _rpcAttempted
+          ? 'Bağlantı koptu — savaş sunucuda işlenmiş olabilir. Enerji/ödülü kontrol et, otomatik tekrar yok.'
+          : userFacingErrorMessage(e, fallback: 'Savaş başlatılamadı.');
+      AppMessenger.showError(context, msg);
       context.pop();
+    } finally {
+      _battleInFlight = false;
     }
   }
 
@@ -284,10 +361,10 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
   }
 
   bool _canRetry() {
+    if (_battleInFlight) return false;
     final player = ref.read(playerProvider).profile;
     if (player == null) return false;
-    if (_energyCost <= 0) return true;
-    return player.energy >= _energyCost;
+    return _preflightBlockReason(player) == null;
   }
 
   // ===========================================================================
@@ -452,18 +529,20 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
           }
         }
         int? successPct;
+        int? combatPower;
         if (profile != null &&
             powerRequirement != null &&
             powerRequirement > 0) {
-          successPct = (calculateDungeonSuccessRate(
-                    playerTotalPower: profile.power,
-                    dungeonPowerRequirement: powerRequirement,
-                    playerLuck: profile.luck ?? 0,
-                    reputation: profile.reputation ?? 0,
-                    characterClass: profile.characterClass,
-                  ) *
-                  100)
-              .round();
+          final equipped = ref.read(inventoryProvider).equippedItems.values;
+          combatPower = resolveDungeonCombatPower(
+            profile: profile,
+            equippedItems: equipped,
+          );
+          successPct = computeDungeonSuccessPercent(
+            profile: profile,
+            dungeonPowerRequirement: powerRequirement,
+            equippedItems: equipped,
+          );
         }
 
         return _VsIntroView(
@@ -471,7 +550,7 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
           characterAsset: _characterAsset,
           playerName: playerName.isEmpty ? 'SEN' : playerName,
           playerLevel: profile?.level ?? 1,
-          playerPower: profile?.power ?? 0,
+          playerPower: combatPower ?? profile?.power ?? 0,
           playerAttack: profile?.attack ?? 0,
           playerDefense: profile?.defense ?? 0,
           dungeonName: _dungeonName,
@@ -2110,6 +2189,7 @@ class _VictoryView extends StatelessWidget {
                   rewardMultiplier: result.rewardMultiplier,
                   tutorialWrapperLootCount: result.tutorialWrapperLootCount,
                   siegeBonusApplied: result.siegeBonus?.shouldShowOnResult ?? false,
+                  xpBreakdown: result.xpBreakdown,
                 ),
               ],
             ),

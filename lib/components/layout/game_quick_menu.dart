@@ -5,6 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/player_model.dart';
+import '../../core/tutorial/tutorial_quick_menu.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_anchor_registry.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../core/tutorial/tutorial_track.dart';
 import '../../providers/daily_reward_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/staff_provider.dart';
@@ -152,6 +157,13 @@ class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(dailyRewardProvider.notifier).loadStatus();
+      TutorialAnchorRegistry.instance.scheduleRefresh();
+    });
+    // After slide-in (~280ms) remeasure — first frame often mid-transition
+    // → spotlight hole painted too low on menu tiles.
+    Future<void>.delayed(const Duration(milliseconds: 320), () {
+      if (!mounted) return;
+      TutorialAnchorRegistry.instance.scheduleRefresh();
     });
   }
 
@@ -253,13 +265,23 @@ class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
                           ),
                         ),
                         Flexible(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                        child: _MenuGrid(
-                          onLogout: widget.onLogout,
-                          onOpenChat: widget.onOpenChat,
-                          canClaimDaily: canClaimDaily,
-                        ),
+                          child: NotificationListener<ScrollNotification>(
+                            onNotification: (ScrollNotification n) {
+                              if (n is ScrollUpdateNotification ||
+                                  n is ScrollEndNotification) {
+                                TutorialAnchorRegistry.instance
+                                    .scheduleRefresh();
+                              }
+                              return false;
+                            },
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                              child: _MenuGrid(
+                                onLogout: widget.onLogout,
+                                onOpenChat: widget.onOpenChat,
+                                canClaimDaily: canClaimDaily,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -401,7 +423,7 @@ class _MenuGrid extends ConsumerWidget {
         if (item.action == GameMenuAction.none) {
           return const SizedBox.shrink();
         }
-        return _MenuTile(
+        Widget tile = _MenuTile(
           item: item.action == GameMenuAction.dailyReward
               ? GameMenuItem(
                   label: item.label,
@@ -413,6 +435,13 @@ class _MenuGrid extends ConsumerWidget {
               : item,
           onTap: () => _handleTap(context, ref, item),
         );
+        final String? menuAnchor = TutorialQuickMenuAnchors.anchorForRoute(
+          item.route,
+        );
+        if (menuAnchor != null) {
+          tile = TutorialAnchorScope(id: menuAnchor, child: tile);
+        }
+        return tile;
       },
     );
   }
@@ -422,6 +451,29 @@ class _MenuGrid extends ConsumerWidget {
     WidgetRef ref,
     GameMenuItem item,
   ) async {
+    final TutorialController tutorialCtrl = ref.read(tutorialProvider.notifier);
+    final TutorialStepV2? activeStep = ref.read(tutorialProvider).activeStep;
+    final String? requiredAnchor = activeStep?.anchorId;
+    if (TutorialQuickMenuAnchors.isMenuItemAnchor(requiredAnchor)) {
+      final String? tappedAnchor = TutorialQuickMenuAnchors.anchorForRoute(
+        item.route,
+      );
+      if (tappedAnchor != requiredAnchor) {
+        tutorialCtrl.registerWrongTap();
+        return;
+      }
+      await tutorialCtrl.onAnchorTap(requiredAnchor!);
+      if (!context.mounted) return;
+    }
+
+    if (item.action == GameMenuAction.navigate) {
+      final String? route = item.route;
+      if (route != null && tutorialCtrl.blocksNavigation(route)) {
+        tutorialCtrl.registerWrongTap();
+        return;
+      }
+    }
+
     Navigator.of(context).pop();
     switch (item.action) {
       case GameMenuAction.chat:

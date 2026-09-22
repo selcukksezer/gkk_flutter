@@ -8,8 +8,10 @@ import '../../components/common/app_messenger.dart';
 import '../../components/common/universal_game_dialog.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/restriction/restriction_screen_ui.dart';
+import '../../components/restriction/ward_panel.dart';
 import '../../core/services/ad_service.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/player_health.dart';
 import '../../core/utils/power_formula.dart';
 import '../../core/utils/restriction_reason_labels.dart';
 import '../../core/utils/restriction_time.dart';
@@ -17,6 +19,8 @@ import '../../l10n/l10n.dart';
 import '../../models/player_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_anchor.dart';
+import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
@@ -119,13 +123,17 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
       });
 
       if (!mounted) return;
+      final PlayerProfile? after = ref.read(playerProvider).profile;
+      final String woundedHint = after != null && after.maxHealth > 0
+          ? ' Yarali cikis: Can ${formatHealthRatio(after.health, after.maxHealth)}.'
+          : '';
       if (wasFree) {
         AppMessenger.showSuccess(
           context,
-          'Ücretsiz taburcu oldun. Kalan hak: ${response['free_discharges_remaining'] ?? 0}',
+          'Ücretsiz taburcu oldun. Kalan hak: ${response['free_discharges_remaining'] ?? 0}.$woundedHint',
         );
       } else {
-        AppMessenger.showSuccess(context, 'Taburcu oldun.');
+        AppMessenger.showSuccess(context, 'Taburcu oldun.$woundedHint');
       }
     } catch (e) {
       setState(() => _healing = false);
@@ -138,18 +146,59 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
   Future<void> _watchAdToReduce() async {
     if (_healing) return;
 
+    setState(() => _healing = true);
+    String? challengeToken;
+    try {
+      final dynamic challenge = await SupabaseService.client.rpc(
+        'issue_ad_timer_challenge',
+        params: <String, dynamic>{
+          'p_timer': 'hospital',
+          'p_placement': 'hospital_timer',
+        },
+      );
+      if (!mounted) return;
+      if (challenge is! Map || challenge['success'] != true) {
+        final String msg = challenge is Map
+            ? (challenge['message'] ?? challenge['error'] ?? 'Reklam açılamadı')
+                .toString()
+            : 'Reklam açılamadı';
+        AppMessenger.showError(context, msg);
+        return;
+      }
+      challengeToken = challenge['challenge_token']?.toString();
+      if (challengeToken == null || challengeToken.isEmpty) {
+        AppMessenger.showError(context, 'Reklam doğrulama başarısız.');
+        return;
+      }
+    } catch (_) {
+      if (mounted) AppMessenger.showError(context, 'Reklam açılamadı.');
+      return;
+    } finally {
+      if (mounted && challengeToken == null) {
+        setState(() => _healing = false);
+      }
+    }
+
+    final String token = challengeToken;
+    if (!mounted) return;
+
     final AdResult adResult = await AdService.instance
         .showRewardedAd(context, placement: 'hospital_timer');
     if (adResult != AdResult.rewarded) {
-      if (mounted) AppMessenger.show(context, 'Reklam tamamlanmadı.');
+      if (mounted) {
+        setState(() => _healing = false);
+        AppMessenger.show(context, 'Reklam tamamlanmadı.');
+      }
       return;
     }
 
-    setState(() => _healing = true);
     try {
       final dynamic res = await SupabaseService.client.rpc(
         'reduce_timer_with_ad',
-        params: <String, dynamic>{'p_timer': 'hospital'},
+        params: <String, dynamic>{
+          'p_timer': 'hospital',
+          'p_challenge_token': token,
+        },
       );
       final bool ok = res is Map && res['success'] == true;
       if (!mounted) return;
@@ -177,6 +226,84 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
     }
   }
 
+  Future<void> _doctorVisit() async {
+    if (_healing) return;
+    final bool? confirm = await UniversalGameDialog.show(
+      context,
+      title: context.l10n.sys2_doctor_visit_title,
+      message: context.l10n.sys2_doctor_visit_body,
+      confirmLabel: context.l10n.sys2_doctor_visit_confirm,
+      cancelLabel: 'Iptal',
+    );
+    if (confirm != true) return;
+
+    setState(() => _healing = true);
+    try {
+      final dynamic raw =
+          await SupabaseService.client.rpc('attempt_doctor_visit');
+      final Map<String, dynamic> res = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
+      await ref.read(playerProvider.notifier).loadProfile();
+      if (!mounted) return;
+      if (res['success'] != true) {
+        AppMessenger.showError(
+          context,
+          (res['message'] ?? res['error'] ?? 'Doktor ziyareti basarisiz')
+              .toString(),
+        );
+      } else {
+        final int cut = (res['cut_minutes'] as num?)?.toInt() ?? 0;
+        final bool released = res['released'] == true;
+        AppMessenger.showSuccess(
+          context,
+          released
+              ? context.l10n.sys2_doctor_released
+              : (cut > 0
+                  ? context.l10n.sys2_doctor_cut(cut)
+                  : context.l10n.sys2_doctor_noop),
+        );
+      }
+      startRestrictionTimer();
+    } catch (_) {
+      if (mounted) {
+        AppMessenger.showError(context, 'Doktor ziyareti basarisiz.');
+      }
+    } finally {
+      if (mounted) setState(() => _healing = false);
+    }
+  }
+
+  Future<void> _useGuildDoctor() async {
+    if (_healing) return;
+    setState(() => _healing = true);
+    try {
+      final dynamic raw =
+          await SupabaseService.client.rpc('use_guild_doctor');
+      final Map<String, dynamic> res = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
+      await ref.read(playerProvider.notifier).loadProfile();
+      if (!mounted) return;
+      if (res['success'] != true) {
+        AppMessenger.showError(
+          context,
+          (res['message'] ?? res['error'] ?? 'Klinik doktor kullanilamadi')
+              .toString(),
+        );
+      } else {
+        AppMessenger.showSuccess(context, context.l10n.sys2_guild_doctor_ok);
+      }
+      startRestrictionTimer();
+    } catch (_) {
+      if (mounted) {
+        AppMessenger.showError(context, 'Klinik doktor kullanilamadi.');
+      }
+    } finally {
+      if (mounted) setState(() => _healing = false);
+    }
+  }
+
   Future<void> _attemptEscape() async {
     setState(() => _healing = true);
     try {
@@ -193,11 +320,21 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
           (response['message'] ?? response['error'] ?? 'İşlem tamamlandı')
               .toString();
 
+      // RPC: success=true means call ok; escape outcome is [escaped].
       if (mounted) {
-        if (success) {
-          AppMessenger.showSuccess(context, message);
-        } else {
+        if (!success) {
           AppMessenger.showError(context, message);
+        } else if (escaped) {
+          AppMessenger.showSuccess(context, context.l10n.hospital_escape_ok);
+        } else {
+          final int? minutes = _escapePenaltyMinutes(message);
+          AppMessenger.showError(
+            context,
+            minutes != null
+                ? context.l10n.hospital_escape_fail(minutes)
+                : message,
+            title: context.l10n.escape_fail_title,
+          );
         }
       }
 
@@ -216,6 +353,13 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
         AppMessenger.showError(context, 'Kaçış denemesi başarısız.');
       }
     }
+  }
+
+  int? _escapePenaltyMinutes(String message) {
+    final Match? match =
+        RegExp(r'(\d+)\s*dakika', caseSensitive: false).firstMatch(message);
+    if (match == null) return null;
+    return int.tryParse(match.group(1)!);
   }
 
   @override
@@ -268,6 +412,50 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
     final int freeRemaining =
         freeHospitalDischargesRemaining(profile.hospitalLifetimeCount);
 
+    final List<RestrictionActionTile> tiles = <RestrictionActionTile>[
+      RestrictionActionTile(
+        label: context.l10n.sys2_doctor_visit_title,
+        subtitle: 'Şans · kesinti',
+        icon: Icons.medical_services_outlined,
+        accent: RestrictionScreenUi.healAccent,
+        loading: _healing,
+        onPressed: _healing ? null : _doctorVisit,
+      ),
+      RestrictionActionTile(
+        label: context.l10n.sys2_guild_doctor_btn,
+        subtitle: 'Lonca klinik',
+        icon: Icons.local_hospital_outlined,
+        accent: AppColors.accentCyan,
+        loading: _healing,
+        onPressed: _healing ? null : _useGuildDoctor,
+      ),
+      if (MockAdService.allowMockReward)
+        RestrictionActionTile(
+          label: 'Reklam (−30dk)',
+          subtitle: 'Günlük hak',
+          icon: Icons.play_circle_rounded,
+          accent: AppColors.liquidGold,
+          loading: _healing,
+          onPressed: _healing ? null : _watchAdToReduce,
+          wrap: (Widget child) => TutorialAnchorScope(
+            id: TutorialAnchorId.hospitalAdTimerBtn,
+            onTutorialTap: () => TutorialTriggers.onAnchorTap(
+              ref,
+              TutorialAnchorId.hospitalAdTimerBtn,
+            ),
+            child: child,
+          ),
+        ),
+      RestrictionActionTile(
+        label: 'Gizli kaçış',
+        subtitle: 'Risk · +15dk',
+        icon: Icons.directions_run_rounded,
+        accent: RestrictionScreenUi.hospitalAccent,
+        loading: _healing,
+        onPressed: _healing ? null : _attemptEscape,
+      ),
+    ];
+
     return RestrictionActivePanel(
       accent: RestrictionScreenUi.hospitalAccent,
       emoji: '🏥',
@@ -277,53 +465,25 @@ class _HospitalScreenState extends ConsumerState<HospitalScreen>
       releaseLabel: formatRestrictionRelease(releaseTime),
       countdown: formatRestrictionCountdown(restrictionRemainingDuration),
       progress: restrictionProgress(),
-      extraInfo: Text(
-        '⚡ Enerji: ${profile.energy}/${profile.maxEnergy}',
-        style: const TextStyle(
-          color: AppColors.accentCyan,
-          fontWeight: FontWeight.w700,
-        ),
+      statusChip: '⚡ ${profile.energy}/${profile.maxEnergy}',
+      primaryAction: RestrictionActionTile(
+        label: canFree
+            ? 'Ücretsiz Taburcu ($freeRemaining)'
+            : '$gemCost Elmas · Taburcu',
+        icon: canFree ? Icons.healing_rounded : Icons.diamond_rounded,
+        accent: canFree
+            ? RestrictionScreenUi.healAccent
+            : RestrictionScreenUi.gemAccent,
+        filled: true,
+        loading: _healing,
+        onPressed: _healing
+            ? null
+            : () => _healWithGems(expectFree: canFree),
       ),
-      actions: <Widget>[
-        if (canFree) ...<Widget>[
-          RestrictionFilledButton(
-            label: 'Ücretsiz Taburcu Ol (Kalan: $freeRemaining)',
-            color: RestrictionScreenUi.healAccent,
-            icon: Icons.healing_rounded,
-            loading: _healing,
-            onPressed: _healing ? null : () => _healWithGems(expectFree: true),
-          ),
-          const SizedBox(height: 8),
-        ],
-        RestrictionFilledButton(
-          label: '$gemCost Elmas ile Taburcu Ol',
-          color: RestrictionScreenUi.gemAccent,
-          icon: Icons.diamond_rounded,
-          loading: _healing,
-          onPressed: _healing ? null : () => _healWithGems(),
-        ),
-        const SizedBox(height: 10),
-        RestrictionOutlineButton(
-          label: 'Reklam İzle — Süreni 30 DK Kısalt',
-          borderColor: AppColors.liquidGold,
-          foregroundColor: AppColors.liquidGold,
-          icon: Icons.play_circle_rounded,
-          loading: _healing,
-          onPressed: _healing ? null : _watchAdToReduce,
-        ),
-        const RestrictionSectionDivider(),
-        RestrictionOutlineButton(
-          label: 'Hastaneden Gizlice Kaç',
-          borderColor: RestrictionScreenUi.hospitalAccent,
-          icon: Icons.directions_run_rounded,
-          loading: _healing,
-          onPressed: _healing ? null : _attemptEscape,
-        ),
-      ],
-      footer: const Text(
-        'Başarırsan özgürsün, yakalanırsan +15 DK ceza alırsın!',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
+      actionTiles: tiles,
+      footer: WardPanel(
+        wardType: 'hospital',
+        accent: RestrictionScreenUi.hospitalAccent,
       ),
     );
   }

@@ -53,6 +53,9 @@ dependencies:
   timezone: ^0.11.1
   flutter_timezone: ^5.1.0
   flutter_markdown: ^0.7.7+1
+  package_info_plus: ^10.2.1
+  sign_in_with_apple: ^7.0.1
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:
@@ -90,6 +93,7 @@ flutter:
     - assets/elements/
     - assets/items/
     - assets/items/weapons/
+    - assets/items/generated/
     - assets/wheel/
     - assets/chest/
     - assets/ui/character_status_bar/

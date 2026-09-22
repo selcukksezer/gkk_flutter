@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/utils/effective_luck.dart';
 import '../../core/utils/power_formula.dart';
 import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
@@ -17,6 +18,8 @@ import '../../providers/dungeon_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../core/tutorial/tutorial_anchor_registry.dart';
+import '../../core/tutorial/tutorial_controller.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
@@ -55,17 +58,55 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
     super.initState();
     _tabController = TabController(length: kDungeonZones.length + 1, vsync: this);
     _tabController.addListener(() {
-      if (mounted && !_tabController.indexIsChanging) setState(() {});
+      if (!mounted || _tabController.indexIsChanging) return;
+      setState(() {});
+
+      final TutorialState tut = ref.read(tutorialProvider);
+      if (tut.activeTrackId != TutorialTrackId.dungeon) return;
+      if (tut.activeStep?.id == 'dungeon_pick_zone' && _tabController.index == 1) {
+        unawaited(
+          TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.dungeonZone1Tab),
+        );
+      }
+    });
+    ref.listenManual<TutorialState>(tutorialProvider, (
+      TutorialState? prev,
+      TutorialState next,
+    ) {
+      if (next.activeTrackId != TutorialTrackId.dungeon) return;
+      final String? stepId = next.activeStep?.id;
+      if (stepId == null) return;
+      if (stepId == 'dungeon_intro' || stepId == 'dungeon_pick_zone') {
+        if (_tabController.index != 0) {
+          _tabController.animateTo(0);
+        }
+        TutorialAnchorRegistry.instance.scheduleRefresh();
+      } else if (stepId == 'dungeon_enter_btn') {
+        if (_tabController.index != 1) {
+          _tabController.animateTo(1);
+        }
+        TutorialAnchorRegistry.instance.scheduleRefresh();
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await ref.read(playerProvider.notifier).loadProfile();
-      await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
-      await ref.read(dungeonProvider.notifier).loadDungeons();
-      await ref.read(dungeonSiegeProvider.notifier).loadStatus();
+      await _bootstrapDungeonData();
       if (!mounted) return;
       _startSiegePolling();
       await TutorialTriggers.onRouteEnter(ref, AppRoutes.dungeon);
     });
+  }
+
+  Future<void> _bootstrapDungeonData() async {
+    final DungeonState dungeonState = ref.read(dungeonProvider);
+    final bool hasDungeonCache =
+        dungeonState.status == DungeonStatus.ready &&
+        dungeonState.dungeons.isNotEmpty;
+    await Future.wait<void>(<Future<void>>[
+      ref.read(playerProvider.notifier).loadProfile(),
+      ref.read(inventoryProvider.notifier).loadInventory(silent: true),
+      ref.read(dungeonProvider.notifier).loadDungeons(silent: hasDungeonCache),
+      ref.read(dungeonSiegeProvider.notifier).loadStatus(silent: true),
+    ]);
   }
 
   @override
@@ -130,6 +171,11 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       _showSnack('Oyuncu bilgisi yüklenemedi.');
       return;
     }
+    final DungeonZone? entryZone = zoneDataFor(zoneForDungeon(dungeon));
+    if (entryZone != null && !isZoneUnlockedForLevel(entryZone, player.level)) {
+      _showSnack(zoneLevelGateMessage(entryZone.requiredLevel));
+      return;
+    }
     if (_isRestricted(player.hospitalUntil)) {
       _showSnack('Hastanedeyken zindana giriş yapılamaz.');
       return;
@@ -151,23 +197,16 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
     }
 
     final int req = dungeon.powerRequirement ?? (dungeon.requiredLevel * 500);
-    final PowerBreakdown powerBreakdown = calculateTotalPower(
-      player: player,
-      equippedItems: ref.read(inventoryProvider).equippedItems.values,
+    final equipped = ref.read(inventoryProvider).equippedItems.values;
+    final int successPct = computeDungeonSuccessPercent(
+      profile: player,
+      dungeonPowerRequirement: req,
+      equippedItems: equipped,
     );
-    final int successPct = (calculateDungeonSuccessRate(
-          playerTotalPower: powerBreakdown.totalPower,
-          dungeonPowerRequirement: req,
-          playerLuck: player.luck ?? 0,
-          reputation: player.reputation ?? 0,
-          characterClass: player.characterClass,
-        ) *
-        100)
-        .round();
     final double hospitalRisk = calculateHospitalRiskPct(
       dungeonNumber: parseDungeonNumber(dungeon.dungeonId),
       successRate: successPct / 100.0,
-      playerLuck: player.luck ?? 0,
+      playerLuck: effectivePlayerLuckFromProfile(player),
     );
     final double farmPreview = calculateDungeonRewardMultiplier(
       playerLevel: player.level,
@@ -240,13 +279,27 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       'auto=1',
     );
     if (!mounted) return;
-    await ref.read(playerProvider.notifier).loadProfile();
-    await ref.read(dungeonProvider.notifier).loadDungeons();
+    await Future.wait<void>(<Future<void>>[
+      ref.read(playerProvider.notifier).loadProfile(),
+      ref.read(dungeonProvider.notifier).loadDungeons(silent: true),
+    ]);
   }
 
   void _showSnack(String message) {
     if (!mounted) return;
     AppMessenger.show(context, message);
+  }
+
+  String? _tutorialTargetDungeonId(List<DungeonData> dungeons) {
+    for (final DungeonData dungeon in dungeons) {
+      if (zoneForDungeon(dungeon) == 1) return dungeon.dungeonId;
+    }
+    return dungeons.isEmpty ? null : dungeons.first.dungeonId;
+  }
+
+  bool _isTutorialTargetDungeon(DungeonData dungeon, List<DungeonData> dungeons) {
+    final String? targetId = _tutorialTargetDungeonId(dungeons);
+    return targetId != null && dungeon.dungeonId == targetId;
   }
 
   Future<void> _openSiegePanel(DungeonData dungeon) async {
@@ -287,7 +340,12 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
             equippedItems: inventoryState.equippedItems.values,
           )
         : null;
-    final int playerTotalPower = powerBreakdown?.totalPower ?? 0;
+    final int playerTotalPower = profile != null
+        ? resolveDungeonCombatPower(
+            profile: profile,
+            equippedItems: inventoryState.equippedItems.values,
+          )
+        : 0;
 
     final List<DungeonData> filtered = _selectedZone == 0
         ? dungeonState.dungeons
@@ -365,11 +423,16 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                 controller: _tabController,
                 dungeons: dungeonState.dungeons,
                 zoneFor: zoneForDungeon,
+                playerLevel: profile?.level ?? 1,
               ),
               if (currentZone != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-                  child: DungeonZoneBanner(zone: currentZone, dungeonCount: filtered.length),
+                  child: DungeonZoneBanner(
+                    zone: currentZone,
+                    dungeonCount: filtered.length,
+                    playerLevel: profile?.level ?? 1,
+                  ),
                 ),
               const SizedBox(height: 8),
               Expanded(
@@ -383,19 +446,30 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                       tabIndex: _tabController.index,
                       sectionTitle: sectionTitle,
                       sectionAccent: currentZone?.color ?? AppColors.liquidGold,
-                      child: dungeonState.status == DungeonStatus.loading
+                      animateEntrance: false,
+                      child: dungeonState.status == DungeonStatus.loading ||
+                              dungeonState.status == DungeonStatus.initial
                           ? const DungeonLoadingShimmer()
-                          : dungeonState.status == DungeonStatus.error
+                          : dungeonState.status == DungeonStatus.error &&
+                                  dungeonState.dungeons.isEmpty
                               ? DungeonErrorState(
                                   message: dungeonState.errorMessage,
-                                  onRetry: () => ref.read(dungeonProvider.notifier).loadDungeons(),
+                                  onRetry: () => ref
+                                      .read(dungeonProvider.notifier)
+                                      .loadDungeons(),
                                 )
                               : filtered.isEmpty
                                   ? const DungeonEmptyState()
                                   : RefreshIndicator(
                                       onRefresh: () async {
-                                        await ref.read(dungeonProvider.notifier).loadDungeons();
-                                        await ref.read(dungeonSiegeProvider.notifier).loadStatus();
+                                        await Future.wait<void>(<Future<void>>[
+                                          ref
+                                              .read(dungeonProvider.notifier)
+                                              .loadDungeons(silent: true),
+                                          ref
+                                              .read(dungeonSiegeProvider.notifier)
+                                              .loadStatus(silent: true),
+                                        ]);
                                       },
                                       child: ListView.builder(
                                         padding: GameScrollLayout.withClearance(
@@ -405,21 +479,23 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                         itemCount: filtered.length,
                                         itemBuilder: (BuildContext ctx, int i) {
                                           final DungeonData d = filtered[i];
-                                          return GkkTabStaggerItem(
-                                            index: i,
-                                            child: _buildDungeonListItem(
-                                              context: ctx,
-                                              dungeon: d,
-                                              index: i,
-                                              zoneForDungeon: zoneForDungeon,
-                                              profile: profile,
-                                              powerBreakdown: powerBreakdown,
-                                              playerTotalPower: playerTotalPower,
-                                              isRestricted: isRestricted,
-                                              inHospital: inHospital,
-                                              inPrison: inPrison,
-                                              dungeonState: dungeonState,
-                                            ),
+                                          final bool isTutorialTarget =
+                                              _isTutorialTargetDungeon(
+                                            d,
+                                            dungeonState.dungeons,
+                                          );
+                                          return _buildDungeonListItem(
+                                            context: ctx,
+                                            dungeon: d,
+                                            isTutorialTarget: isTutorialTarget,
+                                            zoneForDungeon: zoneForDungeon,
+                                            profile: profile,
+                                            powerBreakdown: powerBreakdown,
+                                            playerTotalPower: playerTotalPower,
+                                            isRestricted: isRestricted,
+                                            inHospital: inHospital,
+                                            inPrison: inPrison,
+                                            dungeonState: dungeonState,
                                           );
                                         },
                                       ),
@@ -438,6 +514,7 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
   Widget _buildDungeonListItem({
     required BuildContext context,
     required DungeonData dungeon,
+    required bool isTutorialTarget,
     required int Function(DungeonData) zoneForDungeon,
     required PlayerProfile? profile,
     required PowerBreakdown? powerBreakdown,
@@ -446,27 +523,29 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
     required bool inHospital,
     required bool inPrison,
     required DungeonState dungeonState,
-    required int index,
   }) {
     final int zoneNum = zoneForDungeon(dungeon);
     final DungeonZone? zData = zoneDataFor(zoneNum);
-    final bool canEnter =
-        !isRestricted && profile != null && profile.energy >= dungeon.energyCost;
+    final int playerLevel = profile?.level ?? 1;
+    final bool zoneLevelLocked =
+        zData != null && !isZoneUnlockedForLevel(zData, playerLevel);
+    final bool canEnter = !isRestricted &&
+        profile != null &&
+        !zoneLevelLocked &&
+        profile.energy >= dungeon.energyCost;
     final int req = dungeon.powerRequirement ?? (dungeon.requiredLevel * 500);
     final int successPct;
     String? debugText;
-    if (profile != null && powerBreakdown != null) {
-      successPct = (calculateDungeonSuccessRate(
-                playerTotalPower: playerTotalPower,
-                dungeonPowerRequirement: req,
-                playerLuck: profile.luck ?? 0,
-                reputation: profile.reputation ?? 0,
-                characterClass: profile.characterClass,
-              ) *
-              100)
-          .round();
-      debugText =
-          kDebugMode ? 'pwr:$playerTotalPower eq:${powerBreakdown.equipmentPower} req:$req' : null;
+    if (profile != null) {
+      final equipped = ref.read(inventoryProvider).equippedItems.values;
+      successPct = computeDungeonSuccessPercent(
+        profile: profile,
+        dungeonPowerRequirement: req,
+        equippedItems: equipped,
+      );
+      debugText = kDebugMode
+          ? 'pwr:$playerTotalPower eq:${powerBreakdown?.equipmentPower ?? 0} req:$req'
+          : null;
     } else {
       successPct = 5;
       debugText = kDebugMode ? 'no profile' : null;
@@ -504,7 +583,18 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
         siegeSlotCount: siegeMeta.slotCount,
         siegeConfig: siegeDungeon ? siegeConfig : null,
         onSiegeTap: siegeDungeon ? () => _openSiegePanel(dungeon) : null,
-        onEnter: () => _enterDungeon(dungeon),
+        useTutorialAnchors: isTutorialTarget,
+        zoneLevelLocked: zoneLevelLocked,
+        zoneRequiredLevel: zData?.requiredLevel ?? 1,
+        onEnter: () async {
+          if (isTutorialTarget) {
+            await TutorialTriggers.onAnchorTap(
+              ref,
+              TutorialAnchorId.dungeonEnterBtn,
+            );
+          }
+          await _enterDungeon(dungeon);
+        },
         onLoot: () => showDialog<void>(
           context: context,
           builder: (_) => DungeonLootDialog(dungeon: dungeon, zone: zData),
@@ -535,12 +625,13 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
       siegeSlotCount: siegeMeta.slotCount,
       siegeConfig: siegeDungeon ? siegeConfig : null,
       onSiegeTap: siegeDungeon ? () => _openSiegePanel(dungeon) : null,
-      useTutorialAnchors: index == 0,
-      onCardTap: index == 0
-          ? () => TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.dungeonZone0)
-          : null,
+      useTutorialAnchors: isTutorialTarget,
+      zoneLevelLocked: zoneLevelLocked,
+      zoneRequiredLevel: zData?.requiredLevel ?? 1,
       onEnter: () async {
-        await TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.dungeonEnterBtn);
+        if (isTutorialTarget) {
+          await TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.dungeonEnterBtn);
+        }
         await _enterDungeon(dungeon);
       },
       onLoot: () => showDialog<void>(

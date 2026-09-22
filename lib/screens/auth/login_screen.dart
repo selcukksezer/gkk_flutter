@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +25,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _appleAvailable = false;
+  bool _appleChecked = false;
 
   @override
   void dispose() {
@@ -46,20 +49,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
   }
 
+  Future<void> _submitApple() async {
+    if (!_appleAvailable) {
+      AppMessenger.showError(context, context.l10n.auth_apple_unavailable);
+      return;
+    }
+    final String deviceId = await DeviceIdentityService.currentId();
+    await ref.read(authProvider.notifier).signInWithApple(deviceId: deviceId);
+  }
+
+  Future<void> _probeApple() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      if (mounted) {
+        setState(() {
+          _appleAvailable = false;
+          _appleChecked = true;
+        });
+      }
+      return;
+    }
+    final bool available =
+        await ref.read(authProvider.notifier).isAppleSignInAvailable();
+    if (!mounted) return;
+    setState(() {
+      _appleAvailable = available;
+      _appleChecked = true;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _probeApple());
     ref.listenManual<AuthState>(authProvider, (
       AuthState? previous,
       AuthState next,
     ) {
       if (!mounted) return;
 
-      if (next.status == AuthStatus.authenticated) {
-        context.go(AppRoutes.home);
-        return;
-      }
-
+      // Navigation = GoRouter redirect (onAuthStateChange refresh). No context.go.
       if (next.status == AuthStatus.error && next.errorMessage != null) {
         AppMessenger.showError(context, next.errorMessage!);
         return;
@@ -78,6 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final AuthState authState = ref.watch(authProvider);
     final bool isLoading = authState.status == AuthStatus.loading;
     final AppLocalizations l10n = context.l10n;
+    final bool showApple = _appleChecked && _appleAvailable;
 
     return AuthFormShell(
       kind: AuthScreenKind.login,
@@ -85,11 +114,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       title: l10n.krallik_kapisi,
       subtitle: l10n.hesabina_giris_yap_ve_lonca_gelismelerini_canli_ta,
       sectionLabel: l10n.auth_form_section,
-      footer: AuthGhostLink(
-        label: l10n.hesabin_yok_mu_kayit_ol,
-        enabled: !isLoading,
-        onPressed: isLoading ? null : () => context.push(AppRoutes.register),
-        accent: AuthDesign.fuchsia,
+      footer: Column(
+        children: <Widget>[
+          AuthGhostLink(
+            label: l10n.auth_forgot_password_link,
+            enabled: !isLoading,
+            onPressed: isLoading
+                ? null
+                : () => context.push(AppRoutes.forgotPassword),
+            accent: AuthDesign.titanium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AuthGhostLink(
+            label: l10n.hesabin_yok_mu_kayit_ol,
+            enabled: !isLoading,
+            onPressed: isLoading ? null : () => context.push(AppRoutes.register),
+            accent: AuthDesign.fuchsia,
+          ),
+        ],
       ),
       child: Form(
         key: _formKey,
@@ -119,7 +161,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               onFieldSubmitted: (_) {
                 if (!isLoading) _submitLogin();
               },
-              validator: (String? value) => AuthValidators.validatePassword(value, l10n),
+              validator: (String? value) =>
+                  AuthValidators.validatePasswordLogin(value, l10n),
               suffix: IconButton(
                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 tooltip: _obscurePassword ? l10n.auth_toggle_password_show : l10n.auth_toggle_password_hide,
@@ -136,6 +179,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               loading: isLoading,
               onPressed: isLoading ? null : _submitLogin,
             ),
+            if (showApple) ...<Widget>[
+              const SizedBox(height: AppSpacing.base),
+              Row(
+                children: <Widget>[
+                  Expanded(child: Divider(color: AuthDesign.textLow.withValues(alpha: 0.5))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text('veya', style: AuthDesign.bodyMuted()),
+                  ),
+                  Expanded(child: Divider(color: AuthDesign.textLow.withValues(alpha: 0.5))),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.base),
+              OutlinedButton.icon(
+                onPressed: isLoading ? null : _submitApple,
+                icon: const Icon(Icons.apple, size: 22),
+                label: Text(l10n.auth_apple_button),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AuthDesign.textHi,
+                  side: BorderSide(color: AuthDesign.titanium.withValues(alpha: 0.55)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

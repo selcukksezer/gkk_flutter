@@ -27,9 +27,14 @@ String territoryMapCoordinateFor(String territoryId, List<TerritoryData> territo
 List<String> territoryBonusSummary(TerritoryData territory) {
   final List<String> parts = <String>[];
   if (territory.tradeIncome > 0) {
-    parts.add('💰 ${territory.tradeIncome}/gün');
+    final int hourly = territory.tradeIncomeHourly > 0
+        ? territory.tradeIncomeHourly.round()
+        : (territory.tradeIncome / 24).round();
+    parts.add('💰 ${territory.tradeIncome}/gün (~$hourly/saat kasa)');
   }
-  if (territory.reward.isNotEmpty) {
+  if (territory.hasTerritoryLoot) {
+    parts.add('📦 ${territory.lootItemName ?? territory.lootItemId} · ${territory.lootChanceLabel}');
+  } else if (territory.reward.isNotEmpty) {
     parts.add('🎁 ${territory.reward}');
   }
   if (territory.defenseLineLevel > 0) {

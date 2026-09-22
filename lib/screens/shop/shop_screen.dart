@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -344,6 +347,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   Future<void> _buyGemPackage(_GemPackage pkg) async {
     if (_purchaseLoading) return;
     // IAP / StoreKit not wired — never mint gems from client.
+    // Release: stub catalog hidden; this path is debug/profile only.
     AppMessenger.show(
       context,
       'Elmas satın alma yakında (IAP). Şimdilik kullanılamıyor.',
@@ -462,6 +466,16 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             GkkTabBar(
               controller: _tabController,
               isScrollable: true,
+              tabAnchorIds: const <String?>[
+                null,
+                null,
+                TutorialAnchorId.shopNightTabBar,
+                null,
+                null,
+              ],
+              onTabTutorialTap: (_, String anchorId) {
+                unawaited(TutorialTriggers.onAnchorTap(ref, anchorId));
+              },
               tabs: GkkTabBar.textTabs(const <String>[
                 '💎 Gem',
                 '🪙 Altın',
@@ -497,20 +511,17 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                     tabIndex: 2,
                     sectionTitle: 'Gece Pazarı',
                     sectionAccent: AppColors.cyberFuchsia,
-                    child: TutorialAnchorScope(
-                      id: TutorialAnchorId.shopNightTab,
-                      child: NightMarketTab(
-                        onPurchased: () async {
-                          await TutorialTriggers.onAnchorTap(
-                            ref,
-                            TutorialAnchorId.shopNightTab,
-                          );
-                          await ref.read(playerProvider.notifier).loadProfile();
-                          await ref
-                              .read(inventoryProvider.notifier)
-                              .loadInventory(silent: true);
-                        },
-                      ),
+                    child: NightMarketTab(
+                      onPurchased: () async {
+                        await TutorialTriggers.onAnchorTap(
+                          ref,
+                          TutorialAnchorId.shopNightOffer,
+                        );
+                        await ref.read(playerProvider.notifier).loadProfile();
+                        await ref
+                            .read(inventoryProvider.notifier)
+                            .loadInventory(silent: true);
+                      },
                     ),
                   ),
                   GkkTabPageShell(
@@ -660,6 +671,38 @@ class _GemPackagesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Release: hide stub IAP prices / buy CTAs (no StoreKit / Play Billing).
+    if (kReleaseMode) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: _shopScrollPadding(context),
+        children: const <Widget>[
+          SizedBox(height: 24),
+          Text(
+            'Elmas satın alma yakında',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Mağaza IAP bağlantısı hazırlanıyor. Şimdilik elmas paketleri kullanılamıyor.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textTertiary,
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+        ],
+      );
+    }
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),

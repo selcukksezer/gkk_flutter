@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/character_class_select.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import 'widgets/first_dungeon_cta.dart';
 
 class _CharacterClassOption {
   const _CharacterClassOption({
@@ -188,34 +190,30 @@ class _CharacterSelectScreenState extends ConsumerState<CharacterSelectScreen>
 
     try {
       final String selectedClass = _selectedClassId!;
-      bool persisted = false;
+      final dynamic response = await SupabaseService.client.rpc(
+        'select_character_class',
+        params: <String, dynamic>{'p_class_id': selectedClass},
+      );
+      final CharacterClassSelectOutcome outcome =
+          CharacterClassSelect.interpretResponse(response);
 
-      try {
-        final dynamic response = await SupabaseService.client.rpc(
-          'select_character_class',
-          params: <String, dynamic>{'p_class_id': selectedClass},
-        );
-        if (response is! Map<String, dynamic> || response['success'] != false) {
-          persisted = true;
-        }
-      } catch (_) {
-        persisted = false;
-      }
-
-      if (!persisted) {
-        final currentUser = SupabaseService.client.auth.currentUser;
-        if (currentUser == null) {
-          throw Exception('Kullanıcı oturumu bulunamadı.');
-        }
-
-        await SupabaseService.client
-            .from('users')
-            .update(<String, dynamic>{'character_class': selectedClass}).eq('auth_id', currentUser.id);
-      }
-
-      await ref.read(playerProvider.notifier).loadProfile();
-      if (mounted) {
-        context.go(AppRoutes.home);
+      switch (outcome) {
+        case CharacterClassSelectOutcome.success:
+          // No client-side users.update fallback — server is source of truth.
+          await ref.read(playerProvider.notifier).loadProfile();
+          if (mounted) {
+            await presentFirstDungeonCta(context);
+          }
+        case CharacterClassSelectOutcome.alreadySelected:
+          await ref.read(playerProvider.notifier).loadProfile();
+          if (mounted) {
+            context.go(AppRoutes.home);
+          }
+        case CharacterClassSelectOutcome.failed:
+          final String? serverError = response is Map
+              ? response['error']?.toString()
+              : null;
+          throw Exception(serverError ?? 'select_character_class failed');
       }
     } catch (_) {
       if (mounted) {

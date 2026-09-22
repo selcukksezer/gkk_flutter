@@ -46,7 +46,7 @@ class RankingPodium extends StatelessWidget {
       children: <Widget>[
         WarSectionHeader(
           title: 'Şöhret Sıralaması',
-          subtitle: '${rankings.length} lonca · sezon puanları',
+          subtitle: '${rankings.length} lonca · rank_score = sezon + 0.25×prestij',
           accent: WarPalette.gold,
         ),
         if (top3.isNotEmpty)
@@ -112,8 +112,8 @@ class _PodiumSlot extends StatelessWidget {
             ),
           ),
           Text(
-            '${entry.points} puan',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _glowColor),
+            '${entry.rankScore} · S${entry.points} · P${entry.prestige}',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _glowColor),
           ),
           const SizedBox(height: 6),
           Expanded(
@@ -192,19 +192,37 @@ class _RankingRow extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${entry.wins}G · ${entry.losses}M',
+                  '${entry.wins}G · ${entry.losses}M · prestij ${entry.prestige}',
                   style: const TextStyle(color: WarPalette.titanium, fontSize: 10),
                 ),
+                if (entry.breakdown.isNotEmpty)
+                  Text(
+                    entry.breakdown.entries
+                        .map((MapEntry<String, int> e) => '${e.key}:${e.value}')
+                        .join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 9),
+                  ),
               ],
             ),
           ),
-          Text(
-            '${entry.points}',
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              color: isHighlighted ? WarPalette.gold : AppColors.textSecondary,
-              fontSize: 15,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                '${entry.rankScore}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: isHighlighted ? WarPalette.gold : AppColors.textSecondary,
+                  fontSize: 15,
+                ),
+              ),
+              Text(
+                'S${entry.points}',
+                style: const TextStyle(color: WarPalette.titanium, fontSize: 9),
+              ),
+            ],
           ),
         ],
       ),

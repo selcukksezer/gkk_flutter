@@ -158,17 +158,15 @@ class _DungeonSiegeHubScreenState extends ConsumerState<DungeonSiegeHubScreen> {
         break;
       }
     }
-    final GuildWarDefenseRequest? req = await showGuildWarDefenseSheet(
+    final int? gems = await showGuildWarDefenseSheet(
       context,
       minDefenseGems: territory?.minDefenseGems ?? 5,
-      vaultGold: territory?.vaultSummary?.vaultGold,
       playerGems: profile?.gems,
     );
-    if (req == null || req.amount <= 0 || !mounted) return;
+    if (gems == null || gems <= 0 || !mounted) return;
 
-    final String? error = req.mode == GuildWarDefenseMode.gems
-        ? await ref.read(guildWarProvider.notifier).addDefense(territoryId, req.amount)
-        : await ref.read(guildWarProvider.notifier).addDefenseGold(territoryId, req.amount);
+    final String? error =
+        await ref.read(guildWarProvider.notifier).addDefense(territoryId, gems);
     if (!mounted) return;
     if (error != null) {
       AppMessenger.showError(context, error);

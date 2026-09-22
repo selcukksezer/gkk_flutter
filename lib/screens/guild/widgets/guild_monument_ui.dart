@@ -183,7 +183,7 @@ String _monumentCompactNum(int n) {
 Widget monumentUpgradeProgressCompact({required MonumentUpgradeProgress progress}) {
   final Color accent = progress.isReady ? AppColors.toxicNeon : AppColors.warningSolar;
   final List<MonumentResourceProgress> pending = progress.resources
-      .where((MonumentResourceProgress r) => r.required > 0 && r.progress < 1.0)
+      .where((MonumentResourceProgress r) => r.required > 0 && !r.isComplete)
       .toList();
 
   return Column(
@@ -245,7 +245,120 @@ String _monumentCompactResourceLabel(MonumentResourceProgress resource) {
   final String required = resource.kind == MonumentResourceKind.gold
       ? _monumentCompactNum(resource.required)
       : '${resource.required}';
-  return '${resource.kind.shortLabel} $current/$required';
+  final String remain = resource.kind == MonumentResourceKind.gold
+      ? _monumentCompactNum(resource.remaining)
+      : '${resource.remaining}';
+  return '${resource.kind.shortLabel} $current/$required (−$remain)';
+}
+
+/// Sonraki seviye için kaynak kalemi — mevcut / gerekli / kalan.
+Widget monumentNextLevelResourcePanel({required MonumentUpgradeProgress progress}) {
+  return monumentPanel(
+    borderColor: AppColors.liquidGold.withValues(alpha: 0.28),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Sonraki seviye (Lv.${progress.nextLevel})',
+          style: AppTextStyles.label.copyWith(
+            color: AppColors.liquidGold,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          progress.isReady
+              ? 'Tüm kaynaklar tamam — yükseltmeye hazır.'
+              : 'Eksik kaynaklar aşağıda. Altın lonca kasasından düşer.',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.mutedTitanium,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 10),
+        for (int i = 0; i < progress.resources.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(height: 8),
+          _monumentRemainingResourceRow(progress.resources[i]),
+        ],
+        if (progress.blueprintRequired) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(
+            progress.blueprintComplete
+                ? 'Blueprint: ${progress.blueprintType} ✓'
+                : 'Blueprint eksik: ${progress.blueprintType}',
+            style: AppTextStyles.caption.copyWith(
+              color: progress.blueprintComplete ? AppColors.toxicNeon : AppColors.coralFlare,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+Widget _monumentRemainingResourceRow(MonumentResourceProgress resource) {
+  final bool done = resource.isComplete || resource.required <= 0;
+  final Color accent = done
+      ? AppColors.toxicNeon
+      : (resource.kind == MonumentResourceKind.gold
+          ? AppColors.liquidGold
+          : AppColors.warningSolar);
+  final String currentLabel = resource.kind == MonumentResourceKind.gold
+      ? _monumentCompactNum(resource.current)
+      : '${resource.current}';
+  final String requiredLabel = resource.kind == MonumentResourceKind.gold
+      ? _monumentCompactNum(resource.required)
+      : '${resource.required}';
+  final String remainLabel = resource.kind == MonumentResourceKind.gold
+      ? _monumentCompactNum(resource.remaining)
+      : '${resource.remaining}';
+  final String title = resource.kind == MonumentResourceKind.gold
+      ? 'Altın (lonca kasası)'
+      : resource.kind.shortLabel;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Text(
+            done ? 'Tamam' : 'Kalan $remainLabel',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: accent,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      GkkProgressBar(
+        value: resource.progress,
+        color: accent,
+        height: 5,
+        glow: false,
+      ),
+      const SizedBox(height: 3),
+      Text(
+        '$currentLabel / $requiredLabel',
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.mutedTitanium,
+          fontSize: 10,
+        ),
+      ),
+    ],
+  );
 }
 
 /// @deprecated Use [monumentUpgradeProgressCompact] — kept for donate screen if needed.

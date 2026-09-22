@@ -6,15 +6,19 @@ import '../../theme/app_spacing.dart';
 import '../../l10n/l10n.dart';
 import 'widgets/guild_war_design.dart';
 
-enum GuildWarDefenseMode { gems, gold }
-
-Future<GuildWarDefenseRequest?> showGuildWarDefenseSheet(
+Future<int?> showGuildWarDefenseSheet(
   BuildContext context, {
   int minDefenseGems = 5,
   int? vaultGold,
   double? playerGems,
+  String title = '💎 Elmas Savunma',
+  String rateLabel = '1💎 = +10 savunma',
+  String gainLabel = 'Savunma',
+  String footnote =
+      'Her an eklenebilir. Bölge kaybedilirse elmas savunması sıfırlanır. Garnizon gücü ayrı.',
+  String? submitLabel,
 }) {
-  return showModalBottomSheet<GuildWarDefenseRequest>(
+  return showModalBottomSheet<int>(
     context: context,
     backgroundColor: AppColors.bgCard,
     shape: const RoundedRectangleBorder(
@@ -22,67 +26,95 @@ Future<GuildWarDefenseRequest?> showGuildWarDefenseSheet(
     ),
     builder: (ctx) => _DefenseSheet(
       minDefenseGems: minDefenseGems,
-      vaultGold: vaultGold,
       playerGems: playerGems,
+      title: title,
+      rateLabel: rateLabel,
+      gainLabel: gainLabel,
+      footnote: footnote,
+      submitLabel: submitLabel,
     ),
   );
 }
 
-class GuildWarDefenseRequest {
-  const GuildWarDefenseRequest({required this.mode, required this.amount});
+/// Attack-side gem boost sheet (same 1💎=+10 rate).
+Future<int?> showGuildWarAttackGemSheet(
+  BuildContext context, {
+  int minGems = 5,
+  double? playerGems,
+}) {
+  return showGuildWarDefenseSheet(
+    context,
+    minDefenseGems: minGems,
+    playerGems: playerGems,
+    title: '💎 Elmas Saldırı Desteği',
+    rateLabel: '1💎 = +10 saldırı',
+    gainLabel: 'Saldırı',
+    footnote:
+        'Açık plan varken eklenebilir. Süre yok — plan saldırıya dönüşene kadar kalır.',
+    submitLabel: 'Saldırıya ekle',
+  );
+}
 
-  final GuildWarDefenseMode mode;
+/// Legacy alias — gold mode removed; amount is always gems.
+class GuildWarDefenseRequest {
+  const GuildWarDefenseRequest({required this.amount});
+
   final int amount;
+  bool get isGems => true;
 }
 
 class _DefenseSheet extends ConsumerStatefulWidget {
   const _DefenseSheet({
     required this.minDefenseGems,
-    this.vaultGold,
     this.playerGems,
+    this.title = '💎 Elmas Savunma',
+    this.rateLabel = '1💎 = +10 savunma',
+    this.gainLabel = 'Savunma',
+    this.footnote =
+        'Her an eklenebilir. Bölge kaybedilirse elmas savunması sıfırlanır. Garnizon gücü ayrı.',
+    this.submitLabel,
   });
 
   final int minDefenseGems;
-  final int? vaultGold;
   final double? playerGems;
+  final String title;
+  final String rateLabel;
+  final String gainLabel;
+  final String footnote;
+  final String? submitLabel;
 
   @override
   ConsumerState<_DefenseSheet> createState() => _DefenseSheetState();
 }
 
 class _DefenseSheetState extends ConsumerState<_DefenseSheet> {
-  GuildWarDefenseMode _mode = GuildWarDefenseMode.gems;
   double _gems = 5;
-  double _gold = 500;
 
   @override
   void initState() {
     super.initState();
-    _gems = widget.minDefenseGems.toDouble().clamp(1.0, _maxGems.toDouble());
-    _gold = 500.0.clamp(500.0, _maxGold.toDouble());
+    final int min = widget.minDefenseGems.clamp(1, _maxGems);
+    _gems = min.toDouble();
   }
 
   int get _maxGems {
     final double available = widget.playerGems ?? 100;
-    return available.floor().clamp(1, 100);
+    return available.floor().clamp(1, 500);
   }
 
-  int get _maxGold {
-    final int available = widget.vaultGold ?? 10000;
-    if (available < 500) return 500;
-    return available.clamp(500, 10000);
-  }
+  int get _minGems => widget.minDefenseGems.clamp(1, _maxGems);
 
   bool get _canAffordGems => (widget.playerGems ?? _gems) >= _gems;
-  bool get _canAffordGold => (widget.vaultGold ?? _gold.round()) >= _gold.round();
+  bool get _meetsMin => _gems.round() >= widget.minDefenseGems;
+  bool get _canSubmit => _canAffordGems && _meetsMin && _maxGems >= widget.minDefenseGems;
 
   @override
   Widget build(BuildContext context) {
-    final int defenseGain = _mode == GuildWarDefenseMode.gems
-        ? (_gems * 10).round()
-        : (_gold / 10).round();
-    final int? vaultGold = widget.vaultGold;
+    final int defenseGain = (_gems * 10).round();
     final double? playerGems = widget.playerGems;
+    final double sliderMin = _minGems.toDouble();
+    final double sliderMax = _maxGems.toDouble();
+    final bool tooPoor = _maxGems < widget.minDefenseGems;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -95,128 +127,75 @@ class _DefenseSheetState extends ConsumerState<_DefenseSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text(
-            '🛡 Savunma Ekle',
-            style: TextStyle(
+          Text(
+            widget.title,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: <Widget>[
-              ChoiceChip(
-                label: const Text('Elmas (prime)'),
-                selected: _mode == GuildWarDefenseMode.gems,
-                onSelected: (_) => setState(() => _mode = GuildWarDefenseMode.gems),
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Kasa altını'),
-                selected: _mode == GuildWarDefenseMode.gold,
-                onSelected: (_) => setState(() => _mode = GuildWarDefenseMode.gold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_mode == GuildWarDefenseMode.gems) ...<Widget>[
-            if (playerGems != null)
-              Text(
-                'Mevcut: 💎 ${playerGems.round()} Elmas',
-                style: const TextStyle(
-                  color: WarPalette.gold,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            const SizedBox(height: 4),
+          if (playerGems != null)
             Text(
-              'Önerilen min: ${widget.minDefenseGems} elmas · 1💎 = +10 savunma',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              'Mevcut: 💎 ${playerGems.round()} Elmas',
+              style: const TextStyle(
+                color: WarPalette.gold,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Prime bitince elmas savunması sıfırlanır.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
-            ),
+          const SizedBox(height: 4),
+          Text(
+            'Zorunlu min: ${widget.minDefenseGems} elmas · ${widget.rateLabel}',
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.footnote,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          ),
+          if (tooPoor)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Min elmas için yeterli bakiyen yok.',
+                style: TextStyle(color: AppColors.danger, fontSize: 12),
+              ),
+            )
+          else
             Slider(
-              value: _gems.clamp(1, _maxGems.toDouble()),
-              min: 1,
-              max: _maxGems.toDouble(),
-              divisions: _maxGems > 1 ? _maxGems - 1 : 1,
+              value: _gems.clamp(sliderMin, sliderMax),
+              min: sliderMin,
+              max: sliderMax,
+              divisions: (sliderMax - sliderMin).round().clamp(1, 499),
               activeColor: WarPalette.gold,
               onChanged: (double v) => setState(() => _gems = v),
             ),
-            Text('💎 ${_gems.round()} Elmas', style: const TextStyle(color: WarPalette.gold)),
-            if (!_canAffordGems)
-              const Text(
-                'Yetersiz elmas',
-                style: TextStyle(color: AppColors.danger, fontSize: 11),
-              ),
-          ] else ...<Widget>[
-            if (vaultGold != null)
-              Text(
-                'Mevcut kasa: 🪙 $vaultGold Altın',
-                style: const TextStyle(
-                  color: WarPalette.neon,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            const SizedBox(height: 4),
+          Text('💎 ${_gems.round()} Elmas', style: const TextStyle(color: WarPalette.gold)),
+          if (!_canAffordGems)
             const Text(
-              '500g = +50 kalıcı savunma · lonca kasasından düşer',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              'Yetersiz elmas',
+              style: TextStyle(color: AppColors.danger, fontSize: 11),
             ),
-            Slider(
-              value: _gold.clamp(500, _maxGold.toDouble()),
-              min: 500,
-              max: _maxGold.toDouble(),
-              divisions: ((_maxGold - 500) ~/ 500).clamp(1, 19),
-              activeColor: WarPalette.neon,
-              onChanged: (double v) => setState(() => _gold = v),
-            ),
-            Text('🪙 ${_gold.round()} Altın', style: const TextStyle(color: WarPalette.neon)),
-            if (vaultGold != null && vaultGold < 500)
-              const Text(
-                'Kasa en az 500g olmalı',
-                style: TextStyle(color: AppColors.danger, fontSize: 11),
-              )
-            else if (!_canAffordGold)
-              const Text(
-                'Kasa yetersiz',
-                style: TextStyle(color: AppColors.danger, fontSize: 11),
-              ),
-          ],
           const SizedBox(height: 4),
           Text(
-            '+$defenseGain Savunma',
+            '+$defenseGain ${widget.gainLabel}',
             style: const TextStyle(color: AppColors.success, fontSize: 14),
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: (_mode == GuildWarDefenseMode.gems ? _canAffordGems : _canAffordGold)
-                  ? () {
-                      Navigator.pop(
-                        context,
-                        GuildWarDefenseRequest(
-                          mode: _mode,
-                          amount: _mode == GuildWarDefenseMode.gems
-                              ? _gems.round()
-                              : _gold.round(),
-                        ),
-                      );
-                    }
+              onPressed: _canSubmit
+                  ? () => Navigator.pop(context, _gems.round())
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: Text(context.l10n.savunma_ekle_2),
+              child: Text(widget.submitLabel ?? context.l10n.savunma_ekle_2),
             ),
           ),
         ],

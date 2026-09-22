@@ -3,21 +3,34 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/legal/legal_document_content.dart';
 import '../../../models/policy_model.dart';
 import '../../../theme/app_spacing.dart';
 import 'auth_design.dart';
+import 'auth_legal_document_dialog.dart';
 
 enum CommunityRulesDecision { pending, accepted, rejected }
 
-/// Kayıt ekranı — Topluluk Kuralları kabul / red (oyun içi değil).
+/// Short friendly bullets for the register gate card (full text via dialog).
+const String _kCommunityPreview = '''
+• Saygı: küfür, nefret, taciz yok
+• Adil oyun: hile, bot, exploit yasak
+• Ekonomi: RMT / scam / sahte trade yasak
+• Spam ve reklam yok
+• İhlalde: uyarı → susturma → ban
+''';
+
+/// Kayıt ekranı — Topluluk Kuralları kabul / red (oyun içi gate değil).
 Future<CommunityRulesDecision?> showRegisterCommunityRulesDialog(
   BuildContext context, {
   required LegalDocument document,
 }) {
+  final LegalDocument resolved = LegalDocumentContent.resolve(document);
   return showDialog<CommunityRulesDecision>(
     context: context,
     barrierDismissible: false,
-    builder: (BuildContext ctx) => _RegisterCommunityRulesDialog(document: document),
+    builder: (BuildContext ctx) =>
+        _RegisterCommunityRulesDialog(document: resolved),
   );
 }
 
@@ -25,67 +38,6 @@ class _RegisterCommunityRulesDialog extends StatelessWidget {
   const _RegisterCommunityRulesDialog({required this.document});
 
   final LegalDocument document;
-
-  String get _preview {
-    final String body = document.bodyMd.replaceAll(RegExp(r'^#+\s*', multiLine: true), '').trim();
-    if (body.length <= 320) return body;
-    return '${body.substring(0, 320).trim()}…';
-  }
-
-  void _showFullText(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 560),
-              decoration: BoxDecoration(
-                color: AuthDesign.navy.withValues(alpha: 0.94),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AuthDesign.gold.withValues(alpha: 0.35)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 16, 8, 8),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            document.title,
-                            style: AuthDesign.heroTitle(color: AuthDesign.gold).copyWith(fontSize: 18),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.close_rounded, color: AuthDesign.titanium),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                      child: Text(
-                        document.bodyMd.replaceAll('\\n', '\n'),
-                        style: AuthDesign.bodyMuted(color: AuthDesign.textMid),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +64,11 @@ class _RegisterCommunityRulesDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                         gradient: AuthDesign.fuchsiaGradient,
                       ),
-                      child: const Icon(Icons.groups_rounded, color: Colors.white, size: 22),
+                      child: const Icon(
+                        Icons.groups_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -121,11 +77,14 @@ class _RegisterCommunityRulesDialog extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             document.title,
-                            style: AuthDesign.heroTitle().copyWith(fontSize: 18),
+                            style:
+                                AuthDesign.heroTitle().copyWith(fontSize: 18),
                           ),
                           Text(
                             'Sürüm ${document.version}',
-                            style: AuthDesign.sectionCaps(color: AuthDesign.titanium),
+                            style: AuthDesign.sectionCaps(
+                              color: AuthDesign.titanium,
+                            ),
                           ),
                         ],
                       ),
@@ -134,7 +93,8 @@ class _RegisterCommunityRulesDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Kayıt olmak için Topluluk Kurallarını kabul etmelisin. Reddedersen hesap oluşturamazsın.',
+                  'Kayıt olmak için Topluluk Kurallarını kabul etmelisin. '
+                  'Reddedersen hesap oluşturamazsın.',
                   style: AuthDesign.bodyMuted(color: AuthDesign.textMid),
                 ),
                 const SizedBox(height: 12),
@@ -143,17 +103,26 @@ class _RegisterCommunityRulesDialog extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AuthDesign.obsidian.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                    ),
                   ),
-                  child: Text(_preview, style: AuthDesign.bodyMuted(color: AuthDesign.textMid)),
+                  child: Text(
+                    _kCommunityPreview.trim(),
+                    style: AuthDesign.bodyMuted(color: AuthDesign.textMid)
+                        .copyWith(height: 1.45),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton(
-                    onPressed: () => _showFullText(context),
+                    onPressed: () => showAuthLegalDocumentDialog(
+                      context,
+                      document: document,
+                    ),
                     child: Text(
-                      'Tam metni oku',
+                      'Tam metni oku (tablolar + detay)',
                       style: GoogleFonts.urbanist(
                         color: AuthDesign.gold,
                         fontWeight: FontWeight.w700,
@@ -166,12 +135,19 @@ class _RegisterCommunityRulesDialog extends StatelessWidget {
                   children: <Widget>[
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, CommunityRulesDecision.rejected),
+                        onPressed: () => Navigator.pop(
+                          context,
+                          CommunityRulesDecision.rejected,
+                        ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AuthDesign.titanium,
-                          side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.12),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         child: const Text('Reddet'),
                       ),
@@ -181,7 +157,10 @@ class _RegisterCommunityRulesDialog extends StatelessWidget {
                       child: AuthGoldButton(
                         label: 'Kabul Et',
                         icon: Icons.check_rounded,
-                        onPressed: () => Navigator.pop(context, CommunityRulesDecision.accepted),
+                        onPressed: () => Navigator.pop(
+                          context,
+                          CommunityRulesDecision.accepted,
+                        ),
                       ),
                     ),
                   ],
@@ -236,14 +215,20 @@ class CommunityRulesStatusBanner extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(message, style: AuthDesign.bodyMuted(color: AuthDesign.textHi)),
+              child: Text(
+                message,
+                style: AuthDesign.bodyMuted(color: AuthDesign.textHi),
+              ),
             ),
             if (rejected)
               TextButton(
                 onPressed: onReviewAgain,
                 child: Text(
                   'Tekrar',
-                  style: GoogleFonts.urbanist(color: AuthDesign.gold, fontWeight: FontWeight.w700),
+                  style: GoogleFonts.urbanist(
+                    color: AuthDesign.gold,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
           ],

@@ -611,8 +611,32 @@ abstract class AppLocalizations {
   /// No description provided for @auth_password_min_length.
   ///
   /// In en, this message translates to:
-  /// **'Password must be at least 6 characters.'**
+  /// **'Password must be at least 8 characters.'**
   String get auth_password_min_length;
+
+  /// No description provided for @auth_password_strength.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must include at least one letter and one digit.'**
+  String get auth_password_strength;
+
+  /// No description provided for @auth_password_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get auth_password_confirm;
+
+  /// No description provided for @auth_password_confirm_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Password confirmation is required.'**
+  String get auth_password_confirm_required;
+
+  /// No description provided for @auth_password_mismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match.'**
+  String get auth_password_mismatch;
 
   /// No description provided for @auth_username.
   ///
@@ -625,6 +649,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Username is required.'**
   String get auth_username_required;
+
+  /// No description provided for @auth_username_invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Username must be 3–16 chars; letters, digits, or _ only.'**
+  String get auth_username_invalid;
 
   /// No description provided for @auth_referral_code.
   ///
@@ -661,6 +691,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create a new account and join the kingdom.'**
   String get auth_register_subtitle;
+
+  /// No description provided for @auth_forgot_password_link.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get auth_forgot_password_link;
+
+  /// No description provided for @auth_forgot_password_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get auth_forgot_password_title;
+
+  /// No description provided for @auth_forgot_password_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email and we will send a reset link.'**
+  String get auth_forgot_password_subtitle;
+
+  /// No description provided for @auth_forgot_password_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Reset Link'**
+  String get auth_forgot_password_button;
+
+  /// No description provided for @auth_forgot_password_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending...'**
+  String get auth_forgot_password_loading;
+
+  /// No description provided for @auth_forgot_password_sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset link sent. Check your inbox.'**
+  String get auth_forgot_password_sent;
+
+  /// No description provided for @auth_update_password_title.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get auth_update_password_title;
+
+  /// No description provided for @auth_update_password_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a new password for your account.'**
+  String get auth_update_password_subtitle;
+
+  /// No description provided for @auth_update_password_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Password'**
+  String get auth_update_password_button;
+
+  /// No description provided for @auth_update_password_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating...'**
+  String get auth_update_password_loading;
+
+  /// No description provided for @auth_update_password_success.
+  ///
+  /// In en, this message translates to:
+  /// **'Password updated. Sign in with your new password.'**
+  String get auth_update_password_success;
+
+  /// No description provided for @auth_email_confirm_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Confirmation Required'**
+  String get auth_email_confirm_title;
+
+  /// No description provided for @auth_email_confirm_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Account created. Tap the confirmation link in your email before signing in.'**
+  String get auth_email_confirm_body;
+
+  /// No description provided for @auth_email_confirm_waiting_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a confirmation email. Check your inbox (and spam folder).'**
+  String get auth_email_confirm_waiting_subtitle;
+
+  /// No description provided for @auth_email_confirm_resend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend Confirmation Email'**
+  String get auth_email_confirm_resend;
+
+  /// No description provided for @auth_email_confirm_resend_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending...'**
+  String get auth_email_confirm_resend_loading;
+
+  /// No description provided for @auth_email_confirm_resent.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation email resent.'**
+  String get auth_email_confirm_resent;
+
+  /// No description provided for @auth_username_taken.
+  ///
+  /// In en, this message translates to:
+  /// **'That username is taken. Try another.'**
+  String get auth_username_taken;
+
+  /// No description provided for @auth_referral_validating.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking referral code...'**
+  String get auth_referral_validating;
+
+  /// No description provided for @auth_referral_invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid referral code.'**
+  String get auth_referral_invalid;
+
+  /// No description provided for @auth_referral_bonus_preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid code! At level {level} you earn +{referred} gems and your referrer earns +{referrer} gems.'**
+  String auth_referral_bonus_preview(int level, int referred, int referrer);
+
+  /// No description provided for @auth_apple_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Apple'**
+  String get auth_apple_button;
+
+  /// No description provided for @auth_apple_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Apple is unavailable on this device.'**
+  String get auth_apple_unavailable;
+
+  /// No description provided for @auth_first_dungeon_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your first dungeon awaits'**
+  String get auth_first_dungeon_title;
+
+  /// No description provided for @auth_first_dungeon_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your class is ready. Enter the dungeon for your first fight — loot and power start there.'**
+  String get auth_first_dungeon_body;
+
+  /// No description provided for @auth_first_dungeon_cta.
+  ///
+  /// In en, this message translates to:
+  /// **'First dungeon'**
+  String get auth_first_dungeon_cta;
+
+  /// No description provided for @auth_first_dungeon_home.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to home'**
+  String get auth_first_dungeon_home;
+
+  /// No description provided for @auth_policy_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Agreements'**
+  String get auth_policy_retry;
+
+  /// No description provided for @auth_policy_logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Out'**
+  String get auth_policy_logout;
+
+  /// No description provided for @auth_policy_stuck_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save agreements'**
+  String get auth_policy_stuck_title;
 
   /// No description provided for @auth_toggle_password_show.
   ///
@@ -2600,6 +2810,18 @@ abstract class AppLocalizations {
   /// **'Hastaneye kaldirildin'**
   String get hastaneye_kaldirildin;
 
+  /// No description provided for @overdose_hospitalized.
+  ///
+  /// In en, this message translates to:
+  /// **'You were hospitalized for {duration} due to overdose'**
+  String overdose_hospitalized(String duration);
+
+  /// No description provided for @overdose_hospitalized_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdose'**
+  String get overdose_hospitalized_title;
+
   /// No description provided for @pvp_arena.
   ///
   /// In en, this message translates to:
@@ -2915,13 +3137,205 @@ abstract class AppLocalizations {
   /// No description provided for @tum_alimlarda_20_indirim.
   ///
   /// In en, this message translates to:
-  /// **'Tum alimlarda %20 indirim'**
+  /// **'20% off all purchases'**
   String get tum_alimlarda_20_indirim;
+
+  /// No description provided for @party_live.
+  ///
+  /// In en, this message translates to:
+  /// **'PARTY LIVE'**
+  String get party_live;
+
+  /// No description provided for @party_live_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Night special — 20% refill discount + safer fill at your venue'**
+  String get party_live_subtitle;
+
+  /// No description provided for @nightlife_floor.
+  ///
+  /// In en, this message translates to:
+  /// **'Night Floor'**
+  String get nightlife_floor;
+
+  /// No description provided for @nightlife_floor_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter → buy drink/ticket → refill energy'**
+  String get nightlife_floor_subtitle;
+
+  /// No description provided for @hang_out.
+  ///
+  /// In en, this message translates to:
+  /// **'Hang Out'**
+  String get hang_out;
+
+  /// No description provided for @join_party.
+  ///
+  /// In en, this message translates to:
+  /// **'Join Party'**
+  String get join_party;
+
+  /// No description provided for @start_party.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Party'**
+  String get start_party;
+
+  /// No description provided for @end_party.
+  ///
+  /// In en, this message translates to:
+  /// **'End Party'**
+  String get end_party;
+
+  /// No description provided for @who_is_here.
+  ///
+  /// In en, this message translates to:
+  /// **'Who\'s here'**
+  String get who_is_here;
+
+  /// No description provided for @nightlife_result.
+  ///
+  /// In en, this message translates to:
+  /// **'Night result'**
+  String get nightlife_result;
+
+  /// No description provided for @nightlife_good_night.
+  ///
+  /// In en, this message translates to:
+  /// **'Good night'**
+  String get nightlife_good_night;
+
+  /// No description provided for @nightlife_neutral.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet night'**
+  String get nightlife_neutral;
+
+  /// No description provided for @nightlife_scam.
+  ///
+  /// In en, this message translates to:
+  /// **'You got scammed'**
+  String get nightlife_scam;
+
+  /// No description provided for @nightlife_fight.
+  ///
+  /// In en, this message translates to:
+  /// **'Fight'**
+  String get nightlife_fight;
+
+  /// No description provided for @nightlife_hospital_cta.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Hospital'**
+  String get nightlife_hospital_cta;
+
+  /// No description provided for @nightlife_vibe.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibe'**
+  String get nightlife_vibe;
+
+  /// No description provided for @nightlife_energy_cost.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy'**
+  String get nightlife_energy_cost;
+
+  /// No description provided for @nightlife_cooldown.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooldown'**
+  String get nightlife_cooldown;
+
+  /// No description provided for @nightlife_no_party.
+  ///
+  /// In en, this message translates to:
+  /// **'No party right now'**
+  String get nightlife_no_party;
+
+  /// No description provided for @nightlife_busy.
+  ///
+  /// In en, this message translates to:
+  /// **'Nightlife action...'**
+  String get nightlife_busy;
+
+  /// No description provided for @nightlife_buy_drink.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy Drink / Refill'**
+  String get nightlife_buy_drink;
+
+  /// No description provided for @nightlife_refill.
+  ///
+  /// In en, this message translates to:
+  /// **'Refill Energy'**
+  String get nightlife_refill;
+
+  /// No description provided for @nightlife_tickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Tickets'**
+  String get nightlife_tickets;
+
+  /// No description provided for @nightlife_addiction.
+  ///
+  /// In en, this message translates to:
+  /// **'Addiction'**
+  String get nightlife_addiction;
+
+  /// No description provided for @nightlife_own_safe.
+  ///
+  /// In en, this message translates to:
+  /// **'Your venue — safer refill'**
+  String get nightlife_own_safe;
+
+  /// No description provided for @nightlife_od_warning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: second refill may overdose'**
+  String get nightlife_od_warning;
+
+  /// No description provided for @nightlife_overdose.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdose'**
+  String get nightlife_overdose;
+
+  /// No description provided for @nightlife_refill_ok.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy refilled'**
+  String get nightlife_refill_ok;
+
+  /// No description provided for @nightlife_gate_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Door locked'**
+  String get nightlife_gate_locked;
+
+  /// No description provided for @nightlife_enter_free.
+  ///
+  /// In en, this message translates to:
+  /// **'Entry free — ticket only on refill'**
+  String get nightlife_enter_free;
+
+  /// No description provided for @nightlife_no_refill_stock.
+  ///
+  /// In en, this message translates to:
+  /// **'Refill menu empty — owner must stock drinks'**
+  String get nightlife_no_refill_stock;
+
+  /// No description provided for @nightlife_price_mult.
+  ///
+  /// In en, this message translates to:
+  /// **'Price mult'**
+  String get nightlife_price_mult;
 
   /// No description provided for @polis_suphesi.
   ///
   /// In en, this message translates to:
-  /// **'Polis Suphesi'**
+  /// **'Police Heat'**
   String get polis_suphesi;
 
   /// No description provided for @kahvehane.
@@ -4208,6 +4622,84 @@ abstract class AppLocalizations {
   /// **'Referral code copied.'**
   String get settingsReferralCopied;
 
+  /// No description provided for @settingsSectionSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get settingsSectionSupport;
+
+  /// No description provided for @settingsSectionSupportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tickets and bug reports'**
+  String get settingsSectionSupportHint;
+
+  /// No description provided for @settingsSupportMyTickets.
+  ///
+  /// In en, this message translates to:
+  /// **'My support tickets'**
+  String get settingsSupportMyTickets;
+
+  /// No description provided for @settingsSupportNewTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a new ticket'**
+  String get settingsSupportNewTicket;
+
+  /// No description provided for @settingsSupportMyBugReports.
+  ///
+  /// In en, this message translates to:
+  /// **'My bug reports'**
+  String get settingsSupportMyBugReports;
+
+  /// No description provided for @settingsSupportEmailCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Email address copied.'**
+  String get settingsSupportEmailCopied;
+
+  /// No description provided for @settingsSectionLegal.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal'**
+  String get settingsSectionLegal;
+
+  /// No description provided for @settingsSectionLegalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms and privacy'**
+  String get settingsSectionLegalHint;
+
+  /// No description provided for @settingsLegalLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents could not be loaded.'**
+  String get settingsLegalLoadFailed;
+
+  /// No description provided for @settingsDisplayNameShopHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name is changed via the shop'**
+  String get settingsDisplayNameShopHint;
+
+  /// No description provided for @settingsDisplayNameItemHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name Change Scroll (gems) → use it from your inventory.'**
+  String get settingsDisplayNameItemHint;
+
+  /// No description provided for @settingsNotifPermissionWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'System notification permission is off — enable it in phone settings.'**
+  String get settingsNotifPermissionWarn;
+
+  /// No description provided for @settingsDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Account could not be deleted.'**
+  String get settingsDeleteFailed;
+
   /// No description provided for @errorWithDetail.
   ///
   /// In en, this message translates to:
@@ -4232,6 +4724,30 @@ abstract class AppLocalizations {
   /// **'Skip all'**
   String get tutSkipAll;
 
+  /// No description provided for @tutOptInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial'**
+  String get tutOptInTitle;
+
+  /// No description provided for @tutOptInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Want a short guide to learn the game? If you say no, we won\'t ask again.'**
+  String get tutOptInBody;
+
+  /// No description provided for @tutOptInYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, show me'**
+  String get tutOptInYes;
+
+  /// No description provided for @tutOptInNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No, skip'**
+  String get tutOptInNo;
+
   /// No description provided for @settingsSectionTutorial.
   ///
   /// In en, this message translates to:
@@ -4241,19 +4757,19 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSectionTutorialHint.
   ///
   /// In en, this message translates to:
-  /// **'Replay or skip onboarding progress'**
+  /// **'Resume where you left off, or skip'**
   String get settingsSectionTutorialHint;
 
   /// No description provided for @settingsTutorialReplay.
   ///
   /// In en, this message translates to:
-  /// **'Restart tutorial'**
+  /// **'Restart tutorial from start'**
   String get settingsTutorialReplay;
 
   /// No description provided for @settingsTutorialReplayHint.
   ///
   /// In en, this message translates to:
-  /// **'Clears progress and opens home coaching'**
+  /// **'Clears progress — only if you want a full reset'**
   String get settingsTutorialReplayHint;
 
   /// No description provided for @settingsTutorialSkip.
@@ -4283,14 +4799,50 @@ abstract class AppLocalizations {
   /// No description provided for @settingsTutorialReplayDone.
   ///
   /// In en, this message translates to:
-  /// **'Tutorial restarted.'**
+  /// **'Tutorial restarted from the beginning.'**
   String get settingsTutorialReplayDone;
 
   /// No description provided for @settingsTutorialSkipDone.
   ///
   /// In en, this message translates to:
-  /// **'Tutorial skipped.'**
+  /// **'Tutorial skipped. Settings → Resume to continue later.'**
   String get settingsTutorialSkipDone;
+
+  /// No description provided for @settingsTutorialSkippedReplayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You skipped the tutorial. Restart from the beginning to play again.'**
+  String get settingsTutorialSkippedReplayHint;
+
+  /// No description provided for @settingsTutorialResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume where I left off'**
+  String get settingsTutorialResume;
+
+  /// No description provided for @settingsTutorialResumeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Does not reset — opens your next unfinished step'**
+  String get settingsTutorialResumeHint;
+
+  /// No description provided for @settingsTutorialResumeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the guide at your last unfinished step?'**
+  String get settingsTutorialResumeConfirm;
+
+  /// No description provided for @settingsTutorialResumeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide resumed from where you left off.'**
+  String get settingsTutorialResumeDone;
+
+  /// No description provided for @settingsTutorialResumeNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Core guide already complete. Use restart below for a full reset.'**
+  String get settingsTutorialResumeNothing;
 
   /// No description provided for @tut_onboarding_welcome_title.
   ///
@@ -4313,7 +4865,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_onboarding_home_promo_body.
   ///
   /// In en, this message translates to:
-  /// **'Burada Gece Pazarı, Nemesis ve sezon fırsatları döner.'**
+  /// **'Parlak bölgeye dokun. Gece Pazarı, Nemesis ve sezon fırsatları burada döner.'**
   String get tut_onboarding_home_promo_body;
 
   /// No description provided for @tut_onboarding_home_hero_title.
@@ -4325,7 +4877,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_onboarding_home_hero_body.
   ///
   /// In en, this message translates to:
-  /// **'Kuşandığın ekipman ve güç buradan görünür.'**
+  /// **'Parlak bölgeye dokun. Kuşandığın ekipman, toplam güç ve itibar burada.'**
   String get tut_onboarding_home_hero_body;
 
   /// No description provided for @tut_onboarding_hud_energy_title.
@@ -4337,7 +4889,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_onboarding_hud_energy_body.
   ///
   /// In en, this message translates to:
-  /// **'Zindan ve aktiviteler enerji harcar. Dokunarak devam et.'**
+  /// **'Sağ üstteki parlak enerji göstergesi. Zindan ve aktiviteler enerji harcar. Devam\'a bas.'**
   String get tut_onboarding_hud_energy_body;
 
   /// No description provided for @tut_onboarding_hud_gold_title.
@@ -4349,7 +4901,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_onboarding_hud_gold_body.
   ///
   /// In en, this message translates to:
-  /// **'Pazar, craft ve güçlendirme için altın kullanılır.'**
+  /// **'Sol üstteki parlak altın. Pazar, craft ve güçlendirme için kullanılır. Devam\'a bas.'**
   String get tut_onboarding_hud_gold_body;
 
   /// No description provided for @tut_onboarding_hud_gems_title.
@@ -4361,8 +4913,20 @@ abstract class AppLocalizations {
   /// No description provided for @tut_onboarding_hud_gems_body.
   ///
   /// In en, this message translates to:
-  /// **'Premium hızlandırma ve özel eşyalar için.'**
+  /// **'Sağ üstteki parlak elmas. Premium hızlandırma ve özel eşyalar için. Devam\'a bas.'**
   String get tut_onboarding_hud_gems_body;
+
+  /// No description provided for @tut_onboarding_nav_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Alt menü'**
+  String get tut_onboarding_nav_intro_title;
+
+  /// No description provided for @tut_onboarding_nav_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Parlak alt menü: Envanter, Zindan, Karakter ve Menü. Hazırım\'a bas; sonraki adımda Zindan sekmesine dokun.'**
+  String get tut_onboarding_nav_intro_body;
 
   /// No description provided for @tut_onboarding_tap_dungeon_tab_title.
   ///
@@ -4373,7 +4937,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_onboarding_tap_dungeon_tab_body.
   ///
   /// In en, this message translates to:
-  /// **'Zindan sekmesine dokun.'**
+  /// **'Alttaki bottom bar\'da parlak Zindan sekmesine dokun.'**
   String get tut_onboarding_tap_dungeon_tab_body;
 
   /// No description provided for @tut_dungeon_pick_zone_title.
@@ -4385,7 +4949,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_dungeon_pick_zone_body.
   ///
   /// In en, this message translates to:
-  /// **'Zone 1 ile başla — düşük risk, iyi loot.'**
+  /// **'Parlak B1 sekmesine dokun. Zone 1 ile başla — düşük risk, iyi loot.'**
   String get tut_dungeon_pick_zone_body;
 
   /// No description provided for @tut_dungeon_enter_btn_title.
@@ -4397,7 +4961,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_dungeon_enter_btn_body.
   ///
   /// In en, this message translates to:
-  /// **'Seçili zindana girmek için dokun.'**
+  /// **'Parlak Gir butonuna dokun.'**
   String get tut_dungeon_enter_btn_body;
 
   /// No description provided for @tut_dungeon_confirm_enter_title.
@@ -4409,7 +4973,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_dungeon_confirm_enter_body.
   ///
   /// In en, this message translates to:
-  /// **'Enerji maliyetini kontrol et, onayla.'**
+  /// **'Enerji maliyetini kontrol et ve parlak Gir\'e dokun.'**
   String get tut_dungeon_confirm_enter_body;
 
   /// No description provided for @tut_dungeon_tap_attack_title.
@@ -4421,7 +4985,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_dungeon_tap_attack_body.
   ///
   /// In en, this message translates to:
-  /// **'Saldır butonuna dokun.'**
+  /// **'Parlak Saldır butonuna dokun.'**
   String get tut_dungeon_tap_attack_body;
 
   /// No description provided for @tut_dungeon_first_win_title.
@@ -4433,7 +4997,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_dungeon_first_win_body.
   ///
   /// In en, this message translates to:
-  /// **'Loot düştü. Envantere bak.'**
+  /// **'Loot düştü. Devam\'a bas, sonra alttaki Envanter sekmesine dokun.'**
   String get tut_dungeon_first_win_body;
 
   /// No description provided for @tut_dungeon_to_inventory_title.
@@ -4445,19 +5009,19 @@ abstract class AppLocalizations {
   /// No description provided for @tut_dungeon_to_inventory_body.
   ///
   /// In en, this message translates to:
-  /// **'Envanter sekmesine git.'**
+  /// **'Parlak Envanter sekmesine dokun. Loot envanterine gitti.'**
   String get tut_dungeon_to_inventory_body;
 
   /// No description provided for @tut_inventory_first_item_title.
   ///
   /// In en, this message translates to:
-  /// **'Eşyana dokun'**
+  /// **'Loot geldi'**
   String get tut_inventory_first_item_title;
 
   /// No description provided for @tut_inventory_first_item_body.
   ///
   /// In en, this message translates to:
-  /// **'Silahına dokunarak detayı aç.'**
+  /// **'Zindan eşyan envanterde. Önce yükselt, sonra kuşan — kuşanınca geliştirme listesinde görünmez.'**
   String get tut_inventory_first_item_body;
 
   /// No description provided for @tut_inventory_equip_title.
@@ -4493,7 +5057,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_character_check_power_body.
   ///
   /// In en, this message translates to:
-  /// **'Power skorun savaşlarda belirleyici.'**
+  /// **'Parlak Güç kartına dokun. Power skorun savaşlarda belirleyici.'**
   String get tut_character_check_power_body;
 
   /// No description provided for @tut_character_stat_panel_title.
@@ -4505,20 +5069,44 @@ abstract class AppLocalizations {
   /// No description provided for @tut_character_stat_panel_body.
   ///
   /// In en, this message translates to:
-  /// **'Level atladıkça puan dağıt.'**
+  /// **'Parlak stat paneli. Level atladıkça puan kazanırsın. Şu an puanın yoksa normal — Devam\'a bas.'**
   String get tut_character_stat_panel_body;
 
-  /// No description provided for @tut_character_to_enhance_title.
+  /// No description provided for @tut_character_class_abilities_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sınıf yeteneklerin'**
+  String get tut_character_class_abilities_title;
+
+  /// No description provided for @tut_character_class_abilities_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Parlak bölgede sınıf pasiflerini oku. Devam\'a bas.'**
+  String get tut_character_class_abilities_body;
+
+  /// No description provided for @tut_character_open_menu_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Menü'**
+  String get tut_character_open_menu_title;
+
+  /// No description provided for @tut_character_open_menu_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Alttaki Menü sekmesine dokun.'**
+  String get tut_character_open_menu_body;
+
+  /// No description provided for @tut_character_tap_enhance_title.
   ///
   /// In en, this message translates to:
   /// **'Geliştirme ocağı'**
-  String get tut_character_to_enhance_title;
+  String get tut_character_tap_enhance_title;
 
-  /// No description provided for @tut_character_to_enhance_body.
+  /// No description provided for @tut_character_tap_enhance_body.
   ///
   /// In en, this message translates to:
-  /// **'Menü → Geliştirme ile eşyanı +1 yükselt.'**
-  String get tut_character_to_enhance_body;
+  /// **'Geliştirme\'ye dokun — eşyanı +1 yükselt.'**
+  String get tut_character_tap_enhance_body;
 
   /// No description provided for @tut_enhance_pick_item_title.
   ///
@@ -4529,7 +5117,7 @@ abstract class AppLocalizations {
   /// No description provided for @tut_enhance_pick_item_body.
   ///
   /// In en, this message translates to:
-  /// **'Kuşandığın silahı seç.'**
+  /// **'Alttaki envanterden yükselteceğin eşyaya dokun.'**
   String get tut_enhance_pick_item_body;
 
   /// No description provided for @tut_enhance_tap_forge_title.
@@ -4544,6 +5132,24 @@ abstract class AppLocalizations {
   /// **'+1 dene — parşömen otomatik seçilir.'**
   String get tut_enhance_tap_forge_body;
 
+  /// No description provided for @tut_enhance_bypass_no_item_body.
+  ///
+  /// In en, this message translates to:
+  /// **'No enhanceable item. Tap Continue to move on.'**
+  String get tut_enhance_bypass_no_item_body;
+
+  /// No description provided for @tut_enhance_bypass_no_scroll_body.
+  ///
+  /// In en, this message translates to:
+  /// **'No parchment or item — can\'t enhance. Tap Continue.'**
+  String get tut_enhance_bypass_no_scroll_body;
+
+  /// No description provided for @tut_enhance_bypass_no_equip_body.
+  ///
+  /// In en, this message translates to:
+  /// **'No item to equip. You can equip from this tab later — tap Continue.'**
+  String get tut_enhance_bypass_no_equip_body;
+
   /// No description provided for @tut_enhance_result_title.
   ///
   /// In en, this message translates to:
@@ -4553,20 +5159,32 @@ abstract class AppLocalizations {
   /// No description provided for @tut_enhance_result_body.
   ///
   /// In en, this message translates to:
-  /// **'Başarı veya yanma normal.'**
+  /// **'Başarı veya yanma normal. Şimdi yükseltilmiş eşyayı kuşan.'**
   String get tut_enhance_result_body;
 
-  /// No description provided for @tut_enhance_season_cta_title.
+  /// No description provided for @tut_enhance_tap_season_title.
   ///
   /// In en, this message translates to:
-  /// **'Sezon ve görevler'**
-  String get tut_enhance_season_cta_title;
+  /// **'Sezon'**
+  String get tut_enhance_tap_season_title;
 
-  /// No description provided for @tut_enhance_season_cta_body.
+  /// No description provided for @tut_enhance_tap_season_body.
   ///
   /// In en, this message translates to:
-  /// **'Battle Pass ve günlük görevler seni bekliyor — Sezon / Görevler menüsünden aç.'**
-  String get tut_enhance_season_cta_body;
+  /// **'Battle Pass için Sezon\'a dokun.'**
+  String get tut_enhance_tap_season_body;
+
+  /// No description provided for @tut_bank_select_item_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Eşya seç'**
+  String get tut_bank_select_item_title;
+
+  /// No description provided for @tut_bank_select_item_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Alttaki envanterden yatıracağın eşyaya dokun.'**
+  String get tut_bank_select_item_body;
 
   /// No description provided for @tut_bank_deposit_coach_title.
   ///
@@ -4661,8 +5279,68 @@ abstract class AppLocalizations {
   /// No description provided for @tut_season_l20_badge_body.
   ///
   /// In en, this message translates to:
-  /// **'Free track L20 — claim etmeyi unutma!'**
+  /// **'Free track L20 rozeti burada. Şimdi uzak — hedef bu. Parlak satıra dokun.'**
   String get tut_season_l20_badge_body;
+
+  /// No description provided for @tut_season_reset_warn_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sezon bitince'**
+  String get tut_season_reset_warn_title;
+
+  /// No description provided for @tut_season_reset_warn_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim etmediğin ödüller sezon sonunda sıfırlanır. L20 rozetini kaçırma!'**
+  String get tut_season_reset_warn_body;
+
+  /// No description provided for @tut_season_to_hospital_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Hastane'**
+  String get tut_season_to_hospital_title;
+
+  /// No description provided for @tut_season_to_hospital_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: health & prison. When HP hits zero you go to hospital — let\'s see it.'**
+  String get tut_season_to_hospital_body;
+
+  /// No description provided for @tut_season_core_done_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Rehber tamam'**
+  String get tut_season_core_done_title;
+
+  /// No description provided for @tut_season_core_done_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Temel tur bitti. Menüden zindan, craft, pazar, lonca seni bekliyor. İyi oyunlar!'**
+  String get tut_season_core_done_body;
+
+  /// No description provided for @tut_hospital_to_prison_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Hapishane'**
+  String get tut_hospital_to_prison_title;
+
+  /// No description provided for @tut_hospital_to_prison_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Raids and risky jobs can send you to prison — let\'s see that too.'**
+  String get tut_hospital_to_prison_body;
+
+  /// No description provided for @tut_prison_core_done_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide complete'**
+  String get tut_prison_core_done_title;
+
+  /// No description provided for @tut_prison_core_done_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Core tour done. Dungeon, craft, market, guild await in the menu. Have fun!'**
+  String get tut_prison_core_done_body;
 
   /// No description provided for @tut_quests_claim_intro_title.
   ///
@@ -5011,6 +5689,468 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Gem ile özel paketler — stok bitince gider.'**
   String get tut_night_offer_browse_body;
+
+  /// No description provided for @tut_hospital_health_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Can sistemi'**
+  String get tut_hospital_health_intro_title;
+
+  /// No description provided for @tut_hospital_health_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Üst bardaki can şeridine dokun. Savaşlar can götürür; can tükenirse hastaneye düşersin.'**
+  String get tut_hospital_health_intro_body;
+
+  /// No description provided for @tut_hospital_wounded_penalty_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Yaralılık cezası'**
+  String get tut_hospital_wounded_penalty_title;
+
+  /// No description provided for @tut_hospital_wounded_penalty_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Hastaneden çıkınca yaralı sayılırsın — canın %50 altındayken arenada %15 güç cezası yersin.'**
+  String get tut_hospital_wounded_penalty_body;
+
+  /// No description provided for @tut_hospital_ad_timer_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reklam ile hızlan'**
+  String get tut_hospital_ad_timer_title;
+
+  /// No description provided for @tut_hospital_ad_timer_body.
+  ///
+  /// In en, this message translates to:
+  /// **'In hospital, watch an ad to cut 30 min (3/day). Healthy now → no button — tap Continue.'**
+  String get tut_hospital_ad_timer_body;
+
+  /// No description provided for @tut_prison_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Hapishane'**
+  String get tut_prison_intro_title;
+
+  /// No description provided for @tut_prison_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Baskın ve riskli işler seni hapse atabilir. Süre dolunca otomatik çıkarsın.'**
+  String get tut_prison_intro_body;
+
+  /// No description provided for @tut_prison_escape_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Erken çıkış'**
+  String get tut_prison_escape_title;
+
+  /// No description provided for @tut_prison_escape_body.
+  ///
+  /// In en, this message translates to:
+  /// **'In prison: pay bail or try escape — Shadow class has an edge. Free? Tap the bright card.'**
+  String get tut_prison_escape_body;
+
+  /// No description provided for @tut_prison_ad_timer_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reklam ile çabuk çık'**
+  String get tut_prison_ad_timer_title;
+
+  /// No description provided for @tut_prison_ad_timer_body.
+  ///
+  /// In en, this message translates to:
+  /// **'In prison, watch an ad to cut 30 min (3/day). Free now → no button — tap Continue.'**
+  String get tut_prison_ad_timer_body;
+
+  /// No description provided for @tut_facilities_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Yasadışı tesisler'**
+  String get tut_facilities_intro_title;
+
+  /// No description provided for @tut_facilities_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Tesisler pasif gelir üretir — sen oyunda olmasan bile kazanç birikir.'**
+  String get tut_facilities_intro_body;
+
+  /// No description provided for @tut_facilities_suspicion_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Şüphe ve baskın riski'**
+  String get tut_facilities_suspicion_title;
+
+  /// No description provided for @tut_facilities_suspicion_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Şüphe yükselirse baskın yersin. Rüşvetle şüpheyi düşür; Simyacı sınıfı avantajlı.'**
+  String get tut_facilities_suspicion_body;
+
+  /// No description provided for @tut_facilities_collect_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Tesis seç'**
+  String get tut_facilities_collect_title;
+
+  /// No description provided for @tut_facilities_collect_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Bir tesis kartına dokun — gelir toplamayı öğren.'**
+  String get tut_facilities_collect_body;
+
+  /// No description provided for @tut_trade_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Oyuncuyla takas'**
+  String get tut_trade_intro_title;
+
+  /// No description provided for @tut_trade_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Başka bir oyuncuyla birebir eşya ve altın takası yap.'**
+  String get tut_trade_intro_body;
+
+  /// No description provided for @tut_trade_safety_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Oyuncu ara'**
+  String get tut_trade_safety_title;
+
+  /// No description provided for @tut_trade_safety_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticaret yapacağın oyuncu adını yaz — Ara\'ya bas.'**
+  String get tut_trade_safety_body;
+
+  /// No description provided for @sys2_doctor_visit_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor Visit'**
+  String get sys2_doctor_visit_title;
+
+  /// No description provided for @sys2_doctor_visit_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Once per Istanbul calendar day. 45% −20m / 30% −10m / 25% noop.'**
+  String get sys2_doctor_visit_body;
+
+  /// No description provided for @sys2_doctor_visit_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit'**
+  String get sys2_doctor_visit_confirm;
+
+  /// No description provided for @sys2_doctor_cut.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor cut {minutes} min.'**
+  String sys2_doctor_cut(int minutes);
+
+  /// No description provided for @sys2_doctor_noop.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor visit had no effect.'**
+  String get sys2_doctor_noop;
+
+  /// No description provided for @sys2_doctor_released.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor visit released you.'**
+  String get sys2_doctor_released;
+
+  /// No description provided for @sys2_guild_doctor_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Guild Clinic Doctor'**
+  String get sys2_guild_doctor_btn;
+
+  /// No description provided for @sys2_guild_doctor_ok.
+  ///
+  /// In en, this message translates to:
+  /// **'Guild doctor shortened your stay.'**
+  String get sys2_guild_doctor_ok;
+
+  /// No description provided for @sys2_guild_lawyer_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Guild Bureau Lawyer'**
+  String get sys2_guild_lawyer_btn;
+
+  /// No description provided for @sys2_guild_lawyer_ok.
+  ///
+  /// In en, this message translates to:
+  /// **'Lawyer shortened stay. Guard bribe +5%.'**
+  String get sys2_guild_lawyer_ok;
+
+  /// No description provided for @sys2_guard_bribe_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Gardiyan ikna'**
+  String get sys2_guard_bribe_title;
+
+  /// No description provided for @sys2_guard_bribe_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold bribe (1 attempt per stay). Success: −20% time (10–60m). Fail: +8 suspicion.'**
+  String get sys2_guard_bribe_body;
+
+  /// No description provided for @sys2_guard_bribe_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Bribe'**
+  String get sys2_guard_bribe_confirm;
+
+  /// No description provided for @sys2_guard_bribe_cost.
+  ///
+  /// In en, this message translates to:
+  /// **'Gardiyan ikna ({cost} gold)'**
+  String sys2_guard_bribe_cost(int cost);
+
+  /// No description provided for @sys2_guard_bribe_ok.
+  ///
+  /// In en, this message translates to:
+  /// **'Guard persuaded (−{minutes} min).'**
+  String sys2_guard_bribe_ok(int minutes);
+
+  /// No description provided for @sys2_guard_bribe_fail.
+  ///
+  /// In en, this message translates to:
+  /// **'Persuasion failed. Suspicion up.'**
+  String get sys2_guard_bribe_fail;
+
+  /// No description provided for @sys2_clinic_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Guild Clinic'**
+  String get sys2_clinic_title;
+
+  /// No description provided for @sys2_clinic_level.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinic level {level}'**
+  String sys2_clinic_level(int level);
+
+  /// No description provided for @sys2_clinic_upgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade clinic'**
+  String get sys2_clinic_upgrade;
+
+  /// No description provided for @sys2_clinic_donate.
+  ///
+  /// In en, this message translates to:
+  /// **'Donate to clinic'**
+  String get sys2_clinic_donate;
+
+  /// No description provided for @sys2_clinic_flavor.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared daily donate limit and guild vault with the monument. Gold → vault; resources fill the clinic upgrade pool.'**
+  String get sys2_clinic_flavor;
+
+  /// No description provided for @sys2_clinic_shared_limit_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Monument + clinic share one daily donate limit.'**
+  String get sys2_clinic_shared_limit_hint;
+
+  /// No description provided for @sys2_clinic_owned_left.
+  ///
+  /// In en, this message translates to:
+  /// **'have {owned} · left {left}'**
+  String sys2_clinic_owned_left(int owned, int left);
+
+  /// No description provided for @sys2_clinic_cut_none.
+  ///
+  /// In en, this message translates to:
+  /// **'No cut yet — upgrade the clinic first (doctor/lawyer).'**
+  String get sys2_clinic_cut_none;
+
+  /// No description provided for @sys2_clinic_cut_preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Cut ~{pct}% (5–45 min, never instant)'**
+  String sys2_clinic_cut_preview(String pct);
+
+  /// No description provided for @sys2_clinic_daily_ready.
+  ///
+  /// In en, this message translates to:
+  /// **'1 clinic use ready today (shared doctor | lawyer).'**
+  String get sys2_clinic_daily_ready;
+
+  /// No description provided for @sys2_clinic_daily_used.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s clinic use spent ({kind}).'**
+  String sys2_clinic_daily_used(String kind);
+
+  /// No description provided for @sys2_clinic_monument_soft.
+  ///
+  /// In en, this message translates to:
+  /// **'Monument ≥60 → cut ×0.9 soft bonus active.'**
+  String get sys2_clinic_monument_soft;
+
+  /// No description provided for @sys2_clinic_pool_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinic pool · next level'**
+  String get sys2_clinic_pool_title;
+
+  /// No description provided for @sys2_clinic_upgrade_role.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade: leader / officer / commander.'**
+  String get sys2_clinic_upgrade_role;
+
+  /// No description provided for @sys2_clinic_donate_ok.
+  ///
+  /// In en, this message translates to:
+  /// **'{resource}: donated {amount} to clinic'**
+  String sys2_clinic_donate_ok(String resource, int amount);
+
+  /// No description provided for @sys2_clinic_eyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'GUILD CARE'**
+  String get sys2_clinic_eyebrow;
+
+  /// No description provided for @sys2_clinic_bands_title.
+  ///
+  /// In en, this message translates to:
+  /// **'CUT BANDS'**
+  String get sys2_clinic_bands_title;
+
+  /// No description provided for @sys2_clinic_band_lv.
+  ///
+  /// In en, this message translates to:
+  /// **'Lv{level} · {pct}%'**
+  String sys2_clinic_band_lv(int level, String pct);
+
+  /// No description provided for @sys2_clinic_band_now.
+  ///
+  /// In en, this message translates to:
+  /// **'Now · {pct}%'**
+  String sys2_clinic_band_now(String pct);
+
+  /// No description provided for @sys2_clinic_services_title.
+  ///
+  /// In en, this message translates to:
+  /// **'SERVICES'**
+  String get sys2_clinic_services_title;
+
+  /// No description provided for @sys2_clinic_service_doctor.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor'**
+  String get sys2_clinic_service_doctor;
+
+  /// No description provided for @sys2_clinic_service_doctor_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Hospital — cut stay'**
+  String get sys2_clinic_service_doctor_sub;
+
+  /// No description provided for @sys2_clinic_service_lawyer.
+  ///
+  /// In en, this message translates to:
+  /// **'Lawyer'**
+  String get sys2_clinic_service_lawyer;
+
+  /// No description provided for @sys2_clinic_service_lawyer_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Prison — cut + bribe bonus'**
+  String get sys2_clinic_service_lawyer_sub;
+
+  /// No description provided for @sys2_clinic_maxed.
+  ///
+  /// In en, this message translates to:
+  /// **'Max level'**
+  String get sys2_clinic_maxed;
+
+  /// No description provided for @sys2_clinic_pool_ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get sys2_clinic_pool_ready;
+
+  /// No description provided for @sys2_clinic_upgrade_cost_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill all pools, then officers upgrade.'**
+  String get sys2_clinic_upgrade_cost_hint;
+
+  /// No description provided for @sys2_clinic_owned.
+  ///
+  /// In en, this message translates to:
+  /// **'have {amount}'**
+  String sys2_clinic_owned(int amount);
+
+  /// No description provided for @sys2_clinic_compact_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Donate, upgrade & cut bands live on the Guild tab.'**
+  String get sys2_clinic_compact_hint;
+
+  /// No description provided for @sys2_clinic_open_on_guild.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on Guild tab'**
+  String get sys2_clinic_open_on_guild;
+
+  /// No description provided for @sys2_clinic_cut_none_short.
+  ///
+  /// In en, this message translates to:
+  /// **'No cut yet'**
+  String get sys2_clinic_cut_none_short;
+
+  /// No description provided for @sys2_clinic_daily_ready_short.
+  ///
+  /// In en, this message translates to:
+  /// **'Use ready'**
+  String get sys2_clinic_daily_ready_short;
+
+  /// No description provided for @sys2_clinic_daily_used_short.
+  ///
+  /// In en, this message translates to:
+  /// **'Used ({kind})'**
+  String sys2_clinic_daily_used_short(String kind);
+
+  /// No description provided for @sys2_clinic_section_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor & lawyer · 1 shared use / day'**
+  String get sys2_clinic_section_sub;
+
+  /// No description provided for @escape_fail_title.
+  ///
+  /// In en, this message translates to:
+  /// **'ESCAPE FAILED'**
+  String get escape_fail_title;
+
+  /// No description provided for @prison_escape_ok.
+  ///
+  /// In en, this message translates to:
+  /// **'You successfully escaped from prison!'**
+  String get prison_escape_ok;
+
+  /// No description provided for @prison_escape_fail.
+  ///
+  /// In en, this message translates to:
+  /// **'Escape plan failed! You cannot escape again during this prison term and {minutes} minutes were added to your sentence.'**
+  String prison_escape_fail(int minutes);
+
+  /// No description provided for @hospital_escape_ok.
+  ///
+  /// In en, this message translates to:
+  /// **'You slipped out of the hospital! You are free.'**
+  String get hospital_escape_ok;
+
+  /// No description provided for @hospital_escape_fail.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctors caught you in the corridor! You cannot escape again during this hospital stay. Treatment extended by +{minutes} minutes.'**
+  String hospital_escape_fail(int minutes);
 }
 
 class _AppLocalizationsDelegate

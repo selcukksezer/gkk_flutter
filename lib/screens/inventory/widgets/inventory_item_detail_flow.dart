@@ -1,17 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../components/common/app_messenger.dart';
 import '../../../components/common/universal_game_dialog.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../core/tutorial/tutorial_anchor_registry.dart';
+import '../../../core/tutorial/tutorial_controller.dart';
+import '../../../core/tutorial/tutorial_inventory_target.dart';
 import '../../../theme/app_colors.dart';
 import '../../../core/utils/bank_tutorial.dart';
+import '../../../core/utils/inventory_box_open_cost.dart';
+import '../../../core/utils/potion_health.dart';
+import '../../../core/utils/restriction_time.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/inventory_model.dart';
 import '../../../models/item_model.dart';
+import '../../../models/player_model.dart';
 import '../../../providers/box_opening_provider.dart';
 import '../../../providers/inventory_provider.dart';
 import '../../../providers/player_provider.dart';
 import '../../../repositories/inventory_repository.dart';
+import '../../../routing/app_router.dart';
 import 'inventory_item_detail_panel.dart';
 import 'inventory_quantity_action_dialog.dart';
 import 'loot_reward_dialog.dart';
@@ -35,7 +45,10 @@ class InventoryItemDetailFlow {
     AppMessenger.show(context, message);
   }
 
-  InventoryItemDetailActions _actionsFor(BuildContext dialogContext) {
+  InventoryItemDetailActions _actionsFor(
+    BuildContext dialogContext,
+    InventoryItem item,
+  ) {
     Future<void> runAndClose(Future<void> Function() action) async {
       await action();
       if (dialogContext.mounted) {
@@ -53,6 +66,19 @@ class InventoryItemDetailFlow {
       onDelete: (InventoryItem it) => runAndClose(() => _handleDelete(it)),
       onToggleFavorite: (InventoryItem it) =>
           runAndClose(() => _handleToggleFavorite(it)),
+      consumableEffectLabel: _consumableEffectLabel(item),
+    );
+  }
+
+  String? _consumableEffectLabel(InventoryItem item) {
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    final bool alchemist = profile?.characterClass == CharacterClass.alchemist;
+    final int tolerance = profile?.tolerance ?? 0;
+    return healthPotionEffectLabel(
+      item: item,
+      tolerance: tolerance,
+      alchemistBonus: alchemist,
+      maxHealth: profile?.maxHealth,
     );
   }
 
@@ -71,6 +97,19 @@ class InventoryItemDetailFlow {
     const String unequipBlockedReason =
         'Envanter dolu — benzer slottaki esyayla degistir';
 
+    final int? boxGemOpenCost = isInventoryLootBox(item.itemId)
+        ? await fetchInventoryBoxGemCost(item.itemId)
+        : null;
+    if (!context.mounted) return;
+
+    final TutorialState tutorial = ref.read(tutorialProvider);
+    final String? tutorialLootRow =
+        TutorialInventoryTarget.lootEquippableRowId(ref.read(inventoryProvider));
+    // Attach while opening for equip coach (after upgrade) — was inventory_equip.
+    final bool attachEquipAnchor = item.rowId == tutorialLootRow &&
+        (tutorial.activeStep?.id == 'enhance_equip' ||
+            tutorial.activeStep?.id == 'enhance_open_item');
+
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.55),
@@ -86,15 +125,21 @@ class InventoryItemDetailFlow {
             child: InventoryItemDetailPanel(
               item: item,
               isFavorite: item.isFavorite,
-              actions: _actionsFor(dialogContext),
+              actions: _actionsFor(dialogContext, item),
               canDirectUnequip: canDirectUnequip,
               unequipBlockedReason:
                   canDirectUnequip ? null : unequipBlockedReason,
+              boxGemOpenCost: boxGemOpenCost,
+              attachTutorialEquipAnchor: attachEquipAnchor,
+              playerLevel: ref.read(playerProvider).profile?.level,
             ),
           ),
         );
       },
     );
+    if (attachEquipAnchor) {
+      TutorialAnchorRegistry.instance.scheduleRefresh();
+    }
   }
 
   /// Home / showcase — bilgi only, aksiyon yok.
@@ -220,6 +265,27 @@ class InventoryItemDetailFlow {
   }
 
   Future<void> _handleUnequip(String slot) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Kuşanı çıkar'),
+          content: const Text('Bu eşyayı çıkarmak istiyor musun?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('İptal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Çıkar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) return;
+
     final bool ok =
         await ref.read(inventoryProvider.notifier).unequipItem(slot: slot);
     if (!ok) {
@@ -231,6 +297,12 @@ class InventoryItemDetailFlow {
   Future<void> _handleEquip(InventoryItem item) async {
     final String slot = item.equipSlot.name;
     if (slot == 'none') return;
+
+    final int playerLevel = ref.read(playerProvider).profile?.level ?? 1;
+    if (playerLevel < item.requiredLevel) {
+      _showSnack('Level yetersiz. Gereken: ${item.requiredLevel}');
+      return;
+    }
 
     final InventoryItem? occupied =
         ref.read(inventoryProvider).equippedItems[slot];
@@ -296,7 +368,32 @@ class InventoryItemDetailFlow {
       _showSnack(result.message ?? error ?? 'Item kullanimi basarisiz.');
       return;
     }
+    if (result.overdose) {
+      await _showOverdoseHospitalNotice(result.hospitalMinutes ?? 0);
+      return;
+    }
     _showSnack(result.message ?? '${item.name} kullanildi.');
+  }
+
+  Future<void> _showOverdoseHospitalNotice(int hospitalMinutes) async {
+    if (!context.mounted) return;
+    final bool english = Localizations.localeOf(context).languageCode == 'en';
+    final String duration = formatHospitalDurationMinutes(
+      hospitalMinutes,
+      english: english,
+    );
+    final String message = context.l10n.overdose_hospitalized(duration);
+    await UniversalGameDialog.showInfo(
+      context,
+      title: context.l10n.overdose_hospitalized_title,
+      message: message,
+      confirmLabel: context.l10n.hastaneye_git,
+    );
+    if (!context.mounted) return;
+    _showSnack(message);
+    if (GoRouter.maybeOf(context) != null) {
+      context.go(AppRoutes.hospital);
+    }
   }
 
   Future<void> _handleNameChangeFlow(InventoryItem item) async {
@@ -343,26 +440,41 @@ class InventoryItemDetailFlow {
       return;
     }
 
+    final int gemCost = await fetchInventoryBoxGemCost(item.itemId);
+    if (!context.mounted) return;
+
+    final int playerGems = ref.read(playerProvider).profile?.gems.floor() ?? 0;
+    final String gemChoiceLabel = playerGems >= gemCost
+        ? '${formatInventoryBoxGemCostLabel(gemCost)} ile Ac'
+        : '${formatInventoryBoxGemCostLabel(gemCost)} (yetersiz)';
+
     final String? payment = await UniversalGameDialog.showChoice<String>(
       context,
       title: item.name,
       message:
           'Kutuyu nasil acmak istersin?\n\n'
-          'Gem: aninda acilir\n'
-          'Reklam: 30 dakika sayac',
-      choices: const <UniversalDialogChoice<String>>[
+          'Elmas: aninda acilir ($gemCost elmas)\n'
+          'Reklam: 30 dakika sayac\n\n'
+          'Bakiyen: $playerGems elmas',
+      choices: <UniversalDialogChoice<String>>[
+        if (MockAdService.allowMockReward)
+          const UniversalDialogChoice<String>(
+            label: 'Reklam Izle (30 dk)',
+            value: 'ad',
+            isPrimary: false,
+          ),
         UniversalDialogChoice<String>(
-          label: 'Reklam Izle',
-          value: 'ad',
-          isPrimary: false,
-        ),
-        UniversalDialogChoice<String>(
-          label: 'Gem ile Ac',
+          label: gemChoiceLabel,
           value: 'gems',
         ),
       ],
     );
     if (payment == null || !context.mounted) return;
+
+    if (payment == 'gems' && playerGems < gemCost) {
+      _showSnack('Yetersiz elmas — $gemCost elmas gerekli.');
+      return;
+    }
 
     if (ref.read(boxOpeningProvider).isNotEmpty) {
       _showSnack('Zaten bir kutu aciliyor.');
@@ -405,6 +517,8 @@ class InventoryItemDetailFlow {
         }
       }
       await ref.read(playerProvider.notifier).loadProfile();
+      final int spent = start.gemsSpent > 0 ? start.gemsSpent : gemCost;
+      _showSnack('$spent elmas harcandi.');
     } else {
       _showSnack('Kutu aciliyor — 30 dk sonra odulunu al!');
     }

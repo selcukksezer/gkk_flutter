@@ -77,6 +77,7 @@ class ReputationVaultHeader extends StatelessWidget {
     required this.nextTierTitle,
     required this.progress,
     this.activeBuffs = const <String>[],
+    this.remainingToNext,
   });
 
   final int totalRep;
@@ -85,6 +86,7 @@ class ReputationVaultHeader extends StatelessWidget {
   final String nextTierTitle;
   final double progress;
   final List<String> activeBuffs;
+  final int? remainingToNext;
 
   String _formatRep(int v) {
     if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
@@ -189,7 +191,9 @@ class ReputationVaultHeader extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
                       Text(
-                        'Sonraki: $nextTierTitle',
+                        remainingToNext != null && remainingToNext! > 0
+                            ? 'Sonraki: $nextTierTitle · ${_formatRep(remainingToNext!)} itibar kaldı'
+                            : 'Sonraki: $nextTierTitle',
                         style: const TextStyle(fontSize: 10, color: MekanPalette.textMid),
                       ),
                       Text(
@@ -229,6 +233,127 @@ class ReputationVaultHeader extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Tüm itibar kademeleri — mevcut kademe vurgulu dikey merdiven.
+class ReputationTierLadder extends StatelessWidget {
+  const ReputationTierLadder({super.key, required this.currentRep});
+
+  final int currentRep;
+
+  static const List<(String, int, Color)> _tiers = <(String, int, Color)>[
+    ('Acemi', 0, Color(0xFF9CA3AF)),
+    ('Tanınan', 5000, Color(0xFF4ADE80)),
+    ('Saygın', 20000, Color(0xFF60A5FA)),
+    ('Ünlü', 80000, Color(0xFFC084FC)),
+    ('Efsanevi', 170000, Color(0xFFFBBF24)),
+    ('Destansı', 280000, Color(0xFFF87171)),
+    ('İmparator', 356000, Color(0xFFFFD700)),
+  ];
+
+  String _formatRep(int v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}K';
+    return '$v';
+  }
+
+  int get _currentIndex {
+    int idx = 0;
+    for (int i = 0; i < _tiers.length; i++) {
+      if (currentRep > _tiers[i].$2 || (i == 0 && currentRep >= 0)) idx = i;
+    }
+    return idx;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int currentIdx = _currentIndex;
+
+    return NeonPanel(
+      accent: MekanPalette.gold,
+      padding: const EdgeInsets.all(14),
+      radius: 14,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'KADEMELER',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: MekanPalette.textMid,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (int i = _tiers.length - 1; i >= 0; i--)
+            Padding(
+              padding: EdgeInsets.only(bottom: i > 0 ? 6 : 0),
+              child: _tierRow(i, isCurrent: i == currentIdx, reached: i <= currentIdx),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tierRow(int i, {required bool isCurrent, required bool reached}) {
+    final (String title, int minRep, Color color) = _tiers[i];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isCurrent
+            ? color.withValues(alpha: 0.12)
+            : MekanPalette.obsidian.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isCurrent
+              ? color.withValues(alpha: 0.55)
+              : Colors.white.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            reached ? Icons.military_tech_rounded : Icons.lock_outline_rounded,
+            size: 16,
+            color: reached ? color : MekanPalette.textLow,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isCurrent ? FontWeight.w900 : FontWeight.w600,
+                color: reached ? color : MekanPalette.textLow,
+              ),
+            ),
+          ),
+          if (isCurrent)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'BURADASIN',
+                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: color),
+              ),
+            ),
+          Text(
+            i == 0 ? '—' : '${_formatRep(minRep)}+',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: reached ? MekanPalette.textMid : MekanPalette.textLow,
+            ),
+          ),
+        ],
       ),
     );
   }

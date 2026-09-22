@@ -15,9 +15,13 @@ abstract final class TutorialTriggers {
   }
 
   static Future<void> onDungeonWin(WidgetRef ref) async {
-    await ref.read(tutorialProvider.notifier).onGameEvent(
-          TutorialGameEvent.dungeonWin,
-        );
+    final TutorialController controller = ref.read(tutorialProvider.notifier);
+    if (await controller.revealHeldDungeonWin()) return;
+    await controller.onGameEvent(TutorialGameEvent.dungeonWin);
+  }
+
+  static void onDungeonLoss(WidgetRef ref) {
+    ref.read(tutorialProvider.notifier).cancelHeldDungeonWin();
   }
 
   static Future<void> onEquipSuccess(WidgetRef ref) async {
