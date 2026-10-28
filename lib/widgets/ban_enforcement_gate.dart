@@ -60,7 +60,16 @@ class _BanEnforcementGateState extends ConsumerState<BanEnforcementGate> {
   }
 
   Future<void> _bootstrap() async {
-    if (!SupabaseService.isInitialized) return;
+    if (!SupabaseService.isInitialized) {
+      if (SupabaseService.isConfigured) {
+        unawaited(
+          SupabaseService.whenInitialized.then((_) {
+            if (mounted) unawaited(_bootstrap());
+          }),
+        );
+      }
+      return;
+    }
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refresh());
 

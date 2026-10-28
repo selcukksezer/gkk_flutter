@@ -830,6 +830,36 @@ abstract class AppLocalizations {
   /// **'Sign in with Apple is unavailable on this device.'**
   String get auth_apple_unavailable;
 
+  /// No description provided for @auth_email_or_username.
+  ///
+  /// In en, this message translates to:
+  /// **'Email or Saved Username'**
+  String get auth_email_or_username;
+
+  /// No description provided for @auth_remember_me.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember login credentials on this device'**
+  String get auth_remember_me;
+
+  /// No description provided for @auth_saved_account_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved Account'**
+  String get auth_saved_account_label;
+
+  /// No description provided for @auth_quick_login_cta.
+  ///
+  /// In en, this message translates to:
+  /// **'1-Tap Sign In'**
+  String get auth_quick_login_cta;
+
+  /// No description provided for @auth_forget_saved_account.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget saved account'**
+  String get auth_forget_saved_account;
+
   /// No description provided for @auth_first_dungeon_title.
   ///
   /// In en, this message translates to:

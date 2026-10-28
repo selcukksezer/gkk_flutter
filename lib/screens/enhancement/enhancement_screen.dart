@@ -9,14 +9,17 @@ import 'package:go_router/go_router.dart';
 import '../../components/common/gkk_tab_bar.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/common/item_icon_view.dart';
+import '../../components/common/holo_foil_sheen.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/services/game_sfx_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/enhancement_stats.dart';
 import '../../models/enhancement_config_model.dart';
 import '../../models/inventory_model.dart';
 import '../../models/item_model.dart';
 import '../../providers/inventory_provider.dart';
+import '../../providers/moradon_hub_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../repositories/enhancement_repository.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
@@ -355,7 +358,14 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       return;
     }
 
-    HapticFeedback.mediumImpact();
+    unawaited(GameSfxService.instance.play(GameSfx.anvilStrike));
+    for (final int delayMs in const <int>[1900, 3800]) {
+      Future<void>.delayed(Duration(milliseconds: delayMs), () {
+        if (mounted && _isEnhancing) {
+          unawaited(GameSfxService.instance.play(GameSfx.anvilStrike));
+        }
+      });
+    }
     setState(() {
       _isEnhancing = true;
       _forgePhase = _ForgeVisualPhase.enhancing;
@@ -453,11 +463,10 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         _borderGlowCtrl.value = 0;
         switch (resultType) {
           case _EnhanceResultType.success:
-            HapticFeedback.heavyImpact();
+            unawaited(GameSfxService.instance.play(GameSfx.anvilSuccess));
           case _EnhanceResultType.failure:
-            HapticFeedback.vibrate();
           case _EnhanceResultType.destroyed:
-            HapticFeedback.heavyImpact();
+            unawaited(GameSfxService.instance.play(GameSfx.anvilFail));
         }
         setState(() {
           _isEnhancing = false;
@@ -469,6 +478,16 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
           };
         });
         _resultCtrl.forward(from: 0);
+        if (resultType == _EnhanceResultType.success && newLevel >= 8) {
+          final String uname =
+              ref.read(playerProvider).profile?.username ?? 'Savaşçı';
+          ref.read(moradonHubProvider.notifier).triggerTownCelebration(
+            username: uname,
+            itemName: item.name,
+            enhancementLevel: newLevel,
+            originNpcId: 'magic_anvil',
+          );
+        }
         await Future<void>.delayed(_kForgeResultHold);
         if (mounted) await _clearForgeResultVisual();
         if (mounted) {
@@ -1001,6 +1020,31 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         ],
       ),
     );
+
+    if (_selectedItem != null) {
+      panel = HoloFoilRarityBox(
+        rarity: _selectedItem!.rarity,
+        enhancementLevel: _selectedItem!.enhancementLevel,
+        borderRadius: BorderRadius.circular(14),
+        child: panel,
+      );
+    }
+    if (_forgePhase != _ForgeVisualPhase.idle) {
+      final Animation<double> forgeAnim =
+          _forgePhase == _ForgeVisualPhase.enhancing
+              ? _borderGlowCtrl
+              : _resultCtrl;
+      panel = AnimatedBuilder(
+        animation: forgeAnim,
+        builder: (BuildContext context, Widget? c) =>
+            MagicAnvilCinematicOverlay(
+          progress: forgeAnim.value,
+          mode: _forgePhase.name,
+          child: c!,
+        ),
+        child: panel,
+      );
+    }
 
     if (_forgePhase == _ForgeVisualPhase.idle) return panel;
 

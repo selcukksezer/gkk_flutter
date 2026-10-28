@@ -22,6 +22,26 @@ abstract final class AuthValidators {
   }
 
   /// Login: non-empty only (existing short passwords must still work).
+  static String? validateLoginIdentifier(
+    String? value,
+    AppLocalizations l10n, {
+    required Map<String, String> knownUsernameEmails,
+  }) {
+    final String raw = value?.trim() ?? '';
+    if (raw.isEmpty) {
+      return l10n.auth_email_required;
+    }
+    if (emailPattern.hasMatch(raw)) {
+      return null;
+    }
+    final String normalized = raw.startsWith('@')
+        ? raw.substring(1).toLowerCase()
+        : raw.toLowerCase();
+    if (knownUsernameEmails.containsKey(normalized)) {
+      return null;
+    }
+    return l10n.auth_email_invalid;
+  }
   static String? validatePasswordLogin(String? value, AppLocalizations l10n) {
     final String password = value ?? '';
     if (password.isEmpty) {

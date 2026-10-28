@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'widgets/session_enforcement_gate.dart';
 import 'widgets/ban_enforcement_gate.dart';
+import 'components/common/adaptive_glass_blur.dart';
 import 'components/common/connectivity_gate.dart';
 import 'components/common/level_up_host.dart';
 import 'components/common/power_change_host.dart';
@@ -18,6 +20,7 @@ import 'components/pvp/pvp_invite_host.dart';
 import 'components/trade/trade_invite_host.dart';
 import 'core/services/app_foreground_service.dart';
 import 'core/services/app_settings_service.dart';
+import 'core/services/graphics_quality_service.dart';
 import 'core/services/local_notification_service.dart';
 import 'core/services/music_service.dart';
 import 'core/services/presence_service.dart';
@@ -31,14 +34,32 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+  };
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    debugPrint('Uncaught platform error: $error\n$stack');
+    return true;
+  };
+
   AppForegroundService.instance.start();
   await SupabaseService.initialize();
-  // Prefs race: settings UI MusicService/AppSettings yüklenmeden okumasın.
-  await Future.wait<void>(<Future<void>>[
-    AppSettingsService.instance.load(),
-    MusicService.instance.start(),
-    LocalNotificationService.instance.initialize(),
-  ]);
+
+  // Yalnızca hızlı yerel tercih okumalarını bekle; ses ve bildirim eklentileri
+  // ilk kare çizildikten sonra arka planda başlatılır (beyaz ekran kilidini önler).
+  try {
+    await Future.wait<void>(<Future<void>>[
+      AppSettingsService.instance.load(),
+      MusicService.instance.preloadPrefs(),
+    ]).timeout(const Duration(milliseconds: 1500));
+  } catch (_) {}
+
+  try {
+    await GraphicsQualityService.instance
+        .initialize(appReduceMotion: AppSettingsService.instance.reduceMotion)
+        .timeout(const Duration(milliseconds: 1800));
+  } catch (_) {}
 
   runApp(const ProviderScope(child: GkkMobileApp()));
 }
@@ -58,13 +79,37 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
   @override
   void initState() {
     super.initState();
-    final Stream<dynamic> authRefreshStream = SupabaseService.isInitialized
-        ? SupabaseService.client.auth.onAuthStateChange
-        : const Stream<dynamic>.empty();
-    _routerRefreshNotifier = _RouterRefreshNotifier(authRefreshStream);
+    _routerRefreshNotifier = _RouterRefreshNotifier();
     _router = createAppRouter(refreshListenable: _routerRefreshNotifier);
-    if (SupabaseService.isInitialized &&
-        SupabaseService.client.auth.currentSession != null) {
+
+    if (SupabaseService.isInitialized) {
+      _attachSupabaseAuthListeners();
+    } else if (SupabaseService.isConfigured) {
+      unawaited(
+        SupabaseService.whenInitialized.then((_) {
+          if (!mounted) return;
+          _attachSupabaseAuthListeners();
+          _routerRefreshNotifier.pulse();
+        }),
+      );
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        MusicService.instance.start().catchError((Object _) {}),
+      );
+      unawaited(
+        LocalNotificationService.instance.initialize().catchError((Object _) {}),
+      );
+    });
+  }
+
+  void _attachSupabaseAuthListeners() {
+    if (!SupabaseService.isInitialized || _presenceAuthSub != null) return;
+    final Stream<dynamic> authRefreshStream =
+        SupabaseService.client.auth.onAuthStateChange;
+    _routerRefreshNotifier.bind(authRefreshStream);
+    if (SupabaseService.client.auth.currentSession != null) {
       PresenceService.instance.start();
     }
     _presenceAuthSub = authRefreshStream.listen((dynamic event) {
@@ -127,22 +172,27 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
                         child: SessionEnforcementGate(
                           // Legal consent = register screen only (no in-game gate).
                           child: TutorialHost(
-                              router: _router,
-                              child: LevelUpHost(
-                                child: PowerChangeHost(
-                                  child:
-                                      child ??
-                                      const ColoredBox(
-                                        color: AppColors.carbonVoid,
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            color: AppColors.liquidGold,
+                            router: _router,
+                            child: LevelUpHost(
+                              child: PowerChangeHost(
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: <Widget>[
+                                    child ??
+                                        const ColoredBox(
+                                          color: AppColors.carbonVoid,
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              color: AppColors.liquidGold,
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                    const LiveFpsOverlayBanner(),
+                                  ],
                                 ),
                               ),
                             ),
+                          ),
                         ),
                       ),
                     ),
@@ -159,25 +209,28 @@ class _GkkMobileAppState extends ConsumerState<GkkMobileApp> {
 }
 
 class _RouterRefreshNotifier extends ChangeNotifier {
-  _RouterRefreshNotifier(Stream<dynamic> stream) {
-    _subscription = stream.listen((_) {
-      // Coalesce rapid token refresh events so GoRouter redirect does not
-      // restart the home page transition mid-animation (black screen).
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(
-        const Duration(milliseconds: 250),
-        notifyListeners,
-      );
-    });
+  StreamSubscription<dynamic>? _subscription;
+  Timer? _debounceTimer;
+
+  void bind(Stream<dynamic> stream) {
+    _subscription?.cancel();
+    _subscription = stream.listen((_) => pulse());
   }
 
-  late final StreamSubscription<dynamic> _subscription;
-  Timer? _debounceTimer;
+  void pulse() {
+    // Coalesce rapid token refresh events so GoRouter redirect does not
+    // restart the home page transition mid-animation (black screen).
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(
+      const Duration(milliseconds: 250),
+      notifyListeners,
+    );
+  }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _subscription.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 }

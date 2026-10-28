@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/services/graphics_quality_service.dart';
+import '../common/adaptive_glass_blur.dart';
 import '../../models/player_model.dart';
 import '../../core/tutorial/tutorial_quick_menu.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
@@ -20,7 +22,6 @@ import '../../theme/app_text_styles.dart';
 import '../layout/game_screen_background.dart';
 import '../common/profile_avatar.dart';
 import '../daily_reward/daily_reward_dialog.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n.dart';
 
 /// Premium palette — quick menu only (does not affect global chrome).
@@ -124,7 +125,7 @@ Future<void> showGameQuickMenu(
     barrierLabel: context.l10n.menuBarrier,
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 280),
-    pageBuilder: (BuildContext ctx, _, __) {
+    pageBuilder: (BuildContext ctx, _, _) {
       return _GameQuickMenuPanel(onLogout: onLogout, onOpenChat: onOpenChat);
     },
     transitionBuilder:
@@ -189,10 +190,15 @@ class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
             child: GestureDetector(
               onTap: () => Navigator.of(context).pop(),
               behavior: HitTestBehavior.opaque,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: AdaptiveGlassBlur(
+                sigma: 8,
                 child: Container(
-                  color: _QuickMenuTheme.bgEdge.withValues(alpha: 0.45),
+                  color: _QuickMenuTheme.bgEdge.withValues(
+                    alpha: GraphicsQualityService
+                            .instance.profile.enableBackdropBlur
+                        ? 0.45
+                        : 0.72,
+                  ),
                 ),
               ),
             ),
@@ -221,8 +227,8 @@ class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: AdaptiveGlassBlur(
+                  sigma: 16,
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: RadialGradient(
@@ -623,35 +629,38 @@ class _MenuIcon extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: <Widget>[
-          Transform.translate(
-            offset: const Offset(0, _shadowOffsetY),
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(
-                sigmaX: _shadowBlur,
-                sigmaY: _shadowBlur,
-              ),
-              child: ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  Colors.black.withValues(alpha: _shadowOpacity),
-                  BlendMode.srcIn,
+          if (GraphicsQualityService.instance.profile.enableHeavyShadows)
+            Transform.translate(
+              offset: const Offset(0, _shadowOffsetY),
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                  sigmaX: _shadowBlur,
+                  sigmaY: _shadowBlur,
                 ),
-                child: Image.asset(
-                  item.assetPath!,
-                  width: _size,
-                  height: _size,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.medium,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, Object error, StackTrace? stackTrace) =>
-                      const SizedBox.shrink(),
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: _shadowOpacity),
+                    BlendMode.srcIn,
+                  ),
+                  child: Image.asset(
+                    item.assetPath!,
+                    width: _size,
+                    height: _size,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, Object error, StackTrace? stackTrace) =>
+                        const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),
-          ),
           Image.asset(
             item.assetPath!,
             width: _size,
             height: _size,
+            cacheWidth:
+                GraphicsQualityService.instance.profile.isLow ? 96 : null,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
             gaplessPlayback: true,

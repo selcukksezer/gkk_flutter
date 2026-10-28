@@ -14,7 +14,8 @@ class MusicService with WidgetsBindingObserver {
   static const String _muteKey = 'music_muted';
   static const String _asset = 'audio/main_theme.wav';
 
-  final AudioPlayer _player = AudioPlayer();
+  AudioPlayer? _player;
+  AudioPlayer get _audioPlayer => _player ??= AudioPlayer();
   bool _started = false;
   bool _prefsLoaded = false;
   Future<void>? _startInflight;
@@ -24,6 +25,15 @@ class MusicService with WidgetsBindingObserver {
   double get volume => _volume;
   bool get muted => _muted;
   bool get prefsLoaded => _prefsLoaded;
+
+  /// Yalnızca SharedPreferences okur; runApp öncesi ses motorunu bloklamaz.
+  Future<void> preloadPrefs() async {
+    if (_prefsLoaded) return;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    _volume = prefs.getDouble(_volumeKey) ?? 0.7;
+    _muted = prefs.getBool(_muteKey) ?? false;
+    _prefsLoaded = true;
+  }
 
   /// Prefs + player hazır olana kadar bekle (settings race fix).
   Future<void> ensureReady() async {
@@ -44,42 +54,59 @@ class MusicService with WidgetsBindingObserver {
 
   Future<void> _startInternal() async {
     WidgetsBinding.instance.addObserver(this);
-
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    _volume = prefs.getDouble(_volumeKey) ?? 0.7;
-    _muted = prefs.getBool(_muteKey) ?? false;
-    _prefsLoaded = true;
+    await preloadPrefs();
 
     if (_started) {
-      try {
-        await _player.setVolume(_muted ? 0 : _volume);
-      } catch (_) {}
+      unawaited(_safeSetVolume(_muted ? 0 : _volume));
       return;
     }
     _started = true;
 
+    // Web tarayıcılarında kullanıcı etkileşimi olmadan autoplay bloklandığında
+    // play() Future'ı asılı kalıp runApp()'i kilitlemesin diye arka planda başlatılır.
+    unawaited(_configureAndPlay());
+  }
+
+  Future<void> _safeSetVolume(double vol) async {
+    final AudioPlayer? player = _player;
+    if (player == null) return;
     try {
+      await player.setVolume(vol).timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  Future<void> _configureAndPlay() async {
+    try {
+      final AudioPlayer player = _audioPlayer;
       // iOS: sessiz anahtar müziği kesmesin (playback kategorisi).
-      await AudioPlayer.global.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-            options: const <AVAudioSessionOptions>{
-              AVAudioSessionOptions.mixWithOthers,
-            },
-          ),
-          android: const AudioContextAndroid(
-            contentType: AndroidContentType.music,
-            usageType: AndroidUsageType.game,
-            audioFocus: AndroidAudioFocus.gain,
-          ),
-        ),
-      );
-      await _player.setReleaseMode(ReleaseMode.loop);
-      await _player.setVolume(_muted ? 0 : _volume);
-      await _player.play(AssetSource(_asset));
+      await AudioPlayer.global
+          .setAudioContext(
+            AudioContext(
+              iOS: AudioContextIOS(
+                category: AVAudioSessionCategory.playback,
+                options: const <AVAudioSessionOptions>{
+                  AVAudioSessionOptions.mixWithOthers,
+                },
+              ),
+              android: const AudioContextAndroid(
+                contentType: AndroidContentType.music,
+                usageType: AndroidUsageType.game,
+                audioFocus: AndroidAudioFocus.gain,
+              ),
+            ),
+          )
+          .timeout(const Duration(seconds: 2));
+      await player
+          .setReleaseMode(ReleaseMode.loop)
+          .timeout(const Duration(seconds: 2));
+      await player
+          .setVolume(_muted ? 0 : _volume)
+          .timeout(const Duration(seconds: 2));
+      await player
+          .play(AssetSource(_asset))
+          .timeout(const Duration(seconds: 3));
     } catch (_) {
-      // Ses cihazı yoksa (ör. bazı emülatörler) sessiz devam.
+      // Ses cihazı yoksa veya Web autoplay blokladıysa sessiz devam.
     }
   }
 
@@ -88,7 +115,7 @@ class MusicService with WidgetsBindingObserver {
     _started = false;
     WidgetsBinding.instance.removeObserver(this);
     try {
-      await _player.stop();
+      await _player?.stop().timeout(const Duration(seconds: 2));
     } catch (_) {}
   }
 
@@ -97,9 +124,7 @@ class MusicService with WidgetsBindingObserver {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_volumeKey, _volume);
     if (!_muted) {
-      try {
-        await _player.setVolume(_volume);
-      } catch (_) {}
+      unawaited(_safeSetVolume(_volume));
     }
   }
 
@@ -107,23 +132,23 @@ class MusicService with WidgetsBindingObserver {
     _muted = muted;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_muteKey, _muted);
-    try {
-      await _player.setVolume(_muted ? 0 : _volume);
-    } catch (_) {}
+    unawaited(_safeSetVolume(_muted ? 0 : _volume));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final AudioPlayer? player = _player;
+    if (player == null) return;
     switch (state) {
       case AppLifecycleState.resumed:
         if (_started) {
-          unawaited(_player.resume());
+          unawaited(player.resume());
         }
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        unawaited(_player.pause());
+        unawaited(player.pause());
     }
   }
 }

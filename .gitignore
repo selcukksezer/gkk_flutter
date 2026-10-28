@@ -48,3 +48,8 @@ app.*.map.json
 
 # QA credentials (local only)
 .env.qa.local
+
+
+# Raw Blender working scenes (>100MB)
+*.blend
+*.blend1

@@ -1,9 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
+import '../../core/services/graphics_quality_service.dart';
 import '../../models/live_ticker_model.dart';
 import '../../theme/app_colors.dart';
+import '../common/adaptive_glass_blur.dart';
 
 /// Kamp duyuru strip + bento kartları için glass token'ları.
 abstract final class TickerPalette {
@@ -31,33 +31,89 @@ class LiveTickerVisual {
   static LiveTickerVisual forType(String type) {
     switch (type) {
       case 'dungeon_clear':
-        return const LiveTickerVisual(icon: '⚔️', accent: TickerPalette.ruby, label: 'Boss');
+        return const LiveTickerVisual(
+          icon: '⚔️',
+          accent: TickerPalette.ruby,
+          label: 'Boss',
+        );
       case 'enhance_success':
-        return const LiveTickerVisual(icon: '✨', accent: TickerPalette.gold, label: 'Güçlendirme');
+        return const LiveTickerVisual(
+          icon: '✨',
+          accent: TickerPalette.gold,
+          label: 'Güçlendirme',
+        );
       case 'loot_rare':
-        return const LiveTickerVisual(icon: '🎁', accent: TickerPalette.fuchsia, label: 'Nadir loot');
+        return const LiveTickerVisual(
+          icon: '🎁',
+          accent: TickerPalette.fuchsia,
+          label: 'Nadir loot',
+        );
       case 'guild_war':
-        return const LiveTickerVisual(icon: '🏰', accent: TickerPalette.neon, label: 'Lonca savaşı');
+        return const LiveTickerVisual(
+          icon: '🏰',
+          accent: TickerPalette.neon,
+          label: 'Lonca savaşı',
+        );
       case 'siege_win':
-        return const LiveTickerVisual(icon: '🛡️', accent: TickerPalette.neon, label: 'Kuşatma');
+        return const LiveTickerVisual(
+          icon: '🛡️',
+          accent: TickerPalette.neon,
+          label: 'Kuşatma',
+        );
       case 'siege_soon':
-        return const LiveTickerVisual(icon: '🛡️', accent: TickerPalette.neon, label: 'Kuşatma yakında');
+        return const LiveTickerVisual(
+          icon: '🛡️',
+          accent: TickerPalette.neon,
+          label: 'Kuşatma yakında',
+        );
       case 'siege_start':
-        return const LiveTickerVisual(icon: '🔥', accent: TickerPalette.ruby, label: 'Kuşatma başladı');
+        return const LiveTickerVisual(
+          icon: '🔥',
+          accent: TickerPalette.ruby,
+          label: 'Kuşatma başladı',
+        );
       case 'siege_live':
-        return const LiveTickerVisual(icon: '🔥', accent: TickerPalette.ruby, label: 'Canlı kuşatma');
+        return const LiveTickerVisual(
+          icon: '🔥',
+          accent: TickerPalette.ruby,
+          label: 'Canlı kuşatma',
+        );
       case 'night_market':
-        return const LiveTickerVisual(icon: '🌙', accent: TickerPalette.fuchsia, label: 'Gece Pazarı');
+        return const LiveTickerVisual(
+          icon: '🌙',
+          accent: TickerPalette.fuchsia,
+          label: 'Gece Pazarı',
+        );
       case 'king_blessing':
-        return const LiveTickerVisual(icon: '👑', accent: TickerPalette.gold, label: 'Kral indirimi');
+        return const LiveTickerVisual(
+          icon: '👑',
+          accent: TickerPalette.gold,
+          label: 'Kral indirimi',
+        );
       case 'king_gift':
-        return const LiveTickerVisual(icon: '🎁', accent: TickerPalette.gold, label: 'Kral hediyesi');
+        return const LiveTickerVisual(
+          icon: '🎁',
+          accent: TickerPalette.gold,
+          label: 'Kral hediyesi',
+        );
       case 'staff_broadcast':
-        return const LiveTickerVisual(icon: '📣', accent: TickerPalette.neon, label: 'Duyuru');
+        return const LiveTickerVisual(
+          icon: '📣',
+          accent: TickerPalette.neon,
+          label: 'Duyuru',
+        );
       case 'player_ban':
-        return const LiveTickerVisual(icon: '🚫', accent: TickerPalette.ruby, label: 'Ban');
+        return const LiveTickerVisual(
+          icon: '🚫',
+          accent: TickerPalette.ruby,
+          label: 'Ban',
+        );
       default:
-        return const LiveTickerVisual(icon: '📣', accent: TickerPalette.gold, label: 'Duyuru');
+        return const LiveTickerVisual(
+          icon: '📣',
+          accent: TickerPalette.gold,
+          label: 'Duyuru',
+        );
     }
   }
 }
@@ -80,23 +136,28 @@ class TickerGlassShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final GraphicsProfile prof = GraphicsQualityService.instance.profile;
     final Widget body = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      child: AdaptiveGlassBlur(
+        sigma: 10,
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: TickerPalette.navy.withValues(alpha: 0.55),
+            color: TickerPalette.navy.withValues(
+              alpha: prof.enableBackdropBlur ? 0.55 : 0.92,
+            ),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: accent.withValues(alpha: 0.35)),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: accent.withValues(alpha: 0.12),
-                blurRadius: 12,
-                spreadRadius: -2,
-              ),
-            ],
+            boxShadow: prof.enableHeavyShadows
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                      spreadRadius: -2,
+                    ),
+                  ]
+                : null,
           ),
           child: child,
         ),

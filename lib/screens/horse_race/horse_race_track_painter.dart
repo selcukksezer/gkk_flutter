@@ -61,6 +61,7 @@ class HorseRaceTrackPainter extends CustomPainter {
     this.gateOpen = false,
     this.finalStretch = false,
     this.showSpeedLines = false,
+    this.hasPaintedBackdrop = true,
   });
 
   final int laneCount;
@@ -70,6 +71,7 @@ class HorseRaceTrackPainter extends CustomPainter {
   final bool gateOpen;
   final bool finalStretch;
   final bool showSpeedLines;
+  final bool hasPaintedBackdrop;
 
   static const Color _carbon = AppColors.carbonVoid;
   static const Color _turfDark = Color(0xFF1A4D2E);
@@ -82,8 +84,10 @@ class HorseRaceTrackPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Rect bounds = Offset.zero & size;
-    _drawSky(canvas, bounds, size);
-    _drawSideRails(canvas, size);
+    if (!hasPaintedBackdrop) {
+      _drawSky(canvas, bounds, size);
+      _drawSideRails(canvas, size);
+    }
     _drawTrack(canvas, size);
     _drawDistanceMarkers(canvas, size);
     if (showSpeedLines) _drawSpeedLines(canvas, size);
@@ -161,13 +165,20 @@ class HorseRaceTrackPainter extends CustomPainter {
     final Rect track = HorseRaceTrackLayout.trackRect(size);
     final double laneW = HorseRaceTrackLayout.laneWidth(size, laneCount);
 
-    final Paint turfBase = _paint()
-      ..shader = LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: <Color>[_turfLight, _turfMid, _turfDark],
-      ).createShader(track);
-    canvas.drawRect(track, turfBase);
+    if (!hasPaintedBackdrop) {
+      final Paint turfBase = _paint()
+        ..shader = LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: <Color>[_turfLight, _turfMid, _turfDark],
+        ).createShader(track);
+      canvas.drawRect(track, turfBase);
+    } else {
+      canvas.drawRect(
+        track,
+        _paint()..color = Colors.black.withValues(alpha: 0.14),
+      );
+    }
 
     for (int i = 0; i < laneCount; i++) {
       final double left = track.left + i * laneW;

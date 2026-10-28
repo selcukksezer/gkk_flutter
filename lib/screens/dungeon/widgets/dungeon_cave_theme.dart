@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../dungeon_battle_profiles.dart';
 import 'dungeon_cave_palettes.dart';
 
 /// Per-dungeon hero card theme — colors pulled from cave art.
@@ -96,7 +97,7 @@ class CaveCardTheme {
     threatDeadly: Color(0xFFE52E2E),
     powerOk: Color(0xFF00FF66),
     powerFail: Color(0xFFE52E2E),
-    assetPath: 'assets/dungeon/dungeon1.png',
+    assetPath: 'assets/dungeon/arena_z1_wolf_woods.jpg',
     artBackground: Color(0xFF000000),
     gradientStops: <double>[0, 0.05, 0.14, 0.28, 0.44, 0.62],
     gradientColors: <Color>[
@@ -140,7 +141,7 @@ class CaveCardTheme {
     threatDeadly: Color(0xFFCC4A1A),
     powerOk: Color(0xFF606C38),
     powerFail: Color(0xFFCC4A1A),
-    assetPath: 'assets/dungeon/dungeon2.jpeg',
+    assetPath: 'assets/dungeon/arena_z1_cursed_bog.jpg',
     artBackground: Color(0xFF001F24),
     gradientStops: <double>[0, 0.05, 0.14, 0.28, 0.44, 0.62],
     gradientColors: <Color>[
@@ -184,7 +185,7 @@ class CaveCardTheme {
     threatDeadly: Color(0xFFE63946),
     powerOk: Color(0xFF00E5FF),
     powerFail: Color(0xFFE63946),
-    assetPath: 'assets/dungeon/dungeon3.jpeg',
+    assetPath: 'assets/dungeon/arena_z1_wolf_woods.jpg',
     artBackground: Color(0xFF060D18),
     gradientStops: <double>[0, 0.05, 0.14, 0.28, 0.44, 0.62],
     gradientColors: <Color>[
@@ -228,7 +229,7 @@ class CaveCardTheme {
     threatDeadly: Color(0xFFC62828),
     powerOk: Color(0xFF4A7C59),
     powerFail: Color(0xFFC62828),
-    assetPath: 'assets/dungeon/dungeon4.jpeg',
+    assetPath: 'assets/dungeon/arena_z1_cursed_bog.jpg',
     artBackground: Color(0xFF0F1A14),
     gradientStops: <double>[0, 0.05, 0.14, 0.28, 0.44, 0.62],
     gradientColors: <Color>[
@@ -272,7 +273,7 @@ class CaveCardTheme {
     threatDeadly: Color(0xFFE52E2E),
     powerOk: Color(0xFFC9A227),
     powerFail: Color(0xFFE52E2E),
-    assetPath: 'assets/dungeon/dungeon5.jpeg',
+    assetPath: 'assets/dungeon/arena_z1_wolf_woods.jpg',
     artBackground: Color(0xFF1A1A22),
     gradientStops: <double>[0, 0.05, 0.14, 0.28, 0.44, 0.62],
     gradientColors: <Color>[
@@ -316,7 +317,7 @@ class CaveCardTheme {
     threatDeadly: Color(0xFFB71C1C),
     powerOk: Color(0xFFFF6633),
     powerFail: Color(0xFFB71C1C),
-    assetPath: 'assets/dungeon/dungeon6.jpeg',
+    assetPath: 'assets/dungeon/arena_z1_cursed_bog.jpg',
     artBackground: Color(0xFF0D0505),
     gradientStops: <double>[0, 0.05, 0.14, 0.28, 0.44, 0.62],
     gradientColors: <Color>[
@@ -360,7 +361,7 @@ class CaveCardTheme {
     threatDeadly: Color(0xFFE53935),
     powerOk: Color(0xFF64B5F6),
     powerFail: Color(0xFFE53935),
-    assetPath: 'assets/dungeon/dungeon7.jpeg',
+    assetPath: 'assets/dungeon/arena_z1_cursed_bog.jpg',
     artBackground: Color(0xFF121A2E),
     gradientStops: <double>[0, 0.05, 0.14, 0.28, 0.44, 0.62],
     gradientColors: <Color>[
@@ -424,7 +425,7 @@ class CaveCardTheme {
       threatDeadly: const Color(0xFFE53935),
       powerOk: palette.secondary,
       powerFail: const Color(0xFFE53935),
-      assetPath: 'assets/dungeon/dungeon$number.${palette.ext}',
+      assetPath: DungeonBattleProfile.forNumber(number).arenaAsset,
       artBackground: palette.surfaceDeep,
       gradientStops: _kGradientStops,
       gradientColors: _gradientColors(palette.surfaceDeep, palette.surface),
@@ -434,7 +435,8 @@ class CaveCardTheme {
   }
 
   static CaveCardTheme? forDungeonNumber(int number) {
-    return switch (number) {
+    final int clamped = number.clamp(1, 65);
+    return switch (clamped) {
       1 => cyberCave,
       2 => treePortal,
       3 => crystalGateway,
@@ -442,9 +444,9 @@ class CaveCardTheme {
       5 => ironForge,
       6 => infernalGate,
       7 => celestialSanctum,
-      _ => kDungeonPalettes[number] != null
-          ? fromArtPalette(number, kDungeonPalettes[number]!)
-          : null,
+      _ => kDungeonPalettes[clamped] != null
+          ? fromArtPalette(clamped, kDungeonPalettes[clamped]!)
+          : cyberCave,
     };
   }
 
@@ -588,7 +590,7 @@ class CaveArtWithFeatherEdge extends StatelessWidget {
         blendMode: BlendMode.dstIn,
         child: Image.asset(
           theme.assetPath,
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
           filterQuality: FilterQuality.high,
         ),
       ),

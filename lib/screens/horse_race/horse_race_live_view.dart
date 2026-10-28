@@ -4,6 +4,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../core/services/game_sfx_service.dart';
+import '../../core/services/graphics_quality_service.dart';
 import '../../theme/app_colors.dart';
 import 'horse_race_provider.dart';
 import 'horse_race_utils.dart';
@@ -89,6 +91,7 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
           _countdown = 0;
           _raceStarted = true;
         });
+        unawaited(GameSfxService.instance.play(GameSfx.gallopBoost));
         _controller.forward();
       } else {
         setState(() => _countdown -= 1);
@@ -255,20 +258,41 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                 ),
               ),
               Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    CustomPaint(
-                      painter: HorseRaceTrackPainter(
-                        laneCount: widget.horses.length,
-                        laneColors: laneColors,
-                        scrollOffset: scroll,
-                        raceProgress: progress,
-                        gateOpen: _raceStarted,
-                        finalStretch: finalStretch,
-                        showSpeedLines: _raceStarted && progress > 0.08,
-                      ),
-                    ),
+                child: ClipRect(
+                  child: Transform.scale(
+                    scale: finalStretch
+                        ? 1.0 + ((progress - 0.78) / 0.22).clamp(0.0, 1.0) * 0.065
+                        : 1.0,
+                    alignment: const Alignment(0.0, -0.58),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        Image(
+                          key: const Key('royal_hippodrome_backdrop'),
+                          image: ResizeImage.resizeIfNeeded(
+                            GraphicsQualityService.instance.profile.isLow
+                                ? 360
+                                : 720,
+                            null,
+                            const AssetImage(
+                              'assets/v15/royal_hippodrome_track.jpg',
+                            ),
+                          ),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                        ),
+                        CustomPaint(
+                          painter: HorseRaceTrackPainter(
+                            laneCount: widget.horses.length,
+                            laneColors: laneColors,
+                            scrollOffset: scroll,
+                            raceProgress: progress,
+                            gateOpen: _raceStarted,
+                            finalStretch: finalStretch,
+                            showSpeedLines: _raceStarted && progress > 0.08,
+                            hasPaintedBackdrop: true,
+                          ),
+                        ),
                     LayoutBuilder(
                       builder:
                           (BuildContext context, BoxConstraints constraints) {
@@ -357,7 +381,9 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                   ],
                 ),
               ),
-              Padding(
+            ),
+          ),
+          Padding(
                 padding: EdgeInsets.fromLTRB(10, 6, 10, safe.bottom + 10),
                 child: _CommentaryTicker(
                   text: commentary,
@@ -521,12 +547,31 @@ class _TrackHorseSprite extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Center(
-                        child: Text(
-                          horse.emoji,
-                          style: TextStyle(fontSize: horseSize * 0.42),
+                        Center(
+                          child: Transform.rotate(
+                            angle: raceStarted && !finished
+                                ? math.sin(bobPhase * math.pi * 2) * 0.08
+                                : 0.0,
+                            child: Image(
+                              image: ResizeImage.resizeIfNeeded(
+                                128,
+                                null,
+                                AssetImage(
+                                  index.isEven || isLeader
+                                      ? 'assets/moradon/steed_crimson_bolt.png'
+                                      : 'assets/moradon/steed_shadow_mane.png',
+                                ),
+                              ),
+                              width: horseSize * 0.88,
+                              height: horseSize * 0.76,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => Text(
+                                horse.emoji,
+                                style: TextStyle(fontSize: horseSize * 0.42),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

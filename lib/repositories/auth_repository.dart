@@ -10,6 +10,7 @@ import '../core/constants/app_constants.dart';
 import '../core/errors/app_exception.dart';
 import '../core/services/device_identity_service.dart';
 import '../core/services/device_session_service.dart';
+import '../core/services/presence_service.dart';
 import '../core/services/supabase_service.dart';
 import '../core/utils/auth_error_mapper.dart';
 import '../models/auth_model.dart';
@@ -49,124 +50,128 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<AuthResponse> login(LoginRequest request) async {
     _ensureConfigured();
 
-    try {
-      final result = await SupabaseService.client.auth.signInWithPassword(
-        email: request.email,
-        password: request.password,
-      );
-
-      final session = result.session;
-      final user = result.user;
-      if (session == null || user == null) {
-        throw AppException(
-          'Giris basarisiz. Oturum olusturulamadi.',
-          code: 'AUTH_LOGIN_FAILED',
+    return DeviceSessionService.runAuthHandshake<AuthResponse>(() async {
+      try {
+        final result = await SupabaseService.client.auth.signInWithPassword(
+          email: request.email,
+          password: request.password,
         );
+
+        final session = result.session;
+        final user = result.user;
+        if (session == null || user == null) {
+          throw AppException(
+            'Giris basarisiz. Oturum olusturulamadi.',
+            code: 'AUTH_LOGIN_FAILED',
+          );
+        }
+
+        await _enforceSingleDeviceSession(request.deviceId);
+
+        final AuthUser fallback = _userFromAuthMetadata(user);
+        final AuthUser profile =
+            await fetchProfileUser(user.id) ?? fallback;
+
+        return AuthResponse(
+          session: AuthSession(
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken ?? '',
+            expiresAt: session.expiresAt ?? 0,
+          ),
+          user: profile,
+        );
+      } on AppException {
+        rethrow;
+      } on AuthException catch (e) {
+        throw AuthErrorMapper.fromAuthException(e);
+      } catch (e) {
+        throw AuthErrorMapper.fromObject(e);
       }
-
-      await _enforceSingleDeviceSession(request.deviceId);
-
-      final AuthUser fallback = _userFromAuthMetadata(user);
-      final AuthUser profile =
-          await fetchProfileUser(user.id) ?? fallback;
-
-      return AuthResponse(
-        session: AuthSession(
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken ?? '',
-          expiresAt: session.expiresAt ?? 0,
-        ),
-        user: profile,
-      );
-    } on AppException {
-      rethrow;
-    } on AuthException catch (e) {
-      throw AuthErrorMapper.fromAuthException(e);
-    } catch (e) {
-      throw AuthErrorMapper.fromObject(e);
-    }
+    });
   }
 
   @override
   Future<AuthResponse> register(RegisterRequest request) async {
     _ensureConfigured();
 
-    try {
-      final bool available = await isUsernameAvailable(request.username);
-      if (!available) {
-        throw AppException(
-          'Bu kullanıcı adı alınmış. Başka bir ad dene.',
-          code: 'username_taken',
+    return DeviceSessionService.runAuthHandshake<AuthResponse>(() async {
+      try {
+        final bool available = await isUsernameAvailable(request.username);
+        if (!available) {
+          throw AppException(
+            'Bu kullanıcı adı alınmış. Başka bir ad dene.',
+            code: 'username_taken',
+          );
+        }
+
+        final result = await SupabaseService.client.auth.signUp(
+          email: request.email,
+          password: request.password,
+          emailRedirectTo: AppConstants.authRedirectUrl,
+          data: <String, dynamic>{
+            'username': request.username,
+            if (request.referralCode != null &&
+                request.referralCode!.trim().isNotEmpty)
+              'referral_code': request.referralCode!.trim().toUpperCase(),
+          },
         );
-      }
 
-      final result = await SupabaseService.client.auth.signUp(
-        email: request.email,
-        password: request.password,
-        emailRedirectTo: AppConstants.authRedirectUrl,
-        data: <String, dynamic>{
-          'username': request.username,
-          if (request.referralCode != null &&
-              request.referralCode!.trim().isNotEmpty)
-            'referral_code': request.referralCode!.trim().toUpperCase(),
-        },
-      );
+        final session = result.session;
+        final user = result.user;
+        if (user == null) {
+          throw AppException(
+            'Kayit basarisiz. Kullanici olusturulamadi.',
+            code: 'AUTH_REGISTER_FAILED',
+          );
+        }
 
-      final session = result.session;
-      final user = result.user;
-      if (user == null) {
-        throw AppException(
-          'Kayit basarisiz. Kullanici olusturulamadi.',
-          code: 'AUTH_REGISTER_FAILED',
+        final AuthUser fallback = AuthUser(
+          id: user.id,
+          username: request.username,
+          email: user.email ?? request.email,
+          level: 1,
+          gold: 0,
+          gems: 0,
+          energy: 100,
+          maxEnergy: 100,
+          attack: 0,
+          defense: 0,
+          health: 100,
+          maxHealth: 100,
+          power: 0,
+          guildId: null,
+          guildRole: null,
         );
-      }
 
-      final AuthUser fallback = AuthUser(
-        id: user.id,
-        username: request.username,
-        email: user.email ?? request.email,
-        level: 1,
-        gold: 0,
-        gems: 0,
-        energy: 100,
-        maxEnergy: 100,
-        attack: 0,
-        defense: 0,
-        health: 100,
-        maxHealth: 100,
-        power: 0,
-        guildId: null,
-        guildRole: null,
-      );
+        // Email confirm on → no session. Do not fake authenticated.
+        if (session == null) {
+          return AuthResponse(
+            user: fallback,
+            requiresEmailConfirmation: true,
+          );
+        }
 
-      // Email confirm on → no session. Do not fake authenticated.
-      if (session == null) {
+        await _enforceSingleDeviceSession(request.deviceId);
+
+        final AuthUser profile =
+            await fetchProfileUser(user.id) ?? fallback;
+
         return AuthResponse(
-          user: fallback,
-          requiresEmailConfirmation: true,
+          session: AuthSession(
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken ?? '',
+            expiresAt: session.expiresAt ?? 0,
+          ),
+          user: profile,
         );
+      } on AppException {
+        rethrow;
+      } on AuthException catch (e) {
+        throw AuthErrorMapper.fromAuthException(e);
+      } catch (e) {
+        throw AuthErrorMapper.fromObject(e);
       }
-
-      await _enforceSingleDeviceSession(request.deviceId);
-
-      final AuthUser profile =
-          await fetchProfileUser(user.id) ?? fallback;
-
-      return AuthResponse(
-        session: AuthSession(
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken ?? '',
-          expiresAt: session.expiresAt ?? 0,
-        ),
-        user: profile,
-      );
-    } on AppException {
-      rethrow;
-    } on AuthException catch (e) {
-      throw AuthErrorMapper.fromAuthException(e);
-    } catch (e) {
-      throw AuthErrorMapper.fromObject(e);
-    }
+    });
   }
 
   @override
@@ -183,99 +188,105 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<AuthResponse> signInWithApple({required String deviceId}) async {
     _ensureConfigured();
 
-    try {
-      final bool available = await isAppleSignInAvailable();
-      if (!available) {
-        throw AppException(
-          'Apple ile giriş bu cihazda kullanılamıyor.',
-          code: 'APPLE_UNAVAILABLE',
-        );
-      }
-
-      final String rawNonce = _generateNonce();
-      final String hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
-
-      final AuthorizationCredentialAppleID credential =
-          await SignInWithApple.getAppleIDCredential(
-        scopes: <AppleIDAuthorizationScopes>[
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        nonce: hashedNonce,
-      );
-
-      final String? idToken = credential.identityToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw AppException(
-          'Apple kimlik doğrulaması başarısız.',
-          code: 'APPLE_NO_TOKEN',
-        );
-      }
-
-      final result = await SupabaseService.client.auth.signInWithIdToken(
-        provider: OAuthProvider.apple,
-        idToken: idToken,
-        nonce: rawNonce,
-      );
-
-      final session = result.session;
-      final user = result.user;
-      if (session == null || user == null) {
-        throw AppException(
-          'Apple ile giriş başarısız. Oturum oluşturulamadı.',
-          code: 'APPLE_LOGIN_FAILED',
-        );
-      }
-
-      // Best-effort: seed display name from Apple on first sign-in.
-      final String? given = credential.givenName;
-      final String? family = credential.familyName;
-      if ((given != null && given.isNotEmpty) ||
-          (family != null && family.isNotEmpty)) {
-        final String displayName =
-            <String?>[given, family].whereType<String>().join(' ').trim();
-        if (displayName.isNotEmpty) {
-          try {
-            await SupabaseService.client.auth.updateUser(
-              UserAttributes(data: <String, dynamic>{'display_name': displayName}),
-            );
-          } catch (_) {}
+    return DeviceSessionService.runAuthHandshake<AuthResponse>(() async {
+      try {
+        final bool available = await isAppleSignInAvailable();
+        if (!available) {
+          throw AppException(
+            'Apple ile giriş bu cihazda kullanılamıyor.',
+            code: 'APPLE_UNAVAILABLE',
+          );
         }
+
+        final String rawNonce = _generateNonce();
+        final String hashedNonce =
+            sha256.convert(utf8.encode(rawNonce)).toString();
+
+        final AuthorizationCredentialAppleID credential =
+            await SignInWithApple.getAppleIDCredential(
+          scopes: <AppleIDAuthorizationScopes>[
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+          nonce: hashedNonce,
+        );
+
+        final String? idToken = credential.identityToken;
+        if (idToken == null || idToken.isEmpty) {
+          throw AppException(
+            'Apple kimlik doğrulaması başarısız.',
+            code: 'APPLE_NO_TOKEN',
+          );
+        }
+
+        final result = await SupabaseService.client.auth.signInWithIdToken(
+          provider: OAuthProvider.apple,
+          idToken: idToken,
+          nonce: rawNonce,
+        );
+
+        final session = result.session;
+        final user = result.user;
+        if (session == null || user == null) {
+          throw AppException(
+            'Apple ile giriş başarısız. Oturum oluşturulamadı.',
+            code: 'APPLE_LOGIN_FAILED',
+          );
+        }
+
+        // Best-effort: seed display name from Apple on first sign-in.
+        final String? given = credential.givenName;
+        final String? family = credential.familyName;
+        if ((given != null && given.isNotEmpty) ||
+            (family != null && family.isNotEmpty)) {
+          final String displayName =
+              <String?>[given, family].whereType<String>().join(' ').trim();
+          if (displayName.isNotEmpty) {
+            try {
+              await SupabaseService.client.auth.updateUser(
+                UserAttributes(
+                  data: <String, dynamic>{'display_name': displayName},
+                ),
+              );
+            } catch (_) {}
+          }
+        }
+
+        await _enforceSingleDeviceSession(deviceId);
+
+        final AuthUser fallback = _userFromAuthMetadata(user);
+        final AuthUser profile = await fetchProfileUser(user.id) ?? fallback;
+
+        return AuthResponse(
+          session: AuthSession(
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken ?? '',
+            expiresAt: session.expiresAt ?? 0,
+          ),
+          user: profile,
+        );
+      } on AppException {
+        rethrow;
+      } on SignInWithAppleAuthorizationException catch (e) {
+        if (e.code == AuthorizationErrorCode.canceled) {
+          throw AppException('Apple girişi iptal edildi.', code: 'APPLE_CANCELED');
+        }
+        throw AppException(
+          'Apple ile giriş başarısız.',
+          code: 'APPLE_AUTH_ERROR',
+        );
+      } on AuthException catch (e) {
+        throw AuthErrorMapper.fromAuthException(e);
+      } catch (e) {
+        throw AuthErrorMapper.fromObject(e);
       }
-
-      await _enforceSingleDeviceSession(deviceId);
-
-      final AuthUser fallback = _userFromAuthMetadata(user);
-      final AuthUser profile = await fetchProfileUser(user.id) ?? fallback;
-
-      return AuthResponse(
-        session: AuthSession(
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken ?? '',
-          expiresAt: session.expiresAt ?? 0,
-        ),
-        user: profile,
-      );
-    } on AppException {
-      rethrow;
-    } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code == AuthorizationErrorCode.canceled) {
-        throw AppException('Apple girişi iptal edildi.', code: 'APPLE_CANCELED');
-      }
-      throw AppException(
-        'Apple ile giriş başarısız.',
-        code: 'APPLE_AUTH_ERROR',
-      );
-    } on AuthException catch (e) {
-      throw AuthErrorMapper.fromAuthException(e);
-    } catch (e) {
-      throw AuthErrorMapper.fromObject(e);
-    }
+    });
   }
 
   @override
   Future<void> logout() async {
     if (!SupabaseService.isConfigured) return;
+    await PresenceService.instance.goOfflineBeforeSignOut();
     await DeviceSessionService.clearEpoch();
     await SupabaseService.client.auth.signOut();
   }
@@ -449,7 +460,6 @@ class SupabaseAuthRepository implements AuthRepository {
       }
       await DeviceSessionService.claimActiveDevice();
       await DeviceSessionService.syncRequestHeaders();
-      await SupabaseService.client.auth.signOut(scope: SignOutScope.others);
     } catch (e) {
       try {
         await DeviceSessionService.clearEpoch();
@@ -460,5 +470,11 @@ class SupabaseAuthRepository implements AuthRepository {
       if (e is AppException) rethrow;
       throw AuthErrorMapper.fromObject(e);
     }
+
+    // Best-effort revoke of refresh tokens on other devices after our epoch claim succeeded.
+    // Never roll back the newly claimed local session if GoTrue `scope=others` errors!
+    try {
+      await SupabaseService.client.auth.signOut(scope: SignOutScope.others);
+    } catch (_) {}
   }
 }

@@ -35,9 +35,19 @@ class LocalNotificationService {
   Future<void> initialize() async {
     if (_initialized) return;
 
+    if (kIsWeb) {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      _enabled = prefs.getBool(_enabledKey) ?? true;
+      _nightMarketEnabled = prefs.getBool(nightMarketEnabledKey) ?? true;
+      _nemesisEnabled = prefs.getBool(nemesisEnabledKey) ?? true;
+      _initialized = true;
+      return;
+    }
+
     tz_data.initializeTimeZones();
     try {
-      final TimezoneInfo timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      final TimezoneInfo timezoneInfo = await FlutterTimezone.getLocalTimezone()
+          .timeout(const Duration(seconds: 2));
       tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
     } catch (_) {
       tz.setLocalLocation(tz.UTC);
@@ -51,26 +61,33 @@ class LocalNotificationService {
       requestSoundPermission: false,
     );
 
-    await _plugin.initialize(
-      settings: const InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      ),
-      onDidReceiveNotificationResponse: _onNotificationTap,
-    );
-
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    try {
       await _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(
-            const AndroidNotificationChannel(
-              channelId,
-              channelName,
-              description: channelDescription,
-              importance: Importance.high,
+          .initialize(
+            settings: const InitializationSettings(
+              android: androidSettings,
+              iOS: iosSettings,
             ),
-          );
+            onDidReceiveNotificationResponse: _onNotificationTap,
+          )
+          .timeout(const Duration(seconds: 2));
+
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        await _plugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(
+              const AndroidNotificationChannel(
+                channelId,
+                channelName,
+                description: channelDescription,
+                importance: Importance.high,
+              ),
+            )
+            .timeout(const Duration(seconds: 2));
+      }
+    } catch (_) {
+      // Test ortamı veya desteklenmeyen masaüstü platformunda sessiz devam et.
     }
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -90,22 +107,29 @@ class LocalNotificationService {
   }
 
   Future<bool> requestPermissions() async {
+    if (kIsWeb) return true;
     if (!_initialized) await initialize();
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      final bool? granted = await _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
-      return granted ?? false;
-    }
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final bool? granted = await _plugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission()
+            .timeout(const Duration(seconds: 3));
+        return granted ?? false;
+      }
 
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final bool? granted = await _plugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-      return granted ?? false;
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final bool? granted = await _plugin
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true)
+            .timeout(const Duration(seconds: 3));
+        return granted ?? false;
+      }
+    } catch (_) {
+      return false;
     }
 
     return true;
@@ -166,7 +190,7 @@ class LocalNotificationService {
     required DateTime when,
     String? payload,
   }) async {
-    if (!_enabled || !_initialized) return;
+    if (kIsWeb || !_enabled || !_initialized) return;
     if (!when.isAfter(DateTime.now())) return;
 
     await _plugin.zonedSchedule(
@@ -186,7 +210,7 @@ class LocalNotificationService {
     required String body,
     String? payload,
   }) async {
-    if (!_enabled || !_initialized) return;
+    if (kIsWeb || !_enabled || !_initialized) return;
 
     await _plugin.show(
       id: id,
@@ -198,12 +222,12 @@ class LocalNotificationService {
   }
 
   Future<void> cancel(int id) async {
-    if (!_initialized) return;
+    if (kIsWeb || !_initialized) return;
     await _plugin.cancel(id: id);
   }
 
   Future<void> cancelAll() async {
-    if (!_initialized) return;
+    if (kIsWeb || !_initialized) return;
     await _plugin.cancelAll();
   }
 }

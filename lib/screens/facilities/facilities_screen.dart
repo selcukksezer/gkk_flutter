@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../components/crafting/living_foundry_banner.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../theme/app_colors.dart';
 import '../../models/facility_model.dart';
@@ -117,6 +118,18 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
             padding: FacilitiesUi.scrollPadding(context),
             children: <Widget>[
               if (inPrison) FacPrisonBanner(reason: prisonReason),
+              LivingFoundryBanner(
+                title: 'İmparatorluk Üretim Ocakları',
+                subtitle:
+                    'Maden, kereste ve mistik simya tesisleri • Kaynakları topla',
+                statusBadge:
+                    '🏭 AKTİF TESİSLER • ${unlockedByType.length} AÇIK',
+                isProducing: unlockedByType.values.any(
+                  (PlayerFacility f) =>
+                      (f.productionStartedAt ?? '').isNotEmpty,
+                ),
+              ),
+              const SizedBox(height: 12),
               FacSuspicionPanel(
                 activeCount: unlockedByType.length,
                 globalSuspicion: globalSuspicion,

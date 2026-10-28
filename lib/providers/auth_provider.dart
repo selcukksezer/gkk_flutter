@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/errors/app_exception.dart';
 import '../core/services/device_session_service.dart';
+import '../core/services/saved_credentials_service.dart';
 import '../core/services/supabase_service.dart';
 import '../models/auth_model.dart';
 import '../models/referral_preview_model.dart';
@@ -69,7 +70,9 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> loadSession() async {
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
-      final session = await _repository.currentSession();
+      final session = await _repository
+          .currentSession()
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
       if (session == null || session.accessToken.isEmpty) {
         state = state.copyWith(
           status: AuthStatus.unauthenticated,
@@ -79,8 +82,19 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
 
-      final DeviceSessionVerifyResult deviceCheck =
-          await DeviceSessionService.verifyCurrentDevice();
+      DeviceSessionVerifyResult deviceCheck;
+      try {
+        deviceCheck = await DeviceSessionService.verifyCurrentDevice()
+            .timeout(const Duration(seconds: 5));
+      } on Object {
+        // Geçici ağ gecikmesinde başlangıç ekranını kilitleme; SessionEnforcementGate
+        // arka planda periyodik doğrulamayı sürdürür.
+        deviceCheck = const DeviceSessionVerifyResult(
+          valid: true,
+          reason: DeviceSessionReason.ok,
+        );
+      }
+
       if (!deviceCheck.valid &&
           deviceCheck.reason != DeviceSessionReason.noAuth) {
         await _repository.logout();
@@ -98,7 +112,11 @@ class AuthNotifier extends Notifier<AuthState> {
           : null;
       AuthUser? user;
       if (authId != null) {
-        user = await _repository.fetchProfileUser(authId);
+        try {
+          user = await _repository
+              .fetchProfileUser(authId)
+              .timeout(const Duration(seconds: 4));
+        } catch (_) {}
       }
 
       state = state.copyWith(
@@ -106,7 +124,10 @@ class AuthNotifier extends Notifier<AuthState> {
         session: session,
         user: user,
       );
-      await DeviceSessionService.syncRequestHeaders();
+      try {
+        await DeviceSessionService.syncRequestHeaders()
+            .timeout(const Duration(seconds: 2));
+      } catch (_) {}
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.error,
@@ -258,6 +279,7 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
       await _repository.updatePassword(newPassword);
+      await SavedCredentialsService.updatePasswordIfSaved(newPassword);
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         clearSession: true,

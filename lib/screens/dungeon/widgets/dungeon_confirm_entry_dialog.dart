@@ -1,9 +1,9 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../components/common/adaptive_glass_blur.dart';
 import '../../../components/layout/game_screen_background.dart';
+import '../../../core/services/graphics_quality_service.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_anchor_registry.dart';
 import '../../../core/tutorial/tutorial_track.dart';
@@ -170,6 +170,8 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
     final String zoneLabel = zone?.name ?? (zoneNum > 0 ? 'Bölge $zoneNum' : 'Zindan');
     final String goldRange = formatCompactGoldRange(dungeon.minGold, dungeon.maxGold);
 
+    final GraphicsProfile gfx = GraphicsQualityService.instance.profile;
+
     return Material(
       type: MaterialType.transparency,
       child: Stack(
@@ -178,8 +180,8 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
           GestureDetector(
             onTap: () => _pop(false),
             behavior: HitTestBehavior.opaque,
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: AdaptiveGlassBlur(
+              sigma: 10,
               child: Container(
                 color: AppColors.carbonVoid.withValues(alpha: 0.72),
               ),
@@ -206,8 +208,8 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
                   constraints: const BoxConstraints(maxWidth: 360),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
-                    child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: AdaptiveGlassBlur(
+                      sigma: 10,
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(24),
@@ -223,30 +225,33 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
                             color: _accent.withValues(alpha: 0.55),
                             width: 1.2,
                           ),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: _accent.withValues(alpha: 0.22),
-                              blurRadius: 32,
-                              spreadRadius: 1,
-                            ),
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.55),
-                              blurRadius: 28,
-                              offset: const Offset(0, 14),
-                            ),
-                          ],
+                          boxShadow: gfx.enableHeavyShadows
+                              ? <BoxShadow>[
+                                  BoxShadow(
+                                    color: _accent.withValues(alpha: 0.22),
+                                    blurRadius: 32,
+                                    spreadRadius: 1,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    blurRadius: 28,
+                                    offset: const Offset(0, 14),
+                                  ),
+                                ]
+                              : const <BoxShadow>[],
                         ),
                         child: Stack(
                           children: <Widget>[
-                            const Positioned.fill(
-                              child: CustomPaint(
-                                painter: DotGridPainter(
-                                  spacing: 18,
-                                  dotRadius: 1.0,
-                                  dotOpacity: 0.07,
+                            if (gfx.enableDotGridOverlay)
+                              const Positioned.fill(
+                                child: CustomPaint(
+                                  painter: DotGridPainter(
+                                    spacing: 18,
+                                    dotRadius: 1.0,
+                                    dotOpacity: 0.07,
+                                  ),
                                 ),
                               ),
-                            ),
                             Positioned(
                               top: 0,
                               left: 0,

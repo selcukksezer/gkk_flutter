@@ -391,6 +391,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sign in with Apple is unavailable on this device.';
 
   @override
+  String get auth_email_or_username => 'Email or Saved Username';
+
+  @override
+  String get auth_remember_me => 'Remember login credentials on this device';
+
+  @override
+  String get auth_saved_account_label => 'Saved Account';
+
+  @override
+  String get auth_quick_login_cta => '1-Tap Sign In';
+
+  @override
+  String get auth_forget_saved_account => 'Forget saved account';
+
+  @override
   String get auth_first_dungeon_title => 'Your first dungeon awaits';
 
   @override

@@ -11,6 +11,7 @@ android {
     ndkVersion = "27.0.12077973"
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -30,6 +31,7 @@ android {
         versionName = flutter.versionName
 
         ndk {
+            abiFilters += "armeabi-v7a"
             abiFilters += "arm64-v8a"
             abiFilters += "x86_64"
         }
@@ -46,4 +48,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

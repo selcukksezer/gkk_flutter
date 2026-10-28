@@ -846,7 +846,7 @@ class _StockSheetState extends State<_StockSheet> {
           const SizedBox(height: 16),
           if (!editing)
             DropdownButtonFormField<String>(
-              initialValue: _itemId,
+              value: _itemId,
               dropdownColor: MekanPalette.surfaceHi,
               decoration: _dec('Urun sec', Icons.shopping_bag_outlined),
               style: const TextStyle(color: MekanPalette.textHi, fontSize: 14),

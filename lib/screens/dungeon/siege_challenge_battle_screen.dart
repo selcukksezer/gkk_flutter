@@ -17,8 +17,10 @@ import '../../providers/auth_provider.dart';
 import '../../providers/dungeon_siege_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import 'dungeon_battle_profiles.dart';
 import 'widgets/dungeon_battle_effects.dart';
 import 'widgets/dungeon_cave_theme.dart';
+import 'widgets/dungeon_stage_combat_view.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
 /// Route extra for [SiegeChallengeBattleScreen].
@@ -113,9 +115,9 @@ class _SiegeChallengeBattleScreenState extends ConsumerState<SiegeChallengeBattl
   String get _characterAsset {
     final CharacterClass? cls = ref.read(playerProvider).profile?.characterClass;
     return switch (cls) {
-      CharacterClass.shadow => 'assets/characters/golge.png',
-      CharacterClass.alchemist => 'assets/characters/simyaci.png',
-      _ => 'assets/characters/savasci.png',
+      CharacterClass.shadow => 'assets/dungeon/hero_battle_shadow.png',
+      CharacterClass.alchemist => 'assets/dungeon/hero_battle_alchemist.png',
+      _ => 'assets/dungeon/hero_battle_warrior.png',
     };
   }
 
@@ -383,8 +385,16 @@ class _SiegeChallengeBattleScreenState extends ConsumerState<SiegeChallengeBattl
         return _SiegeFightingView(
           theme: theme,
           ambient: _ambient,
+          dungeonId: args.dungeonId,
+          zone: args.zone,
+          slotNumber: args.slotNumber,
           playerAsset: _characterAsset,
+          characterClass: profile?.characterClass,
+          playerName: playerName.isEmpty ? 'SEN' : playerName,
+          playerLevel: profile?.level ?? 1,
+          playerPower: profile?.power ?? 0,
           opponentName: args.defenderName,
+          opponentPower: args.defenderPower,
           logLines: _battleLog.take(_logIndex + 1).toList(),
         );
       case 'success':
@@ -491,14 +501,14 @@ class _SiegeBattleBackdrop extends StatelessWidget {
             child: Image.asset(
               theme.assetPath,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => ColoredBox(color: theme.surfaceDeep),
+              errorBuilder: (_, _, _) => ColoredBox(color: theme.surfaceDeep),
             ),
           ),
         ),
         if (embers)
           AnimatedBuilder(
             animation: ambient,
-            builder: (_, __) => CustomPaint(
+            builder: (_, _) => CustomPaint(
               painter: EmberFieldPainter(
                 progress: ambient.value,
                 color: BattlePalette.cyberFuchsia,
@@ -1029,7 +1039,7 @@ class _SiegeDuelPortrait extends StatelessWidget {
                   asset!,
                   fit: BoxFit.contain,
                   alignment: Alignment.topCenter,
-                  errorBuilder: (_, __, ___) =>
+                  errorBuilder: (_, _, _) =>
                       Icon(Icons.person_rounded, color: borderColor, size: 40),
                 )
               : Center(
@@ -1058,84 +1068,142 @@ class _SiegeDuelPortrait extends StatelessWidget {
   }
 }
 
-class _SiegeFightingView extends StatelessWidget {
+class _SiegeFightingView extends StatefulWidget {
   const _SiegeFightingView({
     required this.theme,
     required this.ambient,
+    required this.dungeonId,
+    required this.zone,
+    required this.slotNumber,
     required this.playerAsset,
+    required this.characterClass,
+    required this.playerName,
+    required this.playerLevel,
+    required this.playerPower,
     required this.opponentName,
+    required this.opponentPower,
     required this.logLines,
   });
 
   final CaveCardTheme theme;
   final AnimationController ambient;
+  final String dungeonId;
+  final int zone;
+  final int slotNumber;
   final String playerAsset;
+  final CharacterClass? characterClass;
+  final String playerName;
+  final int playerLevel;
+  final int playerPower;
   final String opponentName;
+  final int opponentPower;
   final List<String> logLines;
 
   @override
+  State<_SiegeFightingView> createState() => _SiegeFightingViewState();
+}
+
+class _SiegeFightingViewState extends State<_SiegeFightingView> {
+  DungeonTacticalCommand? _tacticalCommand;
+  int _seq = 0;
+  int _combo = 0;
+
+  void _onArenaTap(bool isSweetSpot) {
+    if (isSweetSpot) {
+      HapticFeedback.heavyImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
+    setState(() {
+      _combo += isSweetSpot ? 2 : 1;
+      _tacticalCommand = DungeonTacticalCommand(
+        seq: ++_seq,
+        type: isSweetSpot
+            ? DungeonTacticalActionType.perfectCrit
+            : DungeonTacticalActionType.quickSlash,
+        skillTitle: isSweetSpot ? '⚡ KUŞATMA KRİTİĞİ' : '⚔️ KUŞATMA DARBESİ',
+        damageMultiplier: isSweetSpot ? 1.88 : 1.16,
+        isCritical: isSweetSpot,
+        aoeAllMobs: isSweetSpot,
+        comboStreak: _combo,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final DungeonBattleProfile battleProfile =
+        DungeonBattleProfile.forDungeonId(
+      widget.dungeonId,
+      fallbackZone: widget.zone,
+    );
+    final ({String grade, Color color}) rank = resolveDungeonStyleRank(_combo);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         FadeSlideIn(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              _SiegeDuelPortrait(
-                asset: playerAsset,
-                borderColor: BattlePalette.toxicNeon,
-                label: 'SEN',
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Container(
-                  width: 62,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: <Color>[BattlePalette.cyberFuchsia, BattlePalette.liquidGold],
-                    ),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'VS',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              _SiegeDuelPortrait(
-                name: opponentName,
-                borderColor: BattlePalette.mysticRuby,
-                label: 'RAKİP',
-              ),
-            ],
+          child: DungeonStageCombatView(
+            profile: battleProfile,
+            stagePhase: DungeonStagePhase.fighting,
+            ambient: widget.ambient,
+            characterAsset: widget.playerAsset,
+            characterClass: widget.characterClass,
+            playerName: widget.playerName,
+            playerLevel: widget.playerLevel,
+            playerPower: widget.playerPower,
+            powerRequirement: widget.opponentPower,
+            height: 286,
+            tacticalCommand: _tacticalCommand,
+            onArenaStrikeTap: _onArenaTap,
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Flexible(
+              child: Text(
+                '⚔️ SLOT #${widget.slotNumber} • RAKİP: ${widget.opponentName.toUpperCase()}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFFDE68A),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ),
+            if (_combo >= 1)
+              Text(
+                '🔥 STİL ${rank.grade} • x$_combo',
+                style: TextStyle(
+                  color: rank.color,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
         FadeSlideIn(
           delayMs: 150,
           child: AnimatedBuilder(
-            animation: ambient,
-            builder: (_, __) => EnergySweepBar(progress: (ambient.value * 3) % 1.0),
+            animation: widget.ambient,
+            builder: (_, _) =>
+                EnergySweepBar(progress: (widget.ambient.value * 3) % 1.0),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         GlassPanel(
-          accent: theme.accent,
+          accent: widget.theme.accent,
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Text(
-                'CANLI DÜELLO',
+              const Text(
+                'CANLI KUŞATMA DÜELLOSU',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: BattlePalette.mutedTitanium,
@@ -1145,7 +1213,7 @@ class _SiegeFightingView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              for (final String line in logLines)
+              for (final String line in widget.logLines)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
@@ -1190,7 +1258,7 @@ class _SiegeVictoryView extends StatelessWidget {
             children: <Widget>[
               AnimatedBuilder(
                 animation: ambient,
-                builder: (_, __) => CustomPaint(
+                builder: (_, _) => CustomPaint(
                   size: Size.infinite,
                   painter: RadiantRaysPainter(
                     progress: ambient.value,
@@ -1201,7 +1269,7 @@ class _SiegeVictoryView extends StatelessWidget {
               ),
               AnimatedBuilder(
                 animation: ambient,
-                builder: (_, __) => CustomPaint(
+                builder: (_, _) => CustomPaint(
                   size: Size.infinite,
                   painter: ConfettiFieldPainter(progress: ambient.value),
                 ),
@@ -1290,7 +1358,7 @@ class _SiegeDefeatView extends StatelessWidget {
             children: <Widget>[
               AnimatedBuilder(
                 animation: ambient,
-                builder: (_, __) => CustomPaint(
+                builder: (_, _) => CustomPaint(
                   size: Size.infinite,
                   painter: RadiantRaysPainter(
                     progress: ambient.value,

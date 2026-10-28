@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/common/item_icon_view.dart';
+import '../../components/common/holo_foil_sheen.dart';
 import '../../components/common/app_messenger.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
@@ -646,7 +647,12 @@ class _InventoryReadyInteractiveState
               ),
             ),
             childWhenDragging: Opacity(opacity: 0.35, child: card),
-            child: card,
+            child: HoloFoilRarityBox(
+              rarity: item.rarity,
+              enhancementLevel: item.enhancementLevel,
+              borderRadius: BorderRadius.circular(12),
+              child: card,
+            ),
           );
 
     return DragTarget<_DragPayload>(
@@ -998,7 +1004,12 @@ class _EquippedPanel extends StatelessWidget {
                   child: SizedBox(width: 72, height: 72, child: slotBody),
                 ),
                 childWhenDragging: Opacity(opacity: 0.35, child: slotBody),
-                child: slotBody,
+                child: HoloFoilRarityBox(
+                  rarity: item.rarity,
+                  enhancementLevel: item.enhancementLevel,
+                  borderRadius: BorderRadius.circular(12),
+                  child: slotBody,
+                ),
               );
 
         return AspectRatio(

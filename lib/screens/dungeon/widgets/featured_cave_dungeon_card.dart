@@ -1,23 +1,27 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/services/graphics_quality_service.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../core/utils/gold_format.dart';
 import '../../../core/utils/power_formula.dart';
 import '../../../models/dungeon_model.dart';
 import '../../../models/dungeon_siege_model.dart';
+import '../dungeon_battle_profiles.dart';
 import 'dungeon_cave_theme.dart';
+import 'dungeon_mob_pack_rig.dart';
 import 'dungeon_progress_row.dart';
 import 'dungeon_siege_badge.dart';
 import 'dungeon_siege_prime_timer_chip.dart';
 
-const double _kCaveArtSize = 165.0;
+const double _kBossArtWidth = 148.0;
 const Color _kCardText = Color(0xFFFFFFFF);
 
-/// Hero card for featured dungeons — cave art right, theme from art palette.
+/// AAA Dark-Fantasy Dungeon Encounter Banner Card for all 65 dungeons:
+/// panoramic interior dungeon chamber backdrop + bespoke Guardian/Boss cutout
+/// emerging from atmospheric dungeon mist on the right.
 class FeaturedCaveDungeonCard extends StatelessWidget {
   const FeaturedCaveDungeonCard({
     super.key,
@@ -104,17 +108,28 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final DungeonBattleProfile battleProfile =
+        DungeonBattleProfile.forDungeonId(dungeon.dungeonId);
+    final List<DungeonMobPackMember> pack =
+        resolveDungeonMobPack(battleProfile);
+    final bool compactPhone = MediaQuery.sizeOf(context).width < 395;
+    final Color accent = battleProfile.primaryColor;
+    final Color secondary = battleProfile.secondaryColor;
+    final Color deepBg = battleProfile.deepSurface;
     final Color threat = theme.threatForSuccess(successPercent);
     final bool active = canEnter && !entering;
-    final double powerRatio =
-        powerRequirement > 0 ? (playerPower / powerRequirement).clamp(0.0, 2.0) : 1.0;
+    final double powerRatio = powerRequirement > 0
+        ? (playerPower / powerRequirement).clamp(0.0, 2.0)
+        : 1.0;
     final bool powerOk = powerRatio >= 1.0;
 
     Widget enterButton = _CaveEnterButton(
       active: active,
       entering: entering,
       label: _enterLabel,
-      theme: theme,
+      accent: accent,
+      secondary: secondary,
+      panel: theme.panel,
       onTap: active ? onEnter : null,
     );
     if (useTutorialAnchors) {
@@ -124,48 +139,200 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
       );
     }
 
-    Widget card = Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: theme.surfaceDeep,
-        border: Border.all(
-          color: theme.accent.withValues(alpha: 0.32),
+    final GraphicsProfile gfx = GraphicsQualityService.instance.profile;
+    final int cardArenaCacheW =
+        gfx.isLow ? 420 : (gfx.isLowOrMedium ? 640 : 960);
+    final int cardSpriteCacheW = gfx.isLow ? 190 : 260;
+
+    Widget card = RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          color: deepBg,
+          border: Border.all(
+            color: battleProfile.isBoss
+                ? const Color(0xFFFFD700).withValues(alpha: 0.62)
+                : accent.withValues(alpha: 0.40),
+            width: battleProfile.isBoss ? 1.5 : 1.1,
+          ),
+          boxShadow: gfx.enableHeavyShadows
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: (battleProfile.isBoss
+                            ? const Color(0xFFFFD700)
+                            : accent)
+                        .withValues(alpha: battleProfile.isBoss ? 0.22 : 0.14),
+                    blurRadius: 22,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
         ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: theme.accent.withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: theme.surfaceDeep.withValues(alpha: 0.6),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: IntrinsicHeight(
-          child: Stack(
-            children: <Widget>[
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(17),
+          child: IntrinsicHeight(
+            child: Stack(
+              children: <Widget>[
+                // 1. Full-card panoramic AAA interior dungeon chamber backdrop (downsampled + zero saveLayer!)
+                Positioned.fill(
+                  child: ColoredBox(color: deepBg),
+                ),
+                Positioned.fill(
+                  child: Image.asset(
+                    battleProfile.arenaAsset,
+                    fit: BoxFit.cover,
+                    alignment: const Alignment(0.0, 0.12),
+                    cacheWidth: cardArenaCacheW,
+                    opacity: const AlwaysStoppedAnimation<double>(0.88),
+                    filterQuality: gfx.filterQuality,
+                    errorBuilder: (_, _, _) => ColoredBox(color: deepBg),
+                  ),
+                ),
+
+                // 2. Right-side Multi-Mob Pack Diorama (Flanking Vanguards skipped on Low to eliminate ColorFiltered saveLayers!)
+                Positioned(
+                  right: -6,
+                  top: 6,
+                  bottom: 0,
+                  width: _kBossArtWidth + 34,
+                  child: IgnorePointer(
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: <Widget>[
+                        if (!gfx.isLow)
+                          Positioned(
+                            right: 8,
+                            bottom: 10,
+                            width: 152,
+                            height: 152,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: <Color>[
+                                    (battleProfile.isBoss
+                                            ? const Color(0xFFFFD700)
+                                            : accent)
+                                        .withValues(alpha: 0.38),
+                                    secondary.withValues(alpha: 0.14),
+                                    Colors.transparent,
+                                  ],
+                                  stops: const <double>[0.0, 0.56, 1.0],
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (!gfx.isLow && pack.length >= 2)
+                          Positioned(
+                            right: 68,
+                            top: 26,
+                            bottom: 18,
+                            width: 96,
+                            child: ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                deepBg.withValues(alpha: 0.32),
+                                BlendMode.srcATop,
+                              ),
+                              child: Image.asset(
+                                pack[1].spriteAsset,
+                                fit: BoxFit.contain,
+                                alignment: Alignment.bottomCenter,
+                                cacheWidth: 190,
+                                opacity:
+                                    const AlwaysStoppedAnimation<double>(0.62),
+                                filterQuality: gfx.filterQuality,
+                                errorBuilder: (_, _, _) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                        if (!gfx.isLow && pack.isNotEmpty)
+                          Positioned(
+                            right: 44,
+                            top: 40,
+                            bottom: 2,
+                            width: 102,
+                            child: ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                deepBg.withValues(alpha: 0.18),
+                                BlendMode.srcATop,
+                              ),
+                              child: Image.asset(
+                                pack[0].spriteAsset,
+                                fit: BoxFit.contain,
+                                alignment: Alignment.bottomCenter,
+                                cacheWidth: 200,
+                                opacity:
+                                    const AlwaysStoppedAnimation<double>(0.78),
+                                filterQuality: gfx.filterQuality,
+                                errorBuilder: (_, _, _) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                        // Commanding Pack Leader / Boss in front
+                        Positioned(
+                          right: 2,
+                          top: 12,
+                          bottom: 0,
+                          width: _kBossArtWidth,
+                          child: _buildEnemyCutout(
+                            battleProfile,
+                            cacheWidth: cardSpriteCacheW,
+                            filterQuality: gfx.filterQuality,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // 3. Multi-stop Dark-Obsidian Readability Scrim (crisp left text, clear right boss/dungeon)
               Positioned.fill(
-                child: ColoredBox(color: theme.artBackground),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: CaveArtWithFeatherEdge(
-                    size: _kCaveArtSize,
-                    theme: theme,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      stops: const <double>[0.0, 0.46, 0.68, 0.86, 1.0],
+                      colors: <Color>[
+                        deepBg.withValues(alpha: 0.95),
+                        deepBg.withValues(alpha: 0.86),
+                        deepBg.withValues(alpha: 0.54),
+                        deepBg.withValues(alpha: 0.18),
+                        deepBg.withValues(alpha: 0.28),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              Positioned.fill(child: CaveCardLeftGradient(theme: theme)),
+              // Subtle bottom ground vignette
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 46,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.55),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 4. Foreground Content
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
                 child: Row(
@@ -175,22 +342,78 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: <Widget>[
-                              Icon(zoneIcon, size: 12, color: _kCardText),
-                              const SizedBox(width: 5),
-                              DungeonInsetText(
-                                zoneLabel,
-                                style: CaveTextStyle.label(color: _kCardText),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(zoneIcon, size: 12, color: accent),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: DungeonInsetText(
+                                      '$zoneLabel • #${battleProfile.dungeonNumber}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          CaveTextStyle.label(color: _kCardText),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
+                              if (battleProfile.isBoss)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: <Color>[
+                                        Color(0xFFFFD700),
+                                        Color(0xFFEA580C),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: const Text(
+                                    'BOSS',
+                                    style: TextStyle(
+                                      color: Color(0xFF090D16),
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ),
                               _ThreatBadge(
                                 label: _threatLabel,
                                 color: threat,
                                 panel: theme.panel,
                               ),
-                              if (onSiegeTap != null) ...<Widget>[
-                                const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(6),
+                                  color: theme.panel.withValues(alpha: 0.82),
+                                  border: Border.all(
+                                    color: accent.withValues(alpha: 0.52),
+                                  ),
+                                ),
+                                child: Text(
+                                  'SÜRÜ: ${pack.length} DÜŞMAN',
+                                  style: CaveTextStyle.label(
+                                    color: accent,
+                                    size: 8,
+                                  ),
+                                ),
+                              ),
+                              if (onSiegeTap != null)
                                 siegeConfig != null
                                     ? DungeonSiegeBadgeWithTimer(
                                         siegeActive: siegeActive,
@@ -209,43 +432,62 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                                         onTap: onSiegeTap,
                                         compact: true,
                                       ),
-                              ],
                             ],
                           ),
-                          const SizedBox(height: 7),
+                          const SizedBox(height: 6),
                           DungeonInsetText(
                             dungeon.name,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: CaveTextStyle.title(
                               color: _kCardText,
                               size: 18,
                             ),
                           ),
-                          if (dungeon.description.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 4),
-                            DungeonInsetText(
-                              dungeon.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: CaveTextStyle.body(
-                                color: _kCardText,
-                                size: 11,
+                          const SizedBox(height: 3),
+                          Row(
+                            children: <Widget>[
+                              Icon(
+                                battleProfile.isBoss
+                                    ? Icons.workspace_premium_rounded
+                                    : Icons.shield_moon_rounded,
+                                size: 12,
+                                color: battleProfile.isBoss
+                                    ? const Color(0xFFFFD700)
+                                    : accent,
                               ),
-                              depthOffset: const Offset(0, 1),
-                            ),
-                          ],
-                          if (kDebugMode && debugText != null) ...<Widget>[
-                            const SizedBox(height: 4),
-                            Text(
-                              debugText!,
-                              style: CaveTextStyle.body(
-                                color: theme.textMuted,
-                                size: 10,
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '${battleProfile.enemyName} • ${battleProfile.enemyElementLabel.trim()}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: accent.withValues(alpha: 0.95),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            (dungeon.description.trim().isEmpty ||
+                                    dungeon.description.trim().toLowerCase() ==
+                                        dungeon.name.trim().toLowerCase())
+                                ? battleProfile.introQuote
+                                : dungeon.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.78),
+                              fontSize: 11,
+                              height: 1.28,
                             ),
-                          ],
-                          const Spacer(),
+                          ),
+                          const SizedBox(height: 9),
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
@@ -282,11 +524,15 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                             ),
                           ],
                           const SizedBox(height: 8),
-                          DungeonProgressRow(dungeon: dungeon, accent: theme.accent),
+                          DungeonProgressRow(dungeon: dungeon, accent: accent),
                           const SizedBox(height: 10),
                           Row(
                             children: <Widget>[
-                              _CaveLootButton(onTap: onLoot, theme: theme),
+                              _CaveLootButton(
+                                onTap: onLoot,
+                                accent: secondary,
+                                panel: theme.panel,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: enterButton,
@@ -296,24 +542,27 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    SizedBox(width: _kCaveArtSize * 0.55),
+                    SizedBox(
+                      width: _kBossArtWidth * (compactPhone ? 0.50 : 0.64),
+                    ),
                   ],
                 ),
               ),
               Positioned(
-                top: 6,
-                right: 4,
+                top: 8,
+                right: 8,
                 child: _CaveSuccessRing(
                   percent: successPercent,
                   color: threat,
-                  panel: theme.panel,
+                  panel: deepBg,
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
+    ),
+  );
 
     if (useTutorialAnchors) {
       card = TutorialAnchorScope(
@@ -329,6 +578,31 @@ class FeaturedCaveDungeonCard extends StatelessWidget {
       );
     }
     return card;
+  }
+
+  Widget _buildEnemyCutout(
+    DungeonBattleProfile profile, {
+    required int cacheWidth,
+    required FilterQuality filterQuality,
+  }) {
+    final Widget img = Image.asset(
+      profile.enemySpriteAsset,
+      fit: BoxFit.contain,
+      alignment: Alignment.bottomRight,
+      cacheWidth: cacheWidth,
+      filterQuality: filterQuality,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    );
+    if (profile.enemyColorTint == null || profile.enemyTintStrength <= 0) {
+      return img;
+    }
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        profile.enemyColorTint!.withValues(alpha: profile.enemyTintStrength),
+        BlendMode.srcATop,
+      ),
+      child: img,
+    );
   }
 }
 
@@ -348,8 +622,8 @@ class _ThreatBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),
-        color: panel.withValues(alpha: 0.7),
-        border: Border.all(color: color.withValues(alpha: 0.55)),
+        color: panel.withValues(alpha: 0.78),
+        border: Border.all(color: color.withValues(alpha: 0.65)),
       ),
       child: Text(label, style: CaveTextStyle.label(color: _kCardText, size: 8)),
     );
@@ -368,18 +642,22 @@ class _CaveSuccessRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 52,
-      height: 52,
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: panel.withValues(alpha: 0.78),
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: <Widget>[
           CustomPaint(
-            size: const Size(52, 52),
+            size: const Size(50, 50),
             painter: _CaveRingPainter(
               percent: percent.toDouble(),
               color: color,
-              track: panel,
+              track: Colors.white.withValues(alpha: 0.16),
             ),
           ),
           Column(
@@ -417,7 +695,7 @@ class _CaveRingPainter extends CustomPainter {
       center,
       radius,
       Paint()
-        ..color = track.withValues(alpha: 0.85)
+        ..color = track
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3.5,
     );
@@ -463,8 +741,8 @@ class _CaveStatChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: panel.withValues(alpha: 0.65),
-        border: Border.all(color: border.withValues(alpha: 0.45)),
+        color: panel.withValues(alpha: 0.72),
+        border: Border.all(color: border.withValues(alpha: 0.38)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -506,8 +784,8 @@ class _CavePowerBar extends StatelessWidget {
             Text(
               ok ? 'YETERLİ' : 'YETERSİZ',
               style: CaveTextStyle.label(
-                color: _kCardText,
-                size: 8,
+                color: ok ? const Color(0xFF34D399) : const Color(0xFFFF6B6B),
+                size: 8.5,
               ),
             ),
           ],
@@ -518,9 +796,9 @@ class _CavePowerBar extends StatelessWidget {
           child: LinearProgressIndicator(
             minHeight: 5,
             value: ratio,
-            backgroundColor: theme.panel,
+            backgroundColor: Colors.white.withValues(alpha: 0.12),
             valueColor: AlwaysStoppedAnimation<Color>(
-              ok ? theme.powerOk : threat,
+              ok ? const Color(0xFF34D399) : threat,
             ),
           ),
         ),
@@ -530,9 +808,14 @@ class _CavePowerBar extends StatelessWidget {
 }
 
 class _CaveLootButton extends StatelessWidget {
-  const _CaveLootButton({required this.onTap, required this.theme});
+  const _CaveLootButton({
+    required this.onTap,
+    required this.accent,
+    required this.panel,
+  });
   final VoidCallback onTap;
-  final CaveCardTheme theme;
+  final Color accent;
+  final Color panel;
 
   @override
   Widget build(BuildContext context) {
@@ -545,9 +828,9 @@ class _CaveLootButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: theme.panel.withValues(alpha: 0.8),
+            color: panel.withValues(alpha: 0.82),
             border: Border.all(
-              color: theme.loot.withValues(alpha: 0.6),
+              color: accent.withValues(alpha: 0.55),
             ),
           ),
           child: Row(
@@ -560,7 +843,7 @@ class _CaveLootButton extends StatelessWidget {
               ),
               const SizedBox(width: 5),
               Text(
-                'Loot',
+                'Ganimet',
                 style: CaveTextStyle.body(color: _kCardText, size: 12),
               ),
             ],
@@ -576,18 +859,23 @@ class _CaveEnterButton extends StatelessWidget {
     required this.active,
     required this.entering,
     required this.label,
-    required this.theme,
+    required this.accent,
+    required this.secondary,
+    required this.panel,
     this.onTap,
   });
 
   final bool active;
   final bool entering;
   final String label;
-  final CaveCardTheme theme;
+  final Color accent;
+  final Color secondary;
+  final Color panel;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final Color deepEnd = Color.lerp(accent, const Color(0xFF090D16), 0.38)!;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -600,20 +888,20 @@ class _CaveEnterButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             gradient: active
                 ? LinearGradient(
-                    colors: <Color>[theme.accent, theme.accentDeep],
+                    colors: <Color>[accent, deepEnd],
                   )
                 : null,
-            color: active ? null : theme.panel.withValues(alpha: 0.85),
+            color: active ? null : panel.withValues(alpha: 0.85),
             border: Border.all(
               color: active
-                  ? theme.accentGlow.withValues(alpha: 0.55)
-                  : theme.textMuted.withValues(alpha: 0.25),
+                  ? secondary.withValues(alpha: 0.65)
+                  : Colors.white.withValues(alpha: 0.18),
             ),
             boxShadow: active
                 ? <BoxShadow>[
                     BoxShadow(
-                      color: theme.accent.withValues(alpha: 0.32),
-                      blurRadius: 10,
+                      color: accent.withValues(alpha: 0.36),
+                      blurRadius: 12,
                       offset: const Offset(0, 3),
                     ),
                   ]
@@ -621,7 +909,7 @@ class _CaveEnterButton extends StatelessWidget {
           ),
           child: Center(
             child: entering
-                ? SizedBox(
+                ? const SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
@@ -629,23 +917,31 @@ class _CaveEnterButton extends StatelessWidget {
                       color: _kCardText,
                     ),
                   )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Icon(
-                        active ? Icons.play_arrow_rounded : Icons.lock_outline,
-                        size: 17,
-                        color: _kCardText,
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(
+                            active
+                                ? Icons.sports_martial_arts_rounded
+                                : Icons.lock_outline,
+                            size: 16,
+                            color: _kCardText,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            label,
+                            style: CaveTextStyle.title(
+                              color: _kCardText,
+                              size: 13,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        label,
-                        style: CaveTextStyle.title(
-                          color: _kCardText,
-                          size: 13,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
           ),
         ),

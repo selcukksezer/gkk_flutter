@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
+import '../../components/common/reward_magnet_overlay.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/utils/captcha_guard.dart';
@@ -20,6 +21,7 @@ import '../../theme/app_colors.dart';
 import '../dungeon/widgets/dungeon_battle_effects.dart';
 import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/mekan_design.dart' hide PressableScale;
+import 'widgets/mekan_pit_arena_stage.dart';
 
 /// Args for [MekanArenaBattleScreen].
 class MekanArenaBattleArgs {
@@ -224,6 +226,14 @@ class _MekanArenaBattleScreenState extends ConsumerState<MekanArenaBattleScreen>
         _logIndex = _battleLog.length - 1;
         _phase = won ? 'success' : 'failure';
       });
+      if (won && mounted) {
+        final int wonGold = (res['net_win'] as num?)?.toInt() ?? args.wager;
+        RewardMagnetOverlay.burstToTopWallet(
+          context,
+          kind: RewardMagnetKind.gold,
+          label: '+${formatCompactGold(wonGold)} 🪙',
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       if (CaptchaGuard.isCaptchaRequired(e)) {
@@ -371,9 +381,17 @@ class _MekanArenaBattleScreenState extends ConsumerState<MekanArenaBattleScreen>
           onComplete: _startBattle,
         );
       case 'fighting':
+        final String pCls = switch (profile?.characterClass) {
+          CharacterClass.shadow => 'golge',
+          CharacterClass.alchemist => 'simyaci',
+          _ => 'savasci',
+        };
         return _ArenaFightingView(
           ambient: _ambient,
           playerAsset: _characterAsset,
+          playerName: playerName.isEmpty ? 'SEN' : playerName,
+          playerClassKey: pCls,
+          wagerGold: args.wager,
           opponentName: args.opponent.username,
           logLines: _battleLog.take(_logIndex + 1).toList(),
         );
@@ -980,12 +998,18 @@ class _ArenaFightingView extends StatelessWidget {
   const _ArenaFightingView({
     required this.ambient,
     required this.playerAsset,
+    required this.playerName,
+    required this.playerClassKey,
+    required this.wagerGold,
     required this.opponentName,
     required this.logLines,
   });
 
   final AnimationController ambient;
   final String playerAsset;
+  final String playerName;
+  final String playerClassKey;
+  final int wagerGold;
   final String opponentName;
   final List<String> logLines;
 
@@ -994,7 +1018,16 @@ class _ArenaFightingView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
+        MekanPitArenaStage(
+          playerName: playerName,
+          opponentName: opponentName,
+          playerClassKey: playerClassKey,
+          wagerGold: wagerGold,
+          exchangeStep: logLines.length,
+          height: 210,
+        ),
+        const SizedBox(height: 12),
         AnimatedBuilder(
           animation: ambient,
           builder: (_, __) {

@@ -49,7 +49,17 @@ class ItemIconResolver {
       icon = icon.substring(1);
     }
     if (icon.startsWith('assets/icons/')) {
-      return icon.replaceFirst('assets/icons/', 'assets/items/');
+      icon = icon.replaceFirst('assets/icons/', 'assets/items/');
+    } else if (icon.startsWith('icons/')) {
+      icon = 'assets/items/${icon.substring('icons/'.length)}';
+    } else if (icon.startsWith('items/')) {
+      icon = 'assets/$icon';
+    }
+    final String lower = icon.toLowerCase();
+    if (lower.startsWith('assets/items/weapons/') &&
+        (lower.endsWith('.jpeg') || lower.endsWith('.jpg'))) {
+      final int dot = icon.lastIndexOf('.');
+      return '${icon.substring(0, dot)}.png';
     }
     return icon;
   }

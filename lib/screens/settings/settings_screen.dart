@@ -14,11 +14,13 @@ import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/app_haptics.dart';
 import '../../core/services/game_notification_scheduler.dart';
+import '../../core/services/graphics_quality_service.dart';
 import '../../core/services/local_notification_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../l10n/l10n.dart';
 import '../../models/player_model.dart';
 import '../../providers/app_settings_provider.dart';
+import '../../providers/graphics_quality_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/policy_provider.dart';
@@ -148,47 +150,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   SettingsStagger(
                     index: 1,
                     reduceMotion: settings.reduceMotion,
-                    child: _AudioSection(settings: settings),
+                    child: const _GraphicsPerformanceSection(),
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
                     index: 2,
                     reduceMotion: settings.reduceMotion,
-                    child: _GameplaySection(settings: settings),
+                    child: _AudioSection(settings: settings),
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
                     index: 3,
                     reduceMotion: settings.reduceMotion,
-                    child: _NotificationsSection(settings: settings),
+                    child: _GameplaySection(settings: settings),
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
                     index: 4,
                     reduceMotion: settings.reduceMotion,
-                    child: _LanguageSection(languageCode: languageCode),
+                    child: _NotificationsSection(settings: settings),
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
                     index: 5,
                     reduceMotion: settings.reduceMotion,
-                    child: const _SupportSection(),
+                    child: _LanguageSection(languageCode: languageCode),
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
                     index: 6,
                     reduceMotion: settings.reduceMotion,
-                    child: const _LegalSection(),
+                    child: const _SupportSection(),
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
                     index: 7,
                     reduceMotion: settings.reduceMotion,
-                    child: _DisplayNameInfoSection(profile: profile),
+                    child: const _LegalSection(),
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
                     index: 8,
+                    reduceMotion: settings.reduceMotion,
+                    child: _DisplayNameInfoSection(profile: profile),
+                  ),
+                  const SizedBox(height: 14),
+                  SettingsStagger(
+                    index: 9,
                     reduceMotion: settings.reduceMotion,
                     child: _AccountSection(
                       onLogout: _logout,
@@ -197,7 +205,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 14),
                   SettingsStagger(
-                    index: 9,
+                    index: 10,
                     reduceMotion: settings.reduceMotion,
                     child: const _AboutSection(),
                   ),
@@ -360,6 +368,206 @@ class _Pill extends StatelessWidget {
           color: color,
           fontSize: 10,
           letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+}
+
+class _GraphicsPerformanceSection extends ConsumerWidget {
+  const _GraphicsPerformanceSection();
+
+  Color _accentForTier(GraphicsQualityTier tier) => switch (tier) {
+        GraphicsQualityTier.low => SettingsPalette.neon,
+        GraphicsQualityTier.medium => AppColors.accentCyan,
+        GraphicsQualityTier.high => SettingsPalette.gold,
+        GraphicsQualityTier.ultra => SettingsPalette.ruby,
+      };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final GraphicsQualityState gState = ref.watch(graphicsQualityProvider);
+    final GraphicsQualityNotifier notifier =
+        ref.read(graphicsQualityProvider.notifier);
+    final GraphicsProfile prof = gState.profile;
+    final DeviceHardwareReport hw = gState.hardwareReport;
+    final Color activeAccent = _accentForTier(prof.tier);
+
+    const List<(GraphicsPreference, String, IconData)> presets =
+        <(GraphicsPreference, String, IconData)>[
+      (GraphicsPreference.auto, 'Otomatik', Icons.auto_awesome_rounded),
+      (GraphicsPreference.low, 'Düşük', Icons.bolt_rounded),
+      (GraphicsPreference.medium, 'Orta', Icons.speed_rounded),
+      (GraphicsPreference.high, 'Yüksek', Icons.high_quality_rounded),
+      (GraphicsPreference.ultra, 'Ultra', Icons.diamond_rounded),
+    ];
+
+    return SettingsGlassCard(
+      key: const Key('settings_graphics_section'),
+      accent: activeAccent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SettingsSectionHeader(
+            icon: Icons.tune_rounded,
+            title: 'Grafik ve Performans',
+            subtitle:
+                'Düşük donanımlı telefonlar dahil her cihaza göre otomatik veya manuel kalite ayarı',
+            accent: activeAccent,
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+            decoration: BoxDecoration(
+              color: SettingsPalette.obsidian.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                color: activeAccent.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.memory_rounded,
+                      size: 14,
+                      color: activeAccent,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Aktif Kademe: ${prof.tier.shortLabelTr.toUpperCase()} • ~${prof.estimatedFps} FPS',
+                        style: AppTextStyles.captionBold.copyWith(
+                          color: SettingsPalette.textHi,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  hw.summaryTr,
+                  style: AppTextStyles.caption.copyWith(
+                    color: SettingsPalette.titanium,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: <Widget>[
+              for (final (
+                    GraphicsPreference mode,
+                    String label,
+                    IconData icon,
+                  ) in presets)
+                _GraphicsPresetChip(
+                  key: Key('settings_graphics_chip_${mode.name}'),
+                  label: mode == GraphicsPreference.auto
+                      ? '$label (${hw.recommendedTier.shortLabelTr})'
+                      : label,
+                  icon: icon,
+                  selected: prof.preference == mode,
+                  accent: activeAccent,
+                  onTap: () => notifier.setPreference(mode),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            prof.tier.subtitleTr,
+            style: AppTextStyles.caption.copyWith(
+              color: SettingsPalette.textMid,
+              fontSize: 11,
+              height: 1.32,
+            ),
+          ),
+          if (prof.autoDowngraded) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              'Otomatik koruma: Cihazda kare gecikmesi algılandığı için "${prof.tier.shortLabelTr}" kademesi etkinleştirildi.',
+              style: AppTextStyles.captionBold.copyWith(
+                color: SettingsPalette.gold,
+                fontSize: 10.5,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 14),
+          SettingsToggleRow(
+            title: 'Canlı FPS Sayacını Göster',
+            subtitle: 'Sol altta anlık FPS ve aktif grafik kademesini göster',
+            icon: Icons.monitor_heart_rounded,
+            value: prof.showFpsOverlay,
+            onChanged: (bool v) => notifier.setShowFpsOverlay(v),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GraphicsPresetChip extends StatelessWidget {
+  const _GraphicsPresetChip({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsPressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(11),
+          color: selected
+              ? accent.withValues(alpha: 0.20)
+              : SettingsPalette.obsidian.withValues(alpha: 0.72),
+          border: Border.all(
+            color: selected
+                ? accent
+                : Colors.white.withValues(alpha: 0.10),
+            width: selected ? 1.35 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              icon,
+              size: 14,
+              color: selected ? accent : SettingsPalette.titanium,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: AppTextStyles.captionBold.copyWith(
+                color: selected
+                    ? SettingsPalette.textHi
+                    : SettingsPalette.titanium,
+                fontSize: 11,
+              ),
+            ),
+          ],
         ),
       ),
     );

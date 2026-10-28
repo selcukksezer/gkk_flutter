@@ -124,6 +124,50 @@ class _WardPanelState extends State<WardPanel>
     _scrollChatToEnd();
   }
 
+  Future<Set<String>?> _fetchOnlineWardUserIds() async {
+    if (!SupabaseService.isInitialized) return null;
+    try {
+      final dynamic rpc = await SupabaseService.client
+          .rpc(
+            'get_online_ward_players',
+            params: <String, dynamic>{'p_ward_type': widget.wardType},
+          )
+          .timeout(const Duration(seconds: 5));
+      if (rpc is Map && rpc['success'] == true && rpc['entries'] is List) {
+        return (rpc['entries'] as List<dynamic>)
+            .whereType<Map<dynamic, dynamic>>()
+            .map((Map<dynamic, dynamic> e) => (e['user_id'] ?? '').toString())
+            .where((String id) => id.isNotEmpty)
+            .toSet();
+      }
+    } catch (_) {}
+
+    try {
+      final DateTime nowUtc = DateTime.now().toUtc();
+      final String untilCol =
+          widget.wardType == 'hospital' ? 'hospital_until' : 'prison_until';
+      final dynamic rows = await SupabaseService.client
+          .from('users')
+          .select('id')
+          .eq('is_online', true)
+          .gt(untilCol, nowUtc.toIso8601String())
+          .gt(
+            'last_active_at',
+            nowUtc.subtract(const Duration(minutes: 5)).toIso8601String(),
+          )
+          .limit(50)
+          .timeout(const Duration(seconds: 5));
+      if (rows is List) {
+        return rows
+            .whereType<Map<dynamic, dynamic>>()
+            .map((Map<dynamic, dynamic> r) => (r['id'] ?? '').toString())
+            .where((String id) => id.isNotEmpty)
+            .toSet();
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> _refresh() async {
     setState(() => _loading = true);
     // Parallel so chat failure cannot block board hydrate.
@@ -135,11 +179,13 @@ class _WardPanelState extends State<WardPanel>
         'p_ward_type': widget.wardType,
         'p_limit': 40,
       }),
+      _fetchOnlineWardUserIds(),
     ]);
     if (!mounted) return;
 
     final Object? board = results[0];
     final Object? chat = results[1];
+    final Set<String>? onlineIds = results[2] as Set<String>?;
 
     String? boardError;
     String? chatError;
@@ -151,12 +197,20 @@ class _WardPanelState extends State<WardPanel>
 
     if (board is Map && board['success'] == true) {
       final dynamic raw = board['entries'];
-      entries = raw is List
+      final List<Map<String, dynamic>> parsedEntries = raw is List
           ? raw
               .whereType<Map>()
               .map((Map e) => Map<String, dynamic>.from(e))
               .toList()
           : <Map<String, dynamic>>[];
+      entries = parsedEntries.where((Map<String, dynamic> e) {
+        if (e['is_online'] == false) return false;
+        if (e['is_online'] == true) return true;
+        if (onlineIds != null) {
+          return onlineIds.contains((e['user_id'] ?? '').toString());
+        }
+        return false;
+      }).toList();
       self = board['self'] is Map
           ? Map<String, dynamic>.from(board['self'] as Map)
           : null;
@@ -411,7 +465,9 @@ class _WardPanelState extends State<WardPanel>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    hospital ? 'Koğuş · Hastane' : 'Koğuş · Hapishane',
+                    hospital
+                        ? 'Koğuş · Hastane (Çevrimiçi)'
+                        : 'Koğuş · Hapishane (Çevrimiçi)',
                     style: TextStyle(
                       color: widget.accent,
                       fontWeight: FontWeight.w900,
@@ -534,7 +590,7 @@ class _WardPanelState extends State<WardPanel>
                 ),
                 Switch.adaptive(
                   value: _friendsOptIn,
-                  activeThumbColor: widget.accent,
+                  activeColor: widget.accent,
                   onChanged: (bool v) => _saveVisibility(friends: v),
                 ),
                 const Spacer(),
@@ -548,7 +604,7 @@ class _WardPanelState extends State<WardPanel>
                 ),
                 Switch.adaptive(
                   value: _showOnCity,
-                  activeThumbColor: widget.accent,
+                  activeColor: widget.accent,
                   onChanged: (bool v) => _saveVisibility(city: v),
                 ),
               ],

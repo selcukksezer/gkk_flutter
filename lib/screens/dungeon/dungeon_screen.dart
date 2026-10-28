@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +32,7 @@ import 'widgets/dungeon_loot_dialog.dart';
 import 'widgets/dungeon_restriction_strip.dart';
 import 'widgets/dungeon_state_widgets.dart';
 import 'widgets/dungeon_siege_panel.dart';
+import 'widgets/dungeon_zone_3d_diorama.dart';
 import 'widgets/dungeon_zone_tab_bar.dart';
 import 'widgets/featured_cave_dungeon_card.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
@@ -476,9 +477,108 @@ class _DungeonScreenState extends ConsumerState<DungeonScreen>
                                           context,
                                           const EdgeInsets.fromLTRB(14, 0, 14, 24),
                                         ),
-                                        itemCount: filtered.length,
+                                        itemCount: filtered.length + 1,
                                         itemBuilder: (BuildContext ctx, int i) {
-                                          final DungeonData d = filtered[i];
+                                          if (i == 0) {
+                                            final int clearedCount = filtered
+                                                .where(
+                                                  (DungeonData d) =>
+                                                      d.playerStats
+                                                          ?.hasFirstClear ??
+                                                      false,
+                                                )
+                                                .length;
+                                            DungeonData? recommended;
+                                            int? recChance;
+                                            bool recCanEnter = false;
+                                            for (final DungeonData cand
+                                                in filtered) {
+                                              final DungeonZone? cz =
+                                                  zoneDataFor(
+                                                zoneForDungeon(cand),
+                                              );
+                                              final bool unlocked = cz ==
+                                                      null ||
+                                                  isZoneUnlockedForLevel(
+                                                    cz,
+                                                    profile?.level ?? 1,
+                                                  );
+                                              if (!unlocked) continue;
+                                              final int cReq =
+                                                  cand.powerRequirement ??
+                                                      (cand.requiredLevel *
+                                                          500);
+                                              final int pct = profile != null
+                                                  ? computeDungeonSuccessPercent(
+                                                      profile: profile,
+                                                      dungeonPowerRequirement:
+                                                          cReq,
+                                                      equippedItems:
+                                                          inventoryState
+                                                              .equippedItems
+                                                              .values,
+                                                    )
+                                                  : 75;
+                                              if (pct >= 55) {
+                                                recommended = cand;
+                                                recChance = pct;
+                                                recCanEnter = !isRestricted &&
+                                                    profile != null &&
+                                                    profile.energy >=
+                                                        cand.energyCost;
+                                              }
+                                            }
+                                            recommended ??= filtered.first;
+                                            if (recChance == null) {
+                                              final int fReq = recommended
+                                                      .powerRequirement ??
+                                                  (recommended.requiredLevel *
+                                                      500);
+                                              recChance = profile != null
+                                                  ? computeDungeonSuccessPercent(
+                                                      profile: profile,
+                                                      dungeonPowerRequirement:
+                                                          fReq,
+                                                      equippedItems:
+                                                          inventoryState
+                                                              .equippedItems
+                                                              .values,
+                                                    )
+                                                  : 60;
+                                              final DungeonZone? fz =
+                                                  zoneDataFor(
+                                                zoneForDungeon(recommended),
+                                              );
+                                              recCanEnter = !isRestricted &&
+                                                  profile != null &&
+                                                  (fz == null ||
+                                                      isZoneUnlockedForLevel(
+                                                        fz,
+                                                        profile.level,
+                                                      )) &&
+                                                  profile.energy >=
+                                                      recommended.energyCost;
+                                            }
+                                            final DungeonData targetRec =
+                                                recommended;
+                                            return DungeonZone3dDiorama(
+                                              selectedZone: currentZone,
+                                              dungeons: filtered,
+                                              recommendedDungeon: targetRec,
+                                              recommendedSuccessPct: recChance,
+                                              canEnterRecommended:
+                                                  recCanEnter &&
+                                                      !dungeonState.entering,
+                                              clearedCount: clearedCount,
+                                              totalCount: filtered.length,
+                                              characterClass:
+                                                  profile?.characterClass,
+                                              playerPower: playerTotalPower,
+                                              onQuickEnterRecommended: () =>
+                                                  _enterDungeon(targetRec),
+                                            );
+                                          }
+                                          final DungeonData d = filtered[i - 1];
                                           final bool isTutorialTarget =
                                               _isTutorialTargetDungeon(
                                             d,

@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/services/supabase_service.dart';
+import '../services/supabase_service.dart';
 import 'tutorial_controller.dart';
 import 'tutorial_features.dart';
 import 'tutorial_navigation.dart';
@@ -36,11 +36,26 @@ class _TutorialHostState extends ConsumerState<TutorialHost> {
   void initState() {
     super.initState();
     TutorialNavigationBridge.register(_navigateToRoute);
-    _lastAuthId = SupabaseService.client.auth.currentUser?.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_bootstrapTutorial());
     });
-    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen(
+    if (SupabaseService.isInitialized) {
+      _bindSupabaseAuth();
+    } else if (SupabaseService.isConfigured) {
+      unawaited(
+        SupabaseService.whenInitialized.then((_) {
+          if (!mounted) return;
+          _bindSupabaseAuth();
+          unawaited(_bootstrapTutorial(force: true));
+        }),
+      );
+    }
+  }
+
+  void _bindSupabaseAuth() {
+    if (!SupabaseService.isInitialized || _authSub != null) return;
+    _lastAuthId = SupabaseService.client.auth.currentUser?.id;
+    _authSub = SupabaseService.client.auth.onAuthStateChange.listen(
       (AuthState data) {
         final String? nextId = data.session?.user.id;
         if (nextId == _lastAuthId) return;

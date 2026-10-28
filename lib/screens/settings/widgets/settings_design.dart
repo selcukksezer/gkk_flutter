@@ -1,9 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
+import '../../../components/common/adaptive_glass_blur.dart';
 import '../../../components/layout/game_screen_background.dart';
 import '../../../core/services/app_haptics.dart';
+import '../../../core/services/graphics_quality_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
 
@@ -85,10 +85,11 @@ class SettingsGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final GraphicsProfile prof = GraphicsQualityService.instance.profile;
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      child: AdaptiveGlassBlur(
+        sigma: 10,
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
@@ -96,12 +97,12 @@ class SettingsGlassCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: <Color>[
-                SettingsPalette.navy.withValues(alpha: 0.92),
-                SettingsPalette.void_.withValues(alpha: 0.96),
+                SettingsPalette.navy.withValues(alpha: 0.94),
+                SettingsPalette.void_.withValues(alpha: 0.98),
               ],
             ),
             border: Border.all(color: accent.withValues(alpha: 0.32)),
-            boxShadow: glow
+            boxShadow: (glow && prof.enableHeavyShadows)
                 ? <BoxShadow>[
                     BoxShadow(
                       color: accent.withValues(alpha: 0.18),
@@ -113,11 +114,12 @@ class SettingsGlassCard extends StatelessWidget {
           ),
           child: Stack(
             children: <Widget>[
-              const Positioned.fill(
-                child: CustomPaint(
-                  painter: DotGridPainter(spacing: 14, dotOpacity: 0.06),
+              if (prof.enableDotGridOverlay)
+                const Positioned.fill(
+                  child: CustomPaint(
+                    painter: DotGridPainter(spacing: 14, dotOpacity: 0.06),
+                  ),
                 ),
-              ),
               Padding(padding: padding, child: child),
             ],
           ),

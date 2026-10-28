@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 
 import '../errors/app_exception.dart';
@@ -9,6 +7,29 @@ import 'supabase_service.dart';
 /// Client-side single-device session token synced with [public.users.session_epoch].
 abstract final class DeviceSessionService {
   static const String _epochKey = 'gkk_session_epoch';
+  static int _activeAuthHandshakes = 0;
+  static DateTime? _lastClaimFinishedAt;
+
+  /// True while `login` / `register` / `signInWithApple` is performing
+  /// `signIn` + `claim_device_session`, or during the brief settle window
+  /// right after claiming so Realtime self-echoes never race with `saveEpoch`.
+  static bool get isHandshakeInFlight {
+    if (_activeAuthHandshakes > 0) return true;
+    final DateTime? finished = _lastClaimFinishedAt;
+    if (finished == null) return false;
+    return DateTime.now().difference(finished).inMilliseconds < 2000;
+  }
+
+  /// Guards an auth sign-in + device-claim flow against pre-claim verification races.
+  static Future<T> runAuthHandshake<T>(Future<T> Function() action) async {
+    _activeAuthHandshakes++;
+    try {
+      return await action();
+    } finally {
+      _activeAuthHandshakes =
+          (_activeAuthHandshakes - 1).clamp(0, 1000000);
+    }
+  }
 
   static Future<int> localEpoch() async {
     final int? value = await DeviceIdentityService.readInt(_epochKey);
@@ -36,26 +57,36 @@ abstract final class DeviceSessionService {
     }
     final String deviceId = await DeviceIdentityService.currentId();
     final int epoch = await localEpoch();
-    SupabaseService.client.headers['x-gkk-device-id'] = deviceId;
-    SupabaseService.client.headers['x-gkk-session-epoch'] = epoch.toString();
+    final Map<String, String> updated = Map<String, String>.from(
+      SupabaseService.client.headers,
+    );
+    updated['x-gkk-device-id'] = deviceId;
+    updated['x-gkk-session-epoch'] = epoch.toString();
+    SupabaseService.client.headers = updated;
   }
 
   static Future<void> clearRequestHeaders() async {
     if (!SupabaseService.isConfigured || !SupabaseService.isInitialized) {
       return;
     }
-    SupabaseService.client.headers.remove('x-gkk-device-id');
-    SupabaseService.client.headers.remove('x-gkk-session-epoch');
+    final Map<String, String> updated = Map<String, String>.from(
+      SupabaseService.client.headers,
+    );
+    updated.remove('x-gkk-device-id');
+    updated.remove('x-gkk-session-epoch');
+    SupabaseService.client.headers = updated;
   }
 
   static String platformLabel() {
     if (kIsWeb) return 'web';
-    if (Platform.isIOS) return 'ios';
-    if (Platform.isAndroid) return 'android';
-    if (Platform.isMacOS) return 'macos';
-    if (Platform.isWindows) return 'windows';
-    if (Platform.isLinux) return 'linux';
-    return 'mobile';
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'ios',
+      TargetPlatform.android => 'android',
+      TargetPlatform.macOS => 'macos',
+      TargetPlatform.windows => 'windows',
+      TargetPlatform.linux => 'linux',
+      TargetPlatform.fuchsia => 'mobile',
+    };
   }
 
   /// After password login: claim this device + bump server epoch.
@@ -79,11 +110,18 @@ abstract final class DeviceSessionService {
     final int epoch = (data['session_epoch'] as num?)?.toInt() ?? 0;
     await saveEpoch(epoch);
     await syncRequestHeaders();
+    _lastClaimFinishedAt = DateTime.now();
     return epoch;
   }
 
   /// Returns false when this install is no longer the active session.
   static Future<DeviceSessionVerifyResult> verifyCurrentDevice() async {
+    if (isHandshakeInFlight) {
+      return const DeviceSessionVerifyResult(
+        valid: true,
+        reason: DeviceSessionReason.ok,
+      );
+    }
     _ensureReady();
     final session = SupabaseService.client.auth.currentSession;
     if (session == null) {

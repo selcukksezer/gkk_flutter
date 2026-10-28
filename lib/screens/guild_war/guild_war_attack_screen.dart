@@ -16,6 +16,7 @@ import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/logout_helper.dart';
+import 'widgets/castle_siege_clash_stage.dart';
 import 'widgets/defense_power_bar.dart';
 import 'widgets/guild_war_design.dart';
 import 'widgets/guild_war_sub_screen_scaffold.dart';
@@ -172,6 +173,14 @@ class _GuildWarAttackScreenState extends ConsumerState<GuildWarAttackScreen> {
                         fontWeight: FontWeight.w800,
                         color: WarPalette.gold,
                       ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    CastleSiegeClashStage(
+                      territoryName: p.territoryName,
+                      attackerGuildName: p.attackerGuild.name,
+                      defenderGuildName: p.defenderGuild?.name ?? 'Kale Muhafızları',
+                      winChancePct: p.winChancePct,
+                      isAttacking: _attacking,
                     ),
                     const SizedBox(height: AppSpacing.base),
                     TerritoryGuildDuelPanel(

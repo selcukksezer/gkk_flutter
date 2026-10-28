@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../core/services/device_identity_service.dart';
+import '../../core/services/saved_credentials_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/auth_validators.dart';
 import '../../l10n/l10n.dart';
@@ -120,7 +122,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _communityDoc = doc);
 
-    final CommunityRulesDecision? decision = await showRegisterCommunityRulesDialog(
+    final CommunityRulesDecision? decision =
+        await showRegisterCommunityRulesDialog(
       context,
       document: doc,
     );
@@ -128,7 +131,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _communityDecision = decision);
     if (decision == CommunityRulesDecision.rejected) {
-      AppMessenger.showError(context, 'Kayıt için Topluluk Kurallarını kabul etmelisin.');
+      AppMessenger.showError(
+        context,
+        'Kayıt için Topluluk Kurallarını kabul etmelisin.',
+      );
     }
   }
 
@@ -139,7 +145,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _communityDoc = doc);
 
-    final CommunityRulesDecision? decision = await showRegisterCommunityRulesDialog(
+    final CommunityRulesDecision? decision =
+        await showRegisterCommunityRulesDialog(
       context,
       document: doc,
     );
@@ -147,7 +154,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _communityDecision = decision);
     if (decision == CommunityRulesDecision.rejected) {
-      AppMessenger.showError(context, 'Kayıt için Topluluk Kurallarını kabul etmelisin.');
+      AppMessenger.showError(
+        context,
+        'Kayıt için Topluluk Kurallarını kabul etmelisin.',
+      );
     }
   }
 
@@ -280,7 +290,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAndShowCommunityRules());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _loadAndShowCommunityRules(),
+    );
 
     ref.listenManual<AuthState>(authProvider, (
       AuthState? previous,
@@ -289,6 +301,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (!mounted) return;
 
       if (next.status == AuthStatus.pendingEmailConfirmation) {
+        TextInput.finishAutofillContext(shouldSave: true);
+        unawaited(
+          SavedCredentialsService.save(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            username: _usernameController.text.trim(),
+            rememberMe: true,
+          ),
+        );
         final String email = next.pendingEmail ??
             next.user?.email ??
             _emailController.text.trim();
@@ -299,6 +320,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
 
       if (next.status == AuthStatus.authenticated) {
+        TextInput.finishAutofillContext(shouldSave: true);
+        unawaited(
+          SavedCredentialsService.save(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            username: _usernameController.text.trim(),
+            rememberMe: true,
+          ),
+        );
         _onRegistered();
         return;
       }
@@ -328,106 +358,123 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         onPressed: isLoading ? null : _goToLogin,
         accent: AuthDesign.gold,
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            AuthField(
-              controller: _emailController,
-              label: l10n.auth_email,
-              icon: Icons.alternate_email_rounded,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              autofillHints: const <String>[AutofillHints.email],
-              autocorrect: false,
-              accent: AuthDesign.fuchsia,
-              validator: (String? value) => AuthValidators.validateEmail(value, l10n),
-            ),
-            const SizedBox(height: AppSpacing.base),
-            AuthField(
-              controller: _usernameController,
-              label: l10n.auth_username,
-              icon: Icons.person_outline_rounded,
-              textInputAction: TextInputAction.next,
-              autofillHints: const <String>[AutofillHints.username],
-              autocorrect: false,
-              accent: AuthDesign.fuchsia,
-              onChanged: _onUsernameChanged,
-              validator: (String? value) {
-                final String? base = AuthValidators.validateUsername(value, l10n);
-                if (base != null) return base;
-                if (_usernameTaken) return l10n.auth_username_taken;
-                return null;
-              },
-            ),
-            if (_checkingUsername || _usernameTaken) ...<Widget>[
-              const SizedBox(height: 6),
-              Text(
-                _usernameTaken
-                    ? l10n.auth_username_taken
-                    : '...',
-                style: AuthDesign.bodyMuted(
-                  color: _usernameTaken ? AuthDesign.fuchsia : AuthDesign.titanium,
+      child: AutofillGroup(
+        onDisposeAction: AutofillContextAction.cancel,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              AuthField(
+                controller: _emailController,
+                label: l10n.auth_email,
+                icon: Icons.alternate_email_rounded,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const <String>[AutofillHints.email],
+                autocorrect: false,
+                accent: AuthDesign.fuchsia,
+                validator: (String? value) =>
+                    AuthValidators.validateEmail(value, l10n),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              AuthField(
+                controller: _usernameController,
+                label: l10n.auth_username,
+                icon: Icons.person_outline_rounded,
+                textInputAction: TextInputAction.next,
+                autofillHints: const <String>[
+                  AutofillHints.newUsername,
+                  AutofillHints.username,
+                ],
+                autocorrect: false,
+                accent: AuthDesign.fuchsia,
+                onChanged: _onUsernameChanged,
+                validator: (String? value) {
+                  final String? base =
+                      AuthValidators.validateUsername(value, l10n);
+                  if (base != null) return base;
+                  if (_usernameTaken) return l10n.auth_username_taken;
+                  return null;
+                },
+              ),
+              if (_checkingUsername || _usernameTaken) ...<Widget>[
+                const SizedBox(height: 6),
+                Text(
+                  _usernameTaken ? l10n.auth_username_taken : '...',
+                  style: AuthDesign.bodyMuted(
+                    color:
+                        _usernameTaken ? AuthDesign.fuchsia : AuthDesign.titanium,
+                  ),
                 ),
+              ],
+              const SizedBox(height: AppSpacing.base),
+              AuthField(
+                controller: _passwordController,
+                label: l10n.auth_password,
+                icon: Icons.lock_outline_rounded,
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.next,
+                autofillHints: const <String>[AutofillHints.newPassword],
+                autocorrect: false,
+                enableSuggestions: false,
+                accent: AuthDesign.fuchsia,
+                validator: (String? value) =>
+                    AuthValidators.validatePassword(value, l10n),
+                suffix: IconButton(
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  tooltip: _obscurePassword
+                      ? l10n.auth_toggle_password_show
+                      : l10n.auth_toggle_password_hide,
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: AuthDesign.titanium,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              AuthField(
+                controller: _referralController,
+                label: l10n.auth_referral_code,
+                icon: Icons.card_giftcard_outlined,
+                textInputAction: TextInputAction.done,
+                autocorrect: false,
+                accent: AuthDesign.gold,
+                onChanged: _onReferralChanged,
+                onFieldSubmitted: (_) {
+                  if (!isLoading && _canRegister) _submitRegister();
+                },
+              ),
+              const SizedBox(height: 6),
+              _referralHint(l10n),
+              const SizedBox(height: AppSpacing.base),
+              RegisterLegalConsent(
+                termsAccepted: _termsAccepted,
+                privacyAccepted: _privacyAccepted,
+                onTermsChanged: (bool? v) =>
+                    setState(() => _termsAccepted = v == true),
+                onPrivacyChanged: (bool? v) =>
+                    setState(() => _privacyAccepted = v == true),
+              ),
+              CommunityRulesStatusBanner(
+                decision: _communityDecision,
+                onReviewAgain: _reviewCommunityRules,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AuthGoldButton(
+                label: isLoading
+                    ? l10n.auth_register_loading
+                    : l10n.auth_register_button,
+                loading: isLoading,
+                icon: Icons.person_add_rounded,
+                onPressed: isLoading || !_canRegister ? null : _submitRegister,
               ),
             ],
-            const SizedBox(height: AppSpacing.base),
-            AuthField(
-              controller: _passwordController,
-              label: l10n.auth_password,
-              icon: Icons.lock_outline_rounded,
-              obscureText: _obscurePassword,
-              textInputAction: TextInputAction.next,
-              autofillHints: const <String>[AutofillHints.newPassword],
-              autocorrect: false,
-              enableSuggestions: false,
-              accent: AuthDesign.fuchsia,
-              validator: (String? value) => AuthValidators.validatePassword(value, l10n),
-              suffix: IconButton(
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                tooltip: _obscurePassword ? l10n.auth_toggle_password_show : l10n.auth_toggle_password_hide,
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: AuthDesign.titanium,
-                  size: 20,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.base),
-            AuthField(
-              controller: _referralController,
-              label: l10n.auth_referral_code,
-              icon: Icons.card_giftcard_outlined,
-              textInputAction: TextInputAction.done,
-              autocorrect: false,
-              accent: AuthDesign.gold,
-              onChanged: _onReferralChanged,
-              onFieldSubmitted: (_) {
-                if (!isLoading && _canRegister) _submitRegister();
-              },
-            ),
-            const SizedBox(height: 6),
-            _referralHint(l10n),
-            const SizedBox(height: AppSpacing.base),
-            RegisterLegalConsent(
-              termsAccepted: _termsAccepted,
-              privacyAccepted: _privacyAccepted,
-              onTermsChanged: (bool? v) => setState(() => _termsAccepted = v == true),
-              onPrivacyChanged: (bool? v) => setState(() => _privacyAccepted = v == true),
-            ),
-            CommunityRulesStatusBanner(
-              decision: _communityDecision,
-              onReviewAgain: _reviewCommunityRules,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            AuthGoldButton(
-              label: isLoading ? l10n.auth_register_loading : l10n.auth_register_button,
-              loading: isLoading,
-              icon: Icons.person_add_rounded,
-              onPressed: isLoading || !_canRegister ? null : _submitRegister,
-            ),
-          ],
+          ),
         ),
       ),
     );

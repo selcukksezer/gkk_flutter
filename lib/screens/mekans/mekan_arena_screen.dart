@@ -19,6 +19,7 @@ import 'widgets/mekan_arena_bet_sheet.dart';
 import 'widgets/mekan_arena_fighter_card.dart';
 import 'widgets/mekan_arena_rank_row.dart';
 import 'widgets/mekan_design.dart';
+import 'widgets/mekan_pit_arena_stage.dart';
 import 'widgets/mekan_scaffold.dart';
 import 'mekan_arena_battle_screen.dart';
 
@@ -280,6 +281,17 @@ class _MekanArenaScreenState extends ConsumerState<MekanArenaScreen> with Single
                   : Column(
                       children: <Widget>[
                         _arenaHeader(energy),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                          child: MekanPitArenaStage(
+                            playerName: profile?.username ?? 'Savaşçı',
+                            opponentName: _opponents.isNotEmpty
+                                ? _opponents.first.username
+                                : 'Kafes Şampiyonu',
+                            height: 158,
+                            previewMode: true,
+                          ),
+                        ),
                         GkkTabBar(
                           controller: _tab,
                           isScrollable: false,

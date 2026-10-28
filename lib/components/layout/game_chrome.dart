@@ -670,12 +670,14 @@ class GameBottomBar extends ConsumerStatefulWidget {
     this.leadingOverlay,
     this.onLogout,
     this.navigationLocked = false,
+    this.showChatFab = true,
   });
 
   final String currentRoute;
   final Widget? leadingOverlay;
   final Future<void> Function()? onLogout;
   final bool navigationLocked;
+  final bool showChatFab;
 
   @override
   ConsumerState<GameBottomBar> createState() => _GameBottomBarState();
@@ -836,7 +838,9 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(12, 6, 12, 10),
       child: SizedBox(
-        height: kGameBottomBarStackHeight,
+        height: (widget.showChatFab || leadingOverlay != null)
+            ? kGameBottomBarStackHeight
+            : kGameBottomNavPillHeight,
         child: Stack(
           clipBehavior: Clip.none,
           fit: StackFit.expand,
@@ -1078,7 +1082,7 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                   bottom: kGameChatFabStackBottom,
                   child: leadingOverlay,
                 ),
-              if (!hideFabOverlays)
+              if (!hideFabOverlays && widget.showChatFab)
                 const Positioned(
                   right: 6,
                   bottom: kGameChatFabStackBottom,

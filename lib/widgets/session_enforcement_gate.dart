@@ -49,7 +49,16 @@ class _SessionEnforcementGateState extends ConsumerState<SessionEnforcementGate>
   }
 
   Future<void> _bootstrap() async {
-    if (!SupabaseService.isInitialized) return;
+    if (!SupabaseService.isInitialized) {
+      if (SupabaseService.isConfigured) {
+        unawaited(
+          SupabaseService.whenInitialized.then((_) {
+            if (mounted) unawaited(_bootstrap());
+          }),
+        );
+      }
+      return;
+    }
 
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -62,8 +71,16 @@ class _SessionEnforcementGateState extends ConsumerState<SessionEnforcementGate>
         _channel = null;
         return;
       }
-      unawaited(_verifySession(showMessage: false));
+      _kicked = false;
+      _verifyFailures = 0;
       _subscribeRealtime(data.session!.user.id);
+      if (DeviceSessionService.isHandshakeInFlight) {
+        Future<void>.delayed(const Duration(milliseconds: 2200), () {
+          if (mounted) unawaited(_verifySession(showMessage: false));
+        });
+      } else {
+        unawaited(_verifySession(showMessage: false));
+      }
     });
 
     final session = SupabaseService.client.auth.currentSession;
@@ -94,6 +111,7 @@ class _SessionEnforcementGateState extends ConsumerState<SessionEnforcementGate>
 
   Future<void> _verifySession({required bool showMessage}) async {
     if (!mounted || _kicked || _checking) return;
+    if (DeviceSessionService.isHandshakeInFlight) return;
     if (!SupabaseService.isInitialized ||
         SupabaseService.client.auth.currentSession == null) {
       return;
@@ -101,9 +119,16 @@ class _SessionEnforcementGateState extends ConsumerState<SessionEnforcementGate>
 
     _checking = true;
     try {
+      final int epochBefore = await DeviceSessionService.localEpoch();
       final DeviceSessionVerifyResult result =
           await DeviceSessionService.verifyCurrentDevice();
       if (!mounted || result.valid) {
+        _verifyFailures = 0;
+        return;
+      }
+      // Ignore stale verification result if a fresh login handshake completed in the meantime.
+      if (DeviceSessionService.isHandshakeInFlight ||
+          await DeviceSessionService.localEpoch() != epochBefore) {
         _verifyFailures = 0;
         return;
       }

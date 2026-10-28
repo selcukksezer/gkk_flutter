@@ -390,6 +390,21 @@ class AppLocalizationsTr extends AppLocalizations {
       'Apple ile giriş bu cihazda kullanılamıyor.';
 
   @override
+  String get auth_email_or_username => 'E-posta veya Kayıtlı Kullanıcı Adı';
+
+  @override
+  String get auth_remember_me => 'Giriş bilgilerini bu cihazda hatırla';
+
+  @override
+  String get auth_saved_account_label => 'Kayıtlı Hesap';
+
+  @override
+  String get auth_quick_login_cta => 'Tek Tık Giriş';
+
+  @override
+  String get auth_forget_saved_account => 'Kayıtlı hesabı unut';
+
+  @override
   String get auth_first_dungeon_title => 'İlk zindan seni bekliyor';
 
   @override

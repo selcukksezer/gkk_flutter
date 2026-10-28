@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../components/common/adaptive_glass_blur.dart';
 import '../../../core/errors/user_facing_error.dart';
 import '../../../core/utils/combat_restriction.dart';
 import '../../../components/common/app_messenger.dart';
@@ -39,8 +39,8 @@ Future<void> showDungeonSiegePanel({
     backgroundColor: Colors.transparent,
     barrierColor: AppColors.carbonVoid.withValues(alpha: 0.55),
     builder: (BuildContext sheetContext) {
-      return BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      return AdaptiveGlassBlur(
+        sigma: 10,
         child: _DungeonSiegeSheet(dungeon: dungeon),
       );
     },
@@ -174,7 +174,7 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
               if (combatLocked) ...<Widget>[
                 const SizedBox(height: 10),
                 _SiegeWarningBanner(
-                  text: combatBlock ?? 'Hastane/hapisteyken savaşamazsın.',
+                  text: combatBlock,
                   color: SiegePalette.ruby,
                 ),
               ],
@@ -232,7 +232,7 @@ class _DungeonSiegeSheetState extends ConsumerState<_DungeonSiegeSheet> {
                     : ListView.separated(
                         shrinkWrap: true,
                         itemCount: slots.isEmpty ? 1 : slots.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                         itemBuilder: (BuildContext context, int index) {
                           if (slots.isEmpty) {
                             return _SiegeEmptySlots(

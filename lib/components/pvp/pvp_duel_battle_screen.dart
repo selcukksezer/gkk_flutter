@@ -8,6 +8,7 @@ import '../../core/services/supabase_service.dart';
 import '../../providers/pvp_invite_provider.dart';
 import '../common/item_icon_view.dart';
 import '../common/profile_avatar.dart';
+import 'pvp_colosseum_stage.dart';
 
 // ============================================================================
 // PVP DÜELLO SAVAŞ EKRANI
@@ -232,6 +233,10 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
   late List<_DuelHit> _hits;
   bool _flashLeft = false;
   bool _flashRight = false;
+  int _exchangeSeq = 0;
+  bool _leftIsAttacker = false;
+  bool _lastHitCrit = false;
+  int? _lastShownDmg;
 
   final math.Random _rng = math.Random();
 
@@ -396,6 +401,10 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
     final String target =
         hit.targetIsOpponent ? (_opponent?.name ?? 'Rakip') : (_me?.name ?? 'Sen');
     final int shownDmg = (hit.damage * 900 + _rng.nextInt(80)).round();
+    _exchangeSeq++;
+    _leftIsAttacker = !hit.targetIsOpponent;
+    _lastHitCrit = hit.crit;
+    _lastShownDmg = shownDmg;
 
     setState(() {
       if (hit.targetIsOpponent) {
@@ -423,6 +432,79 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
         });
       }
     });
+  }
+
+  void _skipToResult() {
+    _fightTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      if (_iWon) {
+        _hpOpponent = 0;
+      } else {
+        _hpMe = 0;
+      }
+      _phase = _DuelPhase.result;
+    });
+    _resultCtrl.forward(from: 0);
+  }
+
+  Widget _buildColosseumFight() {
+    return Column(
+      key: const ValueKey<String>('colosseum_fight'),
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 12, 4),
+          child: Row(
+            children: <Widget>[
+              const Expanded(
+                child: Text(
+                  '⚔️ KOLEZYUM DÜELLOSU SÜRÜYOR',
+                  style: TextStyle(
+                    color: _kRed,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                key: const Key('pvp_duel_skip_btn'),
+                onPressed: _skipToResult,
+                icon: const Icon(Icons.fast_forward_rounded, size: 15),
+                label: const Text('Atla'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: PvpColosseumStage(
+            height: 176,
+            leftName: _opponent!.name,
+            rightName: _me!.name,
+            leftHp: _hpOpponent,
+            rightHp: _hpMe,
+            leftEnhancement: _opponent!.items.fold<int>(
+              7,
+              (int m, PvpDuelItem e) => math.max(m, e.enhancementLevel),
+            ),
+            rightEnhancement: _me!.items.fold<int>(
+              7,
+              (int m, PvpDuelItem e) => math.max(m, e.enhancementLevel),
+            ),
+            exchangeSeq: _exchangeSeq,
+            leftIsAttacker: _leftIsAttacker,
+            isCritical: _lastHitCrit,
+            damageNumber: _lastShownDmg,
+          ),
+        ),
+        Expanded(child: _buildFight()),
+      ],
+    );
   }
 
   Future<void> _finishFight() async {
@@ -471,7 +553,7 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
                 child: switch (_phase) {
                   _DuelPhase.loading => _buildLoading(),
                   _DuelPhase.intro => _buildIntro(),
-                  _DuelPhase.fight => _buildFight(),
+                  _DuelPhase.fight => _buildColosseumFight(),
                   _DuelPhase.result => _buildResult(),
                 },
               ),

@@ -1,8 +1,13 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../../components/common/item_icon_view.dart';
+import '../../components/common/holo_foil_sheen.dart';
+import '../../components/common/rarity_loot_beam.dart';
+import '../../core/services/game_sfx_service.dart';
+import '../../models/item_model.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -87,6 +92,7 @@ class _LootBoxOpenPageState extends State<LootBoxOpenPage>
     )..addStatusListener((AnimationStatus status) {
         if (status == AnimationStatus.completed && mounted) {
           setState(() => _finished = true);
+          unawaited(GameSfxService.instance.play(GameSfx.legendaryDrop));
         }
       });
 
@@ -292,10 +298,25 @@ class _LootBoxOpenPageState extends State<LootBoxOpenPage>
                                   padding: const EdgeInsets.only(
                                     right: _itemGap,
                                   ),
-                                  child: _LootReelCard(
+                                  child: RarityLootBeamOverlay(
+                                    rarity: hit
+                                        ? RarityParsing.fromValue(
+                                            _reel.items[index].rarity,
+                                          )
+                                        : Rarity.common,
+                                    height: 205,
+                                    width: _itemWidth + 20,
+                                    child: HoloFoilRarityBox(
+                                      rarity: RarityParsing.fromValue(
+                                        _reel.items[index].rarity,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: _LootReelCard(
                                     drop: _reel.items[index],
                                     width: _itemWidth,
-                                    highlighted: hit,
+                                        highlighted: hit,
+                                      ),
+                                    ),
                                   ),
                                 );
                               },

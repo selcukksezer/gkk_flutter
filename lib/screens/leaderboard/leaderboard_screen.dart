@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../components/leaderboard/champions_3d_podium.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../l10n/l10n.dart';
@@ -129,7 +130,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         _filtered.take(3).toList(growable: false);
     final List<LeaderboardEntry> listEntries = searchActive
         ? _filtered
-        : _filtered.skip(3).toList(growable: false);
+        : _filtered.skip(podiumEntries.length).toList(growable: false);
 
     return RefreshIndicator(
       color: AppColors.liquidGold,
@@ -176,8 +177,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   hintText: context.l10n.oyuncu_veya_lonca_ara,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (podiumEntries.length >= 3)
-                  LeaderboardHeroPodium(
+                if (podiumEntries.isNotEmpty)
+                  Champions3dPodium(
                     entries: podiumEntries,
                     categoryKey: boardState.categoryKey,
                     dimmed: searchActive,

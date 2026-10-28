@@ -152,33 +152,42 @@ class AppRoutes {
   static const String notifications = '/notifications';
 }
 
-/// Deduplicates parallel redirect profile lookups during startup.
-Future<Map<String, dynamic>?> _fetchRedirectUserProfile(String authId) {
+/// Deduplicates parallel redirect profile lookups during startup without throwing uncaught async errors.
+Future<({Map<String, dynamic>? profile, bool failed})> _fetchRedirectUserProfile(
+  String authId,
+) {
   if (_redirectProfileInflight != null && _redirectProfileUserId == authId) {
     return _redirectProfileInflight!;
   }
 
   _redirectProfileUserId = authId;
-  _redirectProfileInflight = SupabaseService.client
-      .from('users')
-      .select('character_class, is_banned, ban_reason, banned_until')
-      .eq('auth_id', authId)
-      .maybeSingle()
-      .timeout(const Duration(seconds: 12))
-      .then((dynamic response) {
-        if (response is Map<String, dynamic>) return response;
-        if (response == null) return null;
-        return Map<String, dynamic>.from(response as Map);
-      })
-      .whenComplete(() {
-        _redirectProfileInflight = null;
-        _redirectProfileUserId = null;
-      });
+  _redirectProfileInflight = () async {
+    try {
+      final dynamic response = await SupabaseService.client
+          .from('users')
+          .select('character_class, is_banned, ban_reason, banned_until')
+          .eq('auth_id', authId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 4));
+      if (response == null) {
+        return (profile: null, failed: false);
+      }
+      final Map<String, dynamic> map = response is Map<String, dynamic>
+          ? response
+          : Map<String, dynamic>.from(response as Map);
+      return (profile: map, failed: false);
+    } catch (_) {
+      return (profile: null, failed: true);
+    } finally {
+      _redirectProfileInflight = null;
+      _redirectProfileUserId = null;
+    }
+  }();
 
   return _redirectProfileInflight!;
 }
 
-Future<Map<String, dynamic>?>? _redirectProfileInflight;
+Future<({Map<String, dynamic>? profile, bool failed})>? _redirectProfileInflight;
 String? _redirectProfileUserId;
 
 bool _isActiveAccountBan(Map<String, dynamic>? profile) {
@@ -234,33 +243,35 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
       final bool isOnboardingRoute = path == AppRoutes.characterSelect;
       final currentUser = SupabaseService.client.auth.currentUser;
       if (currentUser != null) {
-        try {
-          final Map<String, dynamic>? profile =
-              await _fetchRedirectUserProfile(currentUser.id);
-          if (_isActiveAccountBan(profile)) {
-            if (path != AppRoutes.banned) {
-              return AppRoutes.banned;
-            }
-            return null;
+        final lookup = await _fetchRedirectUserProfile(currentUser.id);
+        if (lookup.failed) {
+          // Offline/timeout: leave splash/login into home; Home enforces class
+          // gate once playerProvider loads (empty class → character-select).
+          return isAuthEntryRoute ? AppRoutes.home : null;
+        }
+        final Map<String, dynamic>? profile = lookup.profile;
+        if (_isActiveAccountBan(profile)) {
+          if (path != AppRoutes.banned) {
+            return AppRoutes.banned;
           }
-
-          if (path == AppRoutes.banned) {
-            return AppRoutes.home;
-          }
-
-          final String? characterClass = profile?['character_class'] as String?;
-          final bool hasSelectedClass = characterClass != null && characterClass.isNotEmpty;
-
-          if (!hasSelectedClass && !isOnboardingRoute) {
-            return AppRoutes.characterSelect;
-          }
-          if (hasSelectedClass && isOnboardingRoute && !QaFlags.forceCharacterSelectRoute) {
-            return AppRoutes.home;
-          }
-        } catch (e) {
-          // Offline/timeout: stay put. Home also enforces class gate once
-          // playerProvider loads (empty class → character-select).
           return null;
+        }
+
+        if (path == AppRoutes.banned) {
+          return AppRoutes.home;
+        }
+
+        final String? characterClass = profile?['character_class'] as String?;
+        final bool hasSelectedClass =
+            characterClass != null && characterClass.isNotEmpty;
+
+        if (!hasSelectedClass && !isOnboardingRoute) {
+          return AppRoutes.characterSelect;
+        }
+        if (hasSelectedClass &&
+            isOnboardingRoute &&
+            !QaFlags.forceCharacterSelectRoute) {
+          return AppRoutes.home;
         }
       }
 

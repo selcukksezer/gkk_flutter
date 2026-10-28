@@ -233,6 +233,7 @@ class GameNotificationScheduler {
   /// Açılıştan 5 dk önce — opsiyonel Gece Pazarı hatırlatıcısı.
   Future<void> syncNightMarketReminder() async {
     if (!SupabaseService.isInitialized) return;
+    if (SupabaseService.client.auth.currentUser == null) return;
     if (!_notifications.isNightMarketEnabled) {
       await cancelNightMarketReminders();
       return;

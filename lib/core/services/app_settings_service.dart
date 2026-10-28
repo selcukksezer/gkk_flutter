@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'graphics_quality_service.dart';
 import 'music_service.dart';
 
 /// Yerel oyun ayarları — SharedPreferences.
@@ -38,6 +39,7 @@ class AppSettingsService {
     _sfxVolume = (prefs.getDouble(sfxVolumeKey) ?? 0.8).clamp(0.0, 1.0);
     _hapticEnabled = prefs.getBool(hapticKey) ?? true;
     _reduceMotion = prefs.getBool(reduceMotionKey) ?? false;
+    GraphicsQualityService.instance.syncAppReduceMotion(_reduceMotion);
     _loaded = true;
   }
 
@@ -55,6 +57,7 @@ class AppSettingsService {
 
   Future<void> setReduceMotion(bool enabled) async {
     _reduceMotion = enabled;
+    GraphicsQualityService.instance.syncAppReduceMotion(enabled);
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool(reduceMotionKey, enabled);
   }

@@ -28,9 +28,17 @@ class DungeonProgressRow extends StatelessWidget {
       children: <Widget>[
         _chip('${stats.totalAttempts} koşu', accent),
         _chip('%${stats.successRatePercent} başarı', accent),
-        if (stats.hasFirstClear) _chip('İlk geçiş ✓', const Color(0xFFFBBF24)),
+        if (stats.hasFirstClear)
+          _chip(
+            'İlk geçiş',
+            const Color(0xFFFBBF24),
+            icon: Icons.check_rounded,
+          ),
         if (stats.runsSinceBestRarity > 0)
-          _chip('Son epic+: ${stats.runsSinceBestRarity} koşu', const Color(0xFFA855F7)),
+          _chip(
+            'Son epic+: ${stats.runsSinceBestRarity} koşu',
+            const Color(0xFFA855F7),
+          ),
         if (dungeon.isBoss)
           _bossChip(
             'Bugün ${stats.todayBossAttempts}/${dungeon.dailyBossLimit} boss',
@@ -43,7 +51,7 @@ class DungeonProgressRow extends StatelessWidget {
     return _chip(label, const Color(0xFFEF4444));
   }
 
-  Widget _chip(String label, Color color) {
+  Widget _chip(String label, Color color, {IconData? icon}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
@@ -51,14 +59,23 @@ class DungeonProgressRow extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          color: color.withValues(alpha: 0.95),
-          letterSpacing: 0.2,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: color.withValues(alpha: 0.95),
+              letterSpacing: 0.2,
+            ),
+          ),
+          if (icon != null) ...<Widget>[
+            const SizedBox(width: 2),
+            Icon(icon, size: 10.5, color: color.withValues(alpha: 0.95)),
+          ],
+        ],
       ),
     );
   }

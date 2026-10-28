@@ -27,7 +27,13 @@ class GuildWarTabBar extends StatelessWidget {
               children: <Widget>[
                 Text(icons[i], style: const TextStyle(fontSize: 13)),
                 const SizedBox(width: 4),
-                Text(tabs[i]),
+                Flexible(
+                  child: Text(
+                    tabs[i],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),

@@ -214,6 +214,9 @@ class ConnectivityService {
   }
 
   Future<bool> _checkReachable() async {
+    if (kIsWeb) {
+      return true;
+    }
     try {
       // TCP connect is a better "can talk to host" signal than DNS alone.
       final Socket socket = await Socket.connect(

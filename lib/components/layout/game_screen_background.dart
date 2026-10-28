@@ -1,5 +1,9 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
+import '../../core/services/graphics_quality_service.dart';
 import '../../core/utils/keyboard_dismiss.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -23,7 +27,8 @@ abstract final class GameScrollLayout {
   static EdgeInsets pagePadding(BuildContext context) => padding(context);
 
   /// Bottom inset so last scroll item clears [GameBottomBar] (extendBody safe).
-  static double bottomInset(BuildContext context) => gameBottomBarClearance(context);
+  static double bottomInset(BuildContext context) =>
+      gameBottomBarClearance(context);
 
   /// Standard scroll padding — bottom always clears overlay nav.
   static EdgeInsets padding(
@@ -146,7 +151,9 @@ class GameGridColumns extends StatelessWidget {
         final int index = i + col;
         rowChildren.add(
           Expanded(
-            child: index < children.length ? children[index] : const SizedBox.shrink(),
+            child: index < children.length
+                ? children[index]
+                : const SizedBox.shrink(),
           ),
         );
       }
@@ -167,6 +174,8 @@ class GameGridColumns extends StatelessWidget {
 }
 
 /// Dotted grid overlay — Carbon Void / Space Navy aesthetic.
+/// Batched via single `canvas.drawRawPoints` call (1 JNI call instead of 1,300+!)
+/// and automatically skipped on `Low` graphics tier.
 class DotGridPainter extends CustomPainter {
   const DotGridPainter({
     this.spacing = 16,
@@ -178,17 +187,49 @@ class DotGridPainter extends CustomPainter {
   final double dotRadius;
   final double dotOpacity;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = Colors.white.withValues(alpha: dotOpacity)
-      ..style = PaintingStyle.fill;
+  static final Map<String, Float32List> _pointCache = <String, Float32List>{};
 
-    for (double x = spacing / 2; x < size.width; x += spacing) {
-      for (double y = spacing / 2; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), dotRadius, paint);
+  static Float32List _pointsFor(Size size, double spacing) {
+    final int wBucket = (size.width / 8).ceil() * 8;
+    final int hBucket = (size.height / 8).ceil() * 8;
+    final String key = '${wBucket}x${hBucket}_$spacing';
+    final Float32List? hit = _pointCache[key];
+    if (hit != null) return hit;
+
+    final int cols = ((wBucket - spacing / 2) / spacing).floor() + 1;
+    final int rows = ((hBucket - spacing / 2) / spacing).floor() + 1;
+    if (cols <= 0 || rows <= 0) return Float32List(0);
+    final Float32List pts = Float32List(cols * rows * 2);
+    int k = 0;
+    for (int cx = 0; cx < cols; cx++) {
+      final double x = spacing / 2 + cx * spacing;
+      for (int ry = 0; ry < rows; ry++) {
+        pts[k++] = x;
+        pts[k++] = spacing / 2 + ry * spacing;
       }
     }
+    if (_pointCache.length > 24) {
+      _pointCache.clear();
+    }
+    _pointCache[key] = pts;
+    return pts;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!GraphicsQualityService.instance.profile.enableDotGridOverlay) {
+      return;
+    }
+    if (size.width <= 2 || size.height <= 2) return;
+    final Float32List rawPoints = _pointsFor(size, spacing);
+    if (rawPoints.isEmpty) return;
+
+    final Paint paint = Paint()
+      ..color = Colors.white.withValues(alpha: dotOpacity)
+      ..strokeWidth = dotRadius * 2.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawRawPoints(ui.PointMode.points, rawPoints, paint);
   }
 
   @override
@@ -214,68 +255,81 @@ class GameScreenBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: <Widget>[
-        const Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[
-                  Color(0xFF070B14),
-                  carbonVoid,
-                  Color(0xFF030509),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const Positioned.fill(
-          child: CustomPaint(painter: DotGridPainter()),
-        ),
-        if (showAmbientGlow) ...<Widget>[
-          Positioned(
-            top: -160,
-            left: -120,
-            child: IgnorePointer(
-              child: Container(
-                width: 420,
-                height: 420,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: <Color>[
-                      spaceNavy.withValues(alpha: 0.45),
-                      spaceNavy.withValues(alpha: 0),
+    return ListenableBuilder(
+      listenable: GraphicsQualityService.instance,
+      builder: (BuildContext context, Widget? cachedChild) {
+        final GraphicsProfile prof = GraphicsQualityService.instance.profile;
+        return Stack(
+          children: <Widget>[
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[
+                            Color(0xFF070B14),
+                            carbonVoid,
+                            Color(0xFF030509),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (prof.enableDotGridOverlay)
+                      const CustomPaint(painter: DotGridPainter()),
+                    if (showAmbientGlow && !prof.isLow) ...<Widget>[
+                      Positioned(
+                        top: -160,
+                        left: -120,
+                        child: IgnorePointer(
+                          child: Container(
+                            width: 420,
+                            height: 420,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: <Color>[
+                                  spaceNavy.withValues(alpha: 0.45),
+                                  spaceNavy.withValues(alpha: 0),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: -200,
+                        right: -140,
+                        child: IgnorePointer(
+                          child: Container(
+                            width: 460,
+                            height: 460,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: <Color>[
+                                  AppColors.gold.withValues(alpha: 0.06),
+                                  AppColors.gold.withValues(alpha: 0),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
-          ),
-          Positioned(
-            bottom: -200,
-            right: -140,
-            child: IgnorePointer(
-              child: Container(
-                width: 460,
-                height: 460,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: <Color>[
-                      AppColors.gold.withValues(alpha: 0.06),
-                      AppColors.gold.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-        DismissKeyboard(child: child),
-      ],
+            cachedChild!,
+          ],
+        );
+      },
+      child: DismissKeyboard(child: child),
     );
   }
 }
@@ -297,6 +351,8 @@ class DottedPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool showDots =
+        GraphicsQualityService.instance.profile.enableDotGridOverlay;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
@@ -316,11 +372,12 @@ class DottedPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         child: Stack(
           children: <Widget>[
-            const Positioned.fill(
-              child: CustomPaint(
-                painter: DotGridPainter(spacing: 14, dotOpacity: 0.055),
+            if (showDots)
+              const Positioned.fill(
+                child: CustomPaint(
+                  painter: DotGridPainter(spacing: 14, dotOpacity: 0.055),
+                ),
               ),
-            ),
             Padding(
               padding: padding ?? const EdgeInsets.all(12),
               child: child,

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/character/badge_showcase_panel.dart';
+import '../../components/character/character_3d_paperdoll_showcase.dart';
 import '../../components/character/character_combat_stats_panel.dart';
 import '../../components/character/character_health_panel.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
@@ -223,6 +224,9 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
           GameScrollSection(
             leadingGap: false,
             child: _buildIdentityCard(profile, level, xpProgress, reputation),
+          ),
+          GameScrollSection(
+            child: Character3dPaperdollShowcase(profile: profile),
           ),
           const GameScrollSection(child: BadgeShowcasePanel()),
           GameScrollSection(

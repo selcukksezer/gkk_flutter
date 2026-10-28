@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../components/common/reward_magnet_overlay.dart';
 import '../../../models/facility_model.dart';
 import '../../../models/facility_production_preview_model.dart';
 import '../../../providers/facilities_provider.dart';
@@ -146,6 +147,11 @@ class FacDetailDepotPanel extends ConsumerWidget {
                                 (result['prison_reason'] ?? 'Bilinmiyor').toString();
                             AppMessenger.show(context, '⚠️ Hapse düştün! Gerekçe: $prisonReason');
                           } else {
+                            RewardMagnetOverlay.burstToTopWallet(
+                              context,
+                              kind: RewardMagnetKind.gold,
+                              label: '+$count Kaynak Toplandı!',
+                            );
                             AppMessenger.show(context, '✅ Toplandı: $count kaynak');
                           }
 

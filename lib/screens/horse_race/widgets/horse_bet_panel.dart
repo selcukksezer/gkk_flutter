@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/common/app_messenger.dart';
 import '../../../components/layout/game_chrome.dart';
+import '../../../core/services/graphics_quality_service.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../core/tutorial/tutorial_triggers.dart';
@@ -445,6 +446,10 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
           sliver: SliverList(
             delegate: SliverChildListDelegate(<Widget>[
               HorseRaceHeroBanner(raceState: widget.raceState),
+              const SizedBox(height: 10),
+              _RoyalHippodromeArenaPreviewCard(
+                horsesCount: widget.raceState.horses.length,
+              ),
               if (widget.raceState.myBet != null) ...<Widget>[
                 const SizedBox(height: 12),
                 HorseRaceMyBetTicket(raceState: widget.raceState),
@@ -503,6 +508,170 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
         else
           SliverPadding(padding: EdgeInsets.only(bottom: bottomClearance + 10)),
       ],
+    );
+  }
+}
+
+class _RoyalHippodromeArenaPreviewCard extends StatelessWidget {
+  const _RoyalHippodromeArenaPreviewCard({required this.horsesCount});
+
+  final int horsesCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final GraphicsProfile gfx = GraphicsQualityService.instance.profile;
+    final ImageProvider<Object> trackImg = ResizeImage.resizeIfNeeded(
+      gfx.isLow ? 420 : 714,
+      null,
+      const AssetImage('assets/v15/royal_hippodrome_track.jpg'),
+    );
+    final ImageProvider<Object> crimsonSteed = ResizeImage.resizeIfNeeded(
+      gfx.isLow ? 140 : 220,
+      null,
+      const AssetImage('assets/moradon/steed_crimson_bolt.png'),
+    );
+    final ImageProvider<Object> shadowSteed = ResizeImage.resizeIfNeeded(
+      gfx.isLow ? 140 : 220,
+      null,
+      const AssetImage('assets/moradon/steed_shadow_mane.png'),
+    );
+
+    return Container(
+      key: const Key('royal_hippodrome_preview_card'),
+      height: 128,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: HorseRaceDesign.gold.withValues(alpha: 0.65),
+          width: 1.2,
+        ),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x99000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          Image(
+            image: trackImg,
+            fit: BoxFit.cover,
+            alignment: const Alignment(0, -0.25),
+            filterQuality: gfx.filterQuality,
+            errorBuilder: (_, _, _) =>
+                const ColoredBox(color: Color(0xFF120C06)),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: <Color>[
+                  Color(0xE6070912),
+                  Color(0x88070912),
+                  Color(0xAA070912),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: 54,
+            bottom: 6,
+            width: 82,
+            height: 82,
+            child: Image(
+              image: shadowSteed,
+              fit: BoxFit.contain,
+              filterQuality: gfx.filterQuality,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+          Positioned(
+            right: 8,
+            bottom: 2,
+            width: 92,
+            height: 92,
+            child: Image(
+              image: crimsonSteed,
+              fit: BoxFit.contain,
+              filterQuality: gfx.filterQuality,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 118, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xD91A1105),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: HorseRaceDesign.gold.withValues(alpha: 0.78),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(
+                        Icons.stadium_rounded,
+                        size: 12,
+                        color: Color(0xFFFEF08A),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        '2.5D KRALİYET HİPODROMU',
+                        style: TextStyle(
+                          color: Color(0xFFFEF08A),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      '$horsesCount Safkan At Padokta Hazır',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Meşaleli 2.5D kum pist • Son düzlük kamera yakınlaştırması',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Color(0xFFE2E8F0),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

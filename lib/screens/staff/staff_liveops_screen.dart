@@ -1116,7 +1116,7 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
               'Milestone gün',
               trailing: Switch(
                 value: _dailyMilestone,
-                activeThumbColor: SettingsPalette.neon,
+                activeColor: SettingsPalette.neon,
                 onChanged: (bool v) => setState(() => _dailyMilestone = v),
               ),
             ),
@@ -1168,12 +1168,12 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
             _rowTile(
               'Zorla aç',
               subtitle: 'QA / test',
-              trailing: Switch(value: _nmForceOpen, activeThumbColor: SettingsPalette.neon, onChanged: (bool v) => _saveNightMarketSchedule(forceOpen: v, forceClosed: v ? false : _nmForceClosed)),
+              trailing: Switch(value: _nmForceOpen, activeColor: SettingsPalette.neon, onChanged: (bool v) => _saveNightMarketSchedule(forceOpen: v, forceClosed: v ? false : _nmForceClosed)),
             ),
             _rowTile(
               'Zorla kapat',
               subtitle: 'Canlı kapatma',
-              trailing: Switch(value: _nmForceClosed, activeThumbColor: SettingsPalette.ruby, onChanged: (bool v) => _saveNightMarketSchedule(forceClosed: v, forceOpen: v ? false : _nmForceOpen)),
+              trailing: Switch(value: _nmForceClosed, activeColor: SettingsPalette.ruby, onChanged: (bool v) => _saveNightMarketSchedule(forceClosed: v, forceOpen: v ? false : _nmForceOpen)),
             ),
           ],
         ),
@@ -1284,7 +1284,7 @@ class _StaffLiveOpsScreenState extends ConsumerState<StaffLiveOpsScreen> {
                     ),
                     Switch(
                       value: row['shop_available'] == true,
-                      activeThumbColor: SettingsPalette.neon,
+                      activeColor: SettingsPalette.neon,
                       onChanged: (bool v) async {
                         final String? err = await _repo.playerAction(
                           'staff_liveops_update_shop_item',

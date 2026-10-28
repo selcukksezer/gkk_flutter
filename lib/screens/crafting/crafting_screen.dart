@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/common/item_icon_view.dart';
+import '../../components/common/reward_magnet_overlay.dart';
+import '../../components/crafting/living_foundry_banner.dart';
+import '../../core/services/game_sfx_service.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
@@ -207,6 +210,7 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
         );
 
     if (ok) {
+      unawaited(GameSfxService.instance.play(GameSfx.anvilStrike));
       _showSnack('Üretim başlatıldı!');
       ref.read(craftingProvider.notifier).selectRecipe(null);
       ref.read(craftingProvider.notifier).setBatchCount(1);
@@ -270,6 +274,13 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
   Future<void> _claim(String id) async {
     final ok = await ref.read(craftingProvider.notifier).claimItem(id);
     if (ok) {
+      if (mounted) {
+        RewardMagnetOverlay.burstToTopWallet(
+          context,
+          kind: RewardMagnetKind.forgeItem,
+          label: 'Üretilen Eşya Envantere Eklendi!',
+        );
+      }
       _showSnack('Ürün alındı!');
       await ref.read(inventoryProvider.notifier).loadInventory();
     } else {
@@ -323,6 +334,18 @@ class _CraftingScreenState extends ConsumerState<CraftingScreen>
                 children: <Widget>[
                   Column(
                     children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                        child: LivingFoundryBanner(
+                          title: 'Usta Kaelen Dökümhanesi',
+                          subtitle:
+                              'Erimiş altın olukları ve rünlü örs • Tarif seçip üretimi ateşle',
+                          statusBadge:
+                              '⚒️ KRALİYET ZANAAT OCAĞI • ${craftState.queue.length}/$queueMax KUYRUK',
+                          isProducing: craftState.queue.isNotEmpty,
+                          compact: true,
+                        ),
+                      ),
                       CraftingCategoryTabBar(
                         controller: _tabController,
                         tabs: _kTabs,

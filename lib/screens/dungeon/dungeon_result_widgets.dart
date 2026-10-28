@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../components/common/item_icon_view.dart';
+import '../../components/common/holo_foil_sheen.dart';
+import '../../models/item_model.dart';
 import '../../models/dungeon_model.dart';
 import '../../models/dungeon_siege_model.dart';
 import '../../models/reputation_model.dart';
@@ -444,7 +446,14 @@ class _DungeonItemRevealListState extends State<DungeonItemRevealList> {
                 transform: Matrix4.identity()
                   ..setEntry(3, 2, 0.001)
                   ..rotateY((1 - t) * math.pi * 0.5),
-                child: Opacity(opacity: t.clamp(0.0, 1.0), child: child),
+                child: Opacity(
+                  opacity: t.clamp(0.0, 1.0),
+                  child: HoloFoilRarityBox(
+                    rarity: RarityParsing.fromValue(item.rarity),
+                    borderRadius: BorderRadius.circular(8),
+                    child: child!,
+                  ),
+                ),
               );
             },
             child: Padding(

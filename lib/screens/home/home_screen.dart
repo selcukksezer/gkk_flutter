@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../components/common/adaptive_glass_blur.dart';
+import '../../core/services/graphics_quality_service.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
 import '../../core/tutorial/tutorial_controller.dart';
 import '../../core/tutorial/tutorial_track.dart';
@@ -33,9 +35,14 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 
 import '../inventory/widgets/inventory_item_detail_flow.dart';
+import '../../providers/moradon_hub_provider.dart';
+import '../../providers/restriction_ward_world_provider.dart';
+import 'moradon/moradon_hud_overlay.dart';
+import 'moradon/moradon_world_view.dart';
 import 'widgets/home_promo_carousel.dart';
 import 'widgets/pantheon_board.dart';
 import 'widgets/hero_showcase.dart';
+import 'widgets/restriction_world_home_view.dart';
 import 'widgets/sticky_action_bar.dart';
 import '../../utils/logout_helper.dart';
 
@@ -209,22 +216,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await showDailyRewardDialog(context, ref, viewOnly: false);
   }
 
+  bool _isRestrictionActive(String? iso) {
+    if (iso == null) return false;
+    final DateTime? parsed = DateTime.tryParse(iso);
+    if (parsed == null) return false;
+    return parsed.isAfter(DateTime.now());
+  }
+
   @override
   Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final inventoryState = ref.watch(inventoryProvider);
+    final bool classicView = ref.watch(
+      moradonHubProvider.select((MoradonHubState s) => s.classicViewMode),
+    );
+    final PlayerProfile? readyProfile =
+        playerState.status == PlayerStatus.ready ? playerState.profile : null;
+    final bool inRestrictedWorld = readyProfile != null &&
+        (_isRestrictionActive(readyProfile.hospitalUntil) ||
+            _isRestrictionActive(readyProfile.prisonUntil));
+    final bool immersiveTown =
+        playerState.status == PlayerStatus.ready &&
+        (inRestrictedWorld || !classicView);
 
     return Scaffold(
-      appBar: GameTopBar(
-        title: context.l10n.routeHome,
-        onLogout: () async {
-          await performLogout(ref);
-        },
-      ),
+      extendBodyBehindAppBar: immersiveTown,
+      appBar: immersiveTown
+          ? null
+          : GameTopBar(
+              title: context.l10n.routeHome,
+              onLogout: () async {
+                await performLogout(ref);
+              },
+            ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.home,
-        leadingOverlay: StickyActionBar(),
+        leadingOverlay: immersiveTown ? null : const StickyActionBar(),
+        showChatFab: inRestrictedWorld || classicView,
         onLogout: () async {
           await performLogout(ref);
         },
@@ -235,14 +264,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           message: playerState.errorMessage ?? 'Profil yüklenemedi.',
           onRetry: () => _loadHomeData(isRefresh: true),
         ),
-        PlayerStatus.ready => RefreshIndicator(
-          onRefresh: () => _loadHomeData(isRefresh: true),
-          child: _HomeDashboard(
-            profile: playerState.profile!,
-            inventoryState: inventoryState,
-            onRefresh: () => _loadHomeData(isRefresh: true),
-          ),
-        ),
+        PlayerStatus.ready => immersiveTown
+            ? _HomeDashboard(
+                profile: playerState.profile!,
+                inventoryState: inventoryState,
+                onRefresh: () => _loadHomeData(isRefresh: true),
+              )
+            : RefreshIndicator(
+                onRefresh: () => _loadHomeData(isRefresh: true),
+                child: _HomeDashboard(
+                  profile: playerState.profile!,
+                  inventoryState: inventoryState,
+                  onRefresh: () => _loadHomeData(isRefresh: true),
+                ),
+              ),
       },
     );
   }
@@ -360,6 +395,88 @@ class _HomeDashboard extends ConsumerStatefulWidget {
 }
 
 class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
+  Timer? _restrictionWatchdog;
+  bool _wasRestricted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncRestrictionWatchdog();
+    _scheduleMoradonProfileBind();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HomeDashboard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.hospitalUntil != widget.profile.hospitalUntil ||
+        oldWidget.profile.prisonUntil != widget.profile.prisonUntil) {
+      _syncRestrictionWatchdog();
+    }
+    if (oldWidget.profile != widget.profile ||
+        oldWidget.inventoryState.equippedItems !=
+            widget.inventoryState.equippedItems) {
+      _scheduleMoradonProfileBind();
+    }
+  }
+
+  void _scheduleMoradonProfileBind() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final bool restricted =
+          _isFutureDate(widget.profile.hospitalUntil) ||
+          _isFutureDate(widget.profile.prisonUntil);
+      if (restricted) return;
+      final int power = resolveDungeonCombatPower(
+        profile: widget.profile,
+        equippedItems: widget.inventoryState.equippedItems.values,
+      );
+      ref
+          .read(moradonHubProvider.notifier)
+          .bindLocalProfile(widget.profile, totalPower: power);
+    });
+  }
+
+  @override
+  void dispose() {
+    _restrictionWatchdog?.cancel();
+    super.dispose();
+  }
+
+  bool _isFutureDate(String? dateStr) {
+    if (dateStr == null) return false;
+    final DateTime? d = DateTime.tryParse(dateStr);
+    if (d == null) return false;
+    return d.isAfter(DateTime.now());
+  }
+
+  void _syncRestrictionWatchdog() {
+    final bool restrictedNow =
+        _isFutureDate(widget.profile.hospitalUntil) ||
+        _isFutureDate(widget.profile.prisonUntil);
+    _wasRestricted = restrictedNow;
+    _restrictionWatchdog?.cancel();
+    if (!restrictedNow) {
+      _restrictionWatchdog = null;
+      return;
+    }
+    _restrictionWatchdog = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      final bool stillRestricted =
+          _isFutureDate(widget.profile.hospitalUntil) ||
+          _isFutureDate(widget.profile.prisonUntil);
+      if (!stillRestricted && _wasRestricted) {
+        _wasRestricted = false;
+        t.cancel();
+        setState(() {});
+        _scheduleMoradonProfileBind();
+        unawaited(widget.onRefresh());
+      }
+    });
+  }
+
   Future<void> _openSlotInfo(String slotLabel, InventoryItem? item) async {
     if (item != null) {
       await InventoryItemDetailFlow(
@@ -379,15 +496,8 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
   Widget build(BuildContext context) {
     final PlayerProfile profile = widget.profile;
 
-    bool isFuture(String? dateStr) {
-      if (dateStr == null) return false;
-      final d = DateTime.tryParse(dateStr);
-      if (d == null) return false;
-      return d.isAfter(DateTime.now());
-    }
-
-    final bool inHospital = isFuture(profile.hospitalUntil);
-    final bool inPrison = isFuture(profile.prisonUntil);
+    final bool inHospital = _isFutureDate(profile.hospitalUntil);
+    final bool inPrison = _isFutureDate(profile.prisonUntil);
 
     final int energy = profile.energy;
     final int maxEnergy = profile.maxEnergy;
@@ -402,11 +512,78 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
       equippedItems: widget.inventoryState.equippedItems.values,
     );
 
+    // When the player lands in Hospital or Prison, HomeScreen directly displays
+    // that restriction's living 2.5D world + ONLY currently online fellow players.
+    if (inPrison || inHospital) {
+      final WardWorldMode wardMode =
+          inPrison ? WardWorldMode.prison : WardWorldMode.hospital;
+      return RestrictionWorldHomeView(
+        key: ValueKey<String>('home_ward_${wardMode.name}'),
+        mode: wardMode,
+        profile: profile,
+        inventoryState: widget.inventoryState,
+        totalPower: totalPower,
+        onRefresh: widget.onRefresh,
+      );
+    }
+
     final TutorialState tutorial = ref.watch(tutorialProvider);
     final bool hideHomeExtras = tutorial.activeStep != null;
     // E3: promo gizle (homePromo adımı hariç — anchor lazım).
     final bool hidePromoCarousel = tutorial.activeStep != null &&
         tutorial.activeStep!.anchorId != TutorialAnchorId.homePromo;
+
+    final bool classicViewMode = ref.watch(
+      moradonHubProvider.select((MoradonHubState s) => s.classicViewMode),
+    );
+    final bool isDesktopHud = MediaQuery.sizeOf(context).width >= 760;
+
+    if (!classicViewMode) {
+      return Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: MoradonWorldView(
+              profile: profile,
+              inventoryState: widget.inventoryState,
+              totalPower: totalPower,
+            ),
+          ),
+          Positioned.fill(
+            child: MoradonHudOverlay(
+              profile: profile,
+              inventoryState: widget.inventoryState,
+              totalPower: totalPower,
+              reputation: reputation,
+              onSlotTap: _openSlotInfo,
+            ),
+          ),
+          if (inHospital || inPrison || energy < 20 || tolerance > 60 || lowHealth)
+            Positioned(
+              top: isDesktopHud ? 186 : 148,
+              left: 12,
+              right: 12,
+              child: SafeArea(
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    child: _WarningStack(
+                      hospitalUntil: profile.hospitalUntil,
+                      prisonUntil: profile.prisonUntil,
+                      energy: energy,
+                      maxEnergy: maxEnergy,
+                      health: health,
+                      maxHealth: maxHealth,
+                      tolerance: tolerance,
+                      alignStart: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
 
     return Stack(
       children: <Widget>[
@@ -468,6 +645,20 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
               bottomExtra: AppSpacing.xl,
             ),
             children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFB45309),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => ref
+                      .read(moradonHubProvider.notifier)
+                      .toggleClassicViewMode(),
+                  icon: const Icon(Icons.public, size: 18),
+                  label: const Text('🏰 Gölge Krallığı Meydanına Dön'),
+                ),
+              ),
               if (!hidePromoCarousel) ...<Widget>[
                 TutorialAnchorScope(
                   id: TutorialAnchorId.homePromo,
@@ -600,6 +791,7 @@ class _WarningStack extends StatelessWidget {
     required this.health,
     required this.maxHealth,
     required this.tolerance,
+    this.alignStart = false,
   });
 
   final String? hospitalUntil;
@@ -609,6 +801,7 @@ class _WarningStack extends StatelessWidget {
   final int health;
   final int maxHealth;
   final int tolerance;
+  final bool alignStart;
 
   bool _isFuture(String? dateStr) {
     if (dateStr == null) return false;
@@ -702,7 +895,8 @@ class _WarningStack extends StatelessWidget {
     if (banners.isEmpty) return const SizedBox.shrink();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment:
+          alignStart ? CrossAxisAlignment.start : CrossAxisAlignment.end,
       children: banners
           .map(
             (banner) => Padding(
@@ -743,8 +937,8 @@ class _StaticStatusPill extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: AdaptiveGlassBlur(
+          sigma: 10,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: Row(
@@ -796,7 +990,11 @@ class _ActiveStatusPillState extends State<_ActiveStatusPill>
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+      value: 0.65,
+    );
+    if (!GraphicsQualityService.instance.profile.isLow) {
+      _pulseController.repeat(reverse: true);
+    }
 
     _pulseAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
@@ -834,8 +1032,8 @@ class _ActiveStatusPillState extends State<_ActiveStatusPill>
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30),
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: AdaptiveGlassBlur(
+              sigma: 12,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,

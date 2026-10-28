@@ -29,6 +29,7 @@ import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'widgets/nemesis_rival_panel.dart';
+import '../../components/pvp/pvp_colosseum_stage.dart';
 
 class OnlinePlayer {
   const OnlinePlayer({
@@ -524,6 +525,15 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
               const EdgeInsets.fromLTRB(16, 16, 16, 24),
             ),
             children: <Widget>[
+              PvpColosseumHeroBanner(
+                profile: profile,
+                rivalName: _nemesis.hasRival
+                    ? (_nemesis.rivalUsername ?? 'Ezeli Rakip')
+                    : (_onlinePlayers.isNotEmpty
+                          ? _onlinePlayers.first.displayName
+                          : 'Kolezyum Şampiyonu'),
+              ),
+              const SizedBox(height: 12),
               if (_nemesis.hasRival) ...<Widget>[
                 TutorialAnchorScope(
                   id: TutorialAnchorId.pvpNemesisPanel,

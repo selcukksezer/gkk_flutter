@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/app_constants.dart';
@@ -7,6 +10,8 @@ class SupabaseService {
   const SupabaseService._();
 
   static bool _initialized = false;
+  static Future<void>? _initInflight;
+  static final Completer<void> _readyCompleter = Completer<void>();
 
   static bool get isConfigured {
     return AppConstants.supabaseUrl.startsWith('https://') &&
@@ -17,19 +22,45 @@ class SupabaseService {
 
   static bool get isInitialized => _initialized;
 
-  static Future<void> initialize() async {
+  /// Completes once [Supabase.initialize] finishes (even if startup timed out early).
+  static Future<void> get whenInitialized => _readyCompleter.future;
+
+  static Future<void> initialize({
+    Duration startupTimeout = const Duration(seconds: 6),
+  }) async {
     if (!isConfigured || _initialized) {
       return;
     }
 
-    await Supabase.initialize(
-      url: AppConstants.supabaseUrl,
-      anonKey: AppConstants.supabaseAnonKey,
-    );
+    final Future<void> inflight = _initInflight ??= _performInitialize();
+    try {
+      await inflight.timeout(startupTimeout);
+    } catch (e) {
+      debugPrint('SupabaseService.initialize non-fatal startup delay/error: $e');
+    }
+  }
 
-    _initialized = true;
-    if (Supabase.instance.client.auth.currentSession != null) {
-      await DeviceSessionService.syncRequestHeaders();
+  static Future<void> _performInitialize() async {
+    try {
+      await Supabase.initialize(
+        url: AppConstants.supabaseUrl,
+        // ignore: deprecated_member_use
+        anonKey: AppConstants.supabaseAnonKey,
+      );
+      _initialized = true;
+      if (!_readyCompleter.isCompleted) {
+        _readyCompleter.complete();
+      }
+      if (Supabase.instance.client.auth.currentSession != null) {
+        unawaited(
+          DeviceSessionService.syncRequestHeaders()
+              .timeout(const Duration(seconds: 3))
+              .catchError((Object _) {}),
+        );
+      }
+    } catch (e) {
+      _initInflight = null;
+      rethrow;
     }
   }
 

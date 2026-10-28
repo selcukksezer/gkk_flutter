@@ -4,7 +4,8 @@ import 'package:flutter/widgets.dart';
 
 import 'supabase_service.dart';
 
-/// Keeps users.is_online / last_active_at fresh for trade online checks.
+/// Keeps `users.is_online` / `last_active_at` fresh with a 45s heartbeat and
+/// guarantees `is_online = false` is committed BEFORE `auth.signOut()` clears JWT.
 class PresenceService with WidgetsBindingObserver {
   PresenceService._();
 
@@ -18,15 +19,18 @@ class PresenceService with WidgetsBindingObserver {
   void setCurrentMekan(String? mekanId) {
     if (_currentMekanId == mekanId) return;
     _currentMekanId = mekanId;
-    if (_started) _setOnline(true);
+    if (_started) unawaited(_setOnline(true));
   }
 
   void start() {
     if (_started) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
-    _setOnline(true);
-    _heartbeat = Timer.periodic(const Duration(minutes: 2), (_) => _setOnline(true));
+    unawaited(_setOnline(true));
+    _heartbeat = Timer.periodic(
+      const Duration(seconds: 45),
+      (_) => unawaited(_setOnline(true)),
+    );
   }
 
   void stop() {
@@ -35,19 +39,35 @@ class PresenceService with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _heartbeat?.cancel();
     _heartbeat = null;
-    _setOnline(false);
+    unawaited(_setOnline(false));
+  }
+
+  /// Must be awaited BEFORE `Supabase.auth.signOut()` so `auth.uid()` is still
+  /// authenticated on the server when setting `users.is_online = false`.
+  Future<void> goOfflineBeforeSignOut() async {
+    if (_started) {
+      _started = false;
+      WidgetsBinding.instance.removeObserver(this);
+    }
+    _heartbeat?.cancel();
+    _heartbeat = null;
+    _currentMekanId = null;
+    await _setOnline(false).timeout(
+      const Duration(milliseconds: 1600),
+      onTimeout: () {},
+    );
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        _setOnline(true);
+        unawaited(_setOnline(true));
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        _setOnline(false);
+        unawaited(_setOnline(false));
     }
   }
 
