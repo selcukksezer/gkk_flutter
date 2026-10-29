@@ -119,7 +119,8 @@ class TradeInviteNotifier extends Notifier<TradeInviteState> {
     }
     ref.onDispose(() {
       AppForegroundService.instance.removeListener(_onForegroundChanged);
-      stopPolling();
+      _pollTimer?.cancel();
+      _pollTimer = null;
       _authSub?.cancel();
     });
 

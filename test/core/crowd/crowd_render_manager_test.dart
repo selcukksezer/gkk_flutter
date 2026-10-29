@@ -271,7 +271,7 @@ void main() {
       // Buffer defaults
       expect(manager.scales[0], equals(1.0));
       expect(manager.animationSpeeds[0], equals(1.0));
-      expect(manager.tintColors[0], equals(0xFFFFFFFF));
+      expect(manager.tintColors[0].toUnsigned(32), equals(0xFFFFFFFF));
       expect(manager.lodTiers[0], equals(CrowdLodTier.culled.id));
     });
 
@@ -325,7 +325,7 @@ void main() {
       expect(manager.rotations[id], closeTo(0.75, 0.001));
       expect(manager.scales[id], closeTo(1.3, 0.001));
       expect(manager.archetypeIds[id], equals(2));
-      expect(manager.tintColors[id], equals(0xFF112233));
+      expect(manager.tintColors[id].toUnsigned(32), equals(0xFF112233));
       expect(manager.animationTimes[id], closeTo(1.25, 0.001));
       expect(manager.animationSpeeds[id], closeTo(1.1, 0.001));
     });
@@ -344,7 +344,7 @@ void main() {
       expect(manager.positions[pIdx + 2], equals(0.0));
       expect(manager.scales[id], equals(1.0));
       expect(manager.archetypeIds[id], equals(0));
-      expect(manager.tintColors[id], equals(0xFFFFFFFF));
+      expect(manager.tintColors[id].toUnsigned(32), equals(0xFFFFFFFF));
       expect(manager.animationSpeeds[id], equals(1.0));
     });
 
@@ -714,7 +714,7 @@ void main() {
       expect(vatBuf[4], closeTo(1.5, 0.001));  // scale
       expect(vatBuf[5], closeTo(0.75 + 0.016, 0.005)); // animTime
       expect(vatBuf[6], closeTo(3.0, 0.001));  // archetype
-      expect(vatBuf[7], equals(0xFF55AAEE.toDouble())); // tintColor
+      expect(vatBuf[7].toInt().toUnsigned(32), equals(0xFF55AAEE)); // tintColor
     });
 
     test('packs 2D Canvas RSTransforms and atlasColors for Flutter / Impeller', () {
@@ -736,7 +736,7 @@ void main() {
       expect(manager.rstTransforms[1], closeTo(0.0, 0.001)); // ssin
       expect(manager.rstTransforms[2], closeTo(12.0, 0.001)); // tx
       expect(manager.rstTransforms[3], closeTo(20.0, 0.001)); // ty (posZ)
-      expect(manager.atlasColors[id], equals(0xFFAABBCC));
+      expect(manager.atlasColors[id].toUnsigned(32), equals(0xFFAABBCC));
     });
   });
 
@@ -958,7 +958,8 @@ void main() {
 
       // Manager ticks -> tickCounter becomes 1
       manager.update(0.016, camera);
-      expect(painter2.shouldRepaint(painter1), isTrue);
+      final painter3 = CrowdCustomPainter(manager: manager);
+      expect(painter3.shouldRepaint(painter1), isTrue);
     });
 
     test('CrowdRenderBridge starts, stops and coordinates ticks', () {

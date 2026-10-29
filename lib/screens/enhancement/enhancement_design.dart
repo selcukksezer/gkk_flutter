@@ -1118,6 +1118,7 @@ class AionForgePedestal extends StatelessWidget {
                     children: <Widget>[
                       if (child != null)
                         child!
+                      else
                         Stack(
                           alignment: Alignment.center,
                           children: <Widget>[
@@ -1861,37 +1862,44 @@ class _DivineForgeStrikeButtonState extends State<DivineForgeStrikeButton>
                         ),
                         const SizedBox(width: 6),
                       ],
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            widget.loading
-                                ? 'GÜÇLENDİRİLİYOR...'
-                                : (_isHolding ? 'ÇEKİÇ VURULUYOR!' : widget.label),
-                            style: AppTextStyles.dialogButton.copyWith(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.8,
-                              color: active
-                                  ? AppColors.carbonVoid
-                                  : AppColors.mutedTitanium,
-                              height: 1.1,
-                            ),
-                          ),
-                          if (widget.costText != null && !widget.loading)
+                      Flexible(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
                             Text(
-                              widget.costText!,
-                              style: AppTextStyles.micro.copyWith(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
+                              widget.loading
+                                  ? 'GÜÇLENDİRİLİYOR...'
+                                  : (_isHolding ? 'ÇEKİÇ VURULUYOR!' : widget.label),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.dialogButton.copyWith(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
                                 color: active
-                                    ? const Color(0xFF3E2723)
-                                    : AppColors.mutedTitanium.withValues(alpha: 0.7),
+                                    ? AppColors.carbonVoid
+                                    : AppColors.mutedTitanium,
                                 height: 1.1,
                               ),
                             ),
-                        ],
+                            if (widget.costText != null && !widget.loading)
+                              Text(
+                                widget.costText!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.micro.copyWith(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: active
+                                      ? const Color(0xFF3E2723)
+                                      : AppColors.mutedTitanium.withValues(alpha: 0.7),
+                                  height: 1.1,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

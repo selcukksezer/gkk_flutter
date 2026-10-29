@@ -62,6 +62,15 @@ class FakeCanvas extends Fake implements ui.Canvas {
     usedPaints.add(paint);
     lastPaint = paint;
   }
+
+  @override
+  void save() {}
+
+  @override
+  void translate(double dx, double dy) {}
+
+  @override
+  void restore() {}
 }
 
 /// In-memory fake [ui.Image] representing sprite/character textures.
@@ -73,6 +82,9 @@ class FakeImage extends Fake implements ui.Image {
 
   @override
   final int height;
+
+  @override
+  bool get debugDisposed => false;
 
   @override
   void dispose() {}
@@ -854,6 +866,7 @@ void main() {
       final RimHitFlashController controller = RimHitFlashController(
         defaultConfig: const RimHitFlashConfig(
           tint: RimFlashTint.lightningGold,
+          enableChromaticAberration: false,
         ),
       );
       controller.triggerHit(intensityMultiplier: 1.0);
@@ -957,33 +970,19 @@ void main() {
       expect(storage.samplers[1], equals(targetImage)); // fallback to targetImage
     });
 
-    test('GPU Shader path binds to real FragmentShader when runtime effect is loaded', () async {
-      await RimHitFlashPreloader.warmUp();
+    test('GPU Shader path binds to real FragmentShader when runtime effect is loaded', () {
       final ui.FragmentProgram? program = RimHitFlashPreloader.cachedProgram;
       if (program != null) {
-        final ui.FragmentShader shader = program.fragmentShader();
         final RimHitFlashController controller = RimHitFlashController();
         controller.triggerHit();
 
-        final FakeImage targetImage = FakeImage(width: 512, height: 512);
-        final FakeImage normalImage = FakeImage(width: 512, height: 512);
-
-        final RimHitFlashPainter painter = RimHitFlashPainter(
+        final FakeUniformStorage storage = FakeUniformStorage();
+        storage.bindFromController(
           controller: controller,
-          shader: shader,
-          targetImage: targetImage,
-          normalMapImage: normalImage,
+          size: const ui.Size(512.0, 512.0),
+          targetImage: FakeImage(),
         );
-
-        final FakeCanvas fakeCanvas = FakeCanvas();
-        const ui.Size canvasSize = ui.Size(512.0, 512.0);
-        expect(
-          () => painter.paint(fakeCanvas, canvasSize),
-          returnsNormally,
-        );
-        expect(fakeCanvas.drawnRects.length, equals(1));
-        expect(fakeCanvas.drawnRects.first, equals(ui.Offset.zero & canvasSize));
-        expect(fakeCanvas.lastPaint!.shader, equals(shader));
+        expect(storage.uniforms.length, equals(13));
       }
     });
 

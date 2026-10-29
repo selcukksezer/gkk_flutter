@@ -165,6 +165,15 @@ flutter:
     - assets/images/vfx_sprites/magic_circles/
     - assets/images/vfx_sprites/flipbooks/
 
+    # Google Fonts Local Bundle
+    - assets/google_fonts/
+
+    # Non-Fragment Shaders & Raw Assets
+    - shaders/crowd/vat_crowd.vert
+    - shaders/crowd/vat_crowd.frag
+    - shaders/crowd/gpu_instancing.vert
+    - shaders/lighting/clustered_crowd_lighting.frag
+
   shaders:
     # Postprocess Passes
     - shaders/postprocess/aces_tonemap.frag
@@ -174,7 +183,6 @@ flutter:
 
     # Lighting & Clustered Shading
     - shaders/lighting/dungeon_lighting.frag
-    - shaders/lighting/clustered_crowd_lighting.frag
 
     # PBR Master Materials
     - shaders/materials/aion2_pbr_master.frag
@@ -190,11 +198,6 @@ flutter:
     # World & Environmental Surface Simulation
     - shaders/world/atmospheric_sky.frag
     - shaders/world/puddle_ssr.frag
-
-    # Crowd Rendering & VAT Deformation
-    - shaders/crowd/vat_crowd.frag
-    - shaders/crowd/vat_crowd.vert
-    - shaders/crowd/gpu_instancing.vert
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

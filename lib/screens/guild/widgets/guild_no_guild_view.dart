@@ -5,6 +5,7 @@ import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/guild_model.dart';
+import '../../../theme/app_spacing.dart';
 import '../guild_helpers.dart';
 import 'guild_design.dart';
 import 'guild_emblem_banner.dart';

@@ -845,6 +845,7 @@ class _HeroDaisPainter extends CustomPainter {
           secondaryColor.withValues(alpha: 0.25),
           accentColor.withValues(alpha: 0.15),
         ],
+        const <double>[0.0, 0.25, 0.5, 0.75, 1.0],
       );
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy), width: rx * 1.44, height: ry * 1.44),

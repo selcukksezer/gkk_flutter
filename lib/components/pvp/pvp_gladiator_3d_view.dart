@@ -1245,6 +1245,7 @@ class _ObsidianFrameBracketsPainter extends CustomPainter {
           const Color(0x6600E5FF),
           Colors.transparent,
         ],
+        const <double>[0.0, 0.25, 0.5, 0.75, 1.0],
       )
       ..strokeWidth = 1.3;
     canvas.drawLine(Offset(pad, 0.6), Offset(size.width - pad, 0.6), gleamPaint);
@@ -1466,6 +1467,7 @@ class _GladiatorMeshPainter extends CustomPainter {
             Colors.transparent,
             const Color(0x18FFD700),
           ],
+          const <double>[0.0, 0.5, 1.0],
         );
       canvas.drawOval(topMirrorRect, sheenPaint);
 
@@ -1727,6 +1729,7 @@ class _GladiatorMeshPainter extends CustomPainter {
           const Color(0x88FFD700),
           const Color(0x2200E5FF),
         ],
+        const <double>[0.0, 0.5, 1.0],
       );
     final Path bottomLip = Path()..addArc(bottomRect, 0, math.pi);
     canvas.drawPath(bottomLip, skirtStroke);
@@ -1811,6 +1814,7 @@ class _GladiatorMeshPainter extends CustomPainter {
           const Color(0x8800E5FF),
           const Color(0x3300E5FF),
         ],
+        const <double>[0.0, 0.5, 1.0],
       );
     canvas.drawOval(topMirrorRect, topBevelPaint);
   }

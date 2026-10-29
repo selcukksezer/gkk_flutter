@@ -103,8 +103,8 @@ void main() {
       registry = ShaderRegistry(loadDefaults: true);
     });
 
-    test('Default registry initializes all 16 built-in shaders across 5 categories', () {
-      expect(registry.shaderCount, equals(16));
+    test('Default registry initializes all 17 built-in shaders across 5 categories', () {
+      expect(registry.shaderCount, equals(17));
 
       final List<ShaderDescriptor> postprocess =
           registry.getDescriptorsByCategory(ShaderCategory.postprocess);
@@ -119,7 +119,7 @@ void main() {
 
       expect(postprocess.length, equals(4)); // aces, ssao, blur, composite
       expect(lighting.length, equals(1)); // dungeon_lighting
-      expect(vfx.length, equals(5)); // particles, decal, trail, rim flash, shockwave
+      expect(vfx.length, equals(6)); // particles, decal, trail, rim flash, shockwave, forge fire
       expect(crowd.length, equals(3)); // vat frag, vat vert, instancing vert
       expect(world.length, equals(3)); // wind, puddle, fog
     });
@@ -193,12 +193,12 @@ void main() {
       registry.registerShader(custom);
       expect(registry.containsShader('custom/bloom_threshold'), isTrue);
       expect(registry.getShaderDescriptor('custom/bloom_threshold'), equals(custom));
-      expect(registry.shaderCount, equals(17));
+      expect(registry.shaderCount, equals(18));
 
       final bool removed = registry.unregisterShader('custom/bloom_threshold');
       expect(removed, isTrue);
       expect(registry.containsShader('custom/bloom_threshold'), isFalse);
-      expect(registry.shaderCount, equals(16));
+      expect(registry.shaderCount, equals(17));
     });
 
     test('Material registry indexes default AAA dark fantasy materials', () {
@@ -517,7 +517,7 @@ void main() {
 
       final ShaderPipelineStats stats = pipeline.getPipelineStats();
 
-      expect(stats.totalRegistered, equals(16));
+      expect(stats.totalRegistered, equals(17));
       expect(stats.totalCompiled, equals(2));
       expect(stats.deviceTier, equals(DevicePerformanceTier.high));
 

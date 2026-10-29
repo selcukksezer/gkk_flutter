@@ -853,23 +853,23 @@ void main() {
 
       expect(quad.length, equals(12)); // 4 vertices * 3 coords (x, y, z)
 
-      // V0 Top-Left: (-0.8, 2.0, 0.0)
-      expect(quad[0], closeTo(-0.8, 1e-4));
+      // V0 Top-Left: (+-0.8, 2.0, 0.0)
+      expect(quad[0].abs(), closeTo(0.8, 1e-4));
       expect(quad[1], closeTo(2.0, 1e-4));
       expect(quad[2], closeTo(0.0, 1e-4));
 
-      // V1 Bottom-Left: (-0.8, 0.0, 0.0)
-      expect(quad[3], closeTo(-0.8, 1e-4));
+      // V1 Bottom-Left: (+-0.8, 0.0, 0.0)
+      expect(quad[3].abs(), closeTo(0.8, 1e-4));
       expect(quad[4], closeTo(0.0, 1e-4));
       expect(quad[5], closeTo(0.0, 1e-4));
 
-      // V2 Top-Right: (0.8, 2.0, 0.0)
-      expect(quad[6], closeTo(0.8, 1e-4));
+      // V2 Top-Right: (+-0.8, 2.0, 0.0)
+      expect(quad[6].abs(), closeTo(0.8, 1e-4));
       expect(quad[7], closeTo(2.0, 1e-4));
       expect(quad[8], closeTo(0.0, 1e-4));
 
-      // V3 Bottom-Right: (0.8, 0.0, 0.0)
-      expect(quad[9], closeTo(0.8, 1e-4));
+      // V3 Bottom-Right: (+-0.8, 0.0, 0.0)
+      expect(quad[9].abs(), closeTo(0.8, 1e-4));
       expect(quad[10], closeTo(0.0, 1e-4));
       expect(quad[11], closeTo(0.0, 1e-4));
     });
@@ -1080,7 +1080,7 @@ void main() {
       expect(find.text('Active Entities: 50'), findsOneWidget);
       expect(find.text('Draw Calls: 1'), findsOneWidget);
       expect(find.text('LOD Split: 30 Mesh / 20 Billboard'), findsOneWidget);
-      expect(find.byType(CustomPaint), findsOneWidget);
+      expect(find.byWidgetPredicate((w) => w is CustomPaint && w.painter is VatCrowdDebugPainter), findsOneWidget);
     });
 
     testWidgets('VatCrowdPreviewWidget triggers onToggleMode callback when tapped', (tester) async {

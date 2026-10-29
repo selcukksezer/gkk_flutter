@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/core/engine/adaptive_quality_scaler.dart';
 import 'package:gkk_flutter/core/world/puddle_reflection_layer.dart';
 
 void main() {
@@ -484,7 +485,8 @@ void main() {
     });
 
     test('PuddleReflectionController tracks time and notifies listeners', () {
-      final PuddleReflectionController controller = PuddleReflectionController();
+      final scaler = AdaptiveQualityScaler(initialTier: HardwareTier.high);
+      final PuddleReflectionController controller = PuddleReflectionController(scaler: scaler);
       int notifyCount = 0;
       controller.addListener(() => notifyCount++);
 
