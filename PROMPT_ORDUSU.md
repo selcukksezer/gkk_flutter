@@ -1,75 +1,88 @@
-# PROMPT ORDUSU — 200+ Eşzamanlı Yapay Zeka Ajanı Master Dokümanı ve Taşınabilir Orkestrasyon Rehberi
+# PROMPT ORDUSU — 200+ Eşzamanlı Yapay Zeka Ajanı Master Dokümanı ve AAA Tasarım Şirketi Orkestrasyon Rehberi
 
-Bu doküman; **`gkk_flutter`** mobil oyununun (yalnızca **iOS & Android**) 2005 tarzı ilkel görünümden kurtarılıp **2027 Aion 2 Mobile görsel/efekt standartlarına**, **gerçek `.glb` 3D modellere**, **gerçek 1K/2K PBR dokulara**, **gerçek yüksek detaylı illüstrasyonlara**, **10.000 anlık oyuncu (0 bireysel Update / 21 Draw Call) yüksek FPS mimarisine** ve **düşük sistemli telefonları yormayan akıllı ön-yükleme (Progressive Preloader) sistemine** taşınması için konuşmanın en başından itibaren verilen **tüm kullanıcı direktiflerini**, **~200 eşzamanlı ajanın tek tek görev dağılımını** ve **başka bir bilgisayarda kaldığı yerden birebir aynı güçte devam etme protokolünü** en ince detayına kadar içerir.
+Bu doküman; **`gkk_flutter`** mobil oyununun (yalnızca **iOS & Android**) 2005 tarzı ilkel görünümden kurtarılıp **2027 Aion 2 Mobile görsel/efekt standartlarına**, **gerçek `.glb` 3D modellere**, **gerçek 1K/2K PBR dokulara**, **gerçek yüksek detaylı illüstrasyonlara**, **10.000 anlık oyuncu (0 bireysel Update / 21 Draw Call) yüksek FPS mimarisine** ve **düşük sistemli telefonları yormayan akıllı ön-yükleme (Progressive Preloader) sistemine** taşınması için konuşmanın en başından itibaren verilen **tüm kullanıcı direktiflerini (Direktif #1–#21)**, **200 eşzamanlı ajanın PC'yi kilitlemeden tam bir AAA Tasarım Şirketi gibi (her ajana `/goal` + birbirlerini çapraz denetleme) çalışma mimarisini**, **tek tek görev dağılımını** ve **başka bir bilgisayarda kaldığı yerden birebir aynı güçte devam etme protokolünü** en ince detayına kadar içerir.
 
 ---
 
 ## 📑 İÇİNDEKİLER
 1. [Başka Bilgisayarda Tek Seferde Başlatma Komutu (Birleştirilmiş Master Prompt)](#1-başka-bilgisayarda-tek-seferde-başlatma-komutu-birleştirilmiş-master-prompt)
-2. [Konuşmanın Başından İtibaren Verilen Tüm Kullanıcı Direktifleri (Kronolojik & Birebir Arşiv)](#2-konuşmanın-başından-itibaren-verilen-tüm-kullanıcı-direktifleri-kronolojik--birebir-arşiv)
-3. [Aktif Ordu Mevcudu (~150–200 Eşzamanlı Ajan) ve Tek Tek Görev Dağılımı](#3-aktif-ordu-mevcudu-150200-eşzamanlı-ajan-ve-tek-tek-görev-dağılımı)
-4. [5 Ana Denetleyici Konseyi (Veto & Sıfırdan Başlatma Mekanizması) + Sürekli Vizyon Direktörü](#4-5-ana-denetleyici-konseyi-veto--sıfırdan-başlatma-mekanizması--sürekli-vizyon-direktörü)
-5. [Kesin Yasaklar (Anti-Patterns), Mobil GPU (iOS/Android) ve Motor/Preloader Kuralları](#5-kesin-yasaklar-anti-patterns-mobil-gpu-iosandroid-ve-motorpreloader-kuralları)
+2. [Konuşmanın Başından İtibaren Verilen Tüm Kullanıcı Direktifleri (Kronolojik & Birebir Arşiv #1–#21)](#2-konuşmanın-başından-itibaren-verilen-tüm-kullanıcı-direktifleri-kronolojik--birebir-arşiv)
+3. [Aktif AAA Tasarım Şirketi Ordu Mevcudu (~200+ Eşzamanlı Ajan), Donanım İzolasyonu ve Görev Dağılımı](#3-aktif-aaa-tasarım-şirketi-ordu-mevcudu-200-eşzamanlı-ajan-donanım-izolasyonu-ve-görev-dağılımı)
+4. [Çapraz Akran Denetimi + 3 Özel Kapı Bekçisi + 5 Ana Denetleyici Konseyi + Sürekli Vizyon Direktörü](#4-çapraz-akran-denetimi--3-özel-kapı-bekçisi--5-ana-denetleyici-konseyi--sürekli-vizyon-direktörü)
+5. [Kesin Yasaklar (Anti-Patterns), PC Kilitlenme Koruması, Mobil GPU (iOS/Android) ve Preloader Kuralları](#5-kesin-yasaklar-anti-patterns-pc-kilitlenme-koruması-mobil-gpu-iosandroid-ve-preloader-kuralları)
 6. [Şu Ana Kadar Tamamlanan Çekirdek Çıktılar ve Başka Bilgisayarda Devam Etme Rehberi](#6-şu-ana-kadar-tamamlanan-çekirdek-çıktılar-ve-başka-bilgisayarda-devam-etme-rehberi)
 
 ---
 
 ## 1. Başka Bilgisayarda Tek Seferde Başlatma Komutu (Birleştirilmiş Master Prompt)
 
-Başka bir bilgisayarda repoyu klonlayıp (`git checkout selcukksezer/prawn && git pull`) Antigravity'yi açtığında aşağıdaki bloğu **tek seferde kopyalayıp yapıştırarak** tüm 200 ajanlık orduyu, 10 Destek Taburunu, 5 Ana Denetleyiciyi ve Sürekli Vizyon Direktörünü anında aynı kurallarla ayağa kaldırabilirsin:
+Başka bir bilgisayarda repoyu klonlayıp (`git checkout selcukksezer/prawn && git pull`) Antigravity'yi açtığında aşağıdaki bloğu **tek seferde kopyalayıp yapıştırarak** tüm **200 ajanlık AAA Tasarım Şirketi ordusunu**, **10 Stüdyo Departmanını (`10 × 19 = 190` bulut uzmanı)**, **PC koruyucu 3 Özel Kapı Bekçisini**, **Çapraz Akran Denetim döngüsünü**, **5 Ana Denetleyiciyi** ve **Sürekli Vizyon Direktörünü** anında aynı kurallarla ayağa kaldırabilirsin:
 
 ```markdown
 /teamwork [skip-interview] /goal
-# SİSTEM ROLÜ: AAA Mobil Baş Oyun Grafik Tasarımcısı, Teknik Sanat Yönetmeni ve 200 Ajanlı Yapay Zeka Ordusu Başkomutanı
+# SİSTEM ROLÜ: AAA Mobil Baş Oyun Grafik Tasarımcısı, Teknik Sanat Yönetmeni ve 200 Ajanlı AAA Tasarım Şirketi Başkomutanı
 
 Bu proje %100 BİR MOBİL OYUNDUR (YALNIZCA iOS & Android — Web veya PC oyunu DEĞİLDİR ve Web/PC'de yayınlanmayacaktır!).
 Görevin; mevcut `gkk_flutter` projemizi tüm 33 mobil ekranı, dünyası, zindanları, karakterleri, efektleri ve varlıklarıyla birlikte 2005 tarzı ilkel görünümden tamamen kurtarıp, **Aion 2 kalitesinde görsellere, efektlere, gerçek 3D modellere ve gerçek dokulara sahip, ancak `gkk_flutter`'ın kendi mobil oyun mantığından ve mekaniklerinden %1 bile sapmayan** son cilalı (final polished) ticari mobil oyun seviyesine taşımaktır.
 
-Gerekirse günlerce çalışacaksınız; basit, yarım, placeholder veya sahte hiçbir şey kabul edilmeyecek. Tek bir orkestratör yetmezse yanına **10 paralel Tabur Alt-Orkestratörü (`teamwork_orchestrator`)** indirerek **aynı anda canlı çalışan (`state: "running"`) 150–200 subagents** ordusu kuracaksın!
+Gerekirse günlerce çalışacaksınız; basit, yarım, placeholder veya sahte hiçbir şey kabul edilmeyecek. Tek bir orkestratör yetmezse doğrudan **10 paralel Stüdyo Departman Komutanı (`battalion_v3_01..10`)** indirerek **aynı anda canlı çalışan (`state: "running"`) tam 200 subagents (`10 × 19 = 190` uzman + `10` komutan + kapı bekçileri + denetçiler)** ordusu kuracaksın!
 
-## ZORUNLU MİMARİ VE YÖNETİŞİM KURALLARI
+## ZORUNLU MİMARİ, TASARIM ŞİRKETİ VE DONANIM KORUMA KURALLARI
 
 1. **%100 MOBİL HEDEF & AION 2 SADECE GÖRSEL REFERANS:**
    - Aion 2 yalnızca **efekt, görsel kalite, ışıklandırma, PBR doku ve dünya/zindan atmosferi** için örnektir; `gkk_flutter`'ın mevcut mobil oyun döngüsü, mekanikleri ve işleyişi %100 korunacaktır.
-   - Tüm optimizasyonlar iOS (Metal / Impeller) ve Android (Vulkan / GLES / Impeller) mobil GPU'larına (Adreno, Mali, Apple TBDR), telefon ekran oranlarına (`390x844` vb.), çentik/Dynamic Island `SafeArea` sınırlarına, başparmak dokunmatik ergonomisine ve mobil `HapticFeedback` titreşimlerine göre yapılacaktır.
+   - Tüm optimizasyonlar iOS (Metal / Impeller) ve Android (Vulkan / GLES / Impeller) mobil GPU'larına (Adreno, Mali, Apple TBDR), telefon ekran oranlarına (`390x844` / `1080x2400`), çentik/Dynamic Island `SafeArea` sınırlarına, başparmak dokunmatik ergonomisine (`>=48dp`) ve mobil `HapticFeedback` titreşimlerine göre yapılacaktır.
 
 2. **SIFIR BASİT ŞEKİL — %100 GERÇEK MODELLER, GERÇEK DOKULAR VE GERÇEK ÇİZİMLER:**
-   - Blender'da `primitive_cube_add`, `sphere`, `cylinder`, `cone` gibi basit kare/yuvarlak komutlarla yapılmış kardan-adam/lego tarzı modeller ve düz boyalı yüzeyler **KESİNLİKLE YASAKTIR**.
+   - Blender'da `primitive_cube_add`, `sphere`, `cylinder`, `cone` gibi basit kare/yuvarlak komutlarla yapılmış kardan-adam/lego tarzı modeller ve matematiksel gürültüyle üretilmiş düz dokular **KESİNLİKLE YASAKTIR**.
    - Bütün internet, resmi dokümanlar ve GitHub repoları (`search_web`) taranacak; nasıl yapılacağı bilinmeyen her teknik detay dokümanlardan ve açık kaynak GitHub repolarından araştırılacaktır.
    - Poly Haven, AmbientCG, Khronos `glTF-Sample-Assets`, KayKit, Quaternius, Kenney, Sketchfab CC0 ve OpenGameArt üzerinden yalnızca **CC0 / ticari kullanıma %100 uygun ücretsiz** gerçek `.glb` modelleri ve gerçek 1K/2K PBR doku haritaları (Albedo, NormalGL, Roughness, Metallic, AO, Displacement, Emission) fiziksel olarak `assets/` dizinine indirilecek; Blender MCP (`search_assets`, `import_asset`, `generate_3d`, `execute_blender_code`, `look`) ile keskin kenarlar yumuşatılıp (Shade Smooth, Weighted Normals, Bevel), Cycles PBR bake + LOD0/LOD1/LOD2/Impostor üretimi ve Draco sıkıştırmalı `.glb` + KTX2 (ASTC/ETC2) çıktıları alınacaktır.
    - `image-generator` ajanlarıyla gerçek yüksek çözünürlüklü Aion 2 tarzı karanlık/yüksek-fantastik illüstrasyonlar, karakter/boss portreleri, eşya/yetenek ikonları, arka planlar ve VFX sprite atlasları `assets/images/` içine üretilip tüm ekranlara bağlanacaktır.
 
 3. **MOTOR KONSEYİ, DÜŞÜK SİSTEM KORUMASI VE YORMAYAN ÖNDEN YÜKLEME:**
    - Ajanlar kendi aralarında **Unity (Unity-as-a-Library) vs Native Flutter Impeller / 3D** kullanımını mobil APK/IPA boyutu, düşük telefon RAM tüketimi (2–4 GB RAM), ısınma ve pil ömrü açısından tartışıp en doğru mimariyi uygulayacaktır.
-   - Düşük sistemli oyuncular asla unutulmayacak: `Eco (2GB RAM) -> Low -> Medium -> High -> Ultra` **Adaptif Kalite Ölçekleyici** (P95/P99 kare süresi izleme, dinamik çözünürlük `0.5x/0.75x/1.0x`, histerezis) tüm oyuna bağlanacaktır.
+   - Düşük sistemli oyuncular asla unutulmayacak: `Eco (2GB RAM) -> Low -> Medium -> High -> Ultra` **Adaptif Kalite Ölçekleyici** (P95/P99 kare süresi izleme, dinamik çözünürlük `0.5x/0.75x/1.0x`, 5 sn histerezis) tüm oyuna bağlanacaktır.
    - Oyunu kasmayan, takılma yapmayan **`<2ms/frame` Bütçeli Akıllı Önden Yükleyici (Progressive Preloader & AOT Shader Warm-Up + LRU RAM/VRAM önbelleği)** çalışacaktır.
 
 4. **10.000 OYUNCU KALABALIK & YÜKSEK FPS OPTİMİZASYONU:**
    - Oyuncu başına ayrı `Update()` döngüsü veya ayrı dinamik `PointLight` kesinlikle yasaktır.
    - Merkezi `CrowdRenderManager`, Spatial Hash Grid & AOI (yakın 30–50 karakter LOD0/1, orta mesafe GPU-Instanced LOD2, uzak mesafe tek draw-call VAT / Impostor sürüleri), Frustum + Occlusion Culling, %100 Object Pooling ve KTX2 Texture Atlas ile 60/120 FPS korunacaktır.
 
-5. **5 ANA DENETLEYİCİ KONSEYİ (GEÇMEZSE SIFIRDAN BAŞLATMA YETKİSİ):**
-   Tüm ajanların işlerini bağımsız olarak test eden, ekran görüntüleriyle (`look` + `390x844` mobil PNG) kontrol eden ve doğrudan Ana Ajana rapor veren **5 Ana Denetleyici (`chief_auditor_1..5`)** kurulacaktır:
-   - `chief_auditor_1_real_assets`: Gerçek `.glb` modeller, 2K PBR dokular, Draco LOD0-2 ve gerçek çizimleri denetler (basit kutu/küre veya sadece-liste görürse iptal edip sıfırdan başlatır).
-   - `chief_auditor_2_mobile_visual_qa`: Tüm 33 mobil ekranın telefon çözünürlüklü PNG ekran görüntülerini ve post-processing/dünya shader'larını görsel olarak denetler (Aion 2 kalitesinde değilse sıfırdan başlatır).
+5. **PC KİLİTLENMEMESİ İÇİN KESİN DONANIM İZOLASYONU (İŞÇİLER vs BELİRLİ KAPICI AJANLAR):**
+   - 200 ajanın tamamı aynı anda yerel PC'de `flutter test` + `flutter analyze` + `Blender Cycles OptiX GPU render` + ağır GB disk yazımı **KESİNLİKLE YAPMAYACAKTIR**!
+   - **~190 Bulut Tasarım/Kod Uzmanı (`%0` Yerel PC Yükü):** `run_command` çağırmaları kesin yasaktır (`flutter`, `dart`, `blender`, `powershell` çalıştıramazlar). Tüm düşünme, kodlama ve tasarım tartışmalarını bulutta `read_file`, `edit_file`, `write_file` ve `send_message` ile yürütürler; bilgisayar asla donmaz.
+   - **Yalnızca Belirli 3 Özel Kapı Bekçisi Ajan** yerel ağır işlemleri tek sıra halinde (çakışmasız) yürütür:
+     1. `dedicated_flutter_qa_runner` (1 ajan): Tüm `flutter analyze` ve `flutter test --concurrency=2` koşularını tek kuyrukta çalıştırır.
+     2. `dedicated_blender_gpu_runner` (1 ajan): Blender MCP / Cycles OptiX GPU render ve yüksek poligon `.glb` bake işlemlerini tek tek yürütür.
+     3. `dedicated_asset_io_gatekeeper` (1 ajan): Binary `.glb`, KTX2 ve PBR doku disk yazım/sıkıştırma işlerini tek elden yönetir (disk boş alanını ve GitHub `<100 MB` tekil dosya sınırını korur).
+
+6. **"TEK İŞ YAP ÇIK" YASAKTIR — TAM BİR AAA TASARIM ŞİRKETİ MODELİ (HER AJANA `/goal` + BİRBİRLERİNİ ÇAPRAZ DENETLEME):**
+   - Hiçbir ajan tek bir basit değişiklik yapıp durmayacak! 200 ajanın **her birine kalıcı bir `/goal` (2027 Aion 2 mobil tasarım çıtası)** verilir.
+   - 200 ajan **gerçek bir AAA Tasarım Şirketi / Oyun Stüdyosu** gibi çalışır: Her departman `(Sanat Yönetmeni + Kıdemli UI/UX Mimarı + VFX/Shader Ustası + Acımasız Akran Denetçi)` podlarına ayrılır.
+   - **Zorunlu Çapraz Akran Denetimi (`V1 → Akran Eleştirisi → V2/V3 Yükseltme`)**: Her ajan komşu ajanların ve komşu departmanların kodunu/tasarımını `read_file` ile inceler, `send_message` ve stüdyo eleştiri panoları üzerinden 4 kriterde (Aion 2 görsel derinlik, mobil başparmak ergonomisi, gerçek asset/shader uyumu, temiz kod) puanlar. Basit, düz veya kopuk duran (`< 9.2/10`) her iş akranı tarafından **VETO** edilerek V2/V3 yeniden tasarıma döndürülür; tüm 33 ekran, 18 shader ve 215+ model tek bir AAA stüdyodan çıkmış ortak sanat diline kavuşmadan üst kurula çıkamaz!
+
+7. **5 ANA DENETLEYİCİ KONSEYİ (GEÇMEZSE SIFIRDAN BAŞLATMA YETKİSİ):**
+   Tüm stüdyo departmanlarının işlerini bağımsız olarak test eden, gerçek ekran görüntüleriyle (`look` + gerçek ekran `390x844` mobil PNG) kontrol eden ve doğrudan Ana Ajana rapor veren **5 Ana Denetleyici (`chief_auditor_1..5`)** kurulacaktır:
+   - `chief_auditor_1_real_assets`: Gerçek `.glb` modeller, 2K PBR dokular, Draco LOD0-2, `pubspec.yaml` + `mesh_asset_registry.dart` birebir uyumunu ve gerçek çizimleri denetler (basit kutu/küre veya sahte liste görürse iptal edip sıfırdan başlatır).
+   - `chief_auditor_2_mobile_visual_qa`: Tüm 33 gerçek mobil ekranın (`HomeScreen`, `DungeonBattleScreen`, `CharacterScreen` vb. — sahte mock kutu yasak!) telefon çözünürlüklü PNG ekran görüntülerini ve post-processing/dünya shader'larını görsel olarak denetler (Aion 2 kalitesinde değilse sıfırdan başlatır).
    - `chief_auditor_3_combat_gameplay`: Savaş VFX/vuruş hissini (GPU partikül, ribbon trail, kırılma, decal, kamera sarsıntısı, 30–50ms hit-stop, rim-light flash, knockback, mobil haptics, zindan gölgeleri) ve mobil oyun mekaniğinin %100 korunduğunu denetler (eksikse sıfırdan başlatır).
    - `chief_auditor_4_mobile_perf_10k`: 10K oyuncu stres testini, mobil TBDR GPU/RAM sınırlarını, düşük sistem 60 FPS garantisini ve `<2ms/frame` ön-yükleyiciyi denetler (geçmezse sıfırdan başlatır).
-   - `chief_auditor_5_e2e_forensic`: `flutter analyze` (0 hata/uyarı), tüm `flutter test` ve Blender test süitlerini, `pubspec.yaml` kayıtlarını ve sıfır stub/TODO kuralını denetler (geçmezse sıfırdan başlatır).
+   - `chief_auditor_5_e2e_forensic`: `flutter analyze` (0 hata/uyarı), tüm `flutter test` ve Blender test süitlerini, Impeller shader sampler kurallarını ve sıfır stub/TODO kuralını denetler (geçmezse sıfırdan başlatır).
    **5/5 oybirliği onayı** alınmadan görev bitirilmez!
 
-6. **SÜREKLİ VİZYON & GELİŞTİRME PROMPT AJANI (`vision_prompt_director`):**
-   - Akışta sürekliliği sağlamak için periyodik olarak tüm projeyi tarayıp tıpkı ürün sahibi gibi Ana Ajana sürekli geliştirme/iyileştirme direktifleri yazan özel bir ajan çalışacak ve **yazdığı her mesajın sonunda açıkça `200 subagents` vurgusu yapacaktır**.
+8. **SÜREKLİ VİZYON & GELİŞTİRME PROMPT AJANI (`vision_prompt_director`):**
+   - Akışta sürekliliği sağlamak için periyodik olarak tüm projeyi tarayıp tıpkı ürün sahibi / baş kreatif direktör gibi Ana Ajana sürekli geliştirme/iyileştirme direktifleri yazan özel bir ajan çalışacak ve **yazdığı her mesajın sonunda açıkça `200 subagents` vurgusu yapacaktır**.
 
-7. **10 PARALEL TABUR İLE 150–200 CANLI AJAN & SON ADIM GİT COMMIT + PUSH:**
-   - Mevcut ilerlemeyi (`lib/`, `shaders/`, `assets/`, `test/`) tara, eksik kalan tüm ekranları ve varlıkları **10 paralel Tabur Alt-Orkestratörü (`battalion_1..10` × her biri 12–15 eşzamanlı işçi = ~150–200 canlı ajan)** ile tamamla.
-   - Her şey %100 bitip 5/5 Ana Denetleyici onayı alındığında en son temiz bir Conventional Commit (`.agents/teamwork` geçici dosyaları hariç) oluştur ve `git push` ile uzak repoya gönder!
+9. **10 PARALEL STÜDYO DEPARTMANI İLE TAM 200 CANLI AJAN & SON ADIM GİT COMMIT + PUSH:**
+   - Mevcut ilerlemeyi (`lib/`, `shaders/`, `assets/`, `test/`) tara, kalan tüm ekranları ve varlıkları **10 paralel Stüdyo Departmanı (`battalion_v3_01..10` × 19 bulut uzmanı = 190 uzman + 10 komutan + 3 özel kapı bekçisi + 5 Ana Denetleyici + Vizyon Direktörü = ~200+ eşzamanlı ajan)** ile tamamla.
+   - Her şey %100 bitip 5/5 Ana Denetleyici onayı alındığında `.agents/teamwork/` geçici dosyaları hariç temiz Conventional Commit'ler oluştur ve `git push origin selcukksezer/prawn` ile uzak repoya gönder!
 ```
 
 ---
 
 ## 2. Konuşmanın Başından İtibaren Verilen Tüm Kullanıcı Direktifleri (Kronolojik & Birebir Arşiv)
 
-Aşağıda bu oturumun başından itibaren tarafınızdan verilen **tüm direktifler eksiksiz kronolojik sırayla** ve her birinin ordu mimarisine eklediği kurallarla birlikte kayıt altına alınmıştır:
+Aşağıda bu oturumun en başından itibaren tarafınızdan verilen **tüm 21 direktif eksiksiz kronolojik sırayla** ve her birinin ordu/stüdyo mimarisine eklediği kurallarla birlikte kayıt altına alınmıştır:
 
 ### 📌 Direktif #1 — Konuşmanın Başındaki Birebir Orijinal Master Prompt
 
@@ -141,7 +154,7 @@ Benden bir görev aldığında şu sırayla hareket et:
 Hazırsan, mevcut proje yapımızı ve anasayfa/zindan dosyalarımızı tarayarak ilk görsel dönüşüm planını başlat ve Blender MCP bağlantısını kontrol et!/goal
 ```
 
-  ### 📌 Direktif #2 — İlk Eşzamanlılık Denetimi
+### 📌 Direktif #2 — İlk Eşzamanlılık Denetimi
 > `"ben sadece çalışan 2 subagent görüyorum ama 50+ olması lazım"`
 * **Mimari Karşılığı:** Yalnızca kök `Sentinel` ve tek `Orchestrator` ile kalınmaması, işçi sürülerinin anında paralel olarak 5 uzman alana yayılması kuralı devreye alındı.
 
@@ -151,7 +164,7 @@ Hazırsan, mevcut proje yapımızı ve anasayfa/zindan dosyalarımızı tarayara
 
 ### 📌 Direktif #4 — Darboğaz / Kilitlenme Tespiti
 > `"27ye düştü :D"`
-* **Mimari Karşılığı:** Kilitlenen orkestratörün altındaki çalışan işçileri cascade-kill ile öldürmeden, yanına paralel `Orchestrator V2` + alt-orkestratörler açarak kesintisiz kurtarma ve I/O dostu 4–5'erli paketlerle fırlatma kuralı getirildi.
+* **Mimari Karşılığı:** Kilitlenen orkestratörün altındaki çalışan işçileri cascade-kill ile öldürmeden, yanına paralel `Orchestrator V2` + alt-orkestratörler açarak kesintisiz kurtarma kuralı getirildi.
 
 ### 📌 Direktif #5 — Çalışma Ortamı Doğrulaması (Yerel vs GitHub)
 > `"bu ajanlar githubdaki dosyalar üzerindemi çalşışıyor yoksa yerel dosyalar üzerinde mi"`
@@ -196,222 +209,195 @@ Hazırsan, mevcut proje yapımızı ve anasayfa/zindan dosyalarımızı tarayara
 
 ### 📌 Direktif #14 — Canlı Çalışan Ajan Sayısını Zorlama ve Destek Orkestratörleri Ekleme
 > `"hala ben 57 ajan görüyorum ama zorla"` ve `"tek başıma yetemiyorda yetişemiyorsa onada destek ekleyelim"`
-* **Mimari Karşılığı:** Tek orkestratör darboğazını kırmak için `lib/screens/*` altındaki **33 gerçek mobil ekranı**, 3D `.glb` hasadını, sanat fabrikasını ve QA sürecini çakışmasız paylaşan **10 Bağımsız Destek Tabur Orkestratörü (`battalion_1..10`)** paralel indirildi (`10 × 14 = +140` yeni canlı işçi → toplam **150–200+ eşzamanlı aktif ajan**).
+* **Mimari Karşılığı:** Tek orkestratör darboğazını kırmak için `lib/screens/*` altındaki **33 gerçek mobil ekranı**, 3D `.glb` hasadını, sanat fabrikasını ve QA sürecini çakışmasız paylaşan **10 Bağımsız Destek Tabur Orkestratörü** paralel indirildi.
 
 ### 📌 Direktif #15 — Taşınabilir `PROMPT_ORDUSU.md` Dokümanı + Doğrudan Git Commit & Push
 > `"sana konuşmanın başından bu yana verdiğim direktiflere göre bir md dosyası oluştue adı prompt ordusu olsun ne prompt verdiysem hepsini içersin şuan aktif kaç işçi çalıştıracağını hangisinin ne görevi olduğunu ve neler yapacaklarını yazacak başka bilgisayardada aynı şekilde devam etmek için kullanacağım en ince detayına kadar yaz ve direkt commitle pushla dosyayı gite"`
 
+### 📌 Direktif #16 — Orijinal İlk Mesajdaki Master Promptun Birebir Eklenmesi
+> `"ilk mesajda yazdığım master promptud  ekle mutlaka konuşmanın başında yazdığım varya"`
+* **Mimari Karşılığı:** Yukarıdaki [Direktif #1](#direktif-1--konuşmanın-başındaki-birebir-orijinal-master-prompt) bloğuna ilk mesajın kelimesi kelimesine orijinal metni gömüldü.
+
+### 📌 Direktif #17 — PC Donması & Kapanması Sonrası Kaldığımız Yerin Tespiti ve Kurtarma
+> `"nerde kaldık en son bilgisayar donmuş ve kapanmış bütün ajanlar durmuş"`
+* **Mimari Karşılığı:** Disk üzerindeki tüm ilerleme (18 GLSL shader, 215 `.glb` model, 725 PBR doku/illüstrasyon, 30/33 mobil ekran, 194 test dosyası ve 5 Ana Denetleyici raporu) sıfır veri kaybıyla doğrulandı ve `Orchestrator V3` kurtarma hattı başlatıldı.
+
+### 📌 Direktif #18 — PC Kilitlenmemesi İçin İşçiler ile Ağır Test/Render/Disk Ajanlarının Kesin Ayrılması
+> `"pc kilitlenmemesi için 200 ajanın hepsi bu flutter test + flutter analyze + Blender Cycles OptiX GPU render + 1.34 GB disk yazımı yapmasın işçiler çalışsın bunları belirli ajanlar yapsın"`
+* **Mimari Karşılığı:** **2 Katmanlı Donanım İzolasyonu** getirildi: ~190 bulut işçisinde `run_command` (`flutter`, `dart`, `blender`, ağır disk yazımı) **kesin yasaklandı** (`%0` yerel PC yükü); ağır yerel CLI/GPU/disk işlemleri yalnızca **3 Özel Kapı Bekçisi Ajana** (`dedicated_flutter_qa_runner`, `dedicated_blender_gpu_runner`, `dedicated_asset_io_gatekeeper`) tek sıra kuyruk olarak bağlandı.
+
+### 📌 Direktif #19 — 10 Ajan Kısıtının Kaldırılıp Tam 200 Eşzamanlı Ajanın Koşturulması
+> `"200 ajan çalışacak şuan 10 tane var"`
+* **Mimari Karşılığı:** İhtiyat amaçlı 20–30 sınırı iptal edildi; 190 bulut işçisi `run_command` çalıştırmadığı için PC'yi yormadan **10 Paralel V3 Departman Komutanı × 19 Bulut Uzmanı = 190 Uzman + 10 Komutan + 3 Kapı Bekçisi + 5 Ana Denetleyici + Vizyon Direktörü = ~200+ aktif eşzamanlı ajan** aynı anda devreye alındı.
+
+### 📌 Direktif #20 — "Tek İş Yap Çık" Yasağı, Her Ajana `/goal` Verilmesi, Birbirlerini Denetleme ve AAA Tasarım Şirketi Modeli
+> `"hepsi tek iş yapmasın hepsine goal ver ve birbirlerinide denetlesinler hepsi tek iş yaparsa basit şeyler çıkabilir tam bir tasarım şirketi gibi çalışacak bu 200 ajan"`
+* **Mimari Karşılığı:**
+  - Yüzeysel "tek dosya düzenle ve çık" modeli yasaklandı.
+  - 200 ajanın **her birine kalıcı bir `/goal` (2027 Aion 2 stüdyo çıtası)** verildi.
+  - Tüm departmanlar `(Sanat Yönetmeni + Kıdemli UI/UX + VFX/Shader Ustası + Akran Denetçi)` podlarına dönüştürüldü; **Zorunlu Çapraz Akran Denetimi (`V1 → Akran Eleştirisi → V2/V3 Yükseltme`, `< 9.2/10` otomatik akran vetosu)** ve **Departmanlar Arası Sanat Dili Uyum Denetimi** devreye sokuldu.
+
+### 📌 Direktif #21 — `PROMPT_ORDUSU.md` Dosyasının Son Mesajlara Göre Güncellenmesi
+> `"prompt dosyasınıda güncelle bizim son mesajlara göre"`
+* **Mimari Karşılığı:** Bu doküman son mimari kararların tamamıyla (PC-Safe Donanım İzolasyonu + 200 Ajanlık AAA Tasarım Şirketi & Çapraz Akran Denetimi) güncellenip GitHub'a pushlandı.
+
 ---
 
-## 3. Aktif Ordu Mevcudu (~150–200 Eşzamanlı Ajan) ve Tek Tek Görev Dağılımı
+## 3. Aktif AAA Tasarım Şirketi Ordu Mevcudu (~200+ Eşzamanlı Ajan), Donanım İzolasyonu ve Görev Dağılımı
 
-Ordu mimarisi, çakışmayı (merge/file conflict) sıfıra indiren **hiyerarşik komuta + ayrık dizin mülkiyeti (disjoint directory ownership)** prensibiyle **toplam ~195–210 ajan kapasitesinde (anlık 150–200 canlı çalışan `running` ajan)** kurgulanmıştır:
+Ordu mimarisi; **PC'yi asla kilitlemeyen Donanım İzolasyonu**, **Dosya Çakışmasını Sıfırlayan Ayrık Mülkiyet** ve **AAA Tasarım Şirketi Çapraz Akran Denetimi (`V1 → V2 → V3`)** prensipleriyle **~200–210 eşzamanlı aktif ajan** kapasitesinde çalışır:
 
-### 🏛️ A. Üst Komuta ve Süreklilik Katmanı (4 Ajan)
+### 🏛️ A. Üst Yönetim ve Kreatif Direktörlük Katmanı (3 Ajan)
 | Ajan Kodu | Rolü | Görevi ve Sorumluluğu |
 |---|---|---|
-| `sentinel` | Kök Gözetmen (`teamwork`) | Tüm orkestratörlerin canlılığını (cron ile) izler, `ORIGINAL_REQUEST.md` ve `BRIEFING.md` otoritesini korur, en sonda bağımsız Victory Audit çalıştırır. |
-| `orchestrator_v1` | Dalga 1 Koruyucu Orkestratör | İlk dalgada başlatılan `Scout`, `Blender` ve `World` ajanlarının çıktılarının güvenle tamamlanmasını tutar. |
-| `orchestrator_v2` | Birincil Merkez Orkestratör | Çekirdek VFX, 10K Kalabalık, Motor Konseyi, Entegrasyon işlerini ve **5 Ana Denetleyici Konseyi** karar döngüsünü yönetir. |
-| `vision_prompt_director` | Sürekli Vizyon & Geliştirme Direktörü | Her 5–7 dakikada bir `assets/`, `lib/`, `shaders/`, `test/` ve ekran görüntülerini tarar; eksikleri yakalayıp Ana Ajana sürekli geliştirme promptları yazar ve **her mesajını `200 subagents` vurgusuyla bitirir**. |
+| `sentinel` (`3eda92a2`) | Kök Gözetmen (`teamwork`) | Tüm stüdyo departmanlarının canlılığını (cron ile) izler, anayasal kuralları korur, en sonda bağımsız **Victory Audit** çalıştırır. |
+| `orchestrator_v3` (`f7e9f1a2`) | Stüdyo Genel Koordinatörü | 10 Stüdyo Departmanı, 3 Özel Kapı Bekçisi ve 5 Ana Denetleyici arasındaki teslimat/revizyon trafiğini yönetir. |
+| `vision_prompt_director` | Baş Kreatif & Sürekli Geliştirme Direktörü | Periyodik olarak tüm projeyi tarar; eksikleri yakalayıp Ana Ajana sürekli geliştirme promptları yazar ve **her mesajını `200 subagents` vurgusuyla bitirir**. |
 
 ---
 
-### ⚖️ B. 5 Ana Denetleyici Konseyi — "5 Ana Denetleyici" (5 Ajan)
-*(Her biri koşulsuz **RED + SIFIRDAN BAŞLATMA** yetkisine sahiptir; 5/5 onay olmadan bitiş yapılamaz.)*
+### 🛡️ B. PC Kilitlenmesini Önleyen 3 Özel Ağır-İş Kapı Bekçisi ("Belirli Ajanlar" — 3 Ajan)
+*(Yerel bilgisayarda ağır CLI, GPU ve ikili disk yazımı yapma yetkisine sahip **TEK** ajanlardır; 190 bulut uzmanı bu araçları çağıramaz!)*
 
-| Ajan Kodu | Denetim Alanı | Neleri Test Eder ve Ne Yapacağını Nasıl Denetler? |
+| Ajan Kodu | Donanım Yetkisi | Görevi ve Çalışma Kuralı |
 |---|---|---|
-| `chief_auditor_1_real_assets` | Gerçek 3D Model, PBR & Sanat Denetçisi | `assets/models/`, `assets/textures/`, `assets/images/` dizinlerini fiziksel olarak tarar; CC0 lisanslarını, gerçek poligon/UV topolojisini, 1K/2K PBR haritalarını (Albedo, Normal, Roughness, Metallic, Emission), LOD0-2/Impostor Draco `.glb` çıktılarını ve Blender `look` PNG renderlarını inceler. Basit küp/küre/silindir görürse iptal edip baştan başlatır. |
-| `chief_auditor_2_mobile_visual_qa` | Aion 2 Mobil Görsel & Ekran Görüntüsü Denetçisi | Tüm 33 mobil ekranın `390x844` telefon çözünürlüklü PNG ekran görüntülerini, çentik/Dynamic Island `SafeArea` yerleşimini ve 16 GLSL shader'ın görsel kalitesini inceler. Basit/2005 tarzı veya masaüstü görünümlü ekranları sıfırdan yazdırır. |
-| `chief_auditor_3_combat_gameplay` | Zindan, Savaş Hissi & Mobil Mantık Denetçisi | 9 savaş VFX/juice modülünün (GPU partikül, ribbon trail, kırılma, decal, sarsıntı, 30–50ms hit-stop, rim flash, knockback, mobil titreşim, zindan meşale gölgeleri) gerçek savaş akışına bağlandığını ve `gkk_flutter` mobil oyun mantığının %100 korunduğunu doğrular. |
-| `chief_auditor_4_mobile_perf_10k` | 10K Oyuncu, Mobil GPU, Düşük Sistem & Preloader Denetçisi | 10.000 varlık stres testini (`<4ms` bütçe, 0 bireysel `Update()`/PointLight, 21 draw call), 2 GB RAM düşük Android `Eco -> Ultra` adaptif ölçekleyiciyi, KTX2 ASTC/ETC2 dokularını ve `<2ms/frame` takılmasız Progressive Preloader'ı test eder. |
-| `chief_auditor_5_e2e_forensic` | Uçtan Uca Kod, Test Süiti & Yayın Denetçisi | `flutter analyze` (0 hata/uyarı), tüm `flutter test` süitleri, Blender/Python testleri, `pubspec.yaml` varlık kayıtları, sıfır ölü kod/stub/TODO ve temiz git ağacını denetler. |
+| `dedicated_flutter_qa_runner` | Tekil `flutter analyze` & `flutter test --concurrency=2` | 10 Stüdyo Departmanının bulutta tamamladığı kod ve testleri **tek sıra kuyrukta** derler, analiz eder ve golden PNG çıktılarını üretir. |
+| `dedicated_blender_gpu_runner` | Tekil Blender CLI & Blender MCP (Cycles OptiX GPU) | Blender MCP (`search_assets`, `import_asset`, `generate_3d`, `look`) ve Cycles OptiX GPU PBR bake/render işlemlerini **aynı anda yalnızca 1 süreç** olacak şekilde yürütür. |
+| `dedicated_asset_io_gatekeeper` | Tekil Binary `.glb` / KTX2 / PBR Disk I/O | Sahte ilkel modellerin imhasını, gerçek CC0 `.glb`/PBR dosyalarının disk yerleşimini, sıkıştırmasını, `C:` boş alan korumasını ve GitHub `<45 MB` tekil dosya limitini tek elden yönetir. |
 
 ---
 
-### 🛠️ C. Çekirdek Uzman Sürüler — Dalga 1 & Dalga 2 (62 Ajan)
+### ⚖️ C. 5 Ana Denetleyici Konseyi — "5 Ana Denetleyici" (5 Ajan)
+*(Her biri koşulsuz **RED + SIFIRDAN BAŞLATMA** yetkisine sahiptir; 5/5 oybirliği onayı olmadan bitiş ve git push yapılamaz.)*
 
-#### 1. 🔍 Ajan-Scout Sürüsü (10 Ajan)
-- `scout_1_polyhaven`: Poly Haven CC0 karanlık-fantastik taş, yosunlu duvar, ıslak zemin, ahşap 2K PBR doku ve model taraması.
-- `scout_2_kenney`: Kenney CC0 modüler zindan, kale, silah ve çevre paketleri taraması.
-- `scout_3_quaternius`: Quaternius & KayKit CC0 iskeletli/animasyonlu karakter, yaratık ve zindan kitleri taraması.
-- `scout_4_ambientcg`: AmbientCG CC0 gotik taş, paslı demir, ıslak zindan zemini PBR haritaları (OpenGL Normal, Roughness, Height).
-- `scout_5_opengameart`: OpenGameArt CC0 / ticari uyumlu yaratık, zırh ve büyü mesh taraması.
-- `scout_6_cc0_verifier`: Tüm varlıkların %100 ticari kullanım/CC0 lisans uyumluluğunu denetleyen lisans denetçisi.
-- `scout_7_char_models`: Şövalye, Büyücü, İskelet, Boss modelleri için kemik/animasyon ve LOD0 (10–15k), LOD1 (3–5k), LOD2 (800–1200 tri) bütçe analizi.
-- `scout_8_env_models`: Gotik kemer, sütun, meşale, sunak, yıkıntı ve bitki örtüsü modüler grid standartları.
-- `scout_9_weapons`: Kılıç, asa, balta, hançer ve kalkan modelleri için trail soket uçları ve parlayan rün emission maskesi analizi.
-- `scout_10_pbr_catalog`: ORM (Occlusion-Roughness-Metallic) kanal paketleme ve `2048x2048` tek draw-call Texture Atlas yerleşim planı.
-
-#### 2. 🎨 Ajan-Blender MCP & Teknik Sanat Sürüsü (10 Ajan)
-- `blender_1_mcp_bridge`: Blender MCP bağlantı doğrulaması (`get_addon_status`, `get_scene_info`, `execute_blender_code`, `look`).
-- `blender_2_normals_bevel`: Keskin poligon kenarlarını yok eden Python `bpy` hattı (Shade Smooth, Auto Smooth, Weighted Normals, Bevel).
-- `blender_3_pbr_bake`: Cycles/EEVEE yüksek-düşük poligon PBR fırınlama (Albedo, 16-bit Normal, Roughness, Metallic, AO, Emission + UV margin dilation).
-- `blender_4_lod_gen`: UV/dikiş bozulması olmadan otomatik LOD0 (%100), LOD1 (%40), LOD2 (%15) üretim hattı.
-- `blender_5_impostor_bake`: 8/16 açılı kamera rig'i ile uzak mesafe kalabalıklar için Albedo+Normal+Depth Impostor Billboard Atlas fırınlama.
-- `blender_6_draco_gltf`: `bpy.ops.export_scene.gltf` Draco sıkıştırmalı (pos=14, norm=10, uv=12) `.glb` dışa aktarım hattı.
-- `blender_7_procedural_props`: Gerçek PBR dokulu yüksek detaylı gotik çevre/sütun/sunak detaylandırma hattı.
-- `blender_8_char_rig`: Kayma (sliding) önleyici root-motion / kalabalık animasyon ve VAT (Vertex Animated Texture) hazırlık hattı.
-- `blender_9_nodegraph`: Parlayan Aion 2 rünleri, ıslak taş ve aşınmış metal PBR shader node-graph kurulumu.
-- `blender_10_gltf_draco_verifier`: Üretilen tüm `.glb` dosyalarının ikili (binary) Draco sıkıştırma oranlarını ve PBR kanallarını doğrulayan ajan.
-
-#### 3. 🌍 Ajan-World & Post-Processing Sürüsü (10 Ajan)
-- `world_1_hub_layout`: Mobil Anasayfa (Main Hub) sahne derinliği ve katmanlı dünya mimarisi.
-- `world_2_volumetric_fog`: Yükseklik ve mesafe tabanlı Volümetrik Sis + tanrısal ışık hüzmeleri (God-Rays).
-- `world_3_baked_gi`: Mobil dostu fırınlanmış küresel aydınlatma (Baked GI / Lightmap + küresel harmonik ortam ışığı).
-- `world_4_ssr_puddles`: Yağmurlu/ıslak taş zeminde su birikintisi yansımaları (`shaders/world/puddle_ssr.frag`).
-- `world_5_wind_shader`: Rüzgarda doğal sallanan bitki örtüsü ve sancaklar için Vertex/UV dalga shader'ı.
-- `world_6_aces_ssao`: Sinematik ACES Filmic Tonemapping + yarı-küresel SSAO ve kenar koruyucu Bilateral Blur (`aces_tonemap.frag`, `ssao.frag`, `ssao_bilateral_blur.frag`, `ssao_composite_aces.frag`).
-- `world_7_bloom_color`: Büyü/rün parlamaları için eşikli HDR Bloom + karanlık-fantastik Color Grading.
-- `world_8_camera_ui_depth`: Sahne derinliğini kapatmayan mobil kamera perspektifi, paralaks ve `SafeArea` HUD yerleşimi.
-- `world_9_sky_gi`: Canlı, hareketli bulut/aurora katmanlı atmosferik gökyüzü (`atmospheric_sky.frag`).
-- `world_10_reviewer`: Düz/tekrarlayan ucuz doku yasağını ve mobil atmosfer kalitesini denetleyen World denetçisi.
-
-#### 4. ⚔️ Ajan-VFX, Zindan & Vuruş Hissi Sürüsü (10+ Ajan)
-- `vfx_1_gpu_particles`: Kıvılcım, kor, karanlık büyü girdabı ve duman için çok katmanlı GPU partikül motoru (`gpu_particles.frag`).
-- `vfx_2_ribbon_trails` (+ `vfx_2b`): Catmull-Rom / Bezier enterpolasyonlu pürüzsüz silah savurma izleri (`ribbon_trail.frag`).
-- `vfx_3_refraction_spells`: Şok dalgası ve büyü patlamaları için kromatik kırılmalı distorsiyon shader'ı (`shockwave_refraction.frag`).
-- `vfx_4_dynamic_decals`: Zeminde kalan dinamik yanık, çatlak ve parlayan büyü rünü izleri (`ground_decal.frag`).
-- `vfx_5_screen_shake`: Darbe vektörü yönünde Perlin gürültülü ve travma üslü mikro kamera sarsıntısı (`directional_camera_shake.dart`).
-- `vfx_6_hit_stop`: Hafif (30ms), ağır (50ms) ve kritik vuruşlarda takılmasız Hit-Stop animasyon duraksaması (`hit_stop_manager.dart`).
-- `vfx_7_rim_flash`: Darbe alan düşman silüetinde anlık Fresnel parlama (`rim_hit_flash.frag`).
-- `vfx_8_knockback_ragdoll`: Vuruş yönüne göre fiziksel savrulma, sürtünmeli sönümlenme ve tökezleme harmanlaması.
-- `vfx_9_dungeon_torches` (+ `vfx_9b`): Titreyen meşale/büyü ışıkları ve dinamik zindan gölge oyunları (`dungeon_lighting.frag`, `dungeon_light_system.dart`).
-- `vfx_10_reviewer`: Tüm savaş efektlerinin 60 FPS kararlılığını ve vuruş hissini denetleyen VFX denetçisi.
-
-#### 5. ⚡ Ajan-Opti 10.000 Oyuncu & Mobil Performans Sürüsü (12 Ajan)
-- `opti_1_spatial_grid`: 10.000 varlığı `<1ms` içinde sorgulayan sıfır-tahsisatlı (zero-alloc) Spatial Hash Grid.
-- `opti_2_aoi_tiers`: Mesafeye göre Yakın (30–50 tam model LOD0/1), Orta (GPU-Instanced LOD2) ve Uzak (VAT/Impostor) AOI katman yöneticisi.
-- `opti_3_crowd_manager`: Bireysel `Update()` döngülerini tamamen ortadan kaldıran merkezi `CrowdRenderManager`.
-- `opti_4_gpu_instancing`: Aynı materyali paylaşan zırh, silah ve çevre nesnelerini tek draw-call'da birleştiren GPU Instancing Batcher.
-- `opti_5_vat_crowd`: Uzaktaki binlerce oyuncuyu tek draw-call ile çizen Vertex Animated Texture sürü motoru (`vat_crowd.frag`).
-- `opti_6_frustum_culling`: Kamera açısı dışındaki varlıkları `0.35ms` altında eleyen SIMD/düz-dizi Frustum Culling.
-- `opti_7_occlusion_culling`: Duvar/kaya arkasında kalan varlıkları çizmeyen HZB / derinlik tabanlı Occlusion Culling.
-- `opti_8_ktx2_compression`: Mobil GPU'lar için ASTC (iOS/Android) ve ETC2 (uyumluluk) hedefleyen KTX2 / Basis Universal doku hattı.
-- `opti_9_object_pooling`: Çöp toplayıcı (GC) takılmalarını sıfırlayan %100 ön-tahsisli Object Pool mimarisi.
-- `opti_10_no_point_lights`: Oyuncu başı point light darboğazını yok eden kümelenmiş ışıklandırma (`clustered_crowd_lighting.frag`).
-- `opti_11_10k_stress_benchmark`: 10.000 eşzamanlı varlık altında kare süresi (`0.21ms` tick), bellek ve draw call (`21 draw call`) stres testi koşucusu.
-- `opti_12_opti_reviewer`: Optimizasyon bütçelerini denetleyen bağımsız performans denetçisi.
-
-#### 6. 🧠 Motor Konseyi & Çekirdek Entegrasyon Ekibi (10 Ajan)
-- `council_1_engine_debate`: Mobil iOS/Android yayını için Unity-as-a-Library vs Native Flutter Impeller / 3D mimari tartışma ve karar konseyi (APK/IPA şişmesi, düşük telefonlarda çift motor RAM yükü ve pil ısınması analizi).
-- `council_2_low_spec_scaler` (+ `council_2b`): 2 GB RAM düşük Android cihazlardan amiral gemilerine 4 kademeli (`Eco / Low / High / Ultra`) dinamik çözünürlüklü Adaptif Kalite Ölçekleyici.
-- `council_3_progressive_preloader`: Ana thread'i yormayan (`<2ms/frame` bütçeli), arka planda parça parça `.glb`/KTX2 yükleyen ve shader ön-ısıtan (PSO Warm-Up) LRU önbellekli Ön-Yükleyici.
-- `integ_1_hub_scene` .. `integ_6_asset_registry` + `test_1_e2e_suite`: Merkezi 16 GLSL shader kayıt defteri, Draco varlık yükleyici ve uçtan uca entegrasyon hattı.
-
----
-
-### ⚔️ D. 10 Bağımsız Destek Tabur Komutanlığı (~10 Komutan + ~140 Eşzamanlı Tabur İşçisi)
-
-Tek orkestratörün hız sınırını aşmak ve `gkk_flutter` içindeki **33 gerçek mobil ekranın tamamını** hiçbir dosya çakışması olmadan aynı anda Aion 2 Mobile görsel seviyesine yükseltmek için çalışan **10 paralel Tabur Komutanı (`teamwork_orchestrator`)** ve altlarındaki **12–15'er eşzamanlı işçi**:
-
-1. **Tabur 1 — `battalion_1_hub_world` (Komutan + 12–15 İşçi)**
-   - **Dizin Mülkiyeti:** `lib/screens/home/`, `lib/screens/mekans/`, `lib/screens/facilities/`, `lib/components/kingdom/`, `lib/components/layout/`
-   - **Görevleri:** Anasayfa gerçek 3D `.glb` sahne görünümü, volümetrik sis/ACES/SSAO/SSR mobil entegrasyonu, arka plan 10K kalabalık katmanı, mekan ve tesisler için gerçek Aion 2 atmosferik illüstrasyonlar, `390x844` `SafeArea` ekran görüntüsü testleri.
-
-2. **Tabur 2 — `battalion_2_dungeon_pvp_war` (Komutan + 15 İşçi: `b2_w1`..`b2_w15`)**
-   - **Dizin Mülkiyeti:** `lib/screens/dungeon/`, `lib/screens/pvp/`, `lib/screens/guild_war/`, `lib/components/pvp/`
-   - **Görevleri:** Zindan, PvP Arenası ve Lonca Savaşı ekranlarına gerçek yaratık/boss `.glb` modelleri bağlama, titreyen meşale ve dinamik gölge aydınlatması, 9 savaş VFX/juice modülünün tamamını + mobil `HapticFeedback` titreşimlerini gerçek vuruş anlarına bağlama, Aion 2 abyssal boss çizimleri ve mobil ekran görüntüsü testleri.
-
-3. **Tabur 3 — `battalion_3_hero_gear_enhance` (Komutan + 14–15 İşçi)**
-   - **Dizin Mülkiyeti:** `lib/screens/character/`, `lib/screens/inventory/`, `lib/screens/enhancement/`, `lib/screens/loot/`, `lib/components/character/`, `lib/components/player/`
-   - **Görevleri:** 360 derece döndürülebilir 3D Karakter & Silah vitrini (`CharacterTurntableViewport`, rün parlamalı zırh/kanat aurası, Fresnel yansıma), eşya güçlendirme (`enhancement`) örs kıvılcım/şok dalgası VFX'i, gerçek yüksek çözünürlüklü zırh/silah/ganimet ikonları ve mobil golden testleri.
-
-4. **Tabur 4 — `battalion_4_economy_craft` (Komutan + 14–15 İşçi)**
-   - **Dizin Mülkiyeti:** `lib/screens/crafting/`, `lib/screens/market/`, `lib/screens/shop/`, `lib/screens/trade/`, `lib/screens/bank/`, `lib/components/trade/`
-   - **Görevleri:** Üretim ocağı ateş/kor partikül shader'ları, Pazar/Mağaza/Ticaret/Banka ekranları için mobil oyun mantığını bozmayan Aion 2 koyu-fantastik metalik/cam arayüz cilası, gerçek iksir/sandık/malzeme illüstrasyonları ve mobil golden testleri.
-
-5. **Tabur 5 — `battalion_5_social_progression` (Komutan + 15 İşçi: `soc_1`..`soc_15`)**
-   - **Dizin Mülkiyeti:** `lib/screens/guild/`, `lib/screens/quests/`, `lib/screens/season/`, `lib/screens/leaderboard/`, `lib/screens/reputation/`
-   - **Görevleri:** Dalgalanan lonca sancağı ve parlayan amblem shader'ları, Görev parşömenleri/Sezon Bileti/Sıralama/İtibar ekranları için gerçek Aion 2 sanat varlıkları ve mobil golden testleri.
-
-6. **Tabur 6 — `battalion_6_world_activities` (Komutan + 12–14 İşçi)**
-   - **Dizin Mülkiyeti:** `lib/screens/horse_race/`, `lib/screens/prison/`, `lib/screens/hospital/`, `lib/screens/staff/`
-   - **Görevleri:** At yarışı pist tozu ve hız izi (motion trail) efektleri, gotik hapishane meşale/demir parmaklık gölge atmosferi, şifahane (hospital) kutsal iyileştirme aura/bloom ışığı, gerçek personel portreleri ve mobil golden testleri.
-
-7. **Tabur 7 — `battalion_7_onboarding_hud_settings` (Komutan + 14–15 İşçi)**
-   - **Dizin Mülkiyeti:** `lib/screens/auth/`, `lib/screens/settings/`, `lib/screens/chat/`, `lib/screens/friends/`, `lib/screens/announcements/`, `lib/screens/notifications/`, `lib/components/daily_reward/`, `lib/components/comeback/`
-   - **Görevleri:** Hareketli gökyüzü ve partiküllü sinematik Aion 2 mobil giriş (login) portalı, Ayarlar ekranına doğrudan `AdaptiveQualityScaler` (`Eco / Düşük / Orta / Yüksek / Ultra`) ve Ön-Yükleyici durum paneli bağlama, günlük ödül sandık açılış VFX'i ve mobil golden testleri.
-
-8. **Tabur 8 — `battalion_8_real_glb_blender_harvest` (Komutan + 14–15 İşçi)**
-   - **Dizin Mülkiyeti:** `assets/models/characters/`, `assets/models/monsters/`, `assets/models/weapons/`, `assets/models/environment/`, `assets/textures/pbr_2k/`
-   - **Görevleri:** İnternetten (`curl` / `Invoke-WebRequest` ile Khronos, Poly Haven, KayKit, Quaternius, Kenney, AmbientCG) fiziksel olarak gerçek CC0 `.glb` modelleri ve 2K PBR doku haritaları indirme; Blender MCP (`search_assets`, `import_asset`, `generate_3d`) + Cycles PBR bake + LOD0/1/2/Impostor Draco `.glb` üretimi + Blender `look` PNG kanıt renderları + `pubspec.yaml` kaydı.
-
-9. **Tabur 9 — `battalion_9_aion2_art_factory` (Komutan + 14–15 İşçi)**
-   - **Dizin Mülkiyeti:** `assets/images/aion2_ui/`, `assets/images/portraits/`, `assets/images/icons/`, `assets/images/backgrounds/`, `assets/images/vfx_sprites/`
-   - **Görevleri:** Paralel `image-generator` işçileriyle gerçek yüksek detaylı Aion 2 karakter/boss portreleri, süslü yetenek ve ekipman ikonları, atmosferik arka planlar, parlayan rün çemberleri ve VFX flipbook atlasları üretip `pubspec.yaml`'a kaydetme.
-
-10. **Tabur 10 — `battalion_10_qa_council_auditors` (Komutan + 12–14 İşçi)**
-    - **Dizin Mülkiyeti:** `test/golden_mobile/`, `test/stress_10k/`, `lib/qa/`
-    - **Görevleri:** 33 ekranın tamamında `390x844` iOS/Android `SafeArea` PNG ekran görüntüsü alma, 10.000 varlık ve 2 GB RAM düşük Android stres testlerini koşturma ve kanıt paketlerini **5 Ana Denetleyiciye** + `vision_prompt_director`'a sunma.
-
-### 📊 Toplam Ajan Ordusu Özeti
-| Katman | Birim Sayısı | Eşzamanlı Ajan Kapasitesi |
+| Ajan Kodu | Denetim Alanı | Neleri Test Eder ve Nasıl Veto Eder? |
 |---|---|---|
-| Üst Komuta & Sürekli Vizyon Direktörü | 4 Birim | 4 Ajan |
-| 5 Ana Denetleyici Konseyi (`Chief Auditors`) | 5 Denetçi | 5 Ajan |
-| Çekirdek Uzman Sürüler (Scout, Blender, World, VFX, Opti, Council, Integ) | 7 Kolu | ~62 Ajan |
-| 10 Bağımsız Destek Taburu (10 Komutan + 10 × ~14 İşçi) | 10 Tabur | ~150 Ajan |
-| **TOPLAM ORDU KAPASİTESİ (Dalgalar & Düzeltme İşçileriyle)** | **26 Komuta/Kolu** | **~150–220 Eşzamanlı Ajan** |
+| `chief_auditor_1_real_assets` | Gerçek 3D Model, PBR & Sanat Denetçisi | `assets/models/` (215+ `.glb`), `assets/textures/`, `assets/images/`, `pubspec.yaml` ve `mesh_asset_registry.dart` uyumunu denetler. Basit küp/küre/silindir veya matematiksel gürültü dokusu görürse iptal edip baştan başlatır. |
+| `chief_auditor_2_mobile_visual_qa` | Aion 2 Mobil Görsel & Gerçek Ekran Görüntüsü Denetçisi | Tüm 33 gerçek mobil ekranın (`390x844` `SafeArea`) PNG ekran görüntülerini ve 18 GLSL shader'ı inceler. Sahte mock kutu veya 2005 tarzı düz ekranları sıfırdan yazdırır. |
+| `chief_auditor_3_combat_gameplay` | Zindan, Savaş Hissi & Mobil Mantık Denetçisi | 9 savaş VFX/juice modülünün + mobil `HapticFeedback` titreşimlerinin gerçek savaş ekranlarına bağlandığını ve `gkk_flutter` mobil oyun mantığının %100 korunduğunu doğrular. |
+| `chief_auditor_4_mobile_perf_10k` | 10K Oyuncu, Mobil GPU, Düşük Sistem & Preloader Denetçisi | 10.000 varlık stres testini (`0.217ms` tick, 0 bireysel `Update()`/PointLight, 21 draw call), `<=2.5GB` RAM `Eco/Low` korumasını ve `<2ms/frame` Progressive Preloader'ı test eder. |
+| `chief_auditor_5_e2e_forensic` | Uçtan Uca Kod, Shader Derleme & Test Denetçisi | `flutter analyze` (0 hata/uyarı), tüm `flutter test` süitleri, Impeller runtime shader sampler uyumu ve sıfır stub/TODO kuralını denetler. |
 
 ---
 
-## 4. 5 Ana Denetleyici Konseyi (Veto & Sıfırdan Başlatma Mekanizması) + Sürekli Vizyon Direktörü
+### 🎨 D. 10 Paralel AAA Tasarım Stüdyosu Departmanı (`10 Komutan × 19 Bulut Uzmanı = 190 Stüdyo Ajanı` — `%0` Yerel PC Yükü)
+
+Her departmandaki **19 uzman ajan**, `run_command` kullanmadan tamamen bulutta çalışır; kendi kalıcı `/goal` hedefini taşır ve departman içi + departmanlar arası **Zorunlu Çapraz Akran Denetimi (`V1 → Akran Kritiği → V2/V3 Cilası`, minimum `9.2/10` onay puanı)** uygular:
+
+1. **Departman 01 — `battalion_v3_01_hub_hud` (`bd834158` | Komutan + 19 Stüdyo Uzmanı)**
+   - **Sorumluluk:** `lib/screens/home/`, `announcements/`, `notifications/`, ana mobil HUD, `SafeArea` çentik/alt bar ergonomisi, 10K arka plan dünya görünümü ve dokunmatik geri bildirimler.
+   - **Pod İçi Çapraz Denetim:** Sahne derinliğini kapatan her kart akran sanat yönetmeni tarafından reddedilip katmanlı obsidyen-cam + altın rün çerçevesine yükseltilir.
+
+2. **Departman 02 — `battalion_v3_02_combat_screens` (`75d5e27a` | Komutan + 19 Stüdyo Uzmanı)**
+   - **Sorumluluk:** `lib/screens/dungeon/`, `pvp/`, `guild_war/`, boss karşılaşmaları ve `lib/core/vfx/*` altındaki 9 savaş hissi modülünün (GPU partikül, ribbon trail, kırılma, decal, kamera sarsıntısı, hit-stop, rim flash, knockback, zindan meşale gölgeleri) gerçek vuruş akışına bağlanması.
+   - **Pod İçi Çapraz Denetim:** Vuruş hissi, `HapticFeedback` senkronu ve mobil FPS akıcılığı Departman 09 (Shader) ile çapraz denetlenir.
+
+3. **Departman 03 — `battalion_v3_03_hero_inventory` (`8381c604` | Komutan + 19 Stüdyo Uzmanı)**
+   - **Sorumluluk:** `lib/screens/character/` (`CharacterTurntableViewport` 360° 3D vitrin), `inventory/`, `enhancement/`, `loot/`, nadirlik (rarity) ışıma efektleri ve örs güçlendirme VFX akışı.
+   - **Pod İçi Çapraz Denetim:** Eşya detay panelleri, tema tokenları ve 3D turntable ışıklandırması Departman 08 ile çapraz denetlenir.
+
+4. **Departman 04 — `battalion_v3_04_economy` (`fbb018dd` | Komutan + 19 Stüdyo Uzmanı)**
+   - **Sorumluluk:** `lib/screens/market/`, `trade/`, `bank/`, `shop/`, `crafting/` — mobil oyun ekonomisini %100 koruyarak demirci ocağı kor/kıvılcım atmosferi ve Aion 2 lüks karanlık-fantezi mağaza vitrinleri.
+
+5. **Departman 05 — `battalion_v3_05_social` (`3d5579f3` | Komutan + 19 Stüdyo Uzmanı)**
+   - **Sorumluluk:** `lib/screens/guild/`, `chat/`, `friends/`, `leaderboard/`, `season/`, `reputation/` — dalgalanan lonca sancağı shader'ı, sezon bileti sinematik katmanları ve mobil başparmak sohbet ergonomisi.
+
+6. **Departman 06 — `battalion_v3_06_world_ops` (`3ff58727` | Komutan + 19 Stüdyo Uzmanı)**
+   - **Sorumluluk:** `lib/screens/mekans/`, `facilities/`, `hospital/`, `prison/`, `horse_race/`, `quests/` ve `lib/components/restriction/` — her dünya aktivitesine özgü atmosferik ışıklandırma, gerçek illüstrasyon entegrasyonu ve sıfır taşma (`overflow`) garantisi.
+
+7. **Departman 07 — `battalion_v3_07_onboarding_staff_theme` (`497a9663` | Komutan + 19 Stüdyo Uzmanı)**
+   - **Sorumluluk:** `lib/screens/auth/`, `settings/`, `staff/`, merkezi Aion 2 tasarım sistemi (`lib/theme/`), `AdaptiveQualityScaler` (`Eco -> Ultra`) ayar kontrolleri ve `ZeroJankPreloader` yükleme geçişleri.
+
+8. **Departman 08 — `battalion_v3_08_glb_forensic_inspectors` (`e2addc29` | Komutan + 19 Adli 3D Denetçi)**
+   - **Sorumluluk:** `assets/models/` altındaki 215+ `.glb` modelin tamamını ikili/JSON topoloji, vertex sayısı, UV ve PBR materyal kanalları açısından tek tek denetler; ilkel küp/küre/matematiksel-gürültü kalıntılarını yakalayıp `dedicated_asset_io_gatekeeper` ve `dedicated_blender_gpu_runner`'a gerçek CC0 modellerle değiştirtir ve `mesh_asset_registry.dart` dosyasını %100 gerçek dosyalarla eşitler.
+
+9. **Departman 09 — `battalion_v3_09_shader_pbr_manifest` (`f14881d4` | Komutan + 19 Teknik Sanat & Shader Uzmanı)**
+   - **Sorumluluk:** `shaders/` altındaki **18 GLSL fragment shader** dosyasının tamamını Flutter Impeller mobil kurallarına (`runtime_effect.glsl`, uniform sıralaması, geçerli `sampler2D` bildirimi) göre mükemmelleştirir, PBR doku kanallarını doğrular ve `pubspec.yaml` manifest kayıtlarını eksiksiz senkronize eder.
+
+10. **Departman 10 — `battalion_v3_10_test_golden_authors` (`22eb8dcd` | Komutan + 19 QA & Golden Mimarı)**
+    - **Sorumluluk:** `test/screenshots/mobile_screenshot_suite_test.dart` dosyasını sahte mock kutulardan arındırıp **gerçek `gkk_flutter` ekranlarını** (`ProviderScope` ile gerçek `HomeScreen`, `DungeonBattleScreen`, `CharacterScreen`, `InventoryScreen`, `PvpScreen` vb.) `390x844` telefon `SafeArea` boyutunda çizecek şekilde yazar ve 194 test süitindeki tüm kırıkları onararak `dedicated_flutter_qa_runner`'a teslim eder.
+
+---
+
+### 🛠️ E. Çekirdek Uzman Disiplin Referans Matrisi (Scout, Blender, World, VFX, Opti, Motor Konseyi)
+200 ajanlık stüdyo içinde uzmanlık rolleri şu teknik disiplinleri eksiksiz kapsar:
+- **🔍 Scout Disiplini:** Poly Haven, Kenney, Quaternius, KayKit, AmbientCG, Khronos ve OpenGameArt CC0 lisans/topoloji doğrulaması ve ORM doku atlaslama.
+- **🎨 Blender MCP & Teknik Sanat Disiplini:** Shade Smooth + Weighted Normals + Bevel, Cycles 16-bit PBR Bake (Albedo/Normal/Roughness/Metallic/AO/Emission), LOD0/1/2 + 8/16 yönlü Impostor Atlas ve Draco `.glb` sıkıştırma.
+- **🌍 World & Post-Processing Disiplini:** Volümetrik sis, Baked GI, ıslak zemin su birikintisi yansımaları (`puddle_ssr.frag`), rüzgar shader'ı, ACES Filmic Tonemapping, yarı-küresel SSAO + Bilateral Blur, HDR Bloom ve hareketli gökyüzü (`atmospheric_sky.frag`).
+- **⚔️ VFX & Savaş Hissi Disiplini:** Çok katmanlı GPU partiküller, Catmull-Rom Ribbon Trail, kromatik şok dalgası kırılması, dinamik zemin decal, yönlü kamera sarsıntısı, 30–50ms Hit-Stop, Fresnel Rim Hit Flash, fiziksel Knockback ve titreyen zindan meşale gölgeleri.
+- **⚡ Opti 10K & Mobil Donanım Disiplini:** `<1ms` Spatial Hash Grid, 3 kademeli AOI, merkezi `CrowdRenderManager` (`0.217ms` tick, `21` draw call), GPU Instancing, VAT kalabalık shader'ı, Frustum + Occlusion Culling, KTX2 (ASTC/ETC2), %100 Object Pooling, `AdaptiveQualityScaler` ve `<2ms/frame` `ZeroJankPreloader`.
+
+### 📊 Toplam Aktif AAA Tasarım Şirketi Mevcudu
+| Katman | Birim Sayısı | Eşzamanlı Aktif Ajan | Yerel PC CPU/GPU Yükü |
+|---|---|---|---|
+| Üst Yönetim (`Sentinel` + `Orchestrator V3` + `Vision Director`) | 3 Birim | 3 Ajan | `%0` (Bulut) |
+| 10 AAA Stüdyo Departman Komutanı (`battalion_v3_01..10`) | 10 Komutan | 10 Ajan | `%0` (Bulut) |
+| 10 × 19 Stüdyo Tasarım, Kod & Akran Denetim Uzmanı | 10 Departman | **190 Ajan** | **`%0` (`run_command` Yasak — Saf Bulut)** |
+| 3 Özel Ağır-İş Kapı Bekçisi (`Flutter QA`, `Blender GPU`, `Asset I/O`) | 3 Uzman Mühendis | 3 Ajan | Kontrollü Tek Sıra Kuyruk (PC Kilitlenmez) |
+| 5 Ana Denetleyici Konseyi (`chief_auditor_1..5`) | 5 Baş Denetçi | 5 Ajan | Sıralı Son Doğrulama |
+| **TOPLAM EŞZAMANLI STÜDYO GÜCÜ** | **31 Birim** | **~211 (200+ Aktif Ajan)** | **PC Serin & Akıcı** |
+
+---
+
+## 4. Çapraz Akran Denetimi + 3 Özel Kapı Bekçisi + 5 Ana Denetleyici Konseyi + Sürekli Vizyon Direktörü
 
 ```mermaid
 flowchart TD
-    VPD["vision_prompt_director\n(Sürekli Geliştirme Promptçusu — '200 subagents!')"] --> ORCH["Ana Ajan / Merkez Orkestratör\n(Sentinel + Orchestrator V2)"]
-    ORCH --> BAT["10 Destek Taburu + 5 Uzman Sürü\n(150–200 Eşzamanlı İşçi)"]
-    BAT --> OUT["Gerçek .glb + 2K PBR + Aion 2 Çizimler\n16 GLSL Shader + 33 Mobil Ekran + 10K Motoru"]
-    OUT --> A1["Ana Denetleyici 1\nGerçek 3D & Sanat"]
-    OUT --> A2["Ana Denetleyici 2\nMobil PNG Ekran QA"]
-    OUT --> A3["Ana Denetleyici 3\nSavaş VFX & Mobil Mantık"]
-    OUT --> A4["Ana Denetleyici 4\n10K & Düşük Sistem Mobil"]
-    OUT --> A5["Ana Denetleyici 5\nAnalyze & Tüm Testler"]
-    A1 & A2 & A3 & A4 & A5 --> DECISION{"5/5 Oybirliği\nOnayı Var mı?"}
-    DECISION -- "HAYIR (Tek 1 Red Bile Varsa)" --> REBUILD["İlgili Parçayı İptal Et &\nSıfırdan Yeniden Başlat!"]
-    REBUILD --> BAT
-    DECISION -- "EVET (5/5 Tam Onay)" --> GIT["Temiz Git Commit & Git Push\n(origin/selcukksezer/prawn)"]
+    VPD["vision_prompt_director\n(Baş Kreatif Direktör — Her Mesaj Sonu: '200 subagents')"] --> CMD["Sentinel + Orchestrator V3\n(Stüdyo Genel Komutası)"]
+    CMD --> DEPTS["10 AAA Stüdyo Departmanı\n(10 Komutan + 190 Bulut Uzmanı — %0 Yerel Yük)"]
+    DEPTS --> PEER{"Departman İçi & Arası\nÇapraz Akran Denetimi\n(Puan >= 9.2 / 10 mu?)"}
+    PEER -- "HAYIR (Basit / Düz / Kopuk)" --> V2V3["Akran Vetosu!\nV2 / V3 Yeniden Tasarım & Derinleştirme"]
+    V2V3 --> DEPTS
+    PEER -- "EVET (AAA Stüdyo Onayı)" --> GATE["3 Özel Ağır-İş Kapı Bekçisi (Tek Sıra Kuyruk)\n1. dedicated_flutter_qa_runner\n2. dedicated_blender_gpu_runner\n3. dedicated_asset_io_gatekeeper"]
+    GATE --> A1["Ana Denetleyici 1\nGerçek 3D & Sanat"]
+    GATE --> A2["Ana Denetleyici 2\nGerçek Mobil PNG QA"]
+    GATE --> A3["Ana Denetleyici 3\nSavaş VFX & Mobil Mantık"]
+    GATE --> A4["Ana Denetleyici 4\n10K & Düşük Sistem Mobil"]
+    GATE --> A5["Ana Denetleyici 5\nAnalyze 0 Hata & Tüm Testler"]
+    A1 & A2 & A3 & A4 & A5 --> COUNCIL{"5/5 Oybirliği\nOnayı Var mı?"}
+    COUNCIL -- "HAYIR (Tek 1 Veto Bile Varsa)" --> REBUILD["İlgili Departmana İade &\nSıfırdan Yeniden İnşa!"]
+    REBUILD --> DEPTS
+    COUNCIL -- "EVET (5/5 Tam Onay)" --> GIT["Temiz Git Commit & Git Push\n(origin/selcukksezer/prawn)"]
 ```
 
 ---
 
-## 5. Kesin Yasaklar (Anti-Patterns), Mobil GPU (iOS/Android) ve Motor/Preloader Kuralları
+## 5. Kesin Yasaklar (Anti-Patterns), PC Kilitlenme Koruması, Mobil GPU (iOS/Android) ve Preloader Kuralları
 
-1. **PC / Web Tasarımı Yasaktır:** Fare imleci (hover), klavye kısayolu odaklı arayüz, masaüstü geniş ekran düzeni veya `dart:html` Web varsayımları kesinlikle yasaktır. Her ekran telefon ergonomisine (`SafeArea`, tek/çift başparmak erişimi, mobil dokunmatik hedefler `>=48dp`) uyacaktır.
-2. **Oyun Mekaniğini Değiştirmek Yasaktır:** `gkk_flutter`'ın mevcut mobil oyun kuralları, ekonomi/üretim/lonca/zindan/pazar mantığı korunur; yalnızca görsellik, 3D varlıklar, animasyon akıcılığı, ışıklandırma ve vuruş hissi (juice) Aion 2 seviyesine yükseltilir.
-3. **Basit Blender Komutlarıyla Sahte Model Yasaktır:** Küp, küre, silindir birleştirerek karakter/bina/silah yapmak otomatik red sebebidir.
-4. **Sadece Liste / Katalog Yazmak Yasaktır:** Markdown dosyasına link yazıp bırakmak kabul edilmez; gerçek `.glb`, gerçek PBR doku ve gerçek PNG illüstrasyon dosyaları fiziksel olarak `assets/` içinde bulunmalı ve `pubspec.yaml`'a işlenmelidir.
-5. **Düşük Sistemli Oyuncuyu Yormak Yasaktır:**
-   - **Adaptif Kalite:** 2 GB–4 GB RAM giriş seviyesi telefonlarda `Eco` / `Low` profili otomatik devreye girer (`0.5x–0.75x` dinamik çözünürlük, basitleştirilmiş shader, azaltılmış partikül, baked ışık, sabit 60 FPS).
-   - **Yormayan Ön-Yükleme:** `ProgressivePreloader` her karede en fazla `<2ms` bütçe kullanır; arka planda sessizce shader ısıtır ve varlıkları hazırlar, RAM sınırını aşarsa LRU ile eski varlıkları boşaltır.
+1. **200 İşçiye Aynı Anda Yerel CLI/GPU Koşturup Bilgisayarı Kilitlemek Yasaktır:** 190 bulut işçisinin `flutter test`, `flutter analyze`, `blender` veya ağır disk scriptleri çalıştırması kesinlikle yasaktır; bu işlemler yalnızca **3 Özel Kapı Bekçisi Ajan** tarafından tek sıra halinde yapılır.
+2. **"Tek İş Yap Çık" Yüzeysel Çalışma Yasaktır:** Hiçbir ajan basit bir tekil düzenleme yapıp duramaz; her ajan kalıcı `/goal` taşır, komşusunu denetler ve akranından `>=9.2/10` alana kadar V1→V2→V3 tasarım döngüsünde kalır.
+3. **PC / Web Tasarımı Yasaktır:** Fare imleci (hover), klavye kısayolu odaklı arayüz, masaüstü geniş ekran düzeni veya Web varsayımları yasaktır. Her ekran telefon ergonomisine (`390x844`, `SafeArea`, başparmak erişimi, `>=48dp` dokunma alanı) uyacaktır.
+4. **Oyun Mekaniğini Değiştirmek Yasaktır:** `gkk_flutter`'ın mevcut mobil oyun kuralları, ekonomi/üretim/lonca/zindan/pazar mantığı %100 korunur; yalnızca görsellik, 3D varlıklar, animasyon akıcılığı, ışıklandırma ve vuruş hissi Aion 2 seviyesine yükseltilir.
+5. **Basit Blender Komutlarıyla Sahte Model & Sahte Golden Test Yasaktır:** Küp, küre, silindir birleştirerek model yapmak veya golden testlerde gerçek ekran yerine sahte `Container`/`Icon` çizmek otomatik veto ve sıfırdan başlatma sebebidir.
+6. **Düşük Sistemli Oyuncuyu Yormak Yasaktır:**
+   - **Adaptif Kalite:** `<=2.5 GB` RAM giriş seviyesi telefonlarda `Eco` / `Low` profili otomatik devreye girer (`0.5x–0.75x` dinamik çözünürlük, basitleştirilmiş shader, sabit 60 FPS).
+   - **Yormayan Ön-Yükleme:** `ZeroJankPreloader` her karede `<2.0ms` bütçe kullanır, dokunma anında ana thread'e yol verir ve düşük RAM'de 150 MB LRU sınırını korur.
 
 ---
 
 ## 6. Şu Ana Kadar Tamamlanan Çekirdek Çıktılar ve Başka Bilgisayarda Devam Etme Rehberi
 
-### ✅ Şu Ana Kadar Üretilen Başlıca Altyapılar (Canlı Sürü Üzerine İnşa Ediyor)
-- **16 Üretim GLSL Shader (`shaders/`):** `aces_tonemap.frag`, `ssao.frag`, `ssao_bilateral_blur.frag`, `ssao_composite_aces.frag`, `gpu_particles.frag`, `ribbon_trail.frag`, `rim_hit_flash.frag`, `shockwave_refraction.frag`, `ground_decal.frag`, `vat_crowd.frag`, `clustered_crowd_lighting.frag`, `dungeon_lighting.frag`, `puddle_ssr.frag`, `atmospheric_sky.frag` vb. + merkezi `ShaderPipeline` (PSO GPU ön-ısıtmalı).
-- **9/9 Savaş VFX & Vuruş Hissi Modülü (`lib/core/vfx/` + `test/core/vfx/`):** GPU partiküller, Ribbon Trail, Kırılma dalgası, Dinamik zemin decal, Yönlü kamera sarsıntısı, 30–50ms Hit-Stop, Rim-light hit flash, Fiziksel knockback blend, Dinamik zindan meşale/gölge sistemi.
-- **10.000 Oyuncu Kalabalık Motoru (`lib/core/crowd/` + `test/core/crowd/`):** Merkezi `CrowdRenderManager` (10.000 varlıkta `0.210ms` ortalama tick süresi, toplam `21 draw call`), Spatial Hash Grid (`0.88ms`), GPU Instancing Batcher, VAT Crowd Renderer, Frustum Culling (`0.35ms`), Occlusion Culling, KTX2/ASTC hattı.
-- **Düşük Sistem Adaptif Kalite Ölçekleyici:** 2 GB RAM / Mali-G52 cihazlardan 2027 amiral gemilerine 4 donanım profili + dinamik çözünürlük ve 5 sn histerezis.
-- **490+ Birim & Doğrulama Testi (0 Lint):** Çekirdek grafik, VFX, shader ve kalabalık modüllerinde 490'dan fazla otomatik test geçer durumda; 10 Tabur şu an 33 mobil ekranın tamamını, gerçek `.glb`/PBR hasadını ve Aion 2 sanat fabrikasını tamamlıyor.
+### ✅ Disk Üzerinde Üretilmiş ve Doğrulanmış Başlıca Çıktılar
+- **18 GLSL Fragment Shader (`shaders/`):** `aces_tonemap.frag`, `ssao.frag`, `ssao_bilateral_blur.frag`, `ssao_composite_aces.frag`, `gpu_particles.frag`, `ribbon_trail.frag`, `rim_hit_flash.frag`, `shockwave_refraction.frag`, `ground_decal.frag`, `vat_crowd.frag`, `clustered_crowd_lighting.frag`, `dungeon_lighting.frag`, `puddle_ssr.frag`, `atmospheric_sky.frag`, `aion2_pbr_master.frag` vb.
+- **215 `.glb` 3D Model (`182.4 MB` — `assets/models/`) + 35 Blender Render Kanıtı (`assets/renders/`):** Karakterler (`108`), silahlar (`54`), Aion 2 setleri (`55`), çevre (`19`), yaratıklar (`16`), prop'lar (`36`). *(Departman 08 şu an kalan tüm modelleri adli taramadan geçirip ilkel olanları gerçek CC0 modellerle değiştiriyor.)*
+- **725 PBR Doku & Yüksek Detaylı İllüstrasyon (`1.16 GB` — `assets/textures/`, `assets/images/`, `assets/items/`):** 2K PBR haritaları (`96`), ikonlar (`64`), portreler (`28`), arka planlar (`12`), VFX sprite'ları (`12`), eşya görselleri (`367`). Diskteki en büyük tekil dosya `23.25 MB` olup GitHub `100 MB` sınırının tamamen altındadır.
+- **10.000 Oyuncu Kalabalık Motoru & Düşük Sistem Koruma (`Ana Denetleyici 4: 270/270 Test ONAY`):** `CrowdRenderManager` (`0.217ms` 10K tick, `21` draw call), `ClusteredLightManager`, `AdaptiveQualityScaler`, `ZeroJankPreloader`, `Ktx2TextureLoader`.
+- **9/9 Savaş VFX Modülü (`lib/core/vfx/`) + 33 Mobil Ekran Yenilemesi (`lib/screens/`) + 194 Test Dosyası (`test/`):** 10 AAA Stüdyo Departmanı (200 aktif ajan) şu an çapraz akran denetimiyle son cilaları ve Denetleyici 1, 2, 3, 5 onaylarını tamamlıyor.
 
 ### 💻 Başka Bir Bilgisayarda Kaldığı Yerden Devam Etme Adımları
 
 1. **Repoyu ve Branch'i Çek:**
    ```bash
-   git clone <REPO_URL>
+   git clone https://github.com/selcukksezer/gkk_flutter.git
    cd gkk_flutter
    git checkout selcukksezer/prawn
    git pull origin selcukksezer/prawn
    flutter pub get
    ```
 2. **Blender MCP Bağlantısını Aç:**
-   - Yeni bilgisayarda **Blender (4.x+)** uygulamasını aç ve **Blender MCP eklentisinin (addon)** aktif/bağlı olduğundan emin ol (`get_addon_status` ve `execute_blender_code` araçlarının yanıt verdiğini doğrula).
+   - Yeni bilgisayarda **Blender (4.x / 5.x)** uygulamasını aç ve **Blender MCP eklentisinin (addon)** aktif olduğundan emin ol (`get_addon_status` ve `execute_blender_code` araçlarının yanıt verdiğini doğrula — yalnızca `dedicated_blender_gpu_runner` tek sıra halinde kullanacaktır).
 3. **Mevcut İlerlemeyi Kontrol Et:**
-   - `git log -n 5` ve `flutter test` komutlarıyla son pushlanan durumu gör.
-4. **200 Ajanlık Orduyu Tek Komutla Yeniden Ateşle:**
-   - Bu dosyanın **[1. Bölümündeki Birleştirilmiş Master Prompt](#1-başka-bilgisayarda-tek-seferde-başlatma-komutu-birleştirilmiş-master-prompt)** bloğunu Antigravity sohbetine yapıştır (veya `/teamwork [skip-interview] /goal @PROMPT_ORDUSU.md içindeki tüm kuralları ve 200 subagents tabur mimarisini uygula, kalan eksikleri tamamla, 5/5 Ana Denetleyici onayından geçir ve en son git commit + push yap!` yaz).
-   - Ordu otomatik olarak mevcut `lib/`, `shaders/`, `assets/` ve `test/` dosyalarını tarayacak, bitmiş modülleri koruyacak ve yalnızca eksik/cilalanmamış ekranlar ile varlıklar üzerine 150–200 eşzamanlı ajanla saldırarak 5/5 denetim onayına kadar kesintisiz çalışacaktır!
+   - `git log -n 5` komutuyla son pushlanan durumu gör.
+4. **200 Ajanlık AAA Tasarım Şirketini Tek Komutla Yeniden Ateşle:**
+   - Bu dosyanın **[1. Bölümündeki Birleştirilmiş Master Prompt](#1-başka-bilgisayarda-tek-seferde-başlatma-komutu-birleştirilmiş-master-prompt)** bloğunu Antigravity sohbetine yapıştır (veya `/teamwork [skip-interview] /goal @PROMPT_ORDUSU.md içindeki tüm kuralları, PC-Safe donanım izolasyonunu ve 200 subagents AAA Tasarım Şirketi çapraz denetim mimarisini uygula, kalan eksikleri tamamla, 5/5 Ana Denetleyici onayından geçir ve en son git commit + push yap!` yaz).
+   - 200 ajanlık stüdyo PC'yi kilitlemeden bulutta tam güç çalışacak, birbirini çapraz denetleyecek, 3 özel kapı bekçisiyle derleme/render alacak ve **5/5 Ana Denetleyici** onayından sonra GitHub'a pushlayacaktır!
