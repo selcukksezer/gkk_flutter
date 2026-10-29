@@ -105,12 +105,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    if (kDebugMode) {
+      _loginEmailController.text = 'theking@gmail.com';
+      _loginPasswordController.text = '123selcuk';
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _probeApple();
       if (_selectedTab == 1) {
         _loadAndShowCommunityRules();
       }
       _prewarmSession();
+      if (kDebugMode && _selectedTab == 0) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted && ref.read(authProvider).status != AuthStatus.authenticated) {
+            _submitLogin();
+          }
+        });
+      }
     });
 
     ref.listenManual<AuthState>(authProvider, (
@@ -876,6 +887,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (kDebugMode) ...<Widget>[
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD4AF37),
+                foregroundColor: Colors.black,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
+              icon: const Icon(Icons.shield_rounded, color: Colors.black),
+              label: const Text(
+                '👑 HIZLI ADMİN GİRİŞİ (theking)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              onPressed: isLoading ? null : () {
+                _loginEmailController.text = 'theking@gmail.com';
+                _loginPasswordController.text = '123selcuk';
+                _submitLogin();
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           AuthGoldButton(
             label: isLoading ? l10n.auth_login_loading : l10n.auth_login_button,
             loading: isLoading && !_guestLoading,
