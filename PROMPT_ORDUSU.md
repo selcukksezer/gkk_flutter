@@ -1,13 +1,13 @@
 # PROMPT ORDUSU — 200+ Eşzamanlı Yapay Zeka Ajanı Master Dokümanı ve AAA Tasarım Şirketi Orkestrasyon Rehberi
 
-Bu doküman; **`gkk_flutter`** mobil oyununun (yalnızca **iOS & Android**) 2005 tarzı ilkel görünümden kurtarılıp **2027 Aion 2 Mobile görsel/efekt standartlarına**, **gerçek `.glb` 3D modellere**, **gerçek 1K/2K PBR dokulara**, **gerçek yüksek detaylı illüstrasyonlara**, **10.000 anlık oyuncu (0 bireysel Update / 21 Draw Call) yüksek FPS mimarisine** ve **düşük sistemli telefonları yormayan akıllı ön-yükleme (Progressive Preloader) sistemine** taşınması için konuşmanın en başından itibaren verilen **tüm kullanıcı direktiflerini (Direktif #1–#21)**, **200 eşzamanlı ajanın PC'yi kilitlemeden tam bir AAA Tasarım Şirketi gibi (her ajana `/goal` + birbirlerini çapraz denetleme) çalışma mimarisini**, **tek tek görev dağılımını** ve **başka bir bilgisayarda kaldığı yerden birebir aynı güçte devam etme protokolünü** en ince detayına kadar içerir.
+Bu doküman; **`gkk_flutter`** mobil oyununun (yalnızca **iOS & Android**) 2005 tarzı ilkel görünümden kurtarılıp **2027 Aion 2 Mobile görsel/efekt standartlarına**, **gerçek `.glb` 3D modellere**, **gerçek 1K/2K PBR dokulara**, **gerçek yüksek detaylı illüstrasyonlara**, **10.000 anlık oyuncu (0 bireysel Update / 21 Draw Call) yüksek FPS mimarisine**, **düşük sistemli telefonları yormayan akıllı ön-yükleme (Progressive Preloader) sistemine** ve **hem Frontend (33 ekran / 424 UI dosyası), hem Backend Dart (16 repository, 17 servis, 37 provider, 38 model, 416 RPC/tablo çağrısı), hem de Supabase (546 SQL migration + 6 seed içindeki en ufak PL/pgSQL fonksiyon, RPC, trigger ve RLS politikasına kadar) uçtan uca adli denetim & zırhlama mimarisine** taşınması için konuşmanın en başından itibaren verilen **tüm kullanıcı direktiflerini (Direktif #1–#26)**, **200 eşzamanlı ajanın PC'yi kilitlemeden tam bir AAA Tasarım & Full-Stack Mühendislik Şirketi gibi (her ajana `/goal` + birbirlerini çapraz denetleme) çalışma mimarisini**, **tek tek görev dağılımını** ve **başka bir bilgisayarda kaldığı yerden birebir aynı güçte devam etme protokolünü** en ince detayına kadar içerir.
 
 ---
 
 ## 📑 İÇİNDEKİLER
 1. [Başka Bilgisayarda Tek Seferde Başlatma Komutu (Birleştirilmiş Master Prompt)](#1-başka-bilgisayarda-tek-seferde-başlatma-komutu-birleştirilmiş-master-prompt)
-2. [Konuşmanın Başından İtibaren Verilen Tüm Kullanıcı Direktifleri (Kronolojik & Birebir Arşiv #1–#21)](#2-konuşmanın-başından-itibaren-verilen-tüm-kullanıcı-direktifleri-kronolojik--birebir-arşiv)
-3. [Aktif AAA Tasarım Şirketi Ordu Mevcudu (~200+ Eşzamanlı Ajan), Donanım İzolasyonu ve Görev Dağılımı](#3-aktif-aaa-tasarım-şirketi-ordu-mevcudu-200-eşzamanlı-ajan-donanım-izolasyonu-ve-görev-dağılımı)
+2. [Konuşmanın Başından İtibaren Verilen Tüm Kullanıcı Direktifleri (Kronolojik & Birebir Arşiv #1–#26)](#2-konuşmanın-başından-itibaren-verilen-tüm-kullanıcı-direktifleri-kronolojik--birebir-arşiv)
+3. [Aktif AAA Tasarım & Full-Stack Şirketi Ordu Mevcudu (~200+ Eşzamanlı Ajan), Donanım İzolasyonu ve Görev Dağılımı](#3-aktif-aaa-tasarım-şirketi-ordu-mevcudu-200-eşzamanlı-ajan-donanım-izolasyonu-ve-görev-dağılımı)
 4. [Çapraz Akran Denetimi + 3 Özel Kapı Bekçisi + 5 Ana Denetleyici Konseyi + Sürekli Vizyon Direktörü](#4-çapraz-akran-denetimi--3-özel-kapı-bekçisi--5-ana-denetleyici-konseyi--sürekli-vizyon-direktörü)
 5. [Kesin Yasaklar (Anti-Patterns), PC Kilitlenme Koruması, Mobil GPU (iOS/Android) ve Preloader Kuralları](#5-kesin-yasaklar-anti-patterns-pc-kilitlenme-koruması-mobil-gpu-iosandroid-ve-preloader-kuralları)
 6. [Şu Ana Kadar Tamamlanan Çekirdek Çıktılar ve Başka Bilgisayarda Devam Etme Rehberi](#6-şu-ana-kadar-tamamlanan-çekirdek-çıktılar-ve-başka-bilgisayarda-devam-etme-rehberi)
@@ -73,17 +73,23 @@ Gerekirse günlerce çalışacaksınız; basit, yarım, placeholder veya sahte h
 8. **SÜREKLİ VİZYON & GELİŞTİRME PROMPT AJANI (`vision_prompt_director`):**
    - Akışta sürekliliği sağlamak için periyodik olarak tüm projeyi tarayıp tıpkı ürün sahibi / baş kreatif direktör gibi Ana Ajana sürekli geliştirme/iyileştirme direktifleri yazan özel bir ajan çalışacak ve **yazdığı her mesajın sonunda açıkça `200 subagents` vurgusu yapacaktır**.
 
-9. **10 PARALEL STÜDYO DEPARTMANI İLE TAM 200 CANLI AJAN, SÜREKLİ DALGA BESLEME ("BOŞ KOLTUK YASAKTIR") & SON ADIM GİT COMMIT + PUSH:**
-   - Mevcut ilerlemeyi (`lib/`, `shaders/`, `assets/`, `test/`) tara, kalan tüm ekranları, ortak bileşenleri ve varlıkları **10 paralel Stüdyo Departmanı (`10 Komutan × 19 Bulut Uzmanı = 190 Uzman + 10 Komutan + 3 Özel Kapı Bekçisi + 5 Ana Denetleyici + Vizyon Direktörü = ~200+ eşzamanlı ajan`)** ile tamamla.
-   - **BOŞ KOLTUK YASAKTIR (`*/3 dk` Otomatik 200 Ajan Takviye Kilidi):** Bazı departmanlar kendi ilk dalgasını bitirip kapandığında kök gözetmenin (`Sentinel`) son 10–15 ajanı pasif beklemesi (`waiting_for_dependents`) **KESİNLİKLE YASAKTIR**! **5/5 Ana Denetleyici ONAY** alınana kadar aktif bulut ajan sayısı 150'nin altına düştüğü an çakışmasız yeni derinleştirme dalgaları (`Dalga V4, V5, V6...`: `lib/components/` altındaki 82 ortak bileşen, `lib/screens/` altındaki 342 alt-widget/modal V3 cilası, `lib/shaders/` Dart-GLSL uniform eşleşmesi, 33 Ekran Arası Stüdyo Sanat Jürisi ve QA/Denetleyici geri bildirim onarımları) anında devreye sokularak **sürekli ~200 aktif ajan** korunacaktır!
-   - Her şey %100 bitip 5/5 Ana Denetleyici onayı alındığında `.agents/teamwork/` geçici dosyaları hariç temiz Conventional Commit'ler oluştur ve `git push origin selcukksezer/prawn` ile uzak repoya gönder!
+9. **10 PARALEL STÜDYO DEPARTMANI İLE TAM 200 CANLI AJAN, SÜREKLİ DALGA BESLEME ("BOŞ KOLTUK YASAKTIR") & ÖNCE CHECKPOINT COMMIT + PUSH KURALI:**
+   - Mevcut ilerlemeyi (`lib/`, `supabase/`, `shaders/`, `assets/`, `test/`) tara, kalan tüm ekranları, ortak bileşenleri, backend servislerini, Supabase SQL fonksiyonlarını ve varlıkları **10 paralel Stüdyo Departmanı (`10 Komutan × 19 Bulut Uzmanı = 190 Uzman + 10 Komutan + 3 Özel Kapı Bekçisi + 5 Ana Denetleyici + Vizyon Direktörü = ~200+ eşzamanlı ajan`)** ile tamamla.
+   - **BOŞ KOLTUK YASAKTIR (`*/3 dk` Otomatik 200 Ajan Takviye Kilidi):** Bazı departmanlar kendi ilk dalgasını bitirip kapandığında kök gözetmenin (`Sentinel`) son 10–15 ajanı pasif beklemesi (`waiting_for_dependents`) **KESİNLİKLE YASAKTIR**! **5/5 Ana Denetleyici ONAY** alınana kadar aktif bulut ajan sayısı 150'nin altına düştüğü an çakışmasız yeni derinleştirme dalgaları (`Dalga V4, V5, V6...`: `lib/components/` 82 ortak bileşen, `lib/screens/` 342 alt-widget V3 cilası, `supabase/migrations/` 546 SQL adli denetimi, `lib/repositories/` + `lib/providers/` 416 RPC kontrat eşleşmesi ve QA onarımları) anında devreye sokularak **sürekli ~200 aktif ajan** korunacaktır!
+   - **ÖNCE COMMIT VE PUSH, SONRA DEVAM:** Her kota resetinde ve her büyük dalga geçişinde **ilk iş** olarak derlenen/doğrulanan tüm ilerleme `.agents/teamwork/` geçici dosyaları hariç temiz Conventional Commit ile commitlenip `git push origin selcukksezer/prawn` ile uzak repoya gönderilir; ardından 200 ajan kaldığı yerden kesintisiz devam eder!
+
+10. **UÇTAN UCA FULL-STACK (FRONTEND + BACKEND DART + SUPABASE EN UFAK FONKSİYONA KADAR) ADLİ DENETİM VE ZIRHLAMA SİSTEMİ (`fullstack_v6_01..10`):**
+   - 200 kişilik ordu yalnızca görsel yüzeyi değil; **Frontend + Backend + Supabase veritabanı katmanlarının tamamını en ufak fonksiyona kadar** aynı AAA stüdyo disipliniyle (`kalıcı /goal` + `V1 → Akran Kritiği >= 9.3/10 → V2/V3` + `%0` yerel PC yükü) denetler ve onarır:
+     1. **Supabase En Ufak Fonksiyon/RPC/Trigger/RLS Denetimi (`supabase/migrations/` 546 SQL + `supabase/seeds/` 6 SQL):** Tüm `CREATE OR REPLACE FUNCTION` / RPC gövdeleri, trigger'lar, view'lar, enum'lar ve RLS politikaları satır satır taranır. `SECURITY DEFINER` fonksiyonlarda `SET search_path = public, pg_temp` eksikliği, `auth.uid()` doğrulaması olmayan IDOR açıkları, altın/elmas/eşya/pazar/lonca kasası işlemlerinde `SELECT ... FOR UPDATE` atomik kilit eksikliği (yarış durumu / kopyalama açığı), negatif miktar/fiyat istismarı, eksik RLS politikaları ve eksik FK indeksleri yakalanır. Geçmiş migration dosyaları bozulmadan, ileriye dönük idempotent `supabase/migrations/YYYYMMDD_*.sql` güvenlik/performans yamaları üretilir.
+     2. **Backend Dart & Veri Sözleşmesi Denetimi (`lib/repositories/` 16+1 repo, `lib/core/services/` 17 servis, `lib/providers/` 37 Riverpod provider, `lib/models/` 38 model, 416 `.rpc()`/`.from()` çağrısı):** Dart tarafındaki her `.rpc('fonksiyon_adi', params: {...})` ve `.from('tablo')` çağrısı en son aktif SQL şemasıyla parametre adı, tipi, nullability ve JSON dönüş alanı bazında **1'e 1** karşılaştırılır; hayalet RPC/kolon uyumsuzlukları, Postgres `int8`/`bigint`/`numeric` tip çökmesi riskleri ve Supabase Realtime kanal/stream sızıntıları sıfırlanır.
+     3. **Frontend ↔ Backend ↔ Supabase Uçtan Uca Bağlantı Denetimi (`lib/screens/` 33 ekran / 342 dosya + `lib/components/` 82 bileşen):** Her ekran butonunun ve kullanıcı aksiyonunun (`Satın Al`, `Üret`, `Kuşan`, `Güçlendir`, `Zindana Gir`, `PvP`, `Lonca Savaşı`, `Banka`) gerçek Provider → Repository → Supabase RPC hattına uçtan uca bağlandığı, çift tıklama (double-submit) kilidinin, yükleme/hata/boş durumlarının ve Aion 2 görsel bütünlüğünün kusursuz çalıştığı doğrulanır ve `test/fullstack_contracts/` kontrat testleriyle kilitlenir!
 ```
 
 ---
 
 ## 2. Konuşmanın Başından İtibaren Verilen Tüm Kullanıcı Direktifleri (Kronolojik & Birebir Arşiv)
 
-Aşağıda bu oturumun en başından itibaren tarafınızdan verilen **tüm 23 direktif eksiksiz kronolojik sırayla** ve her birinin ordu/stüdyo mimarisine eklediği kurallarla birlikte kayıt altına alınmıştır:
+Aşağıda bu oturumun en başından itibaren tarafınızdan verilen **tüm 26 direktif eksiksiz kronolojik sırayla** ve her birinin ordu/stüdyo mimarisine eklediği kurallarla birlikte kayıt altına alınmıştır:
 
 ### 📌 Direktif #1 — Konuşmanın Başındaki Birebir Orijinal Master Prompt
 
@@ -250,7 +256,22 @@ Hazırsan, mevcut proje yapımızı ve anasayfa/zindan dosyalarımızı tarayara
 
 ### 📌 Direktif #23 — Sürekli 200 Ajan Dalga Besleme Kuralının `PROMPT_ORDUSU.md` Dosyasına Eklenmesi
 > `"bunuda promptumuza ekleyelim"`
-* **Mimari Karşılığı:** Sürekli 200 Ajan Takviye Kilidi ("Boş Koltuk Yasaktır") ve `studio_v4_01..10` 2. Kuşak Derinleştirme Departmanları hem Master Prompt'a hem de mimari şemaya eklenerek GitHub'a pushlandı.
+* **Mimari Karşılığı:** Sürekli 200 Ajan Takviye Kilidi ("Boş Koltuk Yasaktır") ve `studio_v4_01..10` 2. Kuşak Derinleştirme Departmanları hem Master Prompt'a hem de mimari şemaya eklenerek GitHub'a pushlandı (`bcef960`).
+
+### 📌 Direktif #24 & #25 — Kota Reseti / Checkpoint Başında İlk İş Olarak Commit + Push Yapılması ve Ajanların Devam Etmesi
+> `"kota resetlendiğinde önce commit ve push yap ilk iş o olsun sonra devam etsin"` ve `"devam etsin ajanlar önce commit push yap"`
+* **Mimari Karşılığı:**
+  - Saatlik API kotası dolup sıfırlandığında veya büyük bir stüdyo dalgası tamamlandığında **ilk adım olarak** doğrulanmış tüm çalışma ağacı (`.agents/` geçici dosyaları hariç) temiz Conventional Commit ile commitlenip `git push origin selcukksezer/prawn` ile GitHub'a yedeklenir (`149e77c`, `19ddd72`, `a83082a`).
+  - Commit ve push tamamlanır tamamlanmaz 200 ajanlık ordu hiçbir ilerleme kaybı yaşamadan kaldığı yerden kesintisiz devam eder.
+
+### 📌 Direktif #26 — 200 Kişilik Orduda Hem Frontend Hem Backend Hem de Supabase İçin En Ufak Fonksiyona Kadar Kapsamlı Denetim Sistemi Kurulması
+> `"bu 200 kişilik ordunda hem frontend hem backend için kapsamlı bir hemde supabase tarafı için en ufak fonksiyona dahi bakıp denetleyecek bir sistem kur önceki gibi olacak"`
+* **Mimari Karşılığı:**
+  - Aynı AAA Tasarım Şirketi kurallarıyla (**kalıcı `/goal` + birbirlerini çapraz denetleme `>=9.3/10` + `%0` yerel PC yükü + 3 Özel Kapı Bekçisi + 5 Ana Denetleyici**) çalışan **10 Tam-Yığın (Full-Stack) Stüdyo Departmanı (`fullstack_v6_01..10` × 19 Bulut Uzmanı = 190 Uzman + 10 Komutan = ~200+ aktif ajan)** kuruldu:
+    1. **Supabase Adli Denetim Ordusu (`fullstack_v6_01..04` — 76 Bulut Uzmanı):** `supabase/migrations/` altındaki **546 SQL dosyasını** ve `supabase/seeds/` altındaki **6 seed dosyasını** en ufak PL/pgSQL fonksiyonuna, RPC imzasına, trigger'a, `SECURITY DEFINER` + `search_path` ayarına, `auth.uid()` IDOR kontrolüne, `FOR UPDATE` yarış durumu kilidine, RLS politikalarına ve indekslerine kadar denetler; ileriye dönük idempotent `supabase/migrations/20261029_*.sql` zırhlama yamalarını üretir.
+    2. **Backend Dart & Veri Sözleşmesi Ordusu (`fullstack_v6_05..06` — 38 Bulut Uzmanı):** `lib/repositories/` (**16+1 repo**), `lib/core/services/` (**17 servis**), `lib/providers/` (**37 Riverpod provider**), `lib/models/` (**38 model**) ve kod tabanındaki **416 `.rpc()`/`.from()` çağrısını** SQL şemasıyla 1'e 1 eşleştirir; tip dönüşümü (`int8`/`numeric`), hata yönetimi ve Realtime bellek sızıntılarını onarır.
+    3. **Frontend ↔ Backend ↔ Supabase Uçtan Uca Denetim & Görsel Bütünlük Ordusu (`fullstack_v6_07..08` — 38 Bulut Uzmanı):** **33 mobil ekran (342 dosya) + 82 ortak bileşende** her kullanıcı aksiyonunun gerçek Provider → Repository → Supabase RPC hattına hatasız bağlandığını ve Aion 2 görsel standardının (`0` taşma, `0` sahte/gri zeminli görsel) korunduğunu denetler.
+    4. **Full-Stack Kontrat Test & Baş Mimar Jürisi (`fullstack_v6_09..10` — 38 Bulut Uzmanı) + 5 Full-Stack Ana Denetleyici (`chief_auditor_1..5`):** `test/fullstack_contracts/` altında otomatik RPC/Model/Repository/Provider sözleşme testleri yazar ve `reports/audit/SUPABASE_FORENSIC_AUDIT.md` + `5/5 Ana Denetleyici` onayı olmadan görevin kapanmasına izin vermez.
 
 ---
 
@@ -278,16 +299,16 @@ Ordu mimarisi; **PC'yi asla kilitlemeyen Donanım İzolasyonu**, **Dosya Çakı�
 
 ---
 
-### ⚖️ C. 5 Ana Denetleyici Konseyi — "5 Ana Denetleyici" (5 Ajan)
-*(Her biri koşulsuz **RED + SIFIRDAN BAŞLATMA** yetkisine sahiptir; 5/5 oybirliği onayı olmadan bitiş ve git push yapılamaz.)*
+### ⚖️ C. 5 Ana Denetleyici Konseyi — "5 Ana Denetleyici: Görsel + Full-Stack & Supabase Sürümü" (5 Ajan)
+*(Her biri koşulsuz **RED + SIFIRDAN BAŞLATMA** yetkisine sahiptir; 5/5 oybirliği onayı olmadan bitiş ve son git push yapılamaz.)*
 
 | Ajan Kodu | Denetim Alanı | Neleri Test Eder ve Nasıl Veto Eder? |
 |---|---|---|
-| `chief_auditor_1_real_assets` | Gerçek 3D Model, PBR & Sanat Denetçisi | `assets/models/` (215+ `.glb`), `assets/textures/`, `assets/images/`, `pubspec.yaml` ve `mesh_asset_registry.dart` uyumunu denetler. Basit küp/küre/silindir veya matematiksel gürültü dokusu görürse iptal edip baştan başlatır. |
-| `chief_auditor_2_mobile_visual_qa` | Aion 2 Mobil Görsel & Gerçek Ekran Görüntüsü Denetçisi | Tüm 33 gerçek mobil ekranın (`390x844` `SafeArea`) PNG ekran görüntülerini ve 18 GLSL shader'ı inceler. Sahte mock kutu veya 2005 tarzı düz ekranları sıfırdan yazdırır. |
-| `chief_auditor_3_combat_gameplay` | Zindan, Savaş Hissi & Mobil Mantık Denetçisi | 9 savaş VFX/juice modülünün + mobil `HapticFeedback` titreşimlerinin gerçek savaş ekranlarına bağlandığını ve `gkk_flutter` mobil oyun mantığının %100 korunduğunu doğrular. |
+| `chief_auditor_1_real_assets` / `supabase_sql_rpc` | Gerçek 3D/Sanat + **Supabase SQL/RPC/RLS Baş Denetçisi** | `assets/models/` (215+ `.glb`), PBR, çizimler VE **`supabase/migrations/` altındaki 546 SQL + 6 seed dosyasındaki en ufak PL/pgSQL fonksiyonunu**, `SECURITY DEFINER` + `search_path`, `auth.uid()` IDOR korumasını, `FOR UPDATE` yarış kilidini ve RLS politikalarını denetler. |
+| `chief_auditor_2_mobile_visual_qa` / `backend_contract` | Aion 2 Mobil Görsel PNG + **Backend Dart Sözleşme Baş Denetçisi** | 33 mobil ekranın gerçek `390x844` PNG çıktılarını (`read_file` ile piksel piksel — gri zeminli `*_beauty.png`, `RenderFlex` taşması ve `████` kutusu yasak!) VE **416 `.rpc()`/`.from()` çağrısının, 16+1 Repository, 17 Servis, 37 Provider ve 38 Modelin** SQL şemasıyla 1'e 1 uyumunu denetler. |
+| `chief_auditor_3_combat_gameplay` / `frontend_wiring` | Zindan, Savaş Hissi, Mobil Mantık & **Frontend Uçtan Uca Bağlantı Denetçisi** | 9 savaş VFX/juice modülünü, `HapticFeedback`'i, **424 UI dosyasındaki her buton/aksiyon → Provider → Repository → Supabase RPC hattını** ve `gkk_flutter` mobil oyun mantığının %100 korunduğunu doğrular. |
 | `chief_auditor_4_mobile_perf_10k` | 10K Oyuncu, Mobil GPU, Düşük Sistem & Preloader Denetçisi | 10.000 varlık stres testini (`0.217ms` tick, 0 bireysel `Update()`/PointLight, 21 draw call), `<=2.5GB` RAM `Eco/Low` korumasını ve `<2ms/frame` Progressive Preloader'ı test eder. |
-| `chief_auditor_5_e2e_forensic` | Uçtan Uca Kod, Shader Derleme & Test Denetçisi | `flutter analyze` (0 hata/uyarı), tüm `flutter test` süitleri, Impeller runtime shader sampler uyumu ve sıfır stub/TODO kuralını denetler. |
+| `chief_auditor_5_e2e_forensic` | Uçtan Uca Derleme, Full-Stack Kontrat Testleri & Sıfır Hata Denetçisi | `flutter analyze` (**0 hata**), tüm birim + `test/fullstack_contracts/` sözleşme + golden test süitleri, `reports/audit/SUPABASE_FORENSIC_AUDIT.md` tam raporu ve sıfır stub/TODO kuralını denetler. |
 
 ---
 
@@ -335,6 +356,19 @@ Her departmandaki **19 uzman ajan**, `run_command` kullanmadan tamamen bulutta �
 - **`studio_v4_06_shader_dart_uniform_sync` (19 Uzman):** `lib/shaders/` (13 dosya) ve `lib/rendering/` (4 dosya) içindeki Dart `FragmentShader` uniform indekslerini onarılan 18 `.frag` GLSL shader (`aion2_pbr_master.frag` 54 float + 4 sampler dahil) ile birebir eşitler.
 - **`studio_v4_07_real_asset_binding_auditors` & `studio_v4_08_adaptive_perf_integration` (38 Uzman):** 424 UI dosyasındaki tüm `.glb`/PBR/PNG yollarını fiziksel diskle doğrular ve ağır görsel bileşenlere `AdaptiveQualityScaler` (`Eco -> Ultra`) + `ZeroJankPreloader` kancalarını bağlar.
 - **`studio_v4_09_component_shader_test_authors` & `studio_v4_10_cross_studio_art_jury` (38 Uzman):** 82 ortak bileşen için yeni widget/shader testleri yazar ve **33 Ekran Arası Stüdyo Sanat Jürisi** olarak tüm ekranları renk sıcaklığı, tipografi, `>=48dp` dokunma alanı ve `390x844` `SafeArea` bütünlüğü açısından çapraz denetler.
+
+#### 🏛️ Dalga V6 — 200 Ajanlık Full-Stack (Frontend + Backend + Supabase En Ufak Fonksiyona Kadar) Denetim & Zırhlama Departmanları (`fullstack_v6_01..10` × 19 Bulut Uzmanı = 190 Uzman + 10 Komutan = ~200+ Aktif Ajan, `%0` Yerel PC Yükü)
+Her uzman kalıcı `/goal` ve zorunlu çapraz akran denetimi (`V1 → Akran Kritiği >= 9.3/10 → V2/V3`) ile hem **Supabase SQL**, hem **Dart Backend**, hem **Mobil Frontend** katmanlarını en küçük fonksiyonuna kadar denetler:
+1. **`fullstack_v6_01_supabase_schema_rls_grants` (Komutan + 19 Supabase Güvenlik Mimarı):** `supabase/migrations/` altındaki **546 SQL migration** dosyasındaki tüm tablo, kolon, FK, indeks, `ENABLE ROW LEVEL SECURITY`, `CREATE POLICY` ve `GRANT/REVOKE` kurallarını denetler; RLS açığı veya eksik indeksleri ileriye dönük idempotent SQL yamalarıyla kapatır.
+2. **`fullstack_v6_02_supabase_rpc_economy_inventory` (Komutan + 19 PL/pgSQL Ekonomi & Envanter Denetçisi):** Pazar, takas, banka, mağaza, üretim, güçlendirme (`enhancement`) ve envanter RPC/trigger fonksiyonlarını tek tek inceler; `SELECT ... FOR UPDATE` yarış kilidi, negatif miktar/bakiye istismarı, `auth.uid()` sahiplik kontrolü ve `SET search_path = public, pg_temp` zırhlamasını zorunlu kılar.
+3. **`fullstack_v6_03_supabase_rpc_combat_guild_world` (Komutan + 19 PL/pgSQL Savaş, Lonca & Dünya Denetçisi):** Zindan, kuşatma (`dungeon_siege`), PvP MMR, Lonca/Lonca Kasası/Anıt/Lonca Savaşı, Tesisler, Hastane, Hapishane, At Yarışı, Sezon Bileti, İtibar ve Günlük Ödül RPC fonksiyonlarını ödül kopyalama, bekleme süresi (cooldown) aşımı ve yetki istismarına karşı denetler.
+4. **`fullstack_v6_04_supabase_auth_presence_seeds` (Komutan + 19 Supabase Auth, Cihaz Oturumu & Seed Denetçisi):** Kimlik doğrulama, tekil cihaz oturumu (`device_session`), çevrimiçi varlık (`presence`), personel/admin yetki kontrolleri ve `supabase/seeds/` altındaki **6 seed SQL dosyasını** (`flutter_item_icon_updates.generated.sql` dahil — tüm eşya ikon yollarının gerçek `assets/` dosyalarıyla 1'e 1 uyumu) denetler.
+5. **`fullstack_v6_05_backend_repositories_services` (Komutan + 19 Dart Backend Mimarı):** `lib/repositories/` (**16+1 repository**) ve `lib/core/services/` (**17 servis**) içindeki **416 `.rpc()` / `.from()` / `.functions.invoke()`** çağrısının tamamını SQL fonksiyon imzalarıyla parametre adı, tipi ve dönüş şeması bazında 1'e 1 eşleştirir; Realtime kanal kapatma ve hata yönetimini sertleştirir.
+6. **`fullstack_v6_06_backend_models_providers` (Komutan + 19 Veri Modeli & Riverpod Durum Denetçisi):** `lib/models/` (**38 model**) ve `lib/providers/` (**37 Riverpod provider**) içindeki tüm `fromJson`/`toJson` serileştirmelerini Postgres `int8`/`bigint`/`numeric` güvenli dönüşümleri (`(v as num?)?.toInt()`), `mounted` kontrolü ve yarış durumu (race condition) açısından denetler.
+7. **`fullstack_v6_07_frontend_hub_combat_hero_wiring` (Komutan + 19 Mobil Frontend & Aion-2 Görsel Denetçisi):** Anasayfa, Zindan, PvP, Lonca Savaşı, Karakter, Envanter, Güçlendirme ve Ganimet ekranlarındaki her UI aksiyonunun gerçek Provider → Repository → Supabase RPC zincirine hatasız bağlandığını doğrular; gri zeminli `*_beauty.png` kalıntılarını sıfırlar.
+8. **`fullstack_v6_08_frontend_economy_social_world_wiring` (Komutan + 19 Mobil Frontend & Aion-2 Görsel Denetçisi):** Pazar, Takas, Banka, Mağaza, Üretim, Lonca, Sohbet, Arkadaşlar, Sıralama, Sezon, İtibar, Mekanlar, Tesisler, Hastane, Hapishane, At Yarışı, Görevler, Auth ve Ayarlar ekranlarının uçtan uca veri akışını, çift tıklama korumasını ve `390x844` `SafeArea` ergonomisini denetler.
+9. **`fullstack_v6_09_fullstack_contract_test_authors` (Komutan + 19 Full-Stack Kontrat Test Mühendisi):** `test/fullstack_contracts/` altında tüm 38 Model `fromJson`/`toJson`, 16+1 Repository RPC parametre sözleşmesi, 37 Provider durum geçişi ve SQL↔Dart şema eşleşme testlerini yazar; çalıştırma için tek sıra `dedicated_flutter_qa_runner`'a teslim eder.
+10. **`fullstack_v6_10_cross_stack_forensic_jury` (Komutan + 19 Çapraz-Katman Baş Mimar Jürisi):** `UI Ekran ↔ Provider ↔ Repository ↔ Model ↔ Supabase SQL Fonksiyonu` zincirini uçtan uca çapraz denetler (`>=9.3/10` barajı); uyumsuz en ufak fonksiyonu bile V2/V3 revizyona döndürür ve `reports/audit/SUPABASE_FORENSIC_AUDIT.md` master raporunu üretir.
 
 ---
 
