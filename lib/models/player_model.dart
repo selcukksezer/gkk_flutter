@@ -194,6 +194,7 @@ class PlayerProfile {
     CharacterClass? characterClass,
     int? statPoints,
     int? craftingQueueSlots,
+    String? healthLastUpdated,
     bool clearDisplayName = false,
     bool clearAvatarUrl = false,
     bool clearGuildId = false,
@@ -278,6 +279,7 @@ class PlayerProfile {
           clearCharacterClass ? null : (characterClass ?? this.characterClass),
       statPoints: statPoints ?? this.statPoints,
       craftingQueueSlots: craftingQueueSlots ?? this.craftingQueueSlots,
+      healthLastUpdated: healthLastUpdated ?? this.healthLastUpdated,
     );
   }
 
@@ -377,6 +379,8 @@ class PlayerProfile {
       'pvp_losses': pvpLosses,
       'addiction_level': addictionLevel,
       'tolerance': tolerance,
+      'nightlife_tickets': nightlifeTickets,
+      'nightlife_vibe': nightlifeVibe,
       'last_potion_used_at': lastPotionUsedAt,
       'warrior_bloodlust_until': warriorBloodlustUntil,
       'hospital_until': hospitalUntil,

@@ -254,7 +254,7 @@ class _KingdomRealm3DViewportState extends State<KingdomRealm3DViewport>
     _treasuryMesh = await _loadMeshWithFallbacks(
       primaryPath: 'assets/models/environment/Chest_gold.glb',
       fallbackCandidates: const <String>[
-        'assets/models/environment/Chest.glb',
+        'assets/models/environment/chest.glb',
         'assets/models/props/Brazier_IronEmbers.glb',
         'assets/models/environment/altar-stone.glb',
       ],

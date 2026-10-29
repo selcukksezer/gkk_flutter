@@ -35,12 +35,12 @@ enum GraphicsQualityTier {
       };
 
   String get badgeDescription => switch (this) {
-        GraphicsQualityTier.eco => 'Pil Tasarrufu Â· 30 FPS Â· Min IsÄ±nma',
-        GraphicsQualityTier.low => 'DÃ¼ÅŸÃ¼k DonanÄ±m Â· 30 FPS AkÄ±cÄ±',
-        GraphicsQualityTier.med => 'Dengeli Standart Â· 60 FPS',
-        GraphicsQualityTier.high => 'YÃ¼ksek Kalite Â· 60 FPS Â· SSAO',
-        GraphicsQualityTier.ultra => 'Aion-2 AAA Sinematik Â· 120 FPS',
-        GraphicsQualityTier.custom => 'Ã–zel KullanÄ±cÄ± YapÄ±landÄ±rmasÄ±',
+        GraphicsQualityTier.eco => 'Pil Tasarrufu · 30 FPS · Min Isınma',
+        GraphicsQualityTier.low => 'Düşük Donanım · 30 FPS Akıcı',
+        GraphicsQualityTier.med => 'Dengeli Standart · 60 FPS',
+        GraphicsQualityTier.high => 'Yüksek Kalite · 60 FPS · SSAO',
+        GraphicsQualityTier.ultra => 'Aion-2 AAA Sinematik · 120 FPS',
+        GraphicsQualityTier.custom => 'Özel Kullanıcı Yapılandırması',
       };
 
   HardwareTier toHardwareTier() => switch (this) {

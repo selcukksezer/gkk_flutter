@@ -143,7 +143,7 @@ class Facility3dCatalog {
       facilityType: 'clay_pit',
       structureTitle: 'Hazine ve Seramik Kil Kasası',
       archetype: 'treasury',
-      primaryGlbPath: 'assets/models/environment/Chest.glb',
+      primaryGlbPath: 'assets/models/environment/chest.glb',
       fallbackGlbPaths: <String>[
         'assets/models/environment/Chest_gold.glb',
         'assets/models/props/StoneAltar_Ritual.glb',
@@ -406,7 +406,7 @@ class Facility3dCatalog {
       archetype: 'treasury',
       primaryGlbPath: 'assets/models/environment/Chest_gold.glb',
       fallbackGlbPaths: <String>[
-        'assets/models/environment/Chest.glb',
+        'assets/models/environment/chest.glb',
         'assets/models/props/StoneAltar_Ritual.glb',
       ],
       tier: 3,

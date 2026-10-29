@@ -50,7 +50,7 @@ class _FactionStandingsHubState extends State<FactionStandingsHub> {
             const Icon(Icons.check_circle_rounded, color: MekanPalette.neon, size: 18),
             const SizedBox(width: 8),
             const Text(
-              'Fraksiyon Ã¶dÃ¼lÃ¼ baÅŸarÄ±yla teslim alÄ±ndÄ±!',
+              'Fraksiyon ödülü başarıyla teslim alındı!',
               style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
@@ -120,7 +120,7 @@ class _FactionStandingsHubState extends State<FactionStandingsHub> {
                       const Icon(Icons.stars_rounded, color: MekanPalette.ruby, size: 13),
                       const SizedBox(width: 4),
                       Text(
-                        '$totalClaimable Ã–dÃ¼l HazÄ±r',
+                        '$totalClaimable Ödül Hazır',
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w900,
@@ -140,7 +140,7 @@ class _FactionStandingsHubState extends State<FactionStandingsHub> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: <Widget>[
-              _categoryChip(0, 'TÃ¼mÃ¼', Icons.all_inclusive_rounded),
+              _categoryChip(0, 'Tümü', Icons.all_inclusive_rounded),
               const SizedBox(width: 6),
               _categoryChip(1, 'Hanedanlar', Icons.military_tech_rounded),
               const SizedBox(width: 6),

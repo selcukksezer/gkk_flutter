@@ -198,6 +198,13 @@ flutter:
     # World & Environmental Surface Simulation
     - shaders/world/atmospheric_sky.frag
     - shaders/world/puddle_ssr.frag
+    - shaders/world/wind_vegetation.frag
+    - shaders/world/water_puddle.frag
+    - shaders/world/volumetric_fog.frag
+
+    # Social Guild Shaders
+    - shaders/social/celestial_banner.frag
+    - shaders/social/emblem_aura.frag
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

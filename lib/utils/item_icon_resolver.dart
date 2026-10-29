@@ -20,7 +20,7 @@ class ItemIconResolver {
   };
 
   static final RegExp _emojiRegex = RegExp(
-    r'^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]+$',
+    r'^[\u{1F300}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]+$',
     unicode: true,
   );
 

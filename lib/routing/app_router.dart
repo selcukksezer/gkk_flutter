@@ -116,7 +116,7 @@ class AppRoutes {
   static const String guildMonument = '/guild/monument';
   static const String guildMonumentDonate = '/guild/monument/donate';
   static const String guildVault = '/guild/vault';
-  static const String guildWarAttack = '/guild-war/territory';
+  static const String guildWarAttack = '/guild-war/territory/attack';
   static const String announcements = '/announcements';
   static const String leaderboard = '/leaderboard';
   static const String loot = '/loot';
@@ -618,5 +618,3 @@ GoRouter createAppRouter({Listenable? refreshListenable}) {
   ],
 );
 }
-
-final GoRouter appRouter = createAppRouter();

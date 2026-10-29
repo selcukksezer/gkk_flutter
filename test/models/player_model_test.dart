@@ -35,6 +35,8 @@ void main() {
       'pvp_losses': 8,
       'addiction_level': 2,
       'tolerance': 5,
+      'nightlife_tickets': 0,
+      'nightlife_vibe': 0,
       'last_potion_used_at': null,
       'warrior_bloodlust_until': null,
       'hospital_until': null,
@@ -56,9 +58,11 @@ void main() {
       'agility': 8,
       'intelligence': 9,
       'luck': 10,
+      'equip_bonus_luck': 0,
       'character_class': 'warrior',
       'stat_points': 0,
       'crafting_queue_slots': 1,
+      'health_last_updated': null,
     };
 
     final PlayerProfile model = PlayerProfile.fromJson(json);
@@ -99,6 +103,8 @@ void main() {
       'pvp_losses': 8,
       'addiction_level': 2,
       'tolerance': 5,
+      'nightlife_tickets': 0,
+      'nightlife_vibe': 0,
       'last_potion_used_at': null,
       'warrior_bloodlust_until': null,
       'hospital_until': null,

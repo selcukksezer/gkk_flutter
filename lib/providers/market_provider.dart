@@ -91,6 +91,9 @@ final Provider<MarketRepository> marketRepositoryProvider = Provider<MarketRepos
 class MarketNotifier extends Notifier<MarketState> {
   MarketRepository get _repository => ref.read(marketRepositoryProvider);
 
+  /// In-flight guard to prevent double-submit on mutating operations.
+  bool _isSubmitting = false;
+
   String? get _currentUserId {
     final authUser = ref.read(authProvider).user;
     if (authUser != null && authUser.id.isNotEmpty) {
@@ -146,7 +149,7 @@ class MarketNotifier extends Notifier<MarketState> {
     } on AppException catch (e) {
       state = state.copyWith(status: MarketStatus.error, errorMessage: e.message);
     } catch (_) {
-      state = state.copyWith(status: MarketStatus.error, errorMessage: 'Pazar verisi yuklenemedi.');
+      state = state.copyWith(status: MarketStatus.error, errorMessage: 'Pazar verisi yüklenemedi.');
     }
   }
 
@@ -174,7 +177,7 @@ class MarketNotifier extends Notifier<MarketState> {
     } catch (_) {
       state = state.copyWith(
         isLoadingMore: false,
-        errorMessage: 'Daha fazla ilan yuklenemedi.',
+        errorMessage: 'Daha fazla ilan yüklenemedi.',
       );
     }
   }
@@ -199,7 +202,7 @@ class MarketNotifier extends Notifier<MarketState> {
     } on AppException catch (e) {
       state = state.copyWith(status: MarketStatus.error, errorMessage: e.message);
     } catch (_) {
-      state = state.copyWith(status: MarketStatus.error, errorMessage: 'Ilanlar yuklenemedi.');
+      state = state.copyWith(status: MarketStatus.error, errorMessage: 'İlanlar yüklenemedi.');
     }
   }
 
@@ -224,6 +227,8 @@ class MarketNotifier extends Notifier<MarketState> {
     required int quantity,
     required int price,
   }) async {
+    if (_isSubmitting) return false;
+    _isSubmitting = true;
     try {
       final bool ok = await _repository.createOrder(
         itemRowId: itemRowId,
@@ -238,8 +243,10 @@ class MarketNotifier extends Notifier<MarketState> {
       state = state.copyWith(errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Satis ilani olusturulamadi.');
+      state = state.copyWith(errorMessage: 'Satış ilanı oluşturulamadı.');
       return false;
+    } finally {
+      _isSubmitting = false;
     }
   }
 
@@ -248,6 +255,8 @@ class MarketNotifier extends Notifier<MarketState> {
   }
 
   Future<bool> withdrawListing({required String orderId}) async {
+    if (_isSubmitting) return false;
+    _isSubmitting = true;
     try {
       final bool ok = await _repository.cancelOrder(orderId: orderId);
       if (ok) {
@@ -258,8 +267,10 @@ class MarketNotifier extends Notifier<MarketState> {
       state = state.copyWith(errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Ilan geri cekilemedi.');
+      state = state.copyWith(errorMessage: 'İlan geri çekilemedi.');
       return false;
+    } finally {
+      _isSubmitting = false;
     }
   }
 
@@ -267,6 +278,8 @@ class MarketNotifier extends Notifier<MarketState> {
     required String orderId,
     required int newPrice,
   }) async {
+    if (_isSubmitting) return false;
+    _isSubmitting = true;
     try {
       final bool ok = await _repository.updateListingPrice(
         orderId: orderId,
@@ -280,8 +293,10 @@ class MarketNotifier extends Notifier<MarketState> {
       state = state.copyWith(errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Fiyat guncellenemedi.');
+      state = state.copyWith(errorMessage: 'Fiyat güncellenemedi.');
       return false;
+    } finally {
+      _isSubmitting = false;
     }
   }
 
@@ -292,12 +307,15 @@ class MarketNotifier extends Notifier<MarketState> {
     required int unitPrice,
     String? sellerId,
   }) async {
+    if (_isSubmitting) return false;
+
     final String? userId = _currentUserId;
     if (userId != null && sellerId != null && userId == sellerId) {
-      state = state.copyWith(errorMessage: 'Kendi ilaninizi satin alamazsiniz');
+      state = state.copyWith(errorMessage: 'Kendi ilanınızı satın alamazsınız');
       return false;
     }
 
+    _isSubmitting = true;
     try {
       await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
       final InventoryAddCheck addCheck = ref.read(inventoryProvider.notifier).canAddItem(
@@ -311,7 +329,7 @@ class MarketNotifier extends Notifier<MarketState> {
 
       final int gold = ref.read(playerProvider).profile?.gold ?? 0;
       if (gold < unitPrice * quantity) {
-        state = state.copyWith(errorMessage: 'Yeterli altin yok');
+        state = state.copyWith(errorMessage: 'Yeterli altın yok');
         return false;
       }
 
@@ -327,8 +345,10 @@ class MarketNotifier extends Notifier<MarketState> {
       state = state.copyWith(errorMessage: e.message);
       return false;
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Satin alma basarisiz.');
+      state = state.copyWith(errorMessage: 'Satın alma başarısız.');
       return false;
+    } finally {
+      _isSubmitting = false;
     }
   }
 }

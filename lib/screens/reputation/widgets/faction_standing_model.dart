@@ -13,7 +13,7 @@ enum FactionCategory {
       case FactionCategory.craft:
         return 'Zanaat Birlikleri';
       case FactionCategory.council:
-        return 'BÃ¶lge Konseyleri';
+        return 'Bölge Konseyleri';
     }
   }
 
@@ -111,15 +111,15 @@ enum FactionStandingTier {
   String get title {
     switch (this) {
       case FactionStandingTier.neutral:
-        return 'NÃ¶tr';
+        return 'Nötr';
       case FactionStandingTier.friendly:
         return 'Dost';
       case FactionStandingTier.honored:
-        return 'SaygÄ±deÄŸer';
+        return 'Saygıdeğer';
       case FactionStandingTier.revered:
-        return 'HÃ¼rmetli';
+        return 'Hürmetli';
       case FactionStandingTier.exalted:
-        return 'YÃ¼ce';
+        return 'Yüce';
     }
   }
 
@@ -381,40 +381,40 @@ List<FactionStandingData> defaultFactionStandings() {
     // 1. Miragent Holy Templars (Elyos Order) - Deep Azure
     FactionStandingData(
       id: 'miragent_templars',
-      name: 'Miragent Kutsal TapÄ±nakÃ§Ä±larÄ±',
-      alignment: 'Elyos / IÅŸÄ±k MuhafÄ±zlarÄ±',
+      name: 'Miragent Kutsal Tapınakçıları',
+      alignment: 'Elyos / Işık Muhafızları',
       category: FactionCategory.order,
       paletteType: FactionPaletteType.deepAzure,
       points: 34200,
-      headquarters: 'Sanctum BaÅŸ TapÄ±naÄŸÄ±',
+      headquarters: 'Sanctum Baş Tapınağı',
       loreDescription:
-          'Aionâ€™un Ä±ÅŸÄ±ÄŸÄ±nÄ± korumaya adanmÄ±ÅŸ, Sanctumâ€™un en seÃ§kin ilahi savaÅŸÃ§Ä± tarikatÄ±.',
+          'Aion\'un ışığını korumaya adanmış, Sanctum\'un en seçkin ilahi savaşçı tarikatı.',
       perks: const <FactionPerk>[
         FactionPerk(
           id: 'mir_1',
-          title: 'Sanctum IÅŸÄ±nlanma Ä°ndirimi (%50)',
-          description: 'Sanctum kapÄ±larÄ±na teleport maliyeti yarÄ±ya dÃ¼ÅŸer.',
+          title: 'Sanctum Işınlanma İndirimi (%50)',
+          description: 'Sanctum kapılarına teleport maliyeti yarıya düşer.',
           requiredTier: FactionStandingTier.friendly,
           icon: Icons.flight_takeoff_rounded,
         ),
         FactionPerk(
           id: 'mir_2',
-          title: 'Ä°lahi Koruma (+4% ZÄ±rh & Savunma)',
-          description: 'TÃ¼m zindanlarda ilahi Ä±ÅŸÄ±k zÄ±rh takviyesi.',
+          title: 'İlahi Koruma (+4% Zırh & Savunma)',
+          description: 'Tüm zindanlarda ilahi ışık zırh takviyesi.',
           requiredTier: FactionStandingTier.honored,
           icon: Icons.shield_rounded,
         ),
         FactionPerk(
           id: 'mir_3',
-          title: 'Miragent Kutsal ZÄ±rh Seti',
-          description: 'Ã–zel Miragent fraksiyon satÄ±cÄ±sÄ± vitrini aÃ§Ä±lÄ±r.',
+          title: 'Miragent Kutsal Zırh Seti',
+          description: 'Özel Miragent fraksiyon satıcısı vitrini açılır.',
           requiredTier: FactionStandingTier.revered,
           icon: Icons.auto_awesome_rounded,
         ),
         FactionPerk(
           id: 'mir_4',
-          title: 'YÃ¼ce BaÅŸ Melek KanatlarÄ±',
-          description: 'UÃ§uÅŸ sÃ¼resi +30 sn ve ilahi parlama aurasÄ±.',
+          title: 'Yüce Baş Melek Kanatları',
+          description: 'Uçuş süresi +30 sn ve ilahi parlama aurası.',
           requiredTier: FactionStandingTier.exalted,
           icon: Icons.star_rounded,
         ),
@@ -422,7 +422,7 @@ List<FactionStandingData> defaultFactionStandings() {
       milestones: const <FactionMilestoneReward>[
         FactionMilestoneReward(
           id: 'm_rew_1',
-          title: 'Kutsal Aether Ã–zÃ¼tÃ¼ x100',
+          title: 'Kutsal Aether Özütü x100',
           requiredTier: FactionStandingTier.friendly,
           rewardText: '100x Kutsal Aether',
           icon: Icons.science_rounded,
@@ -430,25 +430,25 @@ List<FactionStandingData> defaultFactionStandings() {
         ),
         FactionMilestoneReward(
           id: 'm_rew_2',
-          title: 'Miragent NiÅŸanÄ± & UnvanÄ±',
+          title: 'Miragent Nişanı & Unvanı',
           requiredTier: FactionStandingTier.honored,
-          rewardText: 'Miragent ÅÃ¶valyesi UnvanÄ±',
+          rewardText: 'Miragent Şövalyesi Unvanı',
           icon: Icons.military_tech_rounded,
           isClaimed: true,
         ),
         FactionMilestoneReward(
           id: 'm_rew_3',
-          title: 'Miragent HÃ¼rmetli SandÄ±ÄŸÄ±',
+          title: 'Miragent Hürmetli Sandığı',
           requiredTier: FactionStandingTier.revered,
-          rewardText: 'Efsanevi Miragent MiÄŸferi & 25,000 AltÄ±n',
+          rewardText: 'Efsanevi Miragent Miğferi & 25,000 Altın',
           icon: Icons.inventory_2_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'm_rew_4',
-          title: 'YÃ¼ce Miragent Kanat Kristali',
+          title: 'Yüce Miragent Kanat Kristali',
           requiredTier: FactionStandingTier.exalted,
-          rewardText: 'Mitik Kanat SÃ¼slemesi & 100,000 AltÄ±n',
+          rewardText: 'Mitik Kanat Süslemesi & 100,000 Altın',
           icon: Icons.diamond_rounded,
           isClaimed: false,
         ),
@@ -458,40 +458,40 @@ List<FactionStandingData> defaultFactionStandings() {
     // 2. Fenris's Fang Legion (Asmodian Order) - Abyssal Crimson
     FactionStandingData(
       id: 'fenris_fangs',
-      name: 'Fenris PenÃ§esi Lejyonu',
-      alignment: 'Asmodian / GÃ¶lge Lejyonu',
+      name: 'Fenris Pençesi Lejyonu',
+      alignment: 'Asmodian / Gölge Lejyonu',
       category: FactionCategory.order,
       paletteType: FactionPaletteType.abyssalCrimson,
       points: 28900,
-      headquarters: 'Pandaemonium GÃ¶lge Kalesi',
+      headquarters: 'Pandaemonium Gölge Kalesi',
       loreDescription:
-          'KaranlÄ±k uÃ§urumun dehÅŸetini kucaklayan, Asmodaeâ€™nin en vahÅŸi lejyon birliÄŸi.',
+          'Karanlık uçurumun dehşetini kucaklayan, Asmodae\'nin en vahşi lejyon birliği.',
       perks: const <FactionPerk>[
         FactionPerk(
           id: 'fen_1',
-          title: 'GÃ¶lge GeÃ§idi Ãœcretsiz GeÃ§iÅŸ',
-          description: 'Pandaemonium gÃ¶lge kapÄ±larÄ±nda serbest geÃ§iÅŸ.',
+          title: 'Gölge Geçidi Ücretsiz Geçiş',
+          description: 'Pandaemonium gölge kapılarında serbest geçiş.',
           requiredTier: FactionStandingTier.friendly,
           icon: Icons.vpn_key_rounded,
         ),
         FactionPerk(
           id: 'fen_2',
-          title: 'Abyssal Hiddet (+5% PvP HasarÄ±)',
-          description: 'UÃ§urum ve savaÅŸ alanlarÄ±nda ekstra hasar Ã§arpanÄ±.',
+          title: 'Abyssal Hiddet (+5% PvP Hasarı)',
+          description: 'Uçurum ve savaş alanlarında ekstra hasar çarpanı.',
           requiredTier: FactionStandingTier.honored,
           icon: Icons.flash_on_rounded,
         ),
         FactionPerk(
           id: 'fen_3',
-          title: 'Fenris GÃ¶lge TeÃ§hizatÄ± EriÅŸimi',
-          description: 'Lejyon zÄ±rh ustasÄ±ndan destansÄ± silah alÄ±mÄ±.',
+          title: 'Fenris Gölge Teçhizatı Erişimi',
+          description: 'Lejyon zırh ustasından destansı silah alımı.',
           requiredTier: FactionStandingTier.revered,
           icon: Icons.colorize_rounded,
         ),
         FactionPerk(
           id: 'fen_4',
-          title: 'Abyssal Ejder GÃ¶zÃ¼ AurasÄ±',
-          description: 'GÃ¶z kamaÅŸtÄ±rÄ±cÄ± kÄ±rmÄ±zÄ± gÃ¶lge ejder aurasÄ±.',
+          title: 'Abyssal Ejder Gözü Aurası',
+          description: 'Göz kamaştırıcı kırmızı gölge ejder aurası.',
           requiredTier: FactionStandingTier.exalted,
           icon: Icons.visibility_rounded,
         ),
@@ -507,25 +507,25 @@ List<FactionStandingData> defaultFactionStandings() {
         ),
         FactionMilestoneReward(
           id: 'f_rew_2',
-          title: 'KaranlÄ±k Aether Kristali x50',
+          title: 'Karanlık Aether Kristali x50',
           requiredTier: FactionStandingTier.honored,
-          rewardText: '50x Saf KaranlÄ±k Aether',
+          rewardText: '50x Saf Karanlık Aether',
           icon: Icons.blur_on_rounded,
           isClaimed: true,
         ),
         FactionMilestoneReward(
           id: 'f_rew_3',
-          title: 'Fenris HÃ¼rmetli SandÄ±ÄŸÄ±',
+          title: 'Fenris Hürmetli Sandığı',
           requiredTier: FactionStandingTier.revered,
-          rewardText: 'Efsanevi Fenris PenÃ§esi HanÃ§eri',
+          rewardText: 'Efsanevi Fenris Pençesi Hançeri',
           icon: Icons.inventory_2_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'f_rew_4',
-          title: 'YÃ¼ce GÃ¶lge Silah KaplamasÄ±',
+          title: 'Yüce Gölge Silah Kaplaması',
           requiredTier: FactionStandingTier.exalted,
-          rewardText: 'Mitik Abyssal Silah ParÄ±ltÄ±sÄ±',
+          rewardText: 'Mitik Abyssal Silah Parıltısı',
           icon: Icons.flare_rounded,
           isClaimed: false,
         ),
@@ -535,40 +535,40 @@ List<FactionStandingData> defaultFactionStandings() {
     // 3. Tigraki Workshop (Craft Guild) - Emerald Aura
     FactionStandingData(
       id: 'tigraki_workshop',
-      name: 'Tigraki AtÃ¶lyesi',
+      name: 'Tigraki Atölyesi',
       alignment: 'Shugo / Usta Zanaatkarlar',
       category: FactionCategory.craft,
       paletteType: FactionPaletteType.emeraldAura,
       points: 16500,
-      headquarters: 'Tigraki UÃ§an AdasÄ±',
+      headquarters: 'Tigraki Uçan Adası',
       loreDescription:
-          'Aion evreninin en kurnaz ve hÃ¼nerli Shugo demir ustalarÄ± ve mucitleri.',
+          'Aion evreninin en kurnaz ve hünerli Shugo demir ustaları ve mucitleri.',
       perks: const <FactionPerk>[
         FactionPerk(
           id: 'tig_1',
-          title: 'Demircilik BaÅŸarÄ± ÅansÄ± +4%',
-          description: 'Ekipman Ã¼retiminde kritik baÅŸarÄ± ÅŸansÄ± artar.',
+          title: 'Demircilik Başarı Åansı +4%',
+          description: 'Ekipman üretiminde kritik başarı şansı artar.',
           requiredTier: FactionStandingTier.friendly,
           icon: Icons.build_rounded,
         ),
         FactionPerk(
           id: 'tig_2',
           title: 'Ham Madde Maliyeti -15%',
-          description: 'AtÃ¶lye zanaat malzemelerinde kalÄ±cÄ± Shugo indirimi.',
+          description: 'Atölye zanaat malzemelerinde kalıcı Shugo indirimi.',
           requiredTier: FactionStandingTier.honored,
           icon: Icons.price_check_rounded,
         ),
         FactionPerk(
           id: 'tig_3',
-          title: 'Efsanevi Taslak KitaplÄ±ÄŸÄ±',
-          description: 'Gizli Shugo silah ve zÄ±rh ÅŸemalarÄ±na eriÅŸim.',
+          title: 'Efsanevi Taslak Kitaplığı',
+          description: 'Gizli Shugo silah ve zırh şemalarına erişim.',
           requiredTier: FactionStandingTier.revered,
           icon: Icons.menu_book_rounded,
         ),
         FactionPerk(
           id: 'tig_4',
-          title: 'Tigraki Usta Ã‡ekici',
-          description: 'Zanaat Ã¼retim sÃ¼resi %35 kÄ±salÄ±r.',
+          title: 'Tigraki Usta Çekici',
+          description: 'Zanaat üretim süresi %35 kısalır.',
           requiredTier: FactionStandingTier.exalted,
           icon: Icons.hardware_rounded,
         ),
@@ -576,9 +576,9 @@ List<FactionStandingData> defaultFactionStandings() {
       milestones: const <FactionMilestoneReward>[
         FactionMilestoneReward(
           id: 't_rew_1',
-          title: 'Tigraki Zanaat Ã‡antasÄ±',
+          title: 'Tigraki Zanaat Çantası',
           requiredTier: FactionStandingTier.friendly,
-          rewardText: '+12 Envanter YuvasÄ±',
+          rewardText: '+12 Envanter Yuvası',
           icon: Icons.backpack_rounded,
           isClaimed: true,
         ),
@@ -586,23 +586,23 @@ List<FactionStandingData> defaultFactionStandings() {
           id: 't_rew_2',
           title: 'Ender Zanaat Taslak Paketi',
           requiredTier: FactionStandingTier.honored,
-          rewardText: '3x Nadir Demircilik TaslaÄŸÄ±',
+          rewardText: '3x Nadir Demircilik Taslağı',
           icon: Icons.history_edu_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 't_rew_3',
-          title: 'Tigraki HÃ¼rmetli SandÄ±ÄŸÄ±',
+          title: 'Tigraki Hürmetli Sandığı',
           requiredTier: FactionStandingTier.revered,
-          rewardText: 'Efsanevi Shugo Ã‡ekici & 50x Aether Cevheri',
+          rewardText: 'Efsanevi Shugo Çekici & 50x Aether Cevheri',
           icon: Icons.inventory_2_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 't_rew_4',
-          title: 'YÃ¼ce Zanaatkar ÃœniformasÄ±',
+          title: 'Yüce Zanaatkar Üniforması',
           requiredTier: FactionStandingTier.exalted,
-          rewardText: 'Kozmetik Usta Zanaatkar KostÃ¼mÃ¼',
+          rewardText: 'Kozmetik Usta Zanaatkar Kostümü',
           icon: Icons.checkroom_rounded,
           isClaimed: false,
         ),
@@ -612,40 +612,40 @@ List<FactionStandingData> defaultFactionStandings() {
     // 4. Aetheric Artificers Guild (Craft Guild) - Deep Azure
     FactionStandingData(
       id: 'aetheric_artificers',
-      name: 'Aether SimyacÄ±larÄ± LoncasÄ±',
-      alignment: 'Aether MÃ¼hendisleri & SimyacÄ±lar',
+      name: 'Aether Simyacıları Loncası',
+      alignment: 'Aether Mühendisleri & Simyacılar',
       category: FactionCategory.craft,
       paletteType: FactionPaletteType.deepAzure,
       points: 7400,
-      headquarters: 'GÃ¶ksel Aether LaboratuvarÄ±',
+      headquarters: 'Göksel Aether Laboratuvarı',
       loreDescription:
-          'GÃ¶ksel aether akÄ±ÅŸlarÄ±nÄ± ÅŸiÅŸeleyip kudretli iksirlere dÃ¶nÃ¼ÅŸtÃ¼ren kadim lonca.',
+          'Göksel aether akışlarını şişeleyip kudretli iksirlere dönüştüren kadim lonca.',
       perks: const <FactionPerk>[
         FactionPerk(
           id: 'aeth_1',
-          title: 'Ä°ksir Ãœretim Verimi +15%',
-          description: 'Her iksir Ã¼retiminde Ã§ift doz Ã§Ä±kma ÅŸansÄ±.',
+          title: 'İksir Üretim Verimi +15%',
+          description: 'Her iksir üretiminde çift doz çıkma şansı.',
           requiredTier: FactionStandingTier.friendly,
           icon: Icons.local_drink_rounded,
         ),
         FactionPerk(
           id: 'aeth_2',
-          title: 'Aether Ã‡Ä±karma HÄ±zÄ± +25%',
-          description: 'Havadaki aether kaynaklarÄ±nÄ± daha hÄ±zlÄ± toplama.',
+          title: 'Aether Çıkarma Hızı +25%',
+          description: 'Havadaki aether kaynaklarını daha hızlı toplama.',
           requiredTier: FactionStandingTier.honored,
           icon: Icons.cloud_download_rounded,
         ),
         FactionPerk(
           id: 'aeth_3',
-          title: 'UÃ§urum TaÅŸÄ± DÃ¶nÃ¼ÅŸtÃ¼rÃ¼cÃ¼',
-          description: 'Basit taÅŸlarÄ± Abyssal cevherlere Ã§evirme tezgahÄ±.',
+          title: 'Uçurum Taşı Dönüştürücü',
+          description: 'Basit taşları Abyssal cevherlere çevirme tezgahı.',
           requiredTier: FactionStandingTier.revered,
           icon: Icons.change_circle_rounded,
         ),
         FactionPerk(
           id: 'aeth_4',
-          title: 'Sonsuz Aether MatarasÄ±',
-          description: 'GÃ¼nde 1 kez tam mana & can yenileyen iksir.',
+          title: 'Sonsuz Aether Matarası',
+          description: 'Günde 1 kez tam mana & can yenileyen iksir.',
           requiredTier: FactionStandingTier.exalted,
           icon: Icons.whatshot_rounded,
         ),
@@ -653,17 +653,17 @@ List<FactionStandingData> defaultFactionStandings() {
       milestones: const <FactionMilestoneReward>[
         FactionMilestoneReward(
           id: 'ae_rew_1',
-          title: 'Aether SimyacÄ± CÃ¼bbesi',
+          title: 'Aether Simyacı Cübbesi',
           requiredTier: FactionStandingTier.friendly,
-          rewardText: 'Ã–zel Kozmetik Lonca CÃ¼bbesi',
+          rewardText: 'Özel Kozmetik Lonca Cübbesi',
           icon: Icons.accessibility_new_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'ae_rew_2',
-          title: 'Saf Aether Ã–zÃ¼tÃ¼ x100',
+          title: 'Saf Aether Özütü x100',
           requiredTier: FactionStandingTier.honored,
-          rewardText: '100x Saf GÃ¶ksel Aether DamlasÄ±',
+          rewardText: '100x Saf Göksel Aether Damlası',
           icon: Icons.science_rounded,
           isClaimed: false,
         ),
@@ -671,15 +671,15 @@ List<FactionStandingData> defaultFactionStandings() {
           id: 'ae_rew_3',
           title: 'Kadim Simya Tarifi',
           requiredTier: FactionStandingTier.revered,
-          rewardText: 'Yenilmezlik Ä°ksiri FormÃ¼lÃ¼',
+          rewardText: 'Yenilmezlik İksiri Formülü',
           icon: Icons.menu_book_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'ae_rew_4',
-          title: 'YÃ¼ce Simyager UnvanÄ±',
+          title: 'Yüce Simyager Unvanı',
           requiredTier: FactionStandingTier.exalted,
-          rewardText: 'AltÄ±n Ä°simlik & +500 BÃ¼yÃ¼ GÃ¼cÃ¼',
+          rewardText: 'Altın İsimlik & +500 Büyü Gücü',
           icon: Icons.emoji_events_rounded,
           isClaimed: false,
         ),
@@ -689,40 +689,40 @@ List<FactionStandingData> defaultFactionStandings() {
     // 5. Reshanta Abyss Council (Regional Council) - Abyssal Crimson
     FactionStandingData(
       id: 'reshanta_council',
-      name: 'Reshanta UÃ§urum Konseyi',
+      name: 'Reshanta Uçurum Konseyi',
       alignment: 'Reshanta / Egemenlik Meclisi',
       category: FactionCategory.council,
       paletteType: FactionPaletteType.abyssalCrimson,
       points: 22800,
       headquarters: 'Reshanta Merkez Kalesi',
       loreDescription:
-          'UÃ§urumun kalbindeki stratejik hisarlarÄ± ve antik boyut yarÄ±klarÄ±nÄ± denetleyen konsey.',
+          'Uçurumun kalbindeki stratejik hisarları ve antik boyut yarıklarını denetleyen konsey.',
       perks: const <FactionPerk>[
         FactionPerk(
           id: 'res_1',
-          title: 'UÃ§urum PuanÄ± (AP) KazanÄ±mÄ± +8%',
-          description: 'TÃ¼m PvP ve kuÅŸatma etkinliklerinde ekstra AP kazanÄ±mÄ±.',
+          title: 'Uçurum Puanı (AP) Kazanımı +8%',
+          description: 'Tüm PvP ve kuşatma etkinliklerinde ekstra AP kazanımı.',
           requiredTier: FactionStandingTier.friendly,
           icon: Icons.military_tech_rounded,
         ),
         FactionPerk(
           id: 'res_2',
-          title: 'KuÅŸatma Makinesi HasarÄ± +12%',
-          description: 'Kale kuÅŸatmalarÄ±nda kapÄ± ve savunma taÅŸlarÄ±na ek hasar.',
+          title: 'Kuşatma Makinesi Hasarı +12%',
+          description: 'Kale kuşatmalarında kapı ve savunma taşlarına ek hasar.',
           requiredTier: FactionStandingTier.honored,
           icon: Icons.fireplace_rounded,
         ),
         FactionPerk(
           id: 'res_3',
-          title: 'Reshanta Garnizon SatÄ±cÄ± Ä°ndirimi',
-          description: 'UÃ§urum teÃ§hizatlarÄ±nda kalÄ±cÄ± %15 indirim.',
+          title: 'Reshanta Garnizon Satıcı İndirimi',
+          description: 'Uçurum teçhizatlarında kalıcı %15 indirim.',
           requiredTier: FactionStandingTier.revered,
           icon: Icons.storefront_rounded,
         ),
         FactionPerk(
           id: 'res_4',
-          title: 'Reshanta Fatihi SavaÅŸ SancaÄŸÄ±',
-          description: 'Grup Ã¼yelerine +%10 saldÄ±rÄ± hÄ±zÄ± aurasÄ±.',
+          title: 'Reshanta Fatihi Savaş Sancağı',
+          description: 'Grup üyelerine +%10 saldırı hızı aurası.',
           requiredTier: FactionStandingTier.exalted,
           icon: Icons.flag_rounded,
         ),
@@ -730,33 +730,33 @@ List<FactionStandingData> defaultFactionStandings() {
       milestones: const <FactionMilestoneReward>[
         FactionMilestoneReward(
           id: 'r_rew_1',
-          title: '5,000 UÃ§urum PuanÄ± (AP)',
+          title: '5,000 Uçurum Puanı (AP)',
           requiredTier: FactionStandingTier.friendly,
-          rewardText: '5,000 AP AnÄ±nda YÃ¼kleme',
+          rewardText: '5,000 AP Anında Yükleme',
           icon: Icons.star_half_rounded,
           isClaimed: true,
         ),
         FactionMilestoneReward(
           id: 'r_rew_2',
-          title: 'Reshanta MuhafÄ±z MÃ¼hrÃ¼',
+          title: 'Reshanta Muhafız Mührü',
           requiredTier: FactionStandingTier.honored,
-          rewardText: 'KuÅŸatma Madalyonu & 35,000 AltÄ±n',
+          rewardText: 'Kuşatma Madalyonu & 35,000 Altın',
           icon: Icons.verified_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'r_rew_3',
-          title: 'Abyssal SavaÅŸ SandÄ±ÄŸÄ±',
+          title: 'Abyssal Savaş Sandığı',
           requiredTier: FactionStandingTier.revered,
-          rewardText: 'SeÃ§meli UÃ§urum AksesuarÄ±',
+          rewardText: 'Seçmeli Uçurum Aksesuarı',
           icon: Icons.inventory_2_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'r_rew_4',
-          title: 'Reshanta Fatihi UnvanÄ±',
+          title: 'Reshanta Fatihi Unvanı',
           requiredTier: FactionStandingTier.exalted,
-          rewardText: 'KÄ±rmÄ±zÄ± ParÄ±ldayan Unvan & +120 PvP GÃ¼cÃ¼',
+          rewardText: 'Kırmızı Parıldayan Unvan & +120 PvP Gücü',
           icon: Icons.stars_rounded,
           isClaimed: false,
         ),
@@ -766,40 +766,40 @@ List<FactionStandingData> defaultFactionStandings() {
     // 6. Sanctum High Synod (Regional Council) - Deep Azure
     FactionStandingData(
       id: 'sanctum_synod',
-      name: 'Sanctum YÃ¼ce Meclisi',
-      alignment: 'Sanctum / BaÅŸkent Senatosu',
+      name: 'Sanctum Yüce Meclisi',
+      alignment: 'Sanctum / Başkent Senatosu',
       category: FactionCategory.council,
       paletteType: FactionPaletteType.deepAzure,
       points: 46200,
       headquarters: 'Sanctum Meclis Salonu',
       loreDescription:
-          'Elyseaâ€™nÄ±n baÅŸkentini yÃ¶neten, kanunlarÄ± ve ilahi vergileri dÃ¼zenleyen yÃ¼ce kurul.',
+          'Elysea\'nın başkentini yöneten, kanunları ve ilahi vergileri düzenleyen yüce kurul.',
       perks: const <FactionPerk>[
         FactionPerk(
           id: 'san_1',
-          title: 'BaÅŸkent SatÄ±cÄ± Ä°ndirimi (%5)',
-          description: 'Sanctum Ã§arÅŸÄ±sÄ±ndaki tÃ¼m NPC maÄŸazalarÄ±nda geÃ§erli.',
+          title: 'Başkent Satıcı İndirimi (%5)',
+          description: 'Sanctum çarşısındaki tüm NPC mağazalarında geçerli.',
           requiredTier: FactionStandingTier.friendly,
           icon: Icons.shopping_bag_rounded,
         ),
         FactionPerk(
           id: 'san_2',
-          title: 'Åehir Ä°Ã§i Hareket HÄ±zÄ± +15%',
-          description: 'Sanctum sokaklarÄ±nda hafiflik ve hÄ±zlÄ± adÄ±mlar.',
+          title: 'Şehir İçi Hareket Hızı +15%',
+          description: 'Sanctum sokaklarında hafiflik ve hızlı adımlar.',
           requiredTier: FactionStandingTier.honored,
           icon: Icons.directions_run_rounded,
         ),
         FactionPerk(
           id: 'san_3',
-          title: 'YÃ¼ksek SenatÃ¶r MuhafÄ±z Ã‡aÄŸrÄ±sÄ±',
-          description: 'Zorlu durumlarda elit Sanctum muhafÄ±zÄ± Ã§aÄŸÄ±rma.',
+          title: 'Yüksek Senatör Muhafız Çağrısı',
+          description: 'Zorlu durumlarda elit Sanctum muhafızı çağırma.',
           requiredTier: FactionStandingTier.revered,
           icon: Icons.groups_rounded,
         ),
         FactionPerk(
           id: 'san_4',
-          title: 'Sanctum YÃ¼ce Temsilcisi DiplomasÄ±',
-          description: 'TÃ¼m vergilerden muafiyet & Ã¶zel altÄ±n heykel.',
+          title: 'Sanctum Yüce Temsilcisi Diploması',
+          description: 'Tüm vergilerden muafiyet & özel altın heykel.',
           requiredTier: FactionStandingTier.exalted,
           icon: Icons.workspace_premium_rounded,
         ),
@@ -807,33 +807,33 @@ List<FactionStandingData> defaultFactionStandings() {
       milestones: const <FactionMilestoneReward>[
         FactionMilestoneReward(
           id: 's_rew_1',
-          title: 'Sanctum Onur MadalyasÄ±',
+          title: 'Sanctum Onur Madalyası',
           requiredTier: FactionStandingTier.friendly,
-          rewardText: 'AltÄ±n Onur Rozeti',
+          rewardText: 'Altın Onur Rozeti',
           icon: Icons.badge_rounded,
           isClaimed: true,
         ),
         FactionMilestoneReward(
           id: 's_rew_2',
-          title: 'AltÄ±n GÃ¼vercin PostasÄ± Ä°zni',
+          title: 'Altın Güvercin Postası İzni',
           requiredTier: FactionStandingTier.honored,
-          rewardText: 'AnÄ±nda Ãœcretsiz Posta EriÅŸimi',
+          rewardText: 'Anında Ücretsiz Posta Erişimi',
           icon: Icons.mail_rounded,
           isClaimed: true,
         ),
         FactionMilestoneReward(
           id: 's_rew_3',
-          title: 'Sanctum YÃ¼ksek SandÄ±ÄŸÄ±',
+          title: 'Sanctum Yüksek Sandığı',
           requiredTier: FactionStandingTier.revered,
-          rewardText: '50,000 AltÄ±n & 2x Mitik GÃ¼Ã§ TaÅŸÄ±',
+          rewardText: '50,000 Altın & 2x Mitik Güç Taşı',
           icon: Icons.inventory_2_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 's_rew_4',
-          title: 'YÃ¼ce Meclis Åeref AsasÄ±',
+          title: 'Yüce Meclis Şeref Asası',
           requiredTier: FactionStandingTier.exalted,
-          rewardText: 'Kozmetik Åeref AsasÄ± & AltÄ±n IÅŸÄ±k',
+          rewardText: 'Kozmetik Åeref Asası & Altın Işık',
           icon: Icons.auto_awesome_rounded,
           isClaimed: false,
         ),
@@ -843,18 +843,18 @@ List<FactionStandingData> defaultFactionStandings() {
     // 7. Inggison Frontier Wardens (Regional Council) - Emerald Aura
     FactionStandingData(
       id: 'inggison_wardens',
-      name: 'Inggison SÄ±nÄ±r MuhafÄ±zlarÄ±',
-      alignment: 'Balaurea / SÄ±nÄ±r GÃ¶zlemcileri',
+      name: 'Inggison Sınır Muhafızları',
+      alignment: 'Balaurea / Sınır Gözlemcileri',
       category: FactionCategory.council,
       paletteType: FactionPaletteType.emeraldAura,
       points: 2100,
-      headquarters: 'Inggison Ä°leri Karakolu',
+      headquarters: 'Inggison İleri Karakolu',
       loreDescription:
-          'Balaureaâ€™nÄ±n yabani topraklarÄ±nda Balaur ejder lejyonlarÄ±na karÅŸÄ± sÄ±nÄ±r hattÄ±nÄ± tutan cesur muhafÄ±zlar.',
+          'Balaurea\'nın yabani topraklarında Balaur ejder lejyonlarına karşı sınır hattını tutan cesur muhafızlar.',
       perks: const <FactionPerk>[
         FactionPerk(
           id: 'ing_1',
-          title: 'SÄ±nÄ±r Karakolu SatÄ±cÄ± Ä°ndirimi (%5)',
+          title: 'Sınır Karakolu Satıcı İndirimi (%5)',
           description: 'Inggison erzak ve tamir maliyetlerinde indirim.',
           requiredTier: FactionStandingTier.friendly,
           icon: Icons.healing_rounded,
@@ -862,21 +862,21 @@ List<FactionStandingData> defaultFactionStandings() {
         FactionPerk(
           id: 'ing_2',
           title: 'Yaban Can Yenilenmesi +8%',
-          description: 'SavaÅŸ dÄ±ÅŸÄ±ndayken yÃ¼ksek hÄ±zda can ve mana dolumu.',
+          description: 'Savaş dışındayken yüksek hızda can ve mana dolumu.',
           requiredTier: FactionStandingTier.honored,
           icon: Icons.favorite_rounded,
         ),
         FactionPerk(
           id: 'ing_3',
-          title: 'RÃ¼zgar AkÄ±mÄ± GeÃ§iÅŸ Ä°zni',
-          description: 'Balaurea rÃ¼zgar koridorlarÄ±nda ultra hÄ±zlÄ± sÃ¼zÃ¼lme.',
+          title: 'Rüzgar Akımı Geçiş İzni',
+          description: 'Balaurea rüzgar koridorlarında ultra hızlı süzülme.',
           requiredTier: FactionStandingTier.revered,
           icon: Icons.air_rounded,
         ),
         FactionPerk(
           id: 'ing_4',
-          title: 'Kadim Balaur AvcÄ±sÄ± NiÅŸanÄ±',
-          description: 'Balaur canavarlarÄ±na karÅŸÄ± +15% Kritik Hasar.',
+          title: 'Kadim Balaur Avcısı Nişanı',
+          description: 'Balaur canavarlarına karşı +15% Kritik Hasar.',
           requiredTier: FactionStandingTier.exalted,
           icon: Icons.pets_rounded,
         ),
@@ -884,33 +884,33 @@ List<FactionStandingData> defaultFactionStandings() {
       milestones: const <FactionMilestoneReward>[
         FactionMilestoneReward(
           id: 'i_rew_1',
-          title: 'SÄ±nÄ±r KeÅŸif Pelerini',
+          title: 'Sınır Keşif Pelerini',
           requiredTier: FactionStandingTier.friendly,
-          rewardText: 'YeÅŸil Kamufle SÄ±nÄ±r Pelerini',
+          rewardText: 'Yeşil Kamufle Sınır Pelerini',
           icon: Icons.shield_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'i_rew_2',
-          title: 'Inggison MuhafÄ±z ZÄ±rhÄ±',
+          title: 'Inggison Muhafız Zırhı',
           requiredTier: FactionStandingTier.honored,
-          rewardText: 'Nadir SÄ±nÄ±r ZÄ±rhÄ± ParÃ§asÄ±',
+          rewardText: 'Nadir Sınır Zırhı Parçası',
           icon: Icons.security_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'i_rew_3',
-          title: 'Kadim Eser SandÄ±ÄŸÄ±',
+          title: 'Kadim Eser Sandığı',
           requiredTier: FactionStandingTier.revered,
-          rewardText: 'Balaurea Antik Eseri & 30,000 AltÄ±n',
+          rewardText: 'Balaurea Antik Eseri & 30,000 Altın',
           icon: Icons.inventory_2_rounded,
           isClaimed: false,
         ),
         FactionMilestoneReward(
           id: 'i_rew_4',
-          title: 'SÄ±nÄ±r MuhafÄ±zÄ± Efsanesi UnvanÄ±',
+          title: 'Sınır Muhafızı Efsanesi Unvanı',
           requiredTier: FactionStandingTier.exalted,
-          rewardText: 'ZÃ¼mrÃ¼t YeÅŸili Unvan & +80 CanlÄ±lÄ±k',
+          rewardText: 'Zümrüt Yeşili Unvan & +80 Canlılık',
           icon: Icons.military_tech_rounded,
           isClaimed: false,
         ),
