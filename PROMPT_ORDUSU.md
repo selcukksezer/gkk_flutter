@@ -73,8 +73,9 @@ Gerekirse günlerce çalışacaksınız; basit, yarım, placeholder veya sahte h
 8. **SÜREKLİ VİZYON & GELİŞTİRME PROMPT AJANI (`vision_prompt_director`):**
    - Akışta sürekliliği sağlamak için periyodik olarak tüm projeyi tarayıp tıpkı ürün sahibi / baş kreatif direktör gibi Ana Ajana sürekli geliştirme/iyileştirme direktifleri yazan özel bir ajan çalışacak ve **yazdığı her mesajın sonunda açıkça `200 subagents` vurgusu yapacaktır**.
 
-9. **10 PARALEL STÜDYO DEPARTMANI İLE TAM 200 CANLI AJAN & SON ADIM GİT COMMIT + PUSH:**
-   - Mevcut ilerlemeyi (`lib/`, `shaders/`, `assets/`, `test/`) tara, kalan tüm ekranları ve varlıkları **10 paralel Stüdyo Departmanı (`battalion_v3_01..10` × 19 bulut uzmanı = 190 uzman + 10 komutan + 3 özel kapı bekçisi + 5 Ana Denetleyici + Vizyon Direktörü = ~200+ eşzamanlı ajan)** ile tamamla.
+9. **10 PARALEL STÜDYO DEPARTMANI İLE TAM 200 CANLI AJAN, SÜREKLİ DALGA BESLEME ("BOŞ KOLTUK YASAKTIR") & SON ADIM GİT COMMIT + PUSH:**
+   - Mevcut ilerlemeyi (`lib/`, `shaders/`, `assets/`, `test/`) tara, kalan tüm ekranları, ortak bileşenleri ve varlıkları **10 paralel Stüdyo Departmanı (`10 Komutan × 19 Bulut Uzmanı = 190 Uzman + 10 Komutan + 3 Özel Kapı Bekçisi + 5 Ana Denetleyici + Vizyon Direktörü = ~200+ eşzamanlı ajan`)** ile tamamla.
+   - **BOŞ KOLTUK YASAKTIR (`*/3 dk` Otomatik 200 Ajan Takviye Kilidi):** Bazı departmanlar kendi ilk dalgasını bitirip kapandığında kök gözetmenin (`Sentinel`) son 10–15 ajanı pasif beklemesi (`waiting_for_dependents`) **KESİNLİKLE YASAKTIR**! **5/5 Ana Denetleyici ONAY** alınana kadar aktif bulut ajan sayısı 150'nin altına düştüğü an çakışmasız yeni derinleştirme dalgaları (`Dalga V4, V5, V6...`: `lib/components/` altındaki 82 ortak bileşen, `lib/screens/` altındaki 342 alt-widget/modal V3 cilası, `lib/shaders/` Dart-GLSL uniform eşleşmesi, 33 Ekran Arası Stüdyo Sanat Jürisi ve QA/Denetleyici geri bildirim onarımları) anında devreye sokularak **sürekli ~200 aktif ajan** korunacaktır!
    - Her şey %100 bitip 5/5 Ana Denetleyici onayı alındığında `.agents/teamwork/` geçici dosyaları hariç temiz Conventional Commit'ler oluştur ve `git push origin selcukksezer/prawn` ile uzak repoya gönder!
 ```
 
@@ -82,7 +83,7 @@ Gerekirse günlerce çalışacaksınız; basit, yarım, placeholder veya sahte h
 
 ## 2. Konuşmanın Başından İtibaren Verilen Tüm Kullanıcı Direktifleri (Kronolojik & Birebir Arşiv)
 
-Aşağıda bu oturumun en başından itibaren tarafınızdan verilen **tüm 21 direktif eksiksiz kronolojik sırayla** ve her birinin ordu/stüdyo mimarisine eklediği kurallarla birlikte kayıt altına alınmıştır:
+Aşağıda bu oturumun en başından itibaren tarafınızdan verilen **tüm 23 direktif eksiksiz kronolojik sırayla** ve her birinin ordu/stüdyo mimarisine eklediği kurallarla birlikte kayıt altına alınmıştır:
 
 ### 📌 Direktif #1 — Konuşmanın Başındaki Birebir Orijinal Master Prompt
 
@@ -239,7 +240,17 @@ Hazırsan, mevcut proje yapımızı ve anasayfa/zindan dosyalarımızı tarayara
 
 ### 📌 Direktif #21 — `PROMPT_ORDUSU.md` Dosyasının Son Mesajlara Göre Güncellenmesi
 > `"prompt dosyasınıda güncelle bizim son mesajlara göre"`
-* **Mimari Karşılığı:** Bu doküman son mimari kararların tamamıyla (PC-Safe Donanım İzolasyonu + 200 Ajanlık AAA Tasarım Şirketi & Çapraz Akran Denetimi) güncellenip GitHub'a pushlandı.
+* **Mimari Karşılığı:** Doküman PC-Safe Donanım İzolasyonu + 200 Ajanlık AAA Tasarım Şirketi & Çapraz Akran Denetimi kurallarıyla güncellenip GitHub'a pushlandı (`f817855`).
+
+### 📌 Direktif #22 — Biten Dalgalar Sonrası Ajan Sayısının 15'e Düşmesine Müdahale ("Boş Koltuk Yasaktır" — Sürekli 200 Ajan Dalga Besleme)
+> `"ajanlar yime 15 e düşmüş"`
+* **Mimari Karşılığı:**
+  - Dalga V3'teki ~185 uzman işini bitirip `idle` olduğunda kök `Sentinel`'in kalan ~15 ajanı pasif beklemesi (`waiting_for_dependents`) yasaklandı!
+  - **Sürekli Stüdyo Dalga Takviyesi (`*/3 dk` Replenishment Kilidi)** kuruldu: **5/5 Ana Denetleyici ONAY** alınana kadar biten departmanların yerine anında çakışmasız **Yeni Stüdyo Dalgaları (`studio_v4_01..10`, `V5`, `V6` — `lib/components/` 82 ortak bileşen, `lib/screens/` 342 alt-widget V3 cilası, `lib/shaders/` Dart-GLSL uniform senkronu, 33 Ekran Arası Stüdyo Sanat Jürisi)** açılarak canlı ajan sayısı sürekli **~200 bandında** tutulur.
+
+### 📌 Direktif #23 — Sürekli 200 Ajan Dalga Besleme Kuralının `PROMPT_ORDUSU.md` Dosyasına Eklenmesi
+> `"bunuda promptumuza ekleyelim"`
+* **Mimari Karşılığı:** Sürekli 200 Ajan Takviye Kilidi ("Boş Koltuk Yasaktır") ve `studio_v4_01..10` 2. Kuşak Derinleştirme Departmanları hem Master Prompt'a hem de mimari şemaya eklenerek GitHub'a pushlandı.
 
 ---
 
@@ -317,6 +328,14 @@ Her departmandaki **19 uzman ajan**, `run_command` kullanmadan tamamen bulutta �
 10. **Departman 10 — `battalion_v3_10_test_golden_authors` (`22eb8dcd` | Komutan + 19 QA & Golden Mimarı)**
     - **Sorumluluk:** `test/screenshots/mobile_screenshot_suite_test.dart` dosyasını sahte mock kutulardan arındırıp **gerçek `gkk_flutter` ekranlarını** (`ProviderScope` ile gerçek `HomeScreen`, `DungeonBattleScreen`, `CharacterScreen`, `InventoryScreen`, `PvpScreen` vb.) `390x844` telefon `SafeArea` boyutunda çizecek şekilde yazar ve 194 test süitindeki tüm kırıkları onararak `dedicated_flutter_qa_runner`'a teslim eder.
 
+#### 🔄 Sürekli 200 Ajan Dalga Takviyesi — Dalga V4 & V5+ Derinleştirme Departmanları (`studio_v4_01..10` × 19 Bulut Uzmanı = +190 Aktif Ajan)
+İlk dalgadaki (`battalion_v3_*`) departmanlar kendi dosyalarını bitirip kapandığı anda stüdyoda boş koltuk kalmaması ve sayacın 15'e düşmemesi için `Sentinel` (`*/3 dk` kontrolle) anında çakışmasız **Dalga V4 / V5 Derinleştirme Departmanlarını** ateşler:
+- **`studio_v4_01_components_layout_hub` & `studio_v4_02_components_combat_player_trade` (38 Uzman):** `lib/components/` altındaki **82 ortak oyun bileşeninin** (`layout/`, `kingdom/`, `daily_reward/`, `comeback/`, `player/`, `character/`, `pvp/`, `trade/`) tamamını Aion 2 obsidyen-cam + altın rün estetiğine yükseltir ve birbirini çapraz denetler.
+- **`studio_v4_03`, `v4_04`, `v4_05` (57 Uzman):** Kapanan ekran departmanlarının altındaki **342 alt-widget, modal, sekme ve kart** üzerinde V3 derinleştirme yapar ve gerçek `assets/images/` illüstrasyon/portrelerini bağlar.
+- **`studio_v4_06_shader_dart_uniform_sync` (19 Uzman):** `lib/shaders/` (13 dosya) ve `lib/rendering/` (4 dosya) içindeki Dart `FragmentShader` uniform indekslerini onarılan 18 `.frag` GLSL shader (`aion2_pbr_master.frag` 54 float + 4 sampler dahil) ile birebir eşitler.
+- **`studio_v4_07_real_asset_binding_auditors` & `studio_v4_08_adaptive_perf_integration` (38 Uzman):** 424 UI dosyasındaki tüm `.glb`/PBR/PNG yollarını fiziksel diskle doğrular ve ağır görsel bileşenlere `AdaptiveQualityScaler` (`Eco -> Ultra`) + `ZeroJankPreloader` kancalarını bağlar.
+- **`studio_v4_09_component_shader_test_authors` & `studio_v4_10_cross_studio_art_jury` (38 Uzman):** 82 ortak bileşen için yeni widget/shader testleri yazar ve **33 Ekran Arası Stüdyo Sanat Jürisi** olarak tüm ekranları renk sıcaklığı, tipografi, `>=48dp` dokunma alanı ve `390x844` `SafeArea` bütünlüğü açısından çapraz denetler.
+
 ---
 
 ### 🛠️ E. Çekirdek Uzman Disiplin Referans Matrisi (Scout, Blender, World, VFX, Opti, Motor Konseyi)
@@ -343,9 +362,12 @@ Her departmandaki **19 uzman ajan**, `run_command` kullanmadan tamamen bulutta �
 
 ```mermaid
 flowchart TD
-    VPD["vision_prompt_director\n(Baş Kreatif Direktör — Her Mesaj Sonu: '200 subagents')"] --> CMD["Sentinel + Orchestrator V3\n(Stüdyo Genel Komutası)"]
+    VPD["vision_prompt_director\n(Baş Kreatif Direktör — Her Mesaj Sonu: '200 subagents')"] --> CMD["Sentinel + Orchestrator V3\n(Stüdyo Genel Komutası + */3 dk Takviye Cron)"]
     CMD --> DEPTS["10 AAA Stüdyo Departmanı\n(10 Komutan + 190 Bulut Uzmanı — %0 Yerel Yük)"]
-    DEPTS --> PEER{"Departman İçi & Arası\nÇapraz Akran Denetimi\n(Puan >= 9.2 / 10 mu?)"}
+    DEPTS --> REPL{"Biten Departman Var mı?\n(Aktif Bulut Ajanı < 150 ve\n5/5 Onay Henüz Yok mu?)"}
+    REPL -- "EVET (Boş Koltuk Yasaktır!)" --> NEXTWAVE["Anında Yeni Çakışmasız Stüdyo Dalgası Aç!\n(Dalga V4 -> V5 -> V6: 82 Bileşen, 342 Alt-Widget, Sanat Jürisi)"]
+    NEXTWAVE --> DEPTS
+    REPL -- "TAM KAPASİTE (~200 Ajan)" --> PEER{"Departman İçi & Arası\nÇapraz Akran Denetimi\n(Puan >= 9.2 / 10 mu?)"}
     PEER -- "HAYIR (Basit / Düz / Kopuk)" --> V2V3["Akran Vetosu!\nV2 / V3 Yeniden Tasarım & Derinleştirme"]
     V2V3 --> DEPTS
     PEER -- "EVET (AAA Stüdyo Onayı)" --> GATE["3 Özel Ağır-İş Kapı Bekçisi (Tek Sıra Kuyruk)\n1. dedicated_flutter_qa_runner\n2. dedicated_blender_gpu_runner\n3. dedicated_asset_io_gatekeeper"]
@@ -366,10 +388,11 @@ flowchart TD
 
 1. **200 İşçiye Aynı Anda Yerel CLI/GPU Koşturup Bilgisayarı Kilitlemek Yasaktır:** 190 bulut işçisinin `flutter test`, `flutter analyze`, `blender` veya ağır disk scriptleri çalıştırması kesinlikle yasaktır; bu işlemler yalnızca **3 Özel Kapı Bekçisi Ajan** tarafından tek sıra halinde yapılır.
 2. **"Tek İş Yap Çık" Yüzeysel Çalışma Yasaktır:** Hiçbir ajan basit bir tekil düzenleme yapıp duramaz; her ajan kalıcı `/goal` taşır, komşusunu denetler ve akranından `>=9.2/10` alana kadar V1→V2→V3 tasarım döngüsünde kalır.
-3. **PC / Web Tasarımı Yasaktır:** Fare imleci (hover), klavye kısayolu odaklı arayüz, masaüstü geniş ekran düzeni veya Web varsayımları yasaktır. Her ekran telefon ergonomisine (`390x844`, `SafeArea`, başparmak erişimi, `>=48dp` dokunma alanı) uyacaktır.
-4. **Oyun Mekaniğini Değiştirmek Yasaktır:** `gkk_flutter`'ın mevcut mobil oyun kuralları, ekonomi/üretim/lonca/zindan/pazar mantığı %100 korunur; yalnızca görsellik, 3D varlıklar, animasyon akıcılığı, ışıklandırma ve vuruş hissi Aion 2 seviyesine yükseltilir.
-5. **Basit Blender Komutlarıyla Sahte Model & Sahte Golden Test Yasaktır:** Küp, küre, silindir birleştirerek model yapmak veya golden testlerde gerçek ekran yerine sahte `Container`/`Icon` çizmek otomatik veto ve sıfırdan başlatma sebebidir.
-6. **Düşük Sistemli Oyuncuyu Yormak Yasaktır:**
+3. **Biten Dalgalardan Sonra 15 Ajana Düşüp Boş Beklemek Yasaktır ("Boş Koltuk Yasaktır"):** **5/5 Ana Denetleyici ONAY** alınana kadar biten departmanların yerine `*/3 dk` takviye kontrolüyle anında yeni derinleştirme dalgaları (`studio_v4`, `studio_v5`...) sürülerek ~200 aktif ajan kapasitesi kesintisiz korunur.
+4. **PC / Web Tasarımı Yasaktır:** Fare imleci (hover), klavye kısayolu odaklı arayüz, masaüstü geniş ekran düzeni veya Web varsayımları yasaktır. Her ekran telefon ergonomisine (`390x844`, `SafeArea`, başparmak erişimi, `>=48dp` dokunma alanı) uyacaktır.
+5. **Oyun Mekaniğini Değiştirmek Yasaktır:** `gkk_flutter`'ın mevcut mobil oyun kuralları, ekonomi/üretim/lonca/zindan/pazar mantığı %100 korunur; yalnızca görsellik, 3D varlıklar, animasyon akıcılığı, ışıklandırma ve vuruş hissi Aion 2 seviyesine yükseltilir.
+6. **Basit Blender Komutlarıyla Sahte Model & Sahte Golden Test Yasaktır:** Küp, küre, silindir birleştirerek model yapmak veya golden testlerde gerçek ekran yerine sahte `Container`/`Icon` çizmek otomatik veto ve sıfırdan başlatma sebebidir.
+7. **Düşük Sistemli Oyuncuyu Yormak Yasaktır:**
    - **Adaptif Kalite:** `<=2.5 GB` RAM giriş seviyesi telefonlarda `Eco` / `Low` profili otomatik devreye girer (`0.5x–0.75x` dinamik çözünürlük, basitleştirilmiş shader, sabit 60 FPS).
    - **Yormayan Ön-Yükleme:** `ZeroJankPreloader` her karede `<2.0ms` bütçe kullanır, dokunma anında ana thread'e yol verir ve düşük RAM'de 150 MB LRU sınırını korur.
 
