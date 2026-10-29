@@ -19,7 +19,7 @@ class MekanRepository {
     if (res is Map) {
       final Map<String, dynamic> map = Map<String, dynamic>.from(res);
       if (map['success'] == false) {
-        throw MekanException(map['error']?.toString() ?? 'Islem basarisiz');
+        throw MekanException(map['error']?.toString() ?? 'İşlem başarısız');
       }
       return map;
     }

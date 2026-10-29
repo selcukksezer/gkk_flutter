@@ -130,7 +130,7 @@ class AuthNotifier extends Notifier<AuthState> {
         state = state.copyWith(
           status: AuthStatus.error,
           clearSession: true,
-          errorMessage: 'Giris basarisiz. Oturum olusturulamadi.',
+          errorMessage: 'Giriş başarısız. Oturum oluşturulamadı.',
         );
         return;
       }
@@ -147,7 +147,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         status: AuthStatus.error,
-        errorMessage: 'Giris sirasinda beklenmeyen bir hata olustu.',
+        errorMessage: 'Giris sirasinda beklenmeyen bir hata oluştu.',
       );
     }
   }
@@ -230,7 +230,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         status: AuthStatus.error,
-        errorMessage: 'Kayit sirasinda beklenmeyen bir hata olustu.',
+        errorMessage: 'Kayit sirasinda beklenmeyen bir hata oluştu.',
       );
     }
   }
@@ -249,7 +249,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         status: AuthStatus.error,
-        errorMessage: 'Sifre sifirlama istegi gonderilemedi.',
+        errorMessage: 'Sifre sıfırlama istegi gonderilemedi.',
       );
     }
   }
@@ -273,7 +273,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         status: AuthStatus.error,
-        errorMessage: 'Sifre guncellenemedi.',
+        errorMessage: 'Şifre güncellenemedi.',
       );
     }
   }

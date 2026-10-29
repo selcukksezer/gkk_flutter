@@ -43,7 +43,7 @@ class SupabasePlayerRepository implements PlayerRepository {
       final json = Map<String, dynamic>.from(response as Map);
       return PlayerProfile.fromJson(json);
     } catch (_) {
-      throw AppException('Oyuncu profili yuklenemedi.', code: 'PLAYER_LOAD_FAILED');
+      throw AppException('Oyuncu profili yüklenemedi.', code: 'PLAYER_LOAD_FAILED');
     }
   }
 }

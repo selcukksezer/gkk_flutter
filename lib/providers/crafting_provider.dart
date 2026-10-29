@@ -356,7 +356,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Tarifler yuklenirken bir hata olustu: ${e.toString()}',
+        error: 'Tarifler yüklenirken bir hata oluştu: ${e.toString()}',
       );
     }
   }
@@ -387,7 +387,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
         }
       }
       state = state.copyWith(
-        error: 'Uretim kuyrugu yuklenirken bir hata olustu: ${e.toString()}',
+        error: 'Uretim kuyrugu yüklenirken bir hata oluştu: ${e.toString()}',
       );
     }
   }
@@ -499,7 +499,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
     } catch (e) {
       state = state.copyWith(
         isCrafting: false,
-        error: 'Uretim baslatilirken bir hata olustu: ${e.toString()}',
+        error: 'Uretim baslatilirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -516,7 +516,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
       return true;
     } catch (e) {
       state = state.copyWith(
-        error: 'Uretim sonuclandirilirken bir hata olustu: ${e.toString()}',
+        error: 'Uretim sonuclandirilirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -541,7 +541,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
       return true;
     } catch (e) {
       state = state.copyWith(
-        error: 'Urun alinirken bir hata olustu: ${e.toString()}',
+        error: 'Urun alinirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -565,7 +565,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
       return true;
     } catch (e) {
       state = state.copyWith(
-        error: 'Urun onaylanirken bir hata olustu: ${e.toString()}',
+        error: 'Urun onaylanirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -594,7 +594,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
     } catch (e) {
       state = state.copyWith(
         isCancelling: false,
-        error: 'Uretim iptal edilirken bir hata olustu: ${e.toString()}',
+        error: 'Uretim iptal edilirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -620,7 +620,7 @@ class CraftingNotifier extends Notifier<CraftingState> {
     } catch (e) {
       state = state.copyWith(
         isExpandingQueue: false,
-        error: 'Kuyruk genisletilirken bir hata olustu: ${e.toString()}',
+        error: 'Kuyruk genisletilirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }

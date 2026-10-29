@@ -113,7 +113,7 @@ class GuildNotifier extends Notifier<GuildState> {
       state = state.copyWith(
         isLoading: false,
         clearGuild: true,
-        error: 'Lonca bilgileri yuklenirken bir hata olustu: ${e.toString()}',
+        error: 'Lonca bilgileri yüklenirken bir hata oluştu: ${e.toString()}',
       );
     }
   }
@@ -132,7 +132,7 @@ class GuildNotifier extends Notifier<GuildState> {
       state = state.copyWith(
         isLoadingRecommended: false,
         error:
-            'Onerilen loncalar yuklenirken bir hata olustu: ${e.toString()}',
+            'Onerilen loncalar yüklenirken bir hata oluştu: ${e.toString()}',
       );
     }
   }
@@ -152,7 +152,7 @@ class GuildNotifier extends Notifier<GuildState> {
     } catch (e) {
       state = state.copyWith(
         isSearching: false,
-        error: 'Lonca araması sirasinda bir hata olustu: ${e.toString()}',
+        error: 'Lonca araması sirasinda bir hata oluştu: ${e.toString()}',
       );
     }
   }
@@ -173,7 +173,7 @@ class GuildNotifier extends Notifier<GuildState> {
       if (!result.success) {
         state = state.copyWith(
           isMutating: false,
-          error: result.error ?? 'Lonca olusturulamadi.',
+          error: result.error ?? 'Lonca oluşturulamadı.',
         );
         return false;
       }
@@ -185,7 +185,7 @@ class GuildNotifier extends Notifier<GuildState> {
     } catch (e) {
       state = state.copyWith(
         isMutating: false,
-        error: 'Lonca olusturulurken bir hata olustu: ${e.toString()}',
+        error: 'Lonca oluşturulurken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -208,7 +208,7 @@ class GuildNotifier extends Notifier<GuildState> {
       if (!result.success) {
         state = state.copyWith(
           isMutating: false,
-          error: result.error ?? 'Loncaya katilma basarisiz.',
+          error: result.error ?? 'Loncaya katilma başarısız.',
         );
         return false;
       }
@@ -220,7 +220,7 @@ class GuildNotifier extends Notifier<GuildState> {
     } catch (e) {
       state = state.copyWith(
         isMutating: false,
-        error: 'Loncaya katilirken bir hata olustu: ${e.toString()}',
+        error: 'Loncaya katilirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -238,7 +238,7 @@ class GuildNotifier extends Notifier<GuildState> {
       if (!result.success) {
         state = state.copyWith(
           isMutating: false,
-          error: result.error ?? 'Guc limiti guncellenemedi.',
+          error: result.error ?? 'Guc limiti güncellenemedi.',
         );
         return false;
       }
@@ -249,7 +249,7 @@ class GuildNotifier extends Notifier<GuildState> {
     } catch (e) {
       state = state.copyWith(
         isMutating: false,
-        error: 'Guc limiti guncellenirken bir hata olustu: ${e.toString()}',
+        error: 'Guc limiti guncellenirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -304,7 +304,7 @@ class GuildNotifier extends Notifier<GuildState> {
       if (!result.success) {
         state = state.copyWith(
           isMutating: false,
-          error: result.error ?? 'Loncadan ayrilma basarisiz.',
+          error: result.error ?? 'Loncadan ayrilma başarısız.',
         );
         return false;
       }
@@ -316,7 +316,7 @@ class GuildNotifier extends Notifier<GuildState> {
     } catch (e) {
       state = state.copyWith(
         isMutating: false,
-        error: 'Loncadan ayrilirken bir hata olustu: ${e.toString()}',
+        error: 'Loncadan ayrilirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }
@@ -342,7 +342,7 @@ class GuildNotifier extends Notifier<GuildState> {
     } catch (e) {
       state = state.copyWith(
         isMutating: false,
-        error: 'Lonca dagitilirken bir hata olustu: ${e.toString()}',
+        error: 'Lonca dagitilirken bir hata oluştu: ${e.toString()}',
       );
       return false;
     }

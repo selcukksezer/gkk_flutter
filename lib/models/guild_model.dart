@@ -46,7 +46,7 @@ class GuildRpcResult {
     if (data['success'] == false) {
       return GuildRpcResult(
         success: false,
-        error: (data['error'] ?? data['message'] ?? 'Islem basarisiz').toString(),
+        error: (data['error'] ?? data['message'] ?? 'İşlem başarısız').toString(),
       );
     }
 

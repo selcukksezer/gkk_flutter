@@ -59,7 +59,7 @@ class SupabaseAuthRepository implements AuthRepository {
       final user = result.user;
       if (session == null || user == null) {
         throw AppException(
-          'Giris basarisiz. Oturum olusturulamadi.',
+          'Giriş başarısız. Oturum oluşturulamadı.',
           code: 'AUTH_LOGIN_FAILED',
         );
       }
@@ -116,7 +116,7 @@ class SupabaseAuthRepository implements AuthRepository {
       final user = result.user;
       if (user == null) {
         throw AppException(
-          'Kayit basarisiz. Kullanici olusturulamadi.',
+          'Kayıt başarısız. Kullanıcı oluşturulamadı.',
           code: 'AUTH_REGISTER_FAILED',
         );
       }

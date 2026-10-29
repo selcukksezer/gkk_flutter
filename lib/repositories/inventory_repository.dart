@@ -161,7 +161,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
           );
           inventoryRpcSucceeded(
             fixResponse,
-            fallbackError: 'Slot duzeltme basarisiz.',
+            fallbackError: 'Slot düzeltme başarısız.',
           );
         } catch (_) {
           // UI still usable with normalized slots; next load may retry.
@@ -173,7 +173,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
         equippedItems: equipped,
       );
     } catch (_) {
-      throw AppException('Envanter yuklenemedi.', code: 'INVENTORY_FETCH_FAILED');
+      throw AppException('Envanter yüklenemedi.', code: 'INVENTORY_FETCH_FAILED');
     }
   }
 
@@ -193,13 +193,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       });
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Kusanma islemi basarisiz.',
+        fallbackError: 'Kuşanma işlemi başarısız.',
         code: 'INVENTORY_EQUIP_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Kusanma islemi basarisiz.', code: 'INVENTORY_EQUIP_FAILED');
+      throw AppException('Kuşanma işlemi başarısız.', code: 'INVENTORY_EQUIP_FAILED');
     }
   }
 
@@ -218,13 +218,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       });
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Kusani cikarma islemi basarisiz.',
+        fallbackError: 'Kuşanı çıkarma işlemi başarısız.',
         code: 'INVENTORY_UNEQUIP_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Kusani cikarma islemi basarisiz.', code: 'INVENTORY_UNEQUIP_FAILED');
+      throw AppException('Kuşanı çıkarma işlemi başarısız.', code: 'INVENTORY_UNEQUIP_FAILED');
     }
   }
 
@@ -248,14 +248,14 @@ class SupabaseInventoryRepository implements InventoryRepository {
 
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Slot degistirme islemi basarisiz.',
+        fallbackError: 'Slot değiştirme işlemi başarısız.',
         code: 'INVENTORY_SWAP_FAILED',
       );
     } catch (e) {
       final bool fallback = await _swapSlotsFallback(fromSlot: fromSlot, toSlot: toSlot);
       if (fallback) return true;
       if (e is AppException) rethrow;
-      throw AppException('Slot degistirme islemi basarisiz.', code: 'INVENTORY_SWAP_FAILED');
+      throw AppException('Slot değiştirme işlemi başarısız.', code: 'INVENTORY_SWAP_FAILED');
     }
   }
 
@@ -279,13 +279,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       );
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Item tasima basarisiz.',
+        fallbackError: 'Item taşıma başarısız.',
         code: 'INVENTORY_MOVE_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Item tasima basarisiz.', code: 'INVENTORY_MOVE_FAILED');
+      throw AppException('Item taşıma başarısız.', code: 'INVENTORY_MOVE_FAILED');
     }
   }
 
@@ -305,13 +305,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       });
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Kusani hedef slota birakma basarisiz.',
+        fallbackError: 'Kuşanı hedef slota bırakma başarısız.',
         code: 'INVENTORY_UNEQUIP_TO_SLOT_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Kusani hedef slota birakma basarisiz.', code: 'INVENTORY_UNEQUIP_TO_SLOT_FAILED');
+      throw AppException('Kuşanı hedef slota bırakma başarısız.', code: 'INVENTORY_UNEQUIP_TO_SLOT_FAILED');
     }
   }
 
@@ -334,13 +334,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       );
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Kusanilan item swap basarisiz.',
+        fallbackError: 'Kusanilan item swap başarısız.',
         code: 'INVENTORY_SWAP_EQUIP_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Kusanilan item swap basarisiz.', code: 'INVENTORY_SWAP_EQUIP_FAILED');
+      throw AppException('Kusanilan item swap başarısız.', code: 'INVENTORY_SWAP_EQUIP_FAILED');
     }
   }
 
@@ -368,7 +368,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
       );
 
       if (result is! Map) {
-        throw AppException('Iksir kullanimi basarisiz.', code: 'INVENTORY_USE_POTION_FAILED');
+        throw AppException('Iksir kullanımı başarısız.', code: 'INVENTORY_USE_POTION_FAILED');
       }
 
       final Map<String, dynamic> data = Map<String, dynamic>.from(result);
@@ -389,7 +389,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Iksir kullanimi basarisiz.', code: 'INVENTORY_USE_POTION_FAILED');
+      throw AppException('Iksir kullanımı başarısız.', code: 'INVENTORY_USE_POTION_FAILED');
     }
   }
 
@@ -442,7 +442,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Kasa acma basarisiz.', code: 'INVENTORY_OPEN_LOOT_BOX_FAILED');
+      throw AppException('Kasa acma başarısız.', code: 'INVENTORY_OPEN_LOOT_BOX_FAILED');
     }
   }
 
@@ -477,7 +477,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Detox kullanimi basarisiz.', code: 'INVENTORY_USE_DETOX_FAILED');
+      throw AppException('Detox kullanımı başarısız.', code: 'INVENTORY_USE_DETOX_FAILED');
     }
   }
 
@@ -519,13 +519,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
 
       return UseItemResult(
         success: false,
-        message: data['error']?.toString() ?? 'Stat sifirlama basarisiz.',
+        message: data['error']?.toString() ?? 'Stat sıfırlama başarısız.',
       );
     } on AppException {
       rethrow;
     } catch (_) {
       throw AppException(
-        'Stat sifirlama basarisiz.',
+        'Stat sıfırlama başarısız.',
         code: 'INVENTORY_USE_STAT_RESET_FAILED',
       );
     }
@@ -604,13 +604,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       );
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Stack bolme basarisiz.',
+        fallbackError: 'Stack bolme başarısız.',
         code: 'INVENTORY_SPLIT_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Stack bolme basarisiz.', code: 'INVENTORY_SPLIT_FAILED');
+      throw AppException('Stack bolme başarısız.', code: 'INVENTORY_SPLIT_FAILED');
     }
   }
 
@@ -638,7 +638,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
             : null;
         return SellItemResult(
           success: false,
-          error: error ?? 'Satis basarisiz.',
+          error: error ?? 'Satis başarısız.',
         );
       }
 
@@ -648,7 +648,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
         goldEarned: _asInt(data['gold_earned']),
       );
     } catch (_) {
-      throw AppException('Satis islemi basarisiz.', code: 'INVENTORY_SELL_FAILED');
+      throw AppException('Satis islemi başarısız.', code: 'INVENTORY_SELL_FAILED');
     }
   }
 
@@ -668,13 +668,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       );
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Item silme basarisiz.',
+        fallbackError: 'Item silme başarısız.',
         code: 'INVENTORY_TRASH_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Item silme basarisiz.', code: 'INVENTORY_TRASH_FAILED');
+      throw AppException('Item silme başarısız.', code: 'INVENTORY_TRASH_FAILED');
     }
   }
 
@@ -697,13 +697,13 @@ class SupabaseInventoryRepository implements InventoryRepository {
       );
       return inventoryRpcSucceeded(
         response,
-        fallbackError: 'Favori islemi basarisiz.',
+        fallbackError: 'Favori islemi başarısız.',
         code: 'INVENTORY_FAVORITE_FAILED',
       );
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Favori islemi basarisiz.', code: 'INVENTORY_FAVORITE_FAILED');
+      throw AppException('Favori islemi başarısız.', code: 'INVENTORY_FAVORITE_FAILED');
     }
   }
 

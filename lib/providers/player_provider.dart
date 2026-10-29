@@ -89,7 +89,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     } catch (e) {
       state = state.copyWith(
         status: PlayerStatus.error,
-        errorMessage: 'Profil yuklenirken beklenmeyen bir hata olustu.',
+        errorMessage: 'Profil yüklenirken beklenmeyen bir hata oluştu.',
       );
     }
   }

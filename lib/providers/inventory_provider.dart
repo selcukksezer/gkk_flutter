@@ -132,7 +132,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
     } catch (_) {
       state = state.copyWith(
         status: InventoryStatus.error,
-        errorMessage: 'Envanter yuklenirken beklenmeyen bir hata olustu.',
+        errorMessage: 'Envanter yüklenirken beklenmeyen bir hata oluştu.',
       );
     }
   }
@@ -178,13 +178,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           await loadInventory(silent: true);
           return true;
         }
-        state = state.copyWith(errorMessage: 'Kusanma islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Kuşanma işlemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Kusanma sirasinda beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Kusanma sirasinda beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -342,13 +342,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           await loadInventory(silent: true);
           return true;
         }
-        state = state.copyWith(errorMessage: 'Kusani cikarma islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Kuşanı çıkarma işlemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Kusani cikarirken beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Kusani cikarirken beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -366,13 +366,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           await loadInventory(silent: true);
           return true;
         }
-        state = state.copyWith(errorMessage: 'Slot degistirme islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Slot değiştirme işlemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Slot degistirirken beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Slot degistirirken beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -387,13 +387,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           await loadInventory(silent: true);
           return true;
         }
-        state = state.copyWith(errorMessage: 'Item tasima islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Item taşıma işlemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Item tasirken beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Item tasirken beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -417,7 +417,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Kusanilan item birakilirken beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Kusanilan item birakilirken beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -434,13 +434,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           await loadInventory(silent: true);
           return true;
         }
-        state = state.copyWith(errorMessage: 'Kusanilan item swap islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Kuşanılan item swap işlemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Kusanilan item swap sirasinda beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Kusanilan item swap sirasinda beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -484,7 +484,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
             await _repository.useStatResetScroll(rowId: item.rowId);
         if (!resetResult.success) {
           state = state.copyWith(
-            errorMessage: resetResult.message ?? 'Stat sifirlama basarisiz.',
+            errorMessage: resetResult.message ?? 'Stat sıfırlama başarısız.',
           );
           return UseItemResult(
             success: false,
@@ -500,7 +500,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
       } else if (item.subType == SubType.detox) {
         final bool success = await _repository.useDetox(rowId: item.rowId);
         if (!success) {
-          state = state.copyWith(errorMessage: 'Item kullanimi basarisiz.');
+          state = state.copyWith(errorMessage: 'Item kullanımı başarısız.');
           return const UseItemResult(success: false);
         }
         successMessage = '${item.name} kullanildi.';
@@ -508,7 +508,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
         final UsePotionResult potion =
             await _repository.usePotion(rowId: item.rowId);
         if (!potion.success) {
-          state = state.copyWith(errorMessage: 'Item kullanimi basarisiz.');
+          state = state.copyWith(errorMessage: 'Item kullanımı başarısız.');
           return const UseItemResult(success: false);
         }
 
@@ -568,7 +568,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
       state = state.copyWith(errorMessage: e.message);
       return UseItemResult(success: false, message: e.message);
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Item kullanimi sirasinda beklenmeyen bir hata olustu.');
+      state = state.copyWith(errorMessage: 'Item kullanımı sirasinda beklenmeyen bir hata oluştu.');
       return const UseItemResult(success: false);
     }
   }
@@ -596,7 +596,7 @@ class InventoryNotifier extends Notifier<InventoryState> {
         state = state.copyWith(errorMessage: e.message);
         return UseItemResult(success: false, message: e.message);
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Isim degistirme basarisiz.');
+        state = state.copyWith(errorMessage: 'İsim değiştirme başarısız.');
         return const UseItemResult(success: false);
       }
     });
@@ -621,13 +621,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           return true;
         }
 
-        state = state.copyWith(errorMessage: 'Stack bolme islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Stack bolme islemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Stack bolerken beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Stack bolerken beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -646,13 +646,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           return result;
         }
 
-        state = state.copyWith(errorMessage: result.error ?? 'Satis islemi basarisiz.');
+        state = state.copyWith(errorMessage: result.error ?? 'Satis islemi başarısız.');
         return result;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return SellItemResult(success: false, error: e.message);
       } catch (_) {
-        const String message = 'Satis sirasinda beklenmeyen bir hata olustu.';
+        const String message = 'Satis sirasinda beklenmeyen bir hata oluştu.';
         state = state.copyWith(errorMessage: message);
         return const SellItemResult(success: false, error: message);
       }
@@ -668,13 +668,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           return true;
         }
 
-        state = state.copyWith(errorMessage: 'Item silme islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Item silme islemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Item silerken beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Item silerken beklenmeyen bir hata oluştu.');
         return false;
       }
     });
@@ -696,13 +696,13 @@ class InventoryNotifier extends Notifier<InventoryState> {
           return true;
         }
 
-        state = state.copyWith(errorMessage: 'Favori guncelleme islemi basarisiz.');
+        state = state.copyWith(errorMessage: 'Favori guncelleme islemi başarısız.');
         return false;
       } on AppException catch (e) {
         state = state.copyWith(errorMessage: e.message);
         return false;
       } catch (_) {
-        state = state.copyWith(errorMessage: 'Favori guncellerken beklenmeyen bir hata olustu.');
+        state = state.copyWith(errorMessage: 'Favori guncellerken beklenmeyen bir hata oluştu.');
         return false;
       }
     });

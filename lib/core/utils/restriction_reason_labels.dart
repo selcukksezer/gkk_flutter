@@ -8,7 +8,7 @@ const Map<String, String> _hospitalReasonLabels = <String, String>{
   'arena maci kaybı': 'Arena maçı kaybı',
   'han iksiri overdose': 'Han iksiri aşırı dozu',
   'dungeon_failure': 'Zindan yaralanması',
-  'zindan basarisizligi': 'Zindan yaralanması',
+  'zindan başarısızlığı': 'Zindan yaralanması',
   'zindan yaralanması': 'Zindan yaralanması',
 };
 

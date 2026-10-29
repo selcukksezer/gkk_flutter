@@ -83,7 +83,7 @@ class DungeonNotifier extends Notifier<DungeonState> {
       }
     } catch (_) {
       const String msg =
-          'Zindan listesi yuklenirken beklenmeyen bir hata olustu.';
+          'Zindan listesi yüklenirken beklenmeyen bir hata oluştu.';
       if (keepVisible) {
         state = state.copyWith(errorMessage: msg);
       } else {
@@ -107,7 +107,7 @@ class DungeonNotifier extends Notifier<DungeonState> {
     } catch (_) {
       state = state.copyWith(
         entering: false,
-        errorMessage: 'Zindan operasyonu sirasinda beklenmeyen bir hata olustu.',
+        errorMessage: 'Zindan operasyonu sirasinda beklenmeyen bir hata oluştu.',
       );
       return null;
     }

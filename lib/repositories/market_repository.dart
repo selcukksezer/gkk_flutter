@@ -72,7 +72,7 @@ class SupabaseMarketRepository implements MarketRepository {
         totalListings: (data['total_listings'] as num?)?.toInt() ?? items.length,
       );
     } catch (_) {
-      throw AppException('Pazar verisi yuklenemedi.', code: 'MARKET_TICKERS_FAILED');
+      throw AppException('Pazar verisi yüklenemedi.', code: 'MARKET_TICKERS_FAILED');
     }
   }
 
@@ -106,7 +106,7 @@ class SupabaseMarketRepository implements MarketRepository {
         );
       }).toList();
     } catch (_) {
-      throw AppException('Ilanlar yuklenemedi.', code: 'MARKET_LISTINGS_FAILED');
+      throw AppException('İlanlar yüklenemedi.', code: 'MARKET_LISTINGS_FAILED');
     }
   }
 
@@ -128,7 +128,7 @@ class SupabaseMarketRepository implements MarketRepository {
           .map((row) => MarketOrder.fromJson(Map<String, dynamic>.from(row)))
           .toList();
     } catch (_) {
-      throw AppException('Ilanlar yuklenemedi.', code: 'MARKET_ORDERS_FAILED');
+      throw AppException('İlanlar yüklenemedi.', code: 'MARKET_ORDERS_FAILED');
     }
   }
 
@@ -244,7 +244,7 @@ class SupabaseMarketRepository implements MarketRepository {
               MarketTradeRecord.fromJson(Map<String, dynamic>.from(row)))
           .toList(growable: false);
     } catch (_) {
-      throw AppException('Islem gecmisi yuklenemedi.', code: 'MARKET_HISTORY_FAILED');
+      throw AppException('İşlem geçmişi yüklenemedi.', code: 'MARKET_HISTORY_FAILED');
     }
   }
 
@@ -255,7 +255,7 @@ class SupabaseMarketRepository implements MarketRepository {
     if (body['success'] != false) return;
 
     throw AppException(
-      body['error']?.toString() ?? 'Islem basarisiz',
+      body['error']?.toString() ?? 'İşlem başarısız',
       code: 'MARKET_PURCHASE_FAILED',
     );
   }
@@ -307,8 +307,8 @@ class SupabaseMarketRepository implements MarketRepository {
     }
     final RegExpMatch? match = RegExp(r'(?:Exception|ERROR):\s*(.+)').firstMatch(raw);
     if (match != null) {
-      return match.group(1)?.replaceAll('"', '').trim() ?? 'Islem basarisiz';
+      return match.group(1)?.replaceAll('"', '').trim() ?? 'İşlem başarısız';
     }
-    return 'Islem basarisiz';
+    return 'İşlem başarısız';
   }
 }

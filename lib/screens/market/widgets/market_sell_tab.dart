@@ -524,7 +524,7 @@ class _MarketSellTabState extends ConsumerState<MarketSellTab> {
     }
     showMarketSnackBar(
       context,
-      ok ? 'Ilan olusturuldu' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
+      ok ? 'Ilan oluşturuldu' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
       isError: !ok,
     );
   }

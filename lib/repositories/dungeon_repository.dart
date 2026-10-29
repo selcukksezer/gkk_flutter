@@ -28,7 +28,7 @@ class SupabaseDungeonRepository implements DungeonRepository {
         final List<DungeonData> direct = _extractDungeonList(selectResp);
         return direct;
       } catch (_) {
-        throw AppException('Zindan listesi yuklenemedi.', code: 'DUNGEON_FETCH_FAILED');
+        throw AppException('Zindan listesi yüklenemedi.', code: 'DUNGEON_FETCH_FAILED');
       }
     }
   }
@@ -55,7 +55,7 @@ class SupabaseDungeonRepository implements DungeonRepository {
     } on AppException {
       rethrow;
     } catch (_) {
-      throw AppException('Zindana giris basarisiz.', code: 'DUNGEON_ENTER_FAILED');
+      throw AppException('Zindana giris başarısız.', code: 'DUNGEON_ENTER_FAILED');
     }
   }
 
