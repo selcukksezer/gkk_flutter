@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,8 +24,11 @@ import 'widgets/chat_ban_banner.dart';
 import 'widgets/chat_channel_bar.dart';
 import 'widgets/chat_composer.dart';
 import 'widgets/chat_dm_panel.dart';
+import 'widgets/chat_macro_wheel.dart';
 import 'widgets/chat_message_list.dart';
 import 'widgets/chat_moderation_panel.dart';
+
+enum ChatBoxMode { compact, standard, expanded }
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, this.asPanel = false});
@@ -35,9 +39,11 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObserver {
   static const int _maxMessageLength = 200;
   static const Duration _rateLimitDuration = Duration(seconds: 2);
+
+  double _lastBottomInset = 0.0;
 
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _dmSearchController = TextEditingController();
@@ -48,8 +54,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Map<ChatChannel, List<ChatMessage>> _messages = <ChatChannel, List<ChatMessage>>{
     ChatChannel.global: <ChatMessage>[],
     ChatChannel.guild: <ChatMessage>[],
-    ChatChannel.trade: <ChatMessage>[],
+    ChatChannel.party: <ChatMessage>[],
     ChatChannel.dm: <ChatMessage>[],
+    ChatChannel.system: <ChatMessage>[],
+    ChatChannel.trade: <ChatMessage>[],
   };
 
   final Set<String> _mutedPlayers = <String>{};
@@ -57,6 +65,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Map<String, BlockedChatUser> _blockedUsers = <String, BlockedChatUser>{};
 
   ChatChannel _activeChannel = ChatChannel.global;
+  ChatBoxMode _boxMode = ChatBoxMode.standard;
+  bool _isMacroWheelOpen = false;
   ChatModerationState _moderationState = ChatModerationState.empty(ChatChannel.global);
   List<ChatDmConversation> _dmConversations = <ChatDmConversation>[];
   List<ChatUserSummary> _dmSearchResults = <ChatUserSummary>[];
@@ -70,6 +80,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isModerationLoading = false;
 
   int _guildUnreadCount = 0;
+  int _partyUnreadCount = 0;
+  int _systemUnreadCount = 0;
   DateTime _lastMessageSentAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   RealtimeChannel? _realtimeChannel;
@@ -183,14 +195,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (_activeDmPeer != null) {
         return '@${_activeDmPeer!.username}';
       }
-      return 'Özel Mesajlar';
+      return 'Fısıltı & Özel';
     }
     return switch (_activeChannel) {
-      ChatChannel.global => 'Genel Sohbet',
+      ChatChannel.global => 'Dünya Sohbeti',
       ChatChannel.guild => 'Lonca Sohbeti',
+      ChatChannel.party => 'Grup Sohbeti',
+      ChatChannel.system => 'Sistem Duyuruları',
       ChatChannel.trade => 'Pazar Sohbeti',
-      ChatChannel.dm => 'Özel Mesajlar',
+      ChatChannel.dm => 'Fısıltı & Özel',
     };
+  }
+
+  void _toggleBoxMode() {
+    setState(() {
+      _boxMode = switch (_boxMode) {
+        ChatBoxMode.standard => ChatBoxMode.expanded,
+        ChatBoxMode.expanded => ChatBoxMode.compact,
+        ChatBoxMode.compact => ChatBoxMode.standard,
+      };
+    });
+  }
+
+  void _onSelectMacro(String text) {
+    _messageController.text = text;
+    setState(() => _isMacroWheelOpen = false);
+    _sendMessage();
   }
 
   Future<void> _logoutHandler() => performLogout(ref);
@@ -207,6 +237,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _messageController.addListener(_handleComposerChanged);
     unawaited(_syncBlockedUsers());
     _subscribeRealtime();
@@ -216,6 +247,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _messageController.removeListener(_handleComposerChanged);
     _messageController.dispose();
     _dmSearchController.dispose();
@@ -227,13 +259,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startPresencePolling();
+      unawaited(_refreshPresence());
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _stopPresencePolling();
+    }
+  }
 
   Future<void> _loadForChannel(ChatChannel channel) async {
+    HapticFeedback.selectionClick();
+    final bool hasCached = (_messages[channel]?.isNotEmpty ?? false) ||
+        (channel == ChatChannel.dm && _dmConversations.isNotEmpty);
+
     setState(() {
-      _isLoading = true;
+      _isLoading = !hasCached;
       _activeChannel = channel;
       if (channel == ChatChannel.guild) {
         _guildUnreadCount = 0;
+      }
+      if (channel == ChatChannel.party) {
+        _partyUnreadCount = 0;
+      }
+      if (channel == ChatChannel.system) {
+        _systemUnreadCount = 0;
       }
       if (channel != ChatChannel.dm) {
         _activeDmPeer = null;
@@ -403,6 +454,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     bool showToast = true,
   }) async {
     if (playerId.isEmpty) return;
+    HapticFeedback.mediumImpact();
 
     bool serverUnblocked = false;
 
@@ -439,64 +491,136 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF0D1117),
+      backgroundColor: const Color(0xFF0B101B),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (BuildContext ctx) {
         final List<BlockedChatUser> users = _blockedUsers.values.toList(growable: false);
-        if (users.isEmpty) {
-          return const SafeArea(
-            child: SizedBox(
-              height: 180,
-              child: Center(
-                child: Text('Susturulan kullanıcı yok.', style: TextStyle(color: Colors.white70)),
-              ),
-            ),
-          );
-        }
-
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                const Text('Susturulanlar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: users.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (BuildContext context, int index) {
-                      final BlockedChatUser u = users[index];
-                      final String label = u.displayName?.isNotEmpty == true ? u.displayName! : u.username;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Text('@$label', style: const TextStyle(color: Colors.white)),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                unawaited(_unmutePlayer(u.id, playerName: label));
-                              },
-                              child: const Text('Susturmayı Kaldır'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    const Icon(Icons.volume_off_rounded, size: 18, color: ChatDesignSystem.colorWarning),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Susturulan Oyuncular',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    if (users.isNotEmpty) ...<Widget>[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: ChatDesignSystem.colorWarning.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: ChatDesignSystem.colorWarning.withValues(alpha: 0.4),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          '${users.length}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: ChatDesignSystem.colorWarning,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+                if (users.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 36,
+                          color: ChatDesignSystem.colorSuccess.withValues(alpha: 0.6),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Susturulan kullanıcı yok.',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: users.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (BuildContext context, int index) {
+                        final BlockedChatUser u = users[index];
+                        final String label = u.displayName?.isNotEmpty == true ? u.displayName! : u.username;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                          ),
+                          child: Row(
+                            children: <Widget>[
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                                child: const Icon(Icons.person_rounded, size: 16, color: Colors.white70),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '@$label',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.of(ctx).pop();
+                                  unawaited(_unmutePlayer(u.id, playerName: label));
+                                },
+                                icon: const Icon(Icons.volume_up_rounded, size: 14),
+                                label: const Text('Kaldır', style: TextStyle(fontSize: 12)),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: ChatDesignSystem.colorGlobalAccent,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
               ],
             ),
           ),
@@ -509,7 +633,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _activeChannel = ChatChannel.dm;
       _activeDmPeer = peer;
-      _isLoading = true;
+      _isLoading = (_messages[ChatChannel.dm]?.isEmpty ?? true);
     });
 
     try {
@@ -589,6 +713,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final Map<String, dynamic>? response = result is Map ? Map<String, dynamic>.from(result) : null;
 
       if (response?['success'] == true) {
+        HapticFeedback.lightImpact();
         _lastMessageSentAt = DateTime.now();
         final dynamic messagePayload = response?['message'];
         if (messagePayload is Map) {
@@ -602,7 +727,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
         }
         _messageController.clear();
-        dismissKeyboard(context);
+        if (mounted) {
+          dismissKeyboard(context);
+        }
         _scheduleScrollToBottom(immediate: true);
 
         // Server state ile hizalamak için hızlı bir yenileme yap.
@@ -759,6 +886,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _showSnack('Geçersiz kullanıcı.');
       return;
     }
+    HapticFeedback.mediumImpact();
 
     try {
       final dynamic res = await ChatRepository.rpc(
@@ -1027,6 +1155,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               setState(() => _guildUnreadCount = (_guildUnreadCount + 1).clamp(0, 99));
             }
 
+            if (msg.channel == ChatChannel.party && msg.senderId != _currentUserId && _activeChannel != ChatChannel.party) {
+              setState(() => _partyUnreadCount = (_partyUnreadCount + 1).clamp(0, 99));
+            }
+
+            if (msg.isSystem) {
+              _appendIfAbsent(ChatChannel.system, msg);
+              if (_activeChannel != ChatChannel.system) {
+                setState(() => _systemUnreadCount = (_systemUnreadCount + 1).clamp(0, 99));
+              }
+            }
+
             _appendIfAbsent(msg.channel, msg);
           },
         )
@@ -1063,7 +1202,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       _messages[channel] = prev;
     });
-    _scheduleScrollToBottom();
+
+    if (channel == _activeChannel) {
+      final bool isNearBottom = !_scrollController.hasClients ||
+          !_scrollController.position.hasContentDimensions ||
+          (_scrollController.position.maxScrollExtent - _scrollController.offset) < 200;
+      if (_isOwnSender(message.senderId) || isNearBottom) {
+        _scheduleScrollToBottom();
+      }
+    }
   }
 
   void _appendLocalMessage({
@@ -1096,9 +1243,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
 
-        if (!_scrollController.hasClients) {
+        if (!_scrollController.hasClients || !_scrollController.position.hasContentDimensions) {
           if (remaining > 0) {
-            Future<void>.delayed(const Duration(milliseconds: 80), () {
+            Future<void>.delayed(const Duration(milliseconds: 60), () {
+              if (!mounted) return;
               attempt(remaining - 1);
             });
           }
@@ -1112,13 +1260,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         } else {
           _scrollController.animateTo(
             target,
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
           );
         }
 
         if (remaining > 0 && (_scrollController.position.maxScrollExtent - _scrollController.offset) > 8) {
-          Future<void>.delayed(const Duration(milliseconds: 80), () {
+          Future<void>.delayed(const Duration(milliseconds: 60), () {
+            if (!mounted) return;
             attempt(remaining - 1);
           });
         }
@@ -1144,112 +1293,176 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double currentBottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    if (currentBottomInset > 0 && _lastBottomInset == 0) {
+      _scheduleScrollToBottom(immediate: false);
+    }
+    _lastBottomInset = currentBottomInset;
+
     final bool showDmPanel = _activeChannel == ChatChannel.dm;
     final bool showComposer = _activeChannel != ChatChannel.dm || _activeDmPeer != null;
     final StaffProfile staff = ref.watch(staffProvider).profile;
     final bool canStaffPlayer = canOpenStaffPlayerActions(staff);
     final bool canModerateMessages =
         staff.has('chat.delete_message') || _moderationState.permissions.canDelete;
+    final Color channelAccent = _activeChannel.accentColor;
 
     final Widget body = Column(
       children: <Widget>[
         if (widget.asPanel)
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 4),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.24),
-                borderRadius: BorderRadius.circular(2),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: channelAccent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: channelAccent.withValues(alpha: 0.3),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(_activeChannel.icon, size: 12, color: channelAccent),
+                      const SizedBox(width: 4),
+                      Text(
+                        _activeChannel.label.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: channelAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.28),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white60),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  splashRadius: 16,
+                  tooltip: 'Kapat',
+                ),
+              ],
             ),
           ),
         ChatChannelBar(
           activeChannel: _activeChannel,
           guildUnreadCount: _guildUnreadCount,
           dmUnreadCount: _dmUnreadCount,
+          partyUnreadCount: _partyUnreadCount,
+          systemUnreadCount: _systemUnreadCount,
+          chatBoxMode: _boxMode,
+          onToggleMode: _toggleBoxMode,
           onChannelSelected: _loadForChannel,
         ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(ChatDesignSystem.spaceMd),
-            child: Column(
-              children: <Widget>[
-                if (_activeBan != null) ChatBanBanner(ban: _activeBan!),
-                ChatModerationPanel(
-                  moderationState: _moderationState,
-                  isLoading: _isModerationLoading,
-                  filterTermController: _filterTermController,
-                  filterReplacementController: _filterReplacementController,
-                  onCreateFilter: _createFilter,
-                  onDeleteFilter: _deleteFilter,
-                ),
-                Expanded(
-                  child: showDmPanel
-                      ? ChatDmPanel(
-                          activePeer: _activeDmPeer,
-                          dmSearchController: _dmSearchController,
-                          isDmSearchLoading: _isDmSearchLoading,
-                          isDmLoading: _isDmLoading,
-                          dmSearchResults: _dmSearchResults,
-                          dmConversations: _dmConversations,
-                          isLoadingMessages: _isLoading,
-                          messages: _currentMessages,
-                          scrollController: _scrollController,
-                          isOwnSender: _isOwnSender,
-                          isUserOnline: _isUserOnline,
-                          peerPresenceFallback: _peerPresenceFallback,
-                          onSearchChanged: (String value) => unawaited(_searchDmUsers(value)),
-                          onOpenConversation: _openDmConversation,
-                          onConversationLongPress: _showDmConversationActions,
-                          onMutePeer: () => _promptMutePlayer(
-                            _activeDmPeer!.id,
-                            playerName: _activeDmPeer!.username,
+        Flexible(
+          flex: _boxMode == ChatBoxMode.compact ? 0 : 1,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOutCubic,
+            height: _boxMode == ChatBoxMode.compact ? 220 : null,
+            child: Padding(
+              padding: const EdgeInsets.all(ChatDesignSystem.spaceMd),
+              child: Column(
+                children: <Widget>[
+                  if (_activeBan != null) ChatBanBanner(ban: _activeBan!),
+                  ChatModerationPanel(
+                    moderationState: _moderationState,
+                    isLoading: _isModerationLoading,
+                    filterTermController: _filterTermController,
+                    filterReplacementController: _filterReplacementController,
+                    onCreateFilter: _createFilter,
+                    onDeleteFilter: _deleteFilter,
+                  ),
+                  Expanded(
+                    child: showDmPanel
+                        ? ChatDmPanel(
+                            activePeer: _activeDmPeer,
+                            dmSearchController: _dmSearchController,
+                            isDmSearchLoading: _isDmSearchLoading,
+                            isDmLoading: _isDmLoading,
+                            dmSearchResults: _dmSearchResults,
+                            dmConversations: _dmConversations,
+                            isLoadingMessages: _isLoading,
+                            messages: _currentMessages,
+                            scrollController: _scrollController,
+                            isOwnSender: _isOwnSender,
+                            isUserOnline: _isUserOnline,
+                            peerPresenceFallback: _peerPresenceFallback,
+                            onSearchChanged: (String value) => unawaited(_searchDmUsers(value)),
+                            onOpenConversation: _openDmConversation,
+                            onConversationLongPress: _showDmConversationActions,
+                            onMutePeer: () => _promptMutePlayer(
+                              _activeDmPeer!.id,
+                              playerName: _activeDmPeer!.username,
+                            ),
+                            onLeaveConversation: _leaveDmConversation,
+                            onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
+                            canModerateMessages: canModerateMessages,
+                            onModerateMessage: canModerateMessages
+                                ? (ChatMessage m, String action) => unawaited(_moderateChatMessage(m, action))
+                                : null,
+                          )
+                        : ChatMessageList(
+                            isLoading: _isLoading,
+                            messages: _currentMessages,
+                            activeChannel: _activeChannel,
+                            scrollController: _scrollController,
+                            isOwnSender: _isOwnSender,
+                            isUserOnline: _isUserOnline,
+                            onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
+                            onStaffPlayerAction: canStaffPlayer
+                                ? (ChatMessage m) {
+                                    if (m.senderAuthId == null || m.senderAuthId!.isEmpty) return;
+                                    unawaited(openStaffPlayerActions(
+                                      context,
+                                      ref,
+                                      authId: m.senderAuthId!,
+                                      username: m.senderName,
+                                      displayName: m.senderName,
+                                      staffBadge: m.senderStaffBadge,
+                                      kingBadge: m.senderKingBadge,
+                                    ));
+                                  }
+                                : null,
+                            onReportMessage: (ChatMessage m) => unawaited(_showReportSheet(m)),
+                            canModerateMessages: canModerateMessages,
+                            onModerateMessage: canModerateMessages
+                                ? (ChatMessage m, String action) => unawaited(_moderateChatMessage(m, action))
+                                : null,
                           ),
-                          onLeaveConversation: _leaveDmConversation,
-                          onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
-                          canModerateMessages: canModerateMessages,
-                          onModerateMessage: canModerateMessages
-                              ? (ChatMessage m, String action) => unawaited(_moderateChatMessage(m, action))
-                              : null,
-                        )
-                      : ChatMessageList(
-                          isLoading: _isLoading,
-                          messages: _currentMessages,
-                          activeChannel: _activeChannel,
-                          scrollController: _scrollController,
-                          isOwnSender: _isOwnSender,
-                          isUserOnline: _isUserOnline,
-                          onMuteSender: (String senderId, String senderName) => _mutePlayer(senderId, playerName: senderName),
-                          onStaffPlayerAction: canStaffPlayer
-                              ? (ChatMessage m) {
-                                  if (m.senderAuthId == null || m.senderAuthId!.isEmpty) return;
-                                  unawaited(openStaffPlayerActions(
-                                    context,
-                                    ref,
-                                    authId: m.senderAuthId!,
-                                    username: m.senderName,
-                                    displayName: m.senderName,
-                                    staffBadge: m.senderStaffBadge,
-                                    kingBadge: m.senderKingBadge,
-                                  ));
-                                }
-                              : null,
-                          onReportMessage: (ChatMessage m) => unawaited(_showReportSheet(m)),
-                          canModerateMessages: canModerateMessages,
-                          onModerateMessage: canModerateMessages
-                              ? (ChatMessage m, String action) => unawaited(_moderateChatMessage(m, action))
-                              : null,
-                        ),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+        if (_isMacroWheelOpen)
+          ChatMacroWheel(
+            activeChannel: _activeChannel,
+            onSelectMacro: _onSelectMacro,
+            onClose: () => setState(() => _isMacroWheelOpen = false),
+          ),
         if (showComposer)
           ChatComposer(
-            asPanel: widget.asPanel,
+            asPanel: widget.asPanel || (currentBottomInset > 0),
             activeChannel: _activeChannel,
             activeBan: _activeBan,
             messageController: _messageController,
@@ -1258,12 +1471,75 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             blockedUserCount: _blockedUsers.length,
             onSend: _sendMessage,
             onOpenBlockedUsers: _openBlockedUsersSheet,
+            onToggleMacroWheel: () => setState(() => _isMacroWheelOpen = !_isMacroWheelOpen),
+            isMacroWheelOpen: _isMacroWheelOpen,
           ),
       ],
     );
 
+    final Widget themedBody = Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: ChatDesignSystem.gradientBgPanel,
+            ),
+          ),
+        ),
+        Positioned(
+          top: -60,
+          right: -40,
+          width: 220,
+          height: 220,
+          child: IgnorePointer(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: <Color>[
+                    channelAccent.withValues(alpha: 0.12),
+                    channelAccent.withValues(alpha: 0.03),
+                    Colors.transparent,
+                  ],
+                  stops: const <double>[0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 1,
+          child: IgnorePointer(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: <Color>[
+                    Colors.transparent,
+                    channelAccent.withValues(alpha: 0.35),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: body,
+        ),
+      ],
+    );
+
     if (widget.asPanel) {
-      return DismissKeyboard(child: body);
+      return Padding(
+        padding: EdgeInsets.only(bottom: currentBottomInset),
+        child: DismissKeyboard(child: themedBody),
+      );
     }
 
     return Scaffold(
@@ -1274,7 +1550,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         currentRoute: AppRoutes.chat,
         onLogout: _logoutHandler,
       ),
-      body: DismissKeyboard(child: body),
+      body: DismissKeyboard(child: themedBody),
     );
   }
 }

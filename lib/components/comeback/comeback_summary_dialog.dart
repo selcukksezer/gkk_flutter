@@ -1,23 +1,41 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../components/common/universal_game_dialog.dart';
 import '../../components/daily_reward/daily_reward_dialog.dart';
-import '../../components/layout/game_screen_background.dart';
 import '../../models/comeback_summary_model.dart';
 import '../../providers/comeback_summary_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import 'comeback_models.dart';
+import 'comeback_rewards_portal.dart';
+
+// 2027 Aion 2 Obsidian-Glass & Luminescence Design Tokens
+const Color _kCelestialGold = Color(0xFFE5C158);
+const Color _kCelestialGoldLight = Color(0xFFFFF2B2);
+const Color _kEtherCyan = Color(0xFF00E5FF);
+const Color _kEtherCyanGlow = Color(0x3300E5FF);
+const Color _kObsidianVoid = Color(0xFF050709);
+const Color _kObsidianGlassDark = Color(0xF00A0E18);
+const Color _kObsidianGlassMedium = Color(0xF2101726);
+const Color _kObsidianCard = Color(0xFF0E151A);
+const Color _kObsidianBorder = Color(0x3800E5FF);
+const Color _kObsidianGoldBorder = Color(0x66E5C158);
 
 /// Geri dönüş modalı — oturum başına bir kez.
+/// 2027 Aion 2 Mobile Standard Returning Warrior Comeback Rewards Portal.
 Future<void> showComebackSummaryDialog(
   BuildContext context,
-  WidgetRef ref,
-) async {
+  WidgetRef ref, {
+  bool barrierDismissible = true,
+}) async {
+  // Tactile entry feedback on modal launch
+  await HapticFeedback.mediumImpact();
+
   final ComebackSummaryState state = ref.read(comebackSummaryProvider);
   if (state.summary == null && !state.isLoading) {
     await ref.read(comebackSummaryProvider.notifier).load();
@@ -26,11 +44,12 @@ Future<void> showComebackSummaryDialog(
 
   return showGeneralDialog<void>(
     context: context,
-    barrierDismissible: true,
+    barrierDismissible: barrierDismissible,
     barrierLabel: 'Geri Dönüş Özeti',
-    barrierColor: AppColors.carbonVoid.withValues(alpha: 0.55),
-    transitionDuration: const Duration(milliseconds: 340),
-    pageBuilder: (BuildContext ctx, _, _) => const _ComebackSummaryPanel(),
+    barrierColor: _kObsidianVoid.withValues(alpha: 0.72),
+    useRootNavigator: true,
+    transitionDuration: const Duration(milliseconds: 360),
+    pageBuilder: (BuildContext ctx, _, _) => const ComebackSummaryDialog(),
     transitionBuilder: (
       BuildContext ctx,
       Animation<double> anim,
@@ -38,32 +57,63 @@ Future<void> showComebackSummaryDialog(
       Widget child,
     ) {
       final Animation<Offset> slide = Tween<Offset>(
-        begin: const Offset(0, 0.08),
+        begin: const Offset(0, 0.06),
         end: Offset.zero,
       ).animate(
         CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
       );
+      final Animation<double> scale = Tween<double>(
+        begin: 0.94,
+        end: 1.0,
+      ).animate(
+        CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+      );
       return BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: FadeTransition(
           opacity: anim,
-          child: SlideTransition(position: slide, child: child),
+          child: SlideTransition(
+            position: slide,
+            child: ScaleTransition(
+              scale: scale,
+              child: child,
+            ),
+          ),
         ),
       );
     },
   );
 }
 
-class _ComebackSummaryPanel extends ConsumerStatefulWidget {
-  const _ComebackSummaryPanel();
+/// Backwards compatibility alias for the dialog panel.
+typedef _ComebackSummaryPanel = ComebackSummaryDialog;
+
+/// 2027 Aion 2 Obsidian-Glass Returning Warrior Comeback Summary Dialog.
+class ComebackSummaryDialog extends ConsumerStatefulWidget {
+  const ComebackSummaryDialog({
+    super.key,
+    this.summary,
+    this.onClose,
+    this.onActionItemTap,
+    this.onClaimGift,
+    this.useCompactDialog = false,
+  });
+
+  final ComebackSummary? summary;
+  final VoidCallback? onClose;
+  final void Function(ComebackSummaryItem item)? onActionItemTap;
+  final VoidCallback? onClaimGift;
+  final bool useCompactDialog;
 
   @override
-  ConsumerState<_ComebackSummaryPanel> createState() =>
-      _ComebackSummaryPanelState();
+  ConsumerState<ComebackSummaryDialog> createState() =>
+      _ComebackSummaryDialogState();
 }
 
-class _ComebackSummaryPanelState extends ConsumerState<_ComebackSummaryPanel> {
+class _ComebackSummaryDialogState
+    extends ConsumerState<ComebackSummaryDialog> {
   Future<void> _handleItemTap(ComebackSummaryItem item) async {
+    await HapticFeedback.mediumImpact();
     if (!mounted) return;
     Navigator.of(context).pop();
 
@@ -77,338 +127,506 @@ class _ComebackSummaryPanelState extends ConsumerState<_ComebackSummaryPanel> {
     }
   }
 
-  String _offlineLabel(double hours) {
-    if (hours >= 24) {
-      final int days = (hours / 24).floor();
-      return '$days gün yoktun';
+  void _handleClose() {
+    HapticFeedback.mediumImpact();
+    ref.read(comebackSummaryProvider.notifier).markShownThisSession();
+    if (widget.onClose != null) {
+      widget.onClose!();
+    } else {
+      Navigator.of(context).pop();
     }
-    if (hours >= 1) {
-      return '${hours.toStringAsFixed(1)} saat yoktun';
-    }
-    final int minutes = (hours * 60).round();
-    // Heartbeat race / <1 dk → "0 dk yoktun" spam; gerçek süre yoksa nötr karşılama.
-    if (minutes < 1) return 'Tekrar hoş geldin';
-    return '$minutes dk yoktun';
+  }
+
+  void _handleClaimGift() {
+    HapticFeedback.mediumImpact();
+    ref.read(comebackSummaryProvider.notifier).markShownThisSession();
+    widget.onClaimGift?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final ComebackSummaryState state = ref.watch(comebackSummaryProvider);
-    final ComebackSummary? summary = state.summary;
-    final double maxHeight = MediaQuery.sizeOf(context).height * 0.86;
+    final ComebackSummary? summary = widget.summary ?? state.summary;
 
-    return Material(
-      type: MaterialType.transparency,
-      child: Stack(
-        children: <Widget>[
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                color: AppColors.carbonVoid.withValues(alpha: 0.35),
-              ),
-            ),
-          ),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: 440,
-                  maxHeight: maxHeight,
-                ),
-                child: _buildBody(context, state, summary),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody(
-    BuildContext context,
-    ComebackSummaryState state,
-    ComebackSummary? summary,
-  ) {
     if (state.isLoading && summary == null) {
-      return UniversalDialogPanel(
-        borderColor: AppColors.liquidGold.withValues(alpha: 0.45),
-        padding: const EdgeInsets.all(24),
-        child: const SizedBox(
-          height: 180,
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.liquidGold),
-          ),
-        ),
-      );
+      return _buildLoadingDialog(context);
     }
 
     if (summary == null) {
-      return UniversalDialogPanel(
-        borderColor: AppColors.mutedTitanium.withValues(alpha: 0.35),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(
-              state.error ?? 'Özet yüklenemedi.',
-              style: const TextStyle(color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 14),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Kapat'),
-            ),
-          ],
-        ),
-      );
+      return _buildErrorDialog(context, state);
     }
 
-    return UniversalDialogPanel(
-      borderColor: AppColors.liquidGold.withValues(alpha: 0.5),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _buildHeader(summary),
-          const SizedBox(height: 12),
-          if (summary.pendingCount > 0) ...<Widget>[
-            _buildTotalPill(summary.pendingCount),
-            const SizedBox(height: 10),
-          ],
-          Flexible(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: <Widget>[
-                  for (int i = 0; i < summary.items.length; i++)
-                    _ComebackActionRow(
-                      item: summary.items[i],
-                      index: i,
-                      onTap: () => _handleItemTap(summary.items[i]),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _DismissButton(onPressed: () => Navigator.of(context).pop()),
-        ],
-      ),
-    );
-  }
+    if (widget.useCompactDialog) {
+      return _buildCompactSummaryDialog(context, summary);
+    }
 
-  Widget _buildHeader(ComebackSummary summary) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                AppColors.liquidGold.withValues(alpha: 0.25),
-                AppColors.cyberFuchsia.withValues(alpha: 0.18),
-              ],
-            ),
-            border: Border.all(
-              color: AppColors.liquidGold.withValues(alpha: 0.45),
-            ),
-          ),
-          child: const Icon(
-            Icons.wb_twilight_rounded,
-            color: AppColors.liquidGold,
-            size: 24,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Geri Dönüş Özeti',
-                style: GoogleFonts.urbanist(
-                  color: AppColors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _offlineLabel(summary.offlineHours),
-                style: const TextStyle(
-                  color: AppColors.mutedTitanium,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.close_rounded, color: AppColors.mutedTitanium),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTotalPill(int count) {
-    return DottedPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      borderColor: AppColors.liquidGold.withValues(alpha: 0.28),
-      child: Row(
-        children: <Widget>[
-          const Icon(Icons.notifications_active_rounded, color: AppColors.liquidGold, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            'Toplam',
-            style: GoogleFonts.urbanist(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            '$count bekleyen aksiyon',
-            style: GoogleFonts.urbanist(
-              color: AppColors.liquidGold,
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ComebackActionRow extends StatefulWidget {
-  const _ComebackActionRow({
-    required this.item,
-    required this.index,
-    required this.onTap,
-  });
-
-  final ComebackSummaryItem item;
-  final int index;
-  final VoidCallback onTap;
-
-  @override
-  State<_ComebackActionRow> createState() => _ComebackActionRowState();
-}
-
-class _ComebackActionRowState extends State<_ComebackActionRow>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _entryCtrl;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
-  bool _pressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _entryCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
-    _fade = CurvedAnimation(
-      parent: _entryCtrl,
-      curve: Curves.easeOutCubic,
-    );
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.12),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutBack),
-    );
-    Future<void>.delayed(
-      Duration(milliseconds: 40 * widget.index),
-      () {
-        if (mounted) _entryCtrl.forward();
+    // Modern 2027 Aion 2 Mobile Returning Warrior Portal presentation
+    return ComebackRewardsPortal(
+      summary: summary,
+      onClose: _handleClose,
+      onActionItemTap: (ComebackSummaryItem item) {
+        if (widget.onActionItemTap != null) {
+          HapticFeedback.mediumImpact();
+          widget.onActionItemTap!(item);
+        } else {
+          _handleItemTap(item);
+        }
+      },
+      onClaimGift: _handleClaimGift,
+      onClaimMilestone: (ComebackMilestoneTier tier) {
+        HapticFeedback.mediumImpact();
+        ref.read(comebackSummaryProvider.notifier).markShownThisSession();
       },
     );
   }
 
-  @override
-  void dispose() {
-    _entryCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Color accent = widget.item.kind.accentColor;
-
-    return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: GestureDetector(
-            onTapDown: (_) => setState(() => _pressed = true),
-            onTapUp: (_) => setState(() => _pressed = false),
-            onTapCancel: () => setState(() => _pressed = false),
-            onTap: widget.onTap,
-            child: AnimatedScale(
-              scale: _pressed ? 0.98 : 1,
-              duration: const Duration(milliseconds: 120),
-              curve: Curves.easeOutCubic,
-              child: DottedPanel(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                borderColor: accent.withValues(alpha: 0.22),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: accent.withValues(alpha: 0.35)),
-                      ),
-                      child: Icon(widget.item.kind.icon, color: accent, size: 20),
+  Widget _buildLoadingDialog(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: SafeArea(
+        minimum: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        _kObsidianGlassDark,
+                        _kObsidianGlassMedium,
+                        _kObsidianVoid,
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                    border: Border.all(
+                      color: _kObsidianGoldBorder,
+                      width: 1.4,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: _kCelestialGold.withValues(alpha: 0.22),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: _kEtherCyan.withValues(alpha: 0.16),
+                        blurRadius: 24,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const _CelebrationBanner(
+                        title: 'KADİM KUTSAMALAR HAZIRLANIYOR',
+                        subtitle: 'Geri dönen savaşçının ödülleri taranıyor...',
+                        badgeText: '2027 AION 2',
+                        icon: Icons.auto_awesome_rounded,
+                      ),
+                      const SizedBox(height: 24),
+                      Stack(
+                        alignment: Alignment.center,
                         children: <Widget>[
-                          Text(
-                            widget.item.title,
-                            style: GoogleFonts.urbanist(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: _kEtherCyan.withValues(alpha: 0.35),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.item.subtitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.mutedTitanium,
-                              fontSize: 11,
-                              height: 1.25,
+                          const SizedBox(
+                            width: 46,
+                            height: 46,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3.2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(_kCelestialGold),
+                              backgroundColor: Color(0x3300E5FF),
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'Savaşçının dönüş ganimetleri taranıyor...',
+                        style: GoogleFonts.urbanist(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorDialog(BuildContext context, ComebackSummaryState state) {
+    return Material(
+      type: MaterialType.transparency,
+      child: SafeArea(
+        minimum: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        _kObsidianGlassDark,
+                        _kObsidianGlassMedium,
+                        _kObsidianVoid,
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    _RowCta(label: widget.item.ctaLabel, accent: accent),
-                  ],
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                    border: Border.all(
+                      color: _kCelestialGold.withValues(alpha: 0.45),
+                      width: 1.4,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: _kEtherCyan.withValues(alpha: 0.16),
+                        blurRadius: 24,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: _kCelestialGold.withValues(alpha: 0.18),
+                        blurRadius: 20,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const _CelebrationBanner(
+                        title: 'GERİ DÖNÜŞ BİLGİSİ',
+                        subtitle: 'Atreia sunucusu ile bağlantı kuruluyor',
+                        badgeText: 'BİLDİRİM',
+                        icon: Icons.shield_outlined,
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        state.error ??
+                            'Geri dönüş özeti yüklenemedi. Lütfen ağ bağlantını kontrol et.',
+                        style: GoogleFonts.urbanist(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                          height: 1.35,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                HapticFeedback.mediumImpact();
+                                Navigator.of(context).pop();
+                              },
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppColors.mutedTitanium.withValues(alpha: 0.35),
+                                ),
+                                foregroundColor: AppColors.textSecondary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: Text(
+                                'Kapat',
+                                style: GoogleFonts.urbanist(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                await HapticFeedback.mediumImpact();
+                                await ref.read(comebackSummaryProvider.notifier).load();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _kCelestialGold,
+                                foregroundColor: _kObsidianVoid,
+                                elevation: 4,
+                                shadowColor: _kCelestialGold.withValues(alpha: 0.45),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: Text(
+                                'Tekrar Dene',
+                                style: GoogleFonts.urbanist(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactSummaryDialog(BuildContext context, ComebackSummary summary) {
+    final Size screenSize = MediaQuery.sizeOf(context);
+    final EdgeInsets safeInsets = MediaQuery.paddingOf(context);
+    final double maxDialogHeight = screenSize.height * 0.88;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: SafeArea(
+        minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 440,
+              maxHeight: maxDialogHeight,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        _kObsidianGlassDark,
+                        _kObsidianGlassMedium,
+                        _kObsidianVoid,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                    border: Border.all(
+                      color: _kObsidianGoldBorder,
+                      width: 1.4,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: _kCelestialGold.withValues(alpha: 0.22),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: _kEtherCyan.withValues(alpha: 0.16),
+                        blurRadius: 24,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      // Top header with close button
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 14, 8),
+                        child: Row(
+                          children: <Widget>[
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  colors: <Color>[_kCelestialGold, _kCelestialGoldLight],
+                                ),
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: _kCelestialGold.withValues(alpha: 0.4),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.wb_twilight_rounded,
+                                color: _kObsidianVoid,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Geri Dönen Savaşçı',
+                                    style: GoogleFonts.urbanist(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Aion 2 Özel Karşılama Portalı',
+                                    style: GoogleFonts.urbanist(
+                                      color: _kCelestialGold,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _handleClose,
+                              icon: const Icon(Icons.close_rounded, color: AppColors.mutedTitanium),
+                              tooltip: 'Kapat',
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            safeInsets.bottom > 0 ? safeInsets.bottom : 16,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              const SizedBox(height: 8),
+                              _CelebrationBanner(
+                                title: 'KADİM SAVAŞÇI GERİ DÖNÜŞÜ',
+                                subtitle: '${(summary.offlineHours / 24).floor().clamp(1, 99)} gündür Atreia\'dan uzaktaydın. Kadim ödüller seni bekliyor!',
+                                badgeText: 'ÖDÜLLER HAZIR',
+                                icon: Icons.military_tech_rounded,
+                              ),
+                              const SizedBox(height: 14),
+                              if (summary.items.isNotEmpty) ...<Widget>[
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: <Widget>[
+                                    Text(
+                                      'YOKLUĞUNDA GERÇEKLEŞENLER',
+                                      style: GoogleFonts.urbanist(
+                                        color: AppColors.mutedTitanium,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _kEtherCyan.withValues(alpha: 0.16),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: _kEtherCyan.withValues(alpha: 0.5),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${summary.items.length} Bekleyen',
+                                        style: GoogleFonts.urbanist(
+                                          color: _kEtherCyan,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: summary.items.length,
+                                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                  itemBuilder: (BuildContext context, int index) {
+                                    final ComebackSummaryItem item = summary.items[index];
+                                    return _CompactActionTile(
+                                      item: item,
+                                      onTap: () => _handleItemTap(item),
+                                    );
+                                  },
+                                ),
+                              ],
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _handleClose,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _kCelestialGold,
+                                    foregroundColor: _kObsidianVoid,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 6,
+                                    shadowColor: _kCelestialGold.withValues(alpha: 0.45),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: <Widget>[
+                                      const Icon(Icons.play_arrow_rounded, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Atreia\'ya Dönüş Yap',
+                                        style: GoogleFonts.urbanist(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                          letterSpacing: 0.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -419,68 +637,231 @@ class _ComebackActionRowState extends State<_ComebackActionRow>
   }
 }
 
-class _RowCta extends StatelessWidget {
-  const _RowCta({required this.label, required this.accent});
+class _CelebrationBanner extends StatelessWidget {
+  const _CelebrationBanner({
+    required this.title,
+    required this.subtitle,
+    this.badgeText,
+    this.icon = Icons.auto_awesome_rounded,
+  });
 
-  final String label;
-  final Color accent;
+  final String title;
+  final String subtitle;
+  final String? badgeText;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    final bool isGold = accent == AppColors.liquidGold || accent == AppColors.warningSolar;
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        gradient: isGold
-            ? AppColors.liquidGoldGradient
-            : LinearGradient(
-                colors: <Color>[
-                  accent.withValues(alpha: 0.85),
-                  accent.withValues(alpha: 0.65),
-                ],
-              ),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            _kCelestialGold.withValues(alpha: 0.20),
+            _kObsidianCard.withValues(alpha: 0.75),
+            _kEtherCyan.withValues(alpha: 0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(
+          color: _kCelestialGold.withValues(alpha: 0.45),
+          width: 1.2,
+        ),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: accent.withValues(alpha: 0.25),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: _kCelestialGold.withValues(alpha: 0.18),
+            blurRadius: 16,
+            spreadRadius: -2,
+          ),
+          BoxShadow(
+            color: _kEtherCyan.withValues(alpha: 0.12),
+            blurRadius: 12,
+            spreadRadius: -4,
           ),
         ],
       ),
-      child: Text(
-        label,
-        style: GoogleFonts.urbanist(
-          color: isGold ? AppColors.carbonVoid : Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 11,
-        ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[_kCelestialGold, _kCelestialGoldLight],
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: _kCelestialGold.withValues(alpha: 0.45),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: Icon(icon, color: _kObsidianVoid, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: GoogleFonts.urbanist(
+                    color: _kCelestialGoldLight,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.urbanist(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (badgeText != null) ...<Widget>[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _kEtherCyan.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _kEtherCyan.withValues(alpha: 0.65),
+                  width: 1.0,
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: _kEtherCyan.withValues(alpha: 0.28),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Text(
+                badgeText!,
+                style: GoogleFonts.urbanist(
+                  color: _kEtherCyan,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _DismissButton extends StatelessWidget {
-  const _DismissButton({required this.onPressed});
+class _CompactActionTile extends StatelessWidget {
+  const _CompactActionTile({
+    required this.item,
+    required this.onTap,
+  });
 
-  final VoidCallback onPressed;
+  final ComebackSummaryItem item;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.mutedTitanium,
-        side: BorderSide(color: AppColors.darkObsidian.withValues(alpha: 0.9)),
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+    final Color accent = item.kind.accentColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _kObsidianCard.withValues(alpha: 0.70),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(
+          color: accent.withValues(alpha: 0.35),
+          width: 0.9,
         ),
       ),
-      child: Text(
-        'Tamam, anladım',
-        style: GoogleFonts.urbanist(fontWeight: FontWeight.w700),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: accent.withValues(alpha: 0.4)),
+                  ),
+                  child: Icon(item.kind.icon, color: accent, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        item.title,
+                        style: GoogleFonts.urbanist(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.mutedTitanium,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _kEtherCyan.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: _kEtherCyan.withValues(alpha: 0.55),
+                      width: 0.9,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: _kEtherCyan.withValues(alpha: 0.22),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    item.ctaLabel,
+                    style: GoogleFonts.urbanist(
+                      color: _kEtherCyan,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

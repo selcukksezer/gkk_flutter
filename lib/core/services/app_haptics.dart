@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 
 import 'app_settings_service.dart';
 
-/// Haptic — [AppSettingsService.hapticEnabled] kapalıysa no-op.
+/// Haptic â€” [AppSettingsService.hapticEnabled] kapalÄ±ysa no-op.
 abstract final class AppHaptics {
   static bool get _on => AppSettingsService.instance.hapticEnabled;
 
@@ -21,8 +21,19 @@ abstract final class AppHaptics {
     await HapticFeedback.heavyImpact();
   }
 
+  static Future<void> success() async {
+    if (!_on) return;
+    await HapticFeedback.mediumImpact();
+  }
+
   static Future<void> selection() async {
     if (!_on) return;
     await HapticFeedback.selectionClick();
   }
+
+  static Future<void> vibrate() async {
+    if (!_on) return;
+    await HapticFeedback.vibrate();
+  }
 }
+

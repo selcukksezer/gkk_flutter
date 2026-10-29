@@ -3,8 +3,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../models/leaderboard_model.dart';
+import '../../../shaders/social/theme/social_theme_tokens.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
+
+export 'leaderboard_header_banner.dart';
+export 'leaderboard_podium.dart';
+export 'leaderboard_rank_card.dart';
+export 'leaderboard_sticky_footer.dart';
 
 abstract final class LeaderboardDesign {
   static const Color gold = AppColors.liquidGold;
@@ -21,6 +27,9 @@ abstract final class LeaderboardDesign {
         return AppColors.accentPurple;
       case 'guild_power':
         return AppColors.accentCyan;
+      case 'dungeon':
+      case 'dungeon_siege':
+        return SocialThemeTokens.balaurFlame;
       default:
         return AppColors.toxicNeon;
     }
@@ -386,274 +395,11 @@ class LeaderboardSearchField extends StatelessWidget {
   }
 }
 
-class LeaderboardHeroPodium extends StatelessWidget {
-  const LeaderboardHeroPodium({
-    super.key,
-    required this.entries,
-    required this.categoryKey,
-    this.dimmed = false,
-  });
+// Note: LeaderboardHeroPodium, MetallicTierEmblem, and CelestialAuraPainter
+// are exported from 'leaderboard_podium.dart'.
+// LeaderboardRankRow is exported from 'leaderboard_rank_card.dart'.
 
-  final List<LeaderboardEntry> entries;
-  final String categoryKey;
-  final bool dimmed;
 
-  @override
-  Widget build(BuildContext context) {
-    if (entries.length < 3) return const SizedBox.shrink();
-
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 220),
-      opacity: dimmed ? 0.5 : 1,
-      child: LeaderboardGlassPanel(
-        accent: LeaderboardDesign.gold,
-        glow: !dimmed,
-        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-        child: Column(
-          children: <Widget>[
-            Text(
-              'İlk 3',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 210,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Expanded(child: _PodiumSlot(entry: entries[1], medal: '🥈', accent: LeaderboardDesign.silver, flex: 4, categoryKey: categoryKey)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _PodiumSlot(entry: entries[0], medal: '🥇', accent: LeaderboardDesign.gold, flex: 5, categoryKey: categoryKey, highlight: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _PodiumSlot(entry: entries[2], medal: '🥉', accent: LeaderboardDesign.bronze, flex: 3, categoryKey: categoryKey)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PodiumSlot extends StatelessWidget {
-  const _PodiumSlot({
-    required this.entry,
-    required this.medal,
-    required this.accent,
-    required this.flex,
-    required this.categoryKey,
-    this.highlight = false,
-  });
-
-  final LeaderboardEntry entry;
-  final String medal;
-  final Color accent;
-  final int flex;
-  final String categoryKey;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: <Widget>[
-        if (highlight)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 2),
-            child: Text('👑', style: TextStyle(fontSize: 16)),
-          ),
-        _AvatarBadge(
-          initials: LeaderboardDesign.initials(entry.username),
-          accent: accent,
-          size: highlight ? 44 : 36,
-          ring: highlight,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          entry.username,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.caption.copyWith(
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(medal, style: TextStyle(fontSize: highlight ? 24 : 20)),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: accent.withValues(alpha: 0.35)),
-          ),
-          child: Text(
-            LeaderboardValueFormatter.format(entry.value, categoryKey),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption.copyWith(
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              color: accent,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          flex: flex,
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[
-                  accent.withValues(alpha: highlight ? 0.45 : 0.28),
-                  accent.withValues(alpha: 0.08),
-                ],
-              ),
-              border: Border.all(color: accent.withValues(alpha: 0.45)),
-              boxShadow: highlight
-                  ? <BoxShadow>[
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.25),
-                        blurRadius: 16,
-                        offset: const Offset(0, -2),
-                      ),
-                    ]
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '${entry.rank}',
-              style: AppTextStyles.h2.copyWith(
-                fontSize: highlight ? 28 : 22,
-                color: accent.withValues(alpha: 0.9),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class LeaderboardRankRow extends StatelessWidget {
-  const LeaderboardRankRow({
-    super.key,
-    required this.entry,
-    required this.categoryKey,
-    this.highlight = false,
-  });
-
-  final LeaderboardEntry entry;
-  final String categoryKey;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color accent = LeaderboardDesign.accentForCategory(categoryKey);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: LinearGradient(
-          colors: <Color>[
-            highlight
-                ? AppColors.accentBlue.withValues(alpha: 0.16)
-                : AppColors.bgCard.withValues(alpha: 0.55),
-            AppColors.bgSurface.withValues(alpha: 0.35),
-          ],
-        ),
-        border: Border.all(
-          color: highlight
-              ? AppColors.accentBlue.withValues(alpha: 0.45)
-              : AppColors.borderFaint,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: <Widget>[
-            _RankBadge(rank: entry.rank, accent: accent),
-            const SizedBox(width: 10),
-            _AvatarBadge(
-              initials: LeaderboardDesign.initials(entry.username),
-              accent: accent,
-              size: 36,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    entry.username,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.title.copyWith(fontSize: 14),
-                  ),
-                  if (entry.guild != null && entry.guild!.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 2),
-                    Text(
-                      '🏰 ${entry.guild}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(color: AppColors.textTertiary),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            _ValueChip(
-              label: LeaderboardValueFormatter.format(entry.value, categoryKey),
-              accent: accent,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RankBadge extends StatelessWidget {
-  const _RankBadge({required this.rank, required this.accent});
-
-  final int rank;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: accent.withValues(alpha: 0.12),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        '#$rank',
-        style: AppTextStyles.caption.copyWith(
-          fontWeight: FontWeight.w900,
-          color: accent,
-          fontSize: 10,
-        ),
-      ),
-    );
-  }
-}
 
 class _AvatarBadge extends StatelessWidget {
   const _AvatarBadge({
@@ -895,7 +641,7 @@ class LeaderboardErrorPanel extends StatelessWidget {
                 ),
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Tekrar Dene'),
+                label: const Text('Yeniden Dene'),
               ),
             ],
           ),
@@ -916,7 +662,7 @@ class LeaderboardEmptySearch extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Center(
         child: Text(
-          '"$query" için sonuç yok',
+          '"$query" için sonuç bulunamadı',
           style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
         ),
       ),

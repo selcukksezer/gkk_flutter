@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../../components/common/item_icon_view.dart';
-import '../../../components/layout/game_screen_background.dart';
 import '../../../core/tutorial/tutorial_anchor.dart';
 import '../../../core/tutorial/tutorial_track.dart';
 import '../../../core/utils/craft_gold.dart';
 import '../../../models/crafting_model.dart';
 import '../../../providers/crafting_provider.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_text_styles.dart';
+import '../../inventory/widgets/aion_rarity_glow.dart';
 import '../crafting_utils.dart';
+import 'crafting_forge_effects.dart';
+import 'crafting_material_slot.dart';
 import 'crafting_queue_slots_panel.dart';
 
+/// 2027 Aion 2 Mobile Ornate Forge Crafting Preview Panel
 class CraftingPreviewPanel extends StatelessWidget {
   const CraftingPreviewPanel({
     super.key,
@@ -50,7 +55,6 @@ class CraftingPreviewPanel extends StatelessWidget {
   final double playerGems;
   final Future<bool> Function()? onExpandQueue;
   final Map<String, int> ownedQuantities;
-  /// Bank stock by itemId — hint only when bag short.
   final Map<String, int> bankQuantities;
   final VoidCallback onCraft;
   final VoidCallback onClose;
@@ -65,23 +69,29 @@ class CraftingPreviewPanel extends StatelessWidget {
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.black26,
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFF0F1424),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white12),
         ),
-        child: const Row(
+        child: Row(
           children: <Widget>[
-            Icon(Icons.info_outline, color: Colors.white38, size: 18),
-            SizedBox(width: 10),
-            Text('Bir tarif seçin', style: TextStyle(color: Colors.white38)),
+            Icon(Icons.info_outline, color: AppColors.mutedTitanium, size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'Bir demircilik tarifi seçin',
+              style: AppTextStyles.caption.copyWith(color: AppColors.mutedTitanium),
+            ),
           ],
         ),
       );
     }
 
-    final Color rarityColor = craftingRarityColor(recipe!.outputRarity);
+    final AionRarityTier tier = AionRarityTier.fromString(recipe!.outputRarity);
+    final Color rarityColor = tier.primaryColor;
     final int? timeSec = recipe!.productionTimeSeconds;
-    final String timeLabel = timeSec == null ? '—' : formatCraftingDuration(timeSec * batchCount);
+    final String timeLabel = timeSec == null
+        ? 'Anında'
+        : formatCraftingDuration(timeSec * batchCount);
     final int totalOutput = recipe!.outputQuantity * batchCount;
     final int totalXp = (recipe!.xpReward ?? 0) * batchCount;
     final double successRate = recipe!.normalizedSuccessRate;
@@ -89,8 +99,8 @@ class CraftingPreviewPanel extends StatelessWidget {
     final bool showMatError = !hasEnoughMaterials;
     final int bankCoveredShortfall = recipe!.ingredients.where((ing) {
       final int owned = ownedQuantities[ing.itemId] ?? 0;
-      final int required = ing.quantity * batchCount;
-      if (owned >= required) return false;
+      final int req = ing.quantity * batchCount;
+      if (owned >= req) return false;
       return (bankQuantities[ing.itemId] ?? 0) > 0;
     }).length;
     final bool showBankWithdrawHint = showMatError && bankCoveredShortfall > 0;
@@ -100,347 +110,495 @@ class CraftingPreviewPanel extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.82),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      ),
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[Color(0x33202A44), Color(0x140E1426)],
+          colors: <Color>[
+            const Color(0xFF192033).withValues(alpha: 0.98),
+            const Color(0xFF0D1220).withValues(alpha: 0.99),
+          ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: rarityColor.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: rarityColor.withValues(alpha: 0.18),
+            blurRadius: 28,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.8),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      recipe!.outputName?.isNotEmpty == true ? recipe!.outputName! : recipe!.name,
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: rarityColor),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text('Üretim Ön İzlemesi', style: TextStyle(fontSize: 11, color: Colors.white54)),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: onClose,
-                icon: const Icon(Icons.close_rounded, color: Colors.white70),
-                tooltip: 'Kapat',
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Üretilecek Malzeme',
-            style: TextStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.cyan.withValues(alpha: 0.5), width: 1.4),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[Colors.cyan.withValues(alpha: 0.20), Colors.blue.withValues(alpha: 0.08)],
-              ),
-            ),
-            child: Row(
+            // Top Header: Title, Rarity, and Close Button
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: ItemIconView(
-                    iconValue: recipe!.outputItemId,
-                    itemId: recipe!.outputItemId,
-                    size: 52,
-                    expand: true,
-                    fallback: '❔',
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
-                        recipe!.outputName?.isNotEmpty == true ? recipe!.outputName! : recipe!.name,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: rarityColor),
+                      Row(
+                        children: <Widget>[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: rarityColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: rarityColor.withValues(alpha: 0.4)),
+                            ),
+                            child: Text(
+                              tier.displayName,
+                              style: AppTextStyles.micro.copyWith(
+                                color: rarityColor,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Sv.${recipe!.requiredLevel} Gereksinim',
+                            style: AppTextStyles.micro.copyWith(
+                              color: AppColors.mutedTitanium,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text('Miktar: x$totalOutput', style: const TextStyle(fontSize: 11, color: Colors.cyanAccent)),
+                      const SizedBox(height: 4),
+                      Text(
+                        recipe!.outputName?.isNotEmpty == true
+                            ? recipe!.outputName!
+                            : recipe!.name,
+                        style: AppTextStyles.h2.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                     ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                  tooltip: 'Kapat',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Item Chamber Pedestal
+            AionRarityGlowBorder(
+              tier: tier,
+              borderRadius: 14,
+              borderWidth: 1.5,
+              hasActiveGlow: true,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: isCrafting ? 0.95 : 0.4,
+                          child: CraftingPreviewForgeBackdrop(
+                            isCrafting: isCrafting,
+                            height: 80,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF090D18).withValues(alpha: 0.8),
+                      ),
+                      child: Row(
+                  children: <Widget>[
+                    Stack(
+                      alignment: Alignment.center,
+                      children: <Widget>[
+                        if (tier.hasSparkles)
+                          Positioned.fill(
+                            child: EnchantingSparklesOverlay(
+                              tier: tier,
+                              particleCount: 5,
+                            ),
+                          ),
+                        Container(
+                          width: 58,
+                          height: 58,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: tier.primaryColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: tier.primaryColor.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: ItemIconView(
+                            iconValue: recipe!.outputItemId,
+                            itemId: recipe!.outputItemId,
+                            size: 52,
+                            expand: true,
+                            fallback: '❔',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            recipe!.outputName?.isNotEmpty == true
+                                ? recipe!.outputName!
+                                : recipe!.name,
+                            style: AppTextStyles.bodyBold.copyWith(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Üretim Çıktısı: x$totalOutput adet',
+                            style: AppTextStyles.captionBold.copyWith(
+                              color: AppColors.liquidGold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (recipe!.description.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 2),
+                            Text(
+                              recipe!.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.micro.copyWith(
+                                color: AppColors.mutedTitanium,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            // Material Slots Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'GEREKLİ MALZEMELER',
+                  style: AppTextStyles.micro.copyWith(
+                    color: AppColors.liquidGold,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                Text(
+                  '${recipe!.ingredients.length} çeşit malzeme',
+                  style: AppTextStyles.micro.copyWith(
+                    color: AppColors.mutedTitanium,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Gerekli Malzemeler',
-            style: TextStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          GameFixedGrid(
-            crossAxisCount: 3,
-            spacing: 8,
-            itemCount: recipe!.ingredients.length,
-            itemBuilder: (BuildContext context, int index) {
-              final ing = recipe!.ingredients[index];
-              final int owned = ownedQuantities[ing.itemId] ?? 0;
-              final int required = ing.quantity * batchCount;
-              final bool enough = owned >= required;
-              final int inBank = bankQuantities[ing.itemId] ?? 0;
-              final bool showBankHint = !enough && inBank > 0;
-              final String ingredientName = ing.itemName.trim().isNotEmpty
-                  ? ing.itemName
-                  : (ing.itemId.isNotEmpty ? ing.itemId : 'Bilinmiyor');
-              return Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: enough
-                        ? Colors.green.withValues(alpha: 0.55)
-                        : showBankHint
-                            ? const Color(0xFFFBBF24).withValues(alpha: 0.65)
-                            : Colors.red.withValues(alpha: 0.55),
-                    width: 1.3,
+            const SizedBox(height: 8),
+            // Material slots grid
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final int crossAxisCount = constraints.maxWidth > 340 ? 3 : 2;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 0.95,
                   ),
-                  color: enough
-                      ? Colors.green.withValues(alpha: 0.12)
-                      : showBankHint
-                          ? const Color(0xFFFBBF24).withValues(alpha: 0.10)
-                          : Colors.red.withValues(alpha: 0.12),
+                  itemCount: recipe!.ingredients.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    final ing = recipe!.ingredients[index];
+                    final int owned = ownedQuantities[ing.itemId] ?? 0;
+                    final int requiredCount = ing.quantity * batchCount;
+                    final int inBank = bankQuantities[ing.itemId] ?? 0;
+
+                    return OrnateForgeMaterialSlot(
+                      ingredient: ing,
+                      owned: owned,
+                      requiredCount: requiredCount,
+                      inBank: inBank,
+                    );
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+            // Info Chips (Level, Success Rate, Duration, Queue, Gold, XP)
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: <Widget>[
+                _CraftingInfoChip(
+                  icon: Icons.military_tech_rounded,
+                  label: 'Sv.${recipe!.requiredLevel}',
                 ),
-                child: Column(
-                  children: <Widget>[
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: ItemIconView(
-                        iconValue: ing.itemId,
-                        itemId: ing.itemId,
-                        size: 24,
-                        expand: true,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      ingredientName,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$owned / $required',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: enough ? Colors.greenAccent : Colors.redAccent,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (showBankHint) ...<Widget>[
-                      const SizedBox(height: 2),
+                _CraftingInfoChip(
+                  icon: Icons.percent_rounded,
+                  label: '%${(successRate * 100).round()} Başarı',
+                  color: AppColors.liquidGold,
+                ),
+                _CraftingInfoChip(
+                  icon: Icons.timer_rounded,
+                  label: timeLabel,
+                ),
+                _CraftingInfoChip(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Kuyruk $queueUsed/$queueMax',
+                  color: queueFull ? AppColors.mysticRuby : const Color(0xFF93C5FD),
+                ),
+                if (recipe!.goldCost > 0)
+                  _CraftingInfoChip(
+                    icon: Icons.paid_rounded,
+                    label: '$totalGoldCost Altın',
+                    color: showGoldError ? AppColors.mysticRuby : AppColors.goldLight,
+                  ),
+                _CraftingInfoChip(
+                  icon: Icons.auto_awesome_rounded,
+                  label: '+$totalXp XP',
+                  color: AppColors.liquidGold,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Batch Count Selector
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B101D),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.liquidGold.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
                       Text(
-                        'Banka: $inBank adet',
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFFBBF24),
+                        'Üretim Adedi (Batch)',
+                        style: AppTextStyles.captionBold.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'En fazla $craftingBatchLimit adet aynı anda üretilebilir',
+                        style: AppTextStyles.micro.copyWith(
+                          color: AppColors.mutedTitanium,
                         ),
                       ),
                     ],
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: <Widget>[
-              _CraftingInfoChip(icon: Icons.military_tech_rounded, label: 'Sv${recipe!.requiredLevel}'),
-              _CraftingInfoChip(
-                icon: Icons.percent_rounded,
-                label: '${(successRate * 100).round()}% Başarı',
-                color: const Color(0xFFFCD34D),
-              ),
-              _CraftingInfoChip(icon: Icons.timer_rounded, label: timeLabel),
-              _CraftingInfoChip(
-                icon: Icons.inventory_2_outlined,
-                label: 'Kuyruk $queueUsed/$queueMax',
-                color: queueFull ? Colors.redAccent : const Color(0xFF93C5FD),
-              ),
-              if (recipe!.goldCost > 0)
-                _CraftingInfoChip(
-                  icon: Icons.paid_rounded,
-                  label: '$totalGoldCost 🪙',
-                  color: showGoldError ? Colors.redAccent : const Color(0xFFFDE68A),
-                ),
-              _CraftingInfoChip(
-                icon: Icons.auto_awesome_rounded,
-                label: '+$totalXp XP',
-                color: const Color(0xFFFCD34D),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-              color: Colors.white.withValues(alpha: 0.04),
-            ),
-            child: Column(
-              children: <Widget>[
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Batch Sayısı',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white60),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: <Widget>[
-                    SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: TextButton(
-                        onPressed: batchCount > 1 ? onBatchDecrement : null,
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.10),
-                          padding: EdgeInsets.zero,
+                  const Spacer(),
+                  // Minus Button
+                  SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: OutlinedButton(
+                      onPressed: batchCount > 1
+                          ? () async {
+                              await AionHaptics.slotSelect();
+                              onBatchDecrement();
+                            }
+                          : null,
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        side: BorderSide(
+                          color: batchCount > 1
+                              ? AppColors.liquidGold.withValues(alpha: 0.5)
+                              : Colors.white12,
                         ),
-                        child: const Text('−', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        height: 36,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.10),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('$batchCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                       ),
+                      child: const Text('−', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                     ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: TextButton(
-                        onPressed: batchCount < craftingBatchLimit ? onBatchIncrement : null,
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.10),
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: const Text('+', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text('Max: 5', style: TextStyle(fontSize: 10, color: Colors.white38)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          CraftingQueueSlotsPanel(
-            unlockedSlots: queueMax,
-            queueLength: queueUsed,
-            playerGems: playerGems,
-            isExpanding: isExpandingQueue,
-            onRequestUnlock: onExpandQueue == null
-                ? () {}
-                : () {
-                    onExpandQueue!();
-                  },
-          ),
-          if (queueFull) ...<Widget>[
-            const SizedBox(height: 8),
-            _buildErrorBox('⚠️ Kuyruk dolu ($queueUsed/$queueMax) — slot acarak genislet'),
-            if (expandGemCost != null && !canAffordExpand)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  'Sonraki slot icin $expandGemCost ELMAS gerekli',
-                  style: const TextStyle(fontSize: 10, color: Color(0xFFFCA5A5)),
-                ),
-              ),
-          ],
-          if (showGoldError) _buildErrorBox('⚠️ Altın yetersiz ($playerGold / $totalGoldCost)'),
-          if (showMatError) _buildErrorBox('⚠️ Malzeme yetersiz'),
-          if (showBankWithdrawHint)
-            _buildInfoBox(
-              '🏦 $bankCoveredShortfall malzeme bankada — bankadan çekip tekrar dene',
-            ),
-          const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: FilledButton(
-                  onPressed: onClose,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red.withValues(alpha: 0.30),
-                    foregroundColor: Colors.white,
                   ),
-                  child: const Text('İptal'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TutorialAnchorScope(
-                  id: TutorialAnchorId.craftStartBtn,
-                  child: FilledButton(
-                    onPressed: canCraft ? onCraft : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFB45309),
-                      foregroundColor: Colors.white,
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.darkObsidian.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.liquidGold.withValues(alpha: 0.35),
+                      ),
                     ),
                     child: Text(
-                      isCrafting
-                          ? 'Üretiliyor...'
-                          : '🔨 Üretimi Başlat (${batchCount}x)',
-                      textAlign: TextAlign.center,
+                      '$batchCount',
+                      style: AppTextStyles.captionBold.copyWith(
+                        color: AppColors.liquidGold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Plus Button
+                  SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: OutlinedButton(
+                      onPressed: batchCount < craftingBatchLimit
+                          ? () async {
+                              await AionHaptics.slotSelect();
+                              onBatchIncrement();
+                            }
+                          : null,
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        side: BorderSide(
+                          color: batchCount < craftingBatchLimit
+                              ? AppColors.liquidGold.withValues(alpha: 0.5)
+                              : Colors.white12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('+', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Queue Slots Panel
+            CraftingQueueSlotsPanel(
+              unlockedSlots: queueMax,
+              queueLength: queueUsed,
+              playerGems: playerGems,
+              isExpanding: isExpandingQueue,
+              onRequestUnlock: onExpandQueue == null
+                  ? () {}
+                  : () {
+                      onExpandQueue!();
+                    },
+            ),
+            if (queueFull) ...<Widget>[
+              const SizedBox(height: 8),
+              _buildErrorBox('⚠️ Kuyruk dolu ($queueUsed/$queueMax) — slot açarak genişletin'),
+              if (expandGemCost != null && !canAffordExpand)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Sonraki slot için $expandGemCost ELMAS gerekli',
+                    style: AppTextStyles.micro.copyWith(color: const Color(0xFFFCA5A5)),
+                  ),
+                ),
+            ],
+            if (showGoldError)
+              _buildErrorBox('⚠️ Altın yetersiz ($playerGold / $totalGoldCost)'),
+            if (showMatError)
+              _buildErrorBox('⚠️ Gerekli malzemeler yetersiz'),
+            if (showBankWithdrawHint)
+              _buildInfoBox(
+                '🏦 $bankCoveredShortfall malzeme bankanızda mevcut — bankadan çekip üretime başlayabilirsiniz',
+              ),
+            const SizedBox(height: 16),
+            // Action Buttons
+            Row(
+              children: <Widget>[
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      await AionHaptics.slotSelect();
+                      onClose();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.white24),
+                      foregroundColor: AppColors.mutedTitanium,
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text('Vazgeç', style: AppTextStyles.captionBold),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 3,
+                  child: TutorialAnchorScope(
+                    id: TutorialAnchorId.craftStartBtn,
+                    child: FilledButton(
+                      onPressed: canCraft
+                          ? () async {
+                              await AionHaptics.craftSuccess();
+                              onCraft();
+                            }
+                          : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFD97706),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 48),
+                        elevation: canCraft ? 4 : 0,
+                        shadowColor: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: canCraft
+                                ? AppColors.liquidGold.withValues(alpha: 0.8)
+                                : Colors.white12,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        isCrafting
+                            ? 'Dövülüyor...'
+                            : '🔨 Ocağı Ateşle (${batchCount}x)',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.captionBold.copyWith(
+                          fontSize: 13,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -453,11 +611,17 @@ class CraftingPreviewPanel extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.14),
-          border: Border.all(color: Colors.red.withValues(alpha: 0.35)),
+          color: AppColors.mysticRuby.withValues(alpha: 0.15),
+          border: Border.all(color: AppColors.mysticRuby.withValues(alpha: 0.4)),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(text, style: const TextStyle(fontSize: 11, color: Color(0xFFFCA5A5))),
+        child: Text(
+          text,
+          style: AppTextStyles.micro.copyWith(
+            color: const Color(0xFFFCA5A5),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -469,13 +633,16 @@ class CraftingPreviewPanel extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFFBBF24).withValues(alpha: 0.12),
-          border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.4)),
+          color: AppColors.liquidGold.withValues(alpha: 0.14),
+          border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.4)),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           text,
-          style: const TextStyle(fontSize: 11, color: Color(0xFFFDE68A), fontWeight: FontWeight.w600),
+          style: AppTextStyles.micro.copyWith(
+            color: AppColors.goldLight,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -483,7 +650,11 @@ class CraftingPreviewPanel extends StatelessWidget {
 }
 
 class _CraftingInfoChip extends StatelessWidget {
-  const _CraftingInfoChip({required this.icon, required this.label, this.color});
+  const _CraftingInfoChip({
+    required this.icon,
+    required this.label,
+    this.color,
+  });
 
   final IconData icon;
   final String label;
@@ -491,14 +662,28 @@ class _CraftingInfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color c = color ?? Colors.white60;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Icon(icon, size: 12, color: c),
-        const SizedBox(width: 3),
-        Text(label, style: TextStyle(fontSize: 11, color: c)),
-      ],
+    final Color c = color ?? AppColors.mutedTitanium;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF090D18),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 12, color: c),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTextStyles.micro.copyWith(
+              color: c,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

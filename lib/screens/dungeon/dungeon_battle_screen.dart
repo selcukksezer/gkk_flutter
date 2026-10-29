@@ -31,6 +31,11 @@ import 'dungeon_result_widgets.dart';
 import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/dungeon_battle_effects.dart';
 import 'widgets/dungeon_cave_theme.dart';
+import 'widgets/dungeon_cinematic_atmosphere.dart';
+import 'widgets/dungeon_combat_vfx.dart';
+import 'widgets/dungeon_monster_glb_viewport.dart';
+import 'widgets/aion2_boss_illustration_catalog.dart';
+import 'widgets/aion2_presentation_frame.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
 
 class DungeonBattleScreen extends ConsumerStatefulWidget {
@@ -58,8 +63,27 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
   bool _captchaRetryUsed = false;
   bool _rpcAttempted = false;
 
+  /// Dynamic Combat Health & Boss Rage states
+  int _playerMaxHp = 1000;
+  int _playerCurrentHp = 1000;
+  int _bossMaxHp = 1000;
+  int _bossCurrentHp = 1000;
+  bool _bossEnraged = false;
+  bool _rageBannerActive = false;
+  Timer? _rageBannerTimer;
+
   /// Ambient loop: embers, sweep bar, ring rotation, breathing.
   late final AnimationController _ambient;
+
+  /// 2027 Cinematic AAA Dungeon Lighting, 3D Arena & Ground Decal Controller.
+  late final DungeonAtmosphereController _atmosphereController;
+
+  /// 2027 AAA Combat Feel & 9-Module VFX Controller.
+  late final DungeonCombatVfxController _combatVfxController;
+  DateTime _lastVfxTick = DateTime.now();
+
+  /// 2027 Authentic Aion 2 Abyssal Monster & Boss 3D GLB Controller.
+  late final DungeonMonsterGlbController _monsterController;
 
   @override
   void initState() {
@@ -68,12 +92,31 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat();
+    _atmosphereController = DungeonAtmosphereController();
+    _combatVfxController = DungeonCombatVfxController(
+      atmosphereController: _atmosphereController,
+    );
+    _monsterController = DungeonMonsterGlbController();
+    _ambient.addListener(_onVfxTick);
+  }
+
+  void _onVfxTick() {
+    final DateTime now = DateTime.now();
+    final double dt = (now.difference(_lastVfxTick).inMicroseconds / 1000000.0).clamp(0.001, 0.05);
+    _lastVfxTick = now;
+    _combatVfxController.update(dt);
+    _monsterController.update(dt);
   }
 
   @override
   void dispose() {
     _logTimer?.cancel();
+    _rageBannerTimer?.cancel();
+    _ambient.removeListener(_onVfxTick);
     _ambient.dispose();
+    _atmosphereController.dispose();
+    _combatVfxController.dispose();
+    _monsterController.dispose();
     super.dispose();
   }
 
@@ -106,14 +149,45 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
   void _resetForRetry() {
     if (_battleInFlight) return;
     _logTimer?.cancel();
+    _rageBannerTimer?.cancel();
     _captchaRetryUsed = false;
     _rpcAttempted = false;
     setState(() {
       _result = null;
       _battleLog.clear();
       _logIndex = 0;
+      _bossEnraged = false;
+      _rageBannerActive = false;
     });
     _startCountdown();
+  }
+
+  void _triggerAtmosphericDecalForCombatLine(String line) {
+    final String lower = line.toLowerCase();
+    final bool isCritical = lower.contains('kritik') ||
+        lower.contains('ezici') ||
+        lower.contains('patlama');
+
+    // Trigger 3D GLB monster combat flinch, rim hit-flash & trauma shake
+    _monsterController.triggerHitReaction(isCritical: isCritical);
+
+    if (isCritical || lower.contains('alev') || lower.contains('ateş')) {
+      _atmosphereController.triggerScorchMark();
+    } else if (lower.contains('kan') ||
+        lower.contains('yaralandı') ||
+        lower.contains('düştün') ||
+        lower.contains('hasar') ||
+        lower.contains('darbe')) {
+      _atmosphereController.triggerBloodSplatter();
+    } else if (lower.contains('sarsıldı') ||
+        lower.contains('çatladı') ||
+        lower.contains('yıkım') ||
+        lower.contains('kaya') ||
+        lower.contains('deprem')) {
+      _atmosphereController.triggerCrackedFlagstones();
+    } else {
+      _atmosphereController.triggerSlashGouge();
+    }
   }
 
   /// Hub ile aynı kapılar — deep-link /auto bypass engeli.
@@ -190,6 +264,77 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
 
   bool get _battleLocked => _phase == 'counting' || _phase == 'fighting';
 
+  void _processCombatHpStep(String line, int playerAtk, int playerDef) {
+    final String lower = line.toLowerCase();
+    final math.Random rng = math.Random();
+
+    final bool isPlayerHit = lower.contains('ilk hamle') ||
+        lower.contains('karşı saldırı') ||
+        lower.contains('isabet etti') ||
+        lower.contains('alt ettin') ||
+        lower.contains('kritik') ||
+        lower.contains('ezici') ||
+        lower.contains('patlama') ||
+        lower.contains('kılıç havada');
+
+    final bool isEnemyHit = lower.contains('sert bir darbe') ||
+        lower.contains('yaralandı') ||
+        lower.contains('düştün') ||
+        lower.contains('hasar') ||
+        lower.contains('darbe');
+
+    int nextBossHp = _bossCurrentHp;
+    int nextPlayerHp = _playerCurrentHp;
+    bool triggeredRageNow = false;
+
+    if (isPlayerHit) {
+      final bool isCrit = lower.contains('kritik') || lower.contains('ezici');
+      final int dmg = isCrit
+          ? (playerAtk * 2.2 + rng.nextInt(30)).round()
+          : (playerAtk * 0.95 + rng.nextInt(20) + 15).round();
+      // Keep boss above 10% until final RPC returns
+      final int minFloor = (_bossMaxHp * 0.10).round();
+      nextBossHp = math.max(minFloor, _bossCurrentHp - dmg);
+
+      // Check Boss Rage threshold (<= 45% HP)
+      if ((nextBossHp / _bossMaxHp) <= 0.45 && !_bossEnraged) {
+        triggeredRageNow = true;
+      }
+    } else if (isEnemyHit) {
+      final bool isCrit = lower.contains('düştün');
+      final int baseEnemyAtk = (_zone * 18 + 22);
+      final double rageMult = _bossEnraged ? 1.45 : 1.0;
+      final int dmg = ((baseEnemyAtk * (isCrit ? 2.0 : 1.0) * rageMult) + rng.nextInt(15)).round();
+      // Keep player above 15% until final RPC returns
+      final int minFloor = (_playerMaxHp * 0.15).round();
+      nextPlayerHp = math.max(minFloor, _playerCurrentHp - dmg);
+    }
+
+    if (triggeredRageNow) {
+      _bossEnraged = true;
+      _rageBannerActive = true;
+      _rageBannerTimer?.cancel();
+      _rageBannerTimer = Timer(const Duration(milliseconds: 2400), () {
+        if (mounted) {
+          setState(() => _rageBannerActive = false);
+        }
+      });
+      _combatVfxController.cameraShake.triggerPreset(
+        CameraShakePreset.heavyCrit,
+        hitDirection: const Offset(0.0, 1.0),
+        directionalWeight: 0.9,
+      );
+      _combatVfxController.triggerHaptic(HapticImpactLevel.critical);
+      _monsterController.triggerHitReaction(isCritical: true, intensity: 1.6);
+      _atmosphereController.triggerCrackedFlagstones();
+    }
+
+    setState(() {
+      _bossCurrentHp = nextBossHp;
+      _playerCurrentHp = nextPlayerHp;
+    });
+  }
+
   Future<void> _startBattle() async {
     if (_battleInFlight) return;
     _battleInFlight = true;
@@ -199,6 +344,26 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
     );
     final int generation = ++_battleGeneration;
     final DateTime battleStart = DateTime.now();
+
+    final PlayerProfile? curProfile = ref.read(playerProvider).profile;
+    final int pMax = (curProfile?.maxHealth != null && curProfile!.maxHealth > 0)
+        ? curProfile.maxHealth
+        : ((curProfile?.level ?? 1) * 160 + 600);
+    final int pCur = (curProfile?.health != null && curProfile!.health > 0)
+        ? math.min(curProfile.health, pMax)
+        : pMax;
+
+    int powerReq = 0;
+    for (final DungeonData d in ref.read(dungeonProvider).dungeons) {
+      if (d.dungeonId == _dungeonId) {
+        powerReq = d.powerRequirement ?? 0;
+        break;
+      }
+    }
+    final int bMax = powerReq > 0
+        ? (powerReq * 2.2).round()
+        : (_zone * 6500 + 4000);
+
     setState(() {
       _phase = 'fighting';
       _battleLog
@@ -206,6 +371,12 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
         ..addAll(zoneFlavorLines(_zone))
         ..addAll(_combatFlavorLines());
       _logIndex = 0;
+      _playerMaxHp = pMax;
+      _playerCurrentHp = pCur;
+      _bossMaxHp = bMax;
+      _bossCurrentHp = bMax;
+      _bossEnraged = false;
+      _rageBannerActive = false;
     });
 
     _logTimer = Timer.periodic(const Duration(milliseconds: 650), (Timer timer) {
@@ -215,6 +386,19 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
       }
       if (_logIndex < _battleLog.length - 1) {
         setState(() => _logIndex++);
+        if (_logIndex < _battleLog.length) {
+          final String line = _battleLog[_logIndex];
+          _triggerAtmosphericDecalForCombatLine(line);
+          final player = ref.read(playerProvider).profile;
+          final int playerAtk = player?.attack ?? 25;
+          final int playerDef = player?.defense ?? 25;
+          _combatVfxController.processCombatLine(
+            line,
+            playerAttack: playerAtk,
+            playerDefense: playerDef,
+          );
+          _processCombatHpStep(line, playerAtk, playerDef);
+        }
       }
     });
 
@@ -301,17 +485,44 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
         _logTimer?.cancel();
 
         if (parsed.success) {
+          _playerCurrentHp = math.max(1, _playerCurrentHp);
+          _bossCurrentHp = 0;
+          final player = ref.read(playerProvider).profile;
           if (parsed.isCritical) {
             _battleLog.add('Ezici bir vuruş!');
+            _atmosphereController.triggerScorchMark();
+            _combatVfxController.triggerFinishingBlow(
+              isPlayerWinner: true,
+              fatalDamage: ((player?.attack ?? 30) * 2.5).round(),
+            );
           } else {
             _battleLog.add('Düşmanı alt ettin!');
+            _atmosphereController.triggerSlashGouge();
+            _combatVfxController.triggerFinishingBlow(
+              isPlayerWinner: true,
+              fatalDamage: ((player?.attack ?? 30) * 1.5).round(),
+            );
           }
         } else if (parsed.hospitalized) {
+          _playerCurrentHp = 0;
           _battleLog.add('Son vuruşta düştün...');
           _battleLog.add('Hastaneye kaldırılıyorsun.');
+          _atmosphereController.triggerBloodSplatter();
+          final player = ref.read(playerProvider).profile;
+          _combatVfxController.triggerFinishingBlow(
+            isPlayerWinner: false,
+            fatalDamage: ((player?.defense ?? 20) * 2.2).round(),
+          );
         } else {
+          _playerCurrentHp = 0;
           _battleLog.add('Son vuruşta düştün...');
           _battleLog.add('Bu sefer şans senden yana değildi.');
+          _atmosphereController.triggerBloodSplatter();
+          final player = ref.read(playerProvider).profile;
+          _combatVfxController.triggerFinishingBlow(
+            isPlayerWinner: false,
+            fatalDamage: ((player?.defense ?? 20) * 1.8).round(),
+          );
         }
 
         setState(() {
@@ -331,12 +542,14 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
         }
       } else {
         setState(() {
+          _playerCurrentHp = 0;
           _result = null;
           _phase = 'failure';
         });
       }
     } catch (e) {
       _logTimer?.cancel();
+      _rageBannerTimer?.cancel();
       if (!mounted) return;
       final String msg = _rpcAttempted
           ? 'Bağlantı koptu — savaş sunucuda işlenmiş olabilir. Enerji/ödülü kontrol et, otomatik tekrar yok.'
@@ -411,7 +624,12 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
       body: Stack(
         fit: StackFit.expand,
         children: <Widget>[
-          _BattleBackdrop(theme: theme, ambient: _ambient, embers: ambientFx),
+          _BattleBackdrop(
+            theme: theme,
+            ambient: _ambient,
+            embers: ambientFx,
+            atmosphereController: _atmosphereController,
+          ),
           SafeArea(
             bottom: false,
             child: Column(
@@ -561,11 +779,28 @@ class _DungeonBattleScreenState extends ConsumerState<DungeonBattleScreen>
           onComplete: _startBattle,
         );
       case 'fighting':
+        final PlayerProfile? prof = ref.read(playerProvider).profile;
+        final String pName = ((prof?.displayName ?? prof?.username) ?? 'SEN').trim();
+        final Aion2BossArtDefinition bossArt =
+            Aion2BossIllustrationCatalog.resolveForZone(_zone);
+
         return _FightingView(
           theme: theme,
           ambient: _ambient,
           characterAsset: _characterAsset,
           logLines: _battleLog.take(_logIndex + 1).toList(),
+          vfxController: _combatVfxController,
+          zone: _zone,
+          monsterController: _monsterController,
+          playerName: pName.isEmpty ? 'SEN' : pName,
+          playerHp: _playerCurrentHp,
+          playerMaxHp: _playerMaxHp,
+          bossName: bossArt.name,
+          bossTitle: bossArt.title,
+          bossHp: _bossCurrentHp,
+          bossMaxHp: _bossMaxHp,
+          isBossEnraged: _bossEnraged,
+          isRageBannerActive: _rageBannerActive,
         );
       case 'success':
         return _buildSuccessPhase();
@@ -717,11 +952,13 @@ class _BattleBackdrop extends StatelessWidget {
     required this.theme,
     required this.ambient,
     required this.embers,
+    required this.atmosphereController,
   });
 
   final CaveCardTheme theme;
   final AnimationController ambient;
   final bool embers;
+  final DungeonAtmosphereController atmosphereController;
 
   @override
   Widget build(BuildContext context) {
@@ -730,7 +967,16 @@ class _BattleBackdrop extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        const ColoredBox(color: BattlePalette.carbonVoid),
+        // 2027 AAA Cinematic Atmosphere: 3D flagstone arena, flickering torches, soft shadows, ground decals, mist
+        DungeonCinematicAtmosphere(
+          controller: atmosphereController,
+          theme: theme,
+          showTorches: true,
+          showArena3D: true,
+          showMist: true,
+          showDecals: true,
+          showDynamicShadows: true,
+        ),
         // Dungeon art fills the top half, feathered downward.
         Positioned(
           top: 0,
@@ -756,7 +1002,7 @@ class _BattleBackdrop extends StatelessWidget {
               theme.assetPath,
               fit: BoxFit.cover,
               errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                  ColoredBox(color: theme.surfaceDeep),
+                  ColoredBox(color: theme.surfaceDeep.withValues(alpha: 0.5)),
             ),
           ),
         ),
@@ -768,8 +1014,8 @@ class _BattleBackdrop extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: <Color>[
                 Colors.transparent,
-                BattlePalette.carbonVoid.withValues(alpha: 0.35),
-                BattlePalette.carbonVoid,
+                BattlePalette.carbonVoid.withValues(alpha: 0.25),
+                BattlePalette.carbonVoid.withValues(alpha: 0.85),
               ],
               stops: const <double>[0.25, 0.55, 0.95],
             ),
@@ -796,9 +1042,9 @@ class _BattleBackdrop extends StatelessWidget {
 }
 
 // =============================================================================
-// Idle — hero intro: character vs dungeon, stat chips, gold CTA.
+// Idle — hero intro: 3D abyssal boss / monster GLB preview vs character, stat chips, gold CTA.
 // =============================================================================
-class _IdleView extends StatelessWidget {
+class _IdleView extends StatefulWidget {
   const _IdleView({
     required this.theme,
     required this.ambient,
@@ -822,33 +1068,147 @@ class _IdleView extends StatelessWidget {
   final VoidCallback onBack;
 
   @override
+  State<_IdleView> createState() => _IdleViewState();
+}
+
+class _IdleViewState extends State<_IdleView> {
+  bool _show3dMonster = true;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        const SizedBox(height: 6),
+        // Toggle pill between 3D Monster / Abyssal Boss and Player Character
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: BattlePalette.spaceNavy.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: widget.theme.accent.withValues(alpha: 0.35),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _show3dMonster = true);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _show3dMonster
+                          ? widget.theme.accent.withValues(alpha: 0.35)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      border: _show3dMonster
+                          ? Border.all(color: widget.theme.accentGlow.withValues(alpha: 0.6))
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.pets_rounded,
+                          size: 13,
+                          color: _show3dMonster ? Colors.white : Colors.white60,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '3D Canavar',
+                          style: TextStyle(
+                            color: _show3dMonster ? Colors.white : Colors.white60,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _show3dMonster = false);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: !_show3dMonster
+                          ? BattlePalette.toxicNeon.withValues(alpha: 0.25)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      border: !_show3dMonster
+                          ? Border.all(color: BattlePalette.toxicNeon.withValues(alpha: 0.5))
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.person_pin,
+                          size: 13,
+                          color: !_show3dMonster ? Colors.white : Colors.white60,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Kahraman',
+                          style: TextStyle(
+                            color: !_show3dMonster ? Colors.white : Colors.white60,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 8),
-        // Breathing character over the dungeon art.
+        // 3D Monster Viewport or Breathing character
         FadeSlideIn(
           child: SizedBox(
             height: 250,
-            child: AnimatedBuilder(
-              animation: ambient,
-              builder: (BuildContext context, Widget? child) {
-                final double breathe =
-                    math.sin(ambient.value * 2 * math.pi) * 6;
-                return Transform.translate(
-                  offset: Offset(0, breathe),
-                  child: child,
-                );
-              },
-              child: Image.asset(
-                characterAsset,
-                fit: BoxFit.contain,
-                errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    Icon(Icons.person_pin,
-                        size: 140, color: theme.accentGlow),
-              ),
-            ),
+            child: _show3dMonster
+                ? DungeonMonsterGlbViewport(
+                    zone: widget.zone,
+                    height: 250,
+                    interactive: true,
+                    showBadge: true,
+                    showPedestal: true,
+                    showAura: true,
+                  )
+                : AnimatedBuilder(
+                    animation: widget.ambient,
+                    builder: (BuildContext context, Widget? child) {
+                      final double breathe =
+                          math.sin(widget.ambient.value * 2 * math.pi) * 6;
+                      return Transform.translate(
+                        offset: Offset(0, breathe),
+                        child: child,
+                      );
+                    },
+                    child: Image.asset(
+                      widget.characterAsset,
+                      fit: BoxFit.contain,
+                      errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
+                          Icon(Icons.person_pin,
+                              size: 140, color: widget.theme.accentGlow),
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 14),
@@ -907,6 +1267,13 @@ class _IdleView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
+                Aion2BossPortraitCard(
+                  boss: Aion2BossIllustrationCatalog.resolveForZone(widget.zone),
+                  height: 110,
+                  animationProgress: widget.ambient.value,
+                  showLore: true,
+                ),
+                const SizedBox(height: 12),
                 Text(
                   'Karanlığın derinlerinde düşman seni bekliyor. Hazır olduğunda saldır.',
                   textAlign: TextAlign.center,
@@ -1055,6 +1422,8 @@ class _VsIntroViewState extends State<_VsIntroView>
   @override
   Widget build(BuildContext context) {
     final CaveCardTheme theme = widget.theme;
+    final Aion2BossArtDefinition bossArt =
+        Aion2BossIllustrationCatalog.resolveForZone(widget.zone);
 
     return AnimatedBuilder(
       animation: _seq,
@@ -1166,14 +1535,52 @@ class _VsIntroViewState extends State<_VsIntroView>
                         offset: Offset(300 * (1 - slideT), 0),
                         child: _DuelPortrait(
                           asset: theme.assetPath,
-                          borderColor: BattlePalette.mysticRuby,
-                          label: 'DÜŞMAN',
+                          borderColor: bossArt.goldFiligreeColor,
+                          label: bossArt.name,
                           cover: true,
+                          bossDef: bossArt,
+                          animationProgress: v,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: BattlePalette.spaceNavy.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: bossArt.goldFiligreeColor.withValues(alpha: 0.6),
+                          width: 1.0,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: bossArt.glowColor.withValues(alpha: 0.25),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(bossArt.tier.icon, size: 11, color: bossArt.goldFiligreeColor),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${bossArt.tier.label} • ${bossArt.title.toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: bossArt.goldFiligreeColor,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   // ── Stat duel panel.
                   Opacity(
                     opacity: statsT,
@@ -1615,153 +2022,282 @@ class _FightingView extends StatelessWidget {
     required this.ambient,
     required this.characterAsset,
     required this.logLines,
+    required this.vfxController,
+    required this.zone,
+    this.monsterController,
+    required this.playerName,
+    required this.playerHp,
+    required this.playerMaxHp,
+    required this.bossName,
+    required this.bossTitle,
+    required this.bossHp,
+    required this.bossMaxHp,
+    required this.isBossEnraged,
+    required this.isRageBannerActive,
   });
 
   final CaveCardTheme theme;
   final AnimationController ambient;
   final String characterAsset;
   final List<String> logLines;
+  final DungeonCombatVfxController vfxController;
+  final int zone;
+  final DungeonMonsterGlbController? monsterController;
+  final String playerName;
+  final int playerHp;
+  final int playerMaxHp;
+  final String bossName;
+  final String bossTitle;
+  final int bossHp;
+  final int bossMaxHp;
+  final bool isBossEnraged;
+  final bool isRageBannerActive;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
+      clipBehavior: Clip.none,
       children: <Widget>[
-        const SizedBox(height: 12),
-        // Duel header: player portrait vs dungeon portrait.
-        FadeSlideIn(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              _DuelPortrait(
-                asset: characterAsset,
-                borderColor: BattlePalette.toxicNeon,
-                label: 'SEN',
+        // 1. Subtle perimeter rage vignette when boss is enraged
+        if (isBossEnraged)
+          _BossRageScreenVignette(ambient: ambient),
+
+        // 2. Hit-Stop micro-pause specular freeze-frame overlay
+        _HitStopFreezeOverlay(vfxController: vfxController),
+
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const SizedBox(height: 8),
+
+            // 3. DUAL COMBAT HEALTH HUD WITH IMPACT CATCHUP DRAINS
+            FadeSlideIn(
+              child: _DualCombatHealthHud(
+                playerName: playerName,
+                playerHp: playerHp,
+                playerMaxHp: playerMaxHp,
+                bossName: bossName,
+                bossTitle: bossTitle,
+                bossHp: bossHp,
+                bossMaxHp: bossMaxHp,
+                isBossEnraged: isBossEnraged,
+                theme: theme,
               ),
-              // Shaking clash icon.
-              AnimatedBuilder(
-                animation: ambient,
-                builder: (BuildContext context, Widget? child) {
-                  final double t = ambient.value * 2 * math.pi;
-                  final double shake = math.sin(t * 14) * 2.4;
-                  final double tilt = math.sin(t * 7) * 0.09;
-                  return Transform.translate(
-                    offset: Offset(shake, -shake.abs() * 0.4),
-                    child: Transform.rotate(angle: tilt, child: child),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+            ),
+
+            if (isRageBannerActive)
+              const _BossRageAnnouncementBanner(),
+
+            const SizedBox(height: 10),
+
+            // 4. DUEL ARENA HOST: Character vs Boss with all 9 VFX modules
+            FadeSlideIn(
+              delayMs: 60,
+              child: DungeonCombatVfxArenaHost(
+                controller: vfxController,
+                playerPortrait: _DuelPortrait(
+                  asset: characterAsset,
+                  borderColor: BattlePalette.toxicNeon,
+                  label: playerName,
+                ),
+                enemyPortrait: _DuelPortrait(
+                  asset: theme.assetPath,
+                  borderColor: isBossEnraged
+                      ? BattlePalette.coralFlare
+                      : BattlePalette.mysticRuby,
+                  label: bossName,
+                  cover: true,
+                  isEnraged: isBossEnraged,
+                ),
+                clashIcon: AnimatedBuilder(
+                  animation: ambient,
+                  builder: (BuildContext context, Widget? child) {
+                    final double t = ambient.value * 2 * math.pi;
+                    final double shake = math.sin(t * 14) * 2.4;
+                    final double tilt = math.sin(t * 7) * 0.09;
+                    return Transform.translate(
+                      offset: Offset(shake, -shake.abs() * 0.4),
+                      child: Transform.rotate(angle: tilt, child: child),
+                    );
+                  },
                   child: Container(
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: <Color>[
-                          BattlePalette.cyberFuchsia,
-                          Color(0xFF9F1239),
-                        ],
+                        colors: isBossEnraged
+                            ? const <Color>[
+                                BattlePalette.mysticRuby,
+                                BattlePalette.warningSolar,
+                              ]
+                            : const <Color>[
+                                BattlePalette.cyberFuchsia,
+                                Color(0xFF9F1239),
+                              ],
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: BattlePalette.cyberFuchsia
-                              .withValues(alpha: 0.55),
-                          blurRadius: 24,
+                          color: (isBossEnraged
+                                  ? BattlePalette.mysticRuby
+                                  : BattlePalette.cyberFuchsia)
+                              .withValues(alpha: 0.6),
+                          blurRadius: 26,
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.flash_on_rounded,
+                    child: Icon(
+                      isBossEnraged
+                          ? Icons.local_fire_department_rounded
+                          : Icons.flash_on_rounded,
                       color: Colors.white,
                       size: 28,
                     ),
                   ),
                 ),
               ),
-              _DuelPortrait(
-                asset: theme.assetPath,
-                borderColor: BattlePalette.mysticRuby,
-                label: 'DÜŞMAN',
-                cover: true,
+            ),
+
+            const SizedBox(height: 12),
+
+            // 5. 2027 Authentic Aion 2 Abyssal Monster & Boss 3D GLB Viewport with 2.5D Parallax Camera Shake
+            FadeSlideIn(
+              delayMs: 80,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ListenableBuilder(
+                  listenable: vfxController.cameraShake,
+                  builder: (BuildContext context, Widget? child) {
+                    final Offset shakeOffset =
+                        vfxController.cameraShake.state.translation * 0.65;
+                    return Transform.translate(
+                      offset: shakeOffset,
+                      child: child,
+                    );
+                  },
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      if (isBossEnraged)
+                        Positioned.fill(
+                          child: AnimatedBuilder(
+                            animation: ambient,
+                            builder: (BuildContext context, Widget? child) {
+                              final double pulse = 0.25 +
+                                  0.15 *
+                                      math
+                                          .sin(ambient.value * 2 * math.pi * 4)
+                                          .abs();
+                              return Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color: BattlePalette.mysticRuby
+                                          .withValues(alpha: pulse),
+                                      blurRadius: 50,
+                                      spreadRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      DungeonMonsterGlbViewport(
+                        zone: zone,
+                        height: 220,
+                        controller: monsterController,
+                        interactive: true,
+                        showBadge: true,
+                        showPedestal: true,
+                        showAura: true,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 22),
-        // Combat sweep bar.
-        FadeSlideIn(
-          delayMs: 150,
-          child: AnimatedBuilder(
-            animation: ambient,
-            builder: (BuildContext context, Widget? child) {
-              return EnergySweepBar(progress: (ambient.value * 3) % 1.0);
-            },
-          ),
-        ),
-        const SizedBox(height: 18),
-        // Live combat log console.
-        GlassPanel(
-          accent: theme.accent,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            ),
+
+            const SizedBox(height: 20),
+
+            // 6. Combat sweep bar.
+            FadeSlideIn(
+              delayMs: 140,
+              child: AnimatedBuilder(
+                animation: ambient,
+                builder: (BuildContext context, Widget? child) {
+                  return EnergySweepBar(progress: (ambient.value * 3) % 1.0);
+                },
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // 7. Live combat log console.
+            GlassPanel(
+              accent: theme.accent,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Icon(Icons.radio_button_checked_rounded,
-                      size: 12, color: BattlePalette.mysticRuby),
-                  const SizedBox(width: 6),
-                  Text(
-                    'SAVAŞ RAPORU — CANLI',
-                    style: TextStyle(
-                      color: BattlePalette.mutedTitanium,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(Icons.radio_button_checked_rounded,
+                          size: 12, color: BattlePalette.mysticRuby),
+                      const SizedBox(width: 6),
+                      Text(
+                        'SAVAŞ RAPORU — CANLI',
+                        style: TextStyle(
+                          color: BattlePalette.mutedTitanium,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...logLines.asMap().entries.map(
+                    (MapEntry<int, String> entry) => FadeSlideIn(
+                      key: ValueKey<String>('log_${entry.key}'),
+                      offsetY: 12,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              '▸ ',
+                              style: TextStyle(
+                                color: theme.accentGlow,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                entry.value,
+                                style: TextStyle(
+                                  color: entry.key == logLines.length - 1
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 13,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              ...logLines.asMap().entries.map(
-                (MapEntry<int, String> entry) => FadeSlideIn(
-                  key: ValueKey<String>('log_${entry.key}'),
-                  offsetY: 12,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          '▸ ',
-                          style: TextStyle(
-                            color: theme.accentGlow,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            entry.value,
-                            style: TextStyle(
-                              color: entry.key == logLines.length - 1
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13,
-                              height: 1.35,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
@@ -1774,52 +2310,760 @@ class _DuelPortrait extends StatelessWidget {
     required this.borderColor,
     required this.label,
     this.cover = false,
+    this.bossDef,
+    this.animationProgress = 0.0,
+    this.isEnraged = false,
   });
 
   final String asset;
   final Color borderColor;
   final String label;
   final bool cover;
+  final Aion2BossArtDefinition? bossDef;
+  final double animationProgress;
+  final bool isEnraged;
 
   @override
   Widget build(BuildContext context) {
+    final Color effectiveBorder = isEnraged ? BattlePalette.coralFlare : borderColor;
+
     return Column(
       children: <Widget>[
         Container(
-          width: 92,
-          height: 92,
+          width: 96,
+          height: 96,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(16),
             color: BattlePalette.spaceNavy,
-            border: Border.all(color: borderColor.withValues(alpha: 0.8), width: 2),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: borderColor.withValues(alpha: 0.35),
-                blurRadius: 20,
-                spreadRadius: -2,
+                color: isEnraged
+                    ? BattlePalette.mysticRuby.withValues(alpha: 0.75)
+                    : (bossDef?.glowColor ?? borderColor).withValues(alpha: 0.38),
+                blurRadius: isEnraged ? 28 : 20,
+                spreadRadius: isEnraged ? 2 : 1,
               ),
             ],
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Image.asset(
-            asset,
-            fit: cover ? BoxFit.cover : BoxFit.contain,
-            alignment: cover ? Alignment.center : Alignment.topCenter,
-            errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                Icon(Icons.shield_rounded, color: borderColor, size: 40),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                if (bossDef != null)
+                  CustomPaint(
+                    painter: Aion2AbyssalIllustrationPainter(
+                      boss: bossDef!,
+                      animationProgress: animationProgress,
+                      intensity: isEnraged ? 1.0 : 0.85,
+                    ),
+                  )
+                else
+                  ColoredBox(color: BattlePalette.spaceNavy),
+
+                Opacity(
+                  opacity: bossDef != null ? 0.35 : 1.0,
+                  child: Image.asset(
+                    asset,
+                    fit: cover ? BoxFit.cover : BoxFit.contain,
+                    alignment: cover ? Alignment.center : Alignment.topCenter,
+                    errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
+                        Icon(Icons.shield_rounded, color: effectiveBorder, size: 40),
+                  ),
+                ),
+
+                CustomPaint(
+                  painter: Aion2GoldFiligreePainter(
+                    primaryGold: effectiveBorder,
+                    deepGold: const Color(0xFFB8860B),
+                    highlightGold: Colors.white,
+                    cornerSize: 18,
+                    showCrest: bossDef != null,
+                    showGems: true,
+                  ),
+                ),
+
+                if (isEnraged)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: BattlePalette.mysticRuby,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: BattlePalette.warningSolar, width: 0.8),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: BattlePalette.mysticRuby.withValues(alpha: 0.8),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        '🔥 ÖFKE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: borderColor,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.5,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: BattlePalette.carbonVoid.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: effectiveBorder.withValues(alpha: 0.4), width: 0.8),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: effectiveBorder,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+// =============================================================================
+// Combat Juice: Impact Health Bar with Delayed Ghost Drain & Segmented Notches
+// =============================================================================
+
+class _ImpactHealthBar extends StatefulWidget {
+  const _ImpactHealthBar({
+    required this.currentHp,
+    required this.maxHp,
+    required this.gradientColors,
+    required this.impactColor,
+    required this.height,
+    this.isEnraged = false,
+  });
+
+  final int currentHp;
+  final int maxHp;
+  final List<Color> gradientColors;
+  final Color impactColor;
+  final double height;
+  final bool isEnraged;
+
+  @override
+  State<_ImpactHealthBar> createState() => _ImpactHealthBarState();
+}
+
+class _ImpactHealthBarState extends State<_ImpactHealthBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _drainController;
+  late Animation<double> _drainAnimation;
+  double _displayedGhostHp = 0.0;
+  Timer? _drainDelayTimer;
+  bool _isFlashing = false;
+  Timer? _flashTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayedGhostHp = widget.currentHp.toDouble();
+    _drainController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 550),
+    );
+    _drainAnimation = Tween<double>(
+      begin: _displayedGhostHp,
+      end: _displayedGhostHp,
+    ).animate(CurvedAnimation(
+      parent: _drainController,
+      curve: Curves.easeOutCubic,
+    ))
+      ..addListener(() {
+        setState(() {
+          _displayedGhostHp = _drainAnimation.value;
+        });
+      });
+  }
+
+  @override
+  void didUpdateWidget(_ImpactHealthBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentHp < oldWidget.currentHp) {
+      // Damage taken!
+      _drainDelayTimer?.cancel();
+      _drainController.stop();
+
+      final double currentGhost = math.max(
+        _displayedGhostHp,
+        oldWidget.currentHp.toDouble(),
+      );
+      _displayedGhostHp = currentGhost;
+
+      // Trigger impact border flash
+      _isFlashing = true;
+      _flashTimer?.cancel();
+      _flashTimer = Timer(const Duration(milliseconds: 160), () {
+        if (mounted) setState(() => _isFlashing = false);
+      });
+
+      // Micro delay for impact freeze, then smoothly drain ghost bar down
+      _drainDelayTimer = Timer(const Duration(milliseconds: 260), () {
+        if (!mounted) return;
+        _drainAnimation = Tween<double>(
+          begin: _displayedGhostHp,
+          end: widget.currentHp.toDouble(),
+        ).animate(CurvedAnimation(
+          parent: _drainController,
+          curve: Curves.easeOutCubic,
+        ));
+        _drainController.forward(from: 0.0);
+      });
+    } else if (widget.currentHp > oldWidget.currentHp) {
+      _displayedGhostHp = widget.currentHp.toDouble();
+    }
+  }
+
+  @override
+  void dispose() {
+    _drainDelayTimer?.cancel();
+    _flashTimer?.cancel();
+    _drainController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double safeMax = math.max(1.0, widget.maxHp.toDouble());
+    final double currentPct = (widget.currentHp / safeMax).clamp(0.0, 1.0);
+    final double ghostPct = (_displayedGhostHp / safeMax).clamp(0.0, 1.0);
+
+    return Container(
+      height: widget.height,
+      decoration: BoxDecoration(
+        color: BattlePalette.carbonVoid,
+        borderRadius: BorderRadius.circular(widget.height / 2),
+        border: Border.all(
+          color: widget.isEnraged
+              ? BattlePalette.mysticRuby
+              : (_isFlashing
+                  ? Colors.white.withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.15)),
+          width: widget.isEnraged ? 1.5 : 1.0,
+        ),
+        boxShadow: widget.isEnraged
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: BattlePalette.mysticRuby.withValues(alpha: 0.55),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(widget.height / 2),
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            // 1. Ghost / Impact Catchup Drain Bar
+            FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: ghostPct,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: widget.impactColor,
+                ),
+              ),
+            ),
+
+            // 2. Foreground Current HP Bar
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: currentPct, end: currentPct),
+              duration: const Duration(milliseconds: 140),
+              curve: Curves.easeOutQuad,
+              builder: (BuildContext context, double animatedPct, Widget? child) {
+                return FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: animatedPct,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: widget.gradientColors,
+                      ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: widget.gradientColors.last.withValues(alpha: 0.45),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // 3. Segmented Tick Divider Notches (every 10%)
+            const CustomPaint(
+              painter: _HealthBarNotchesPainter(segments: 10),
+            ),
+
+            // 4. Gloss specular reflection
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: widget.height * 0.45,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Colors.white.withValues(alpha: 0.25),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // 5. Damage Impact Flash Overlay
+            if (_isFlashing)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.white.withValues(alpha: 0.35),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HealthBarNotchesPainter extends CustomPainter {
+  const _HealthBarNotchesPainter({required this.segments});
+  final int segments;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (segments <= 1) return;
+    final Paint linePaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..strokeWidth = 1.0;
+
+    for (int i = 1; i < segments; i++) {
+      final double x = size.width * (i / segments);
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), linePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HealthBarNotchesPainter oldDelegate) =>
+      oldDelegate.segments != segments;
+}
+
+// =============================================================================
+// Dual Combat Health HUD
+// =============================================================================
+
+class _DualCombatHealthHud extends StatelessWidget {
+  const _DualCombatHealthHud({
+    required this.playerName,
+    required this.playerHp,
+    required this.playerMaxHp,
+    required this.bossName,
+    required this.bossTitle,
+    required this.bossHp,
+    required this.bossMaxHp,
+    required this.isBossEnraged,
+    required this.theme,
+  });
+
+  final String playerName;
+  final int playerHp;
+  final int playerMaxHp;
+  final String bossName;
+  final String bossTitle;
+  final int bossHp;
+  final int bossMaxHp;
+  final bool isBossEnraged;
+  final CaveCardTheme theme;
+
+  String _formatHp(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    }
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return '$value';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double playerPct = ((playerHp / math.max(1, playerMaxHp)) * 100).clamp(0, 100);
+    final double bossPct = ((bossHp / math.max(1, bossMaxHp)) * 100).clamp(0, 100);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: BattlePalette.spaceNavy.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isBossEnraged
+              ? BattlePalette.mysticRuby.withValues(alpha: 0.7)
+              : Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: isBossEnraged
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: BattlePalette.mysticRuby.withValues(alpha: 0.3),
+                  blurRadius: 14,
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              // PLAYER HEALTH SECTION
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            playerName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: BattlePalette.toxicNeon,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${_formatHp(playerHp)} / ${_formatHp(playerMaxHp)}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    _ImpactHealthBar(
+                      currentHp: playerHp,
+                      maxHp: playerMaxHp,
+                      gradientColors: const <Color>[
+                        Color(0xFF10B981),
+                        Color(0xFF06B6D4),
+                      ],
+                      impactColor: const Color(0xFFFDE68A),
+                      height: 12,
+                    ),
+                  ],
+                ),
+              ),
+
+              // VS DIVIDER / ENRAGE SKULL
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: isBossEnraged
+                    ? const Icon(
+                        Icons.local_fire_department_rounded,
+                        color: BattlePalette.mysticRuby,
+                        size: 20,
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: BattlePalette.carbonVoid,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Text(
+                          'VS',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+              ),
+
+              // BOSS HEALTH SECTION
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Text(
+                          '%${bossPct.round()}',
+                          style: TextStyle(
+                            color: isBossEnraged
+                                ? BattlePalette.warningSolar
+                                : Colors.white.withValues(alpha: 0.8),
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            bossName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isBossEnraged
+                                  ? BattlePalette.coralFlare
+                                  : BattlePalette.mysticRuby,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    _ImpactHealthBar(
+                      currentHp: bossHp,
+                      maxHp: bossMaxHp,
+                      gradientColors: isBossEnraged
+                          ? const <Color>[
+                              Color(0xFFDC2626),
+                              Color(0xFFF59E0B),
+                            ]
+                          : const <Color>[
+                              Color(0xFF991B1B),
+                              Color(0xFFE11D48),
+                            ],
+                      impactColor: const Color(0xFFFED7AA),
+                      height: 12,
+                      isEnraged: isBossEnraged,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (isBossEnraged) ...<Widget>[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: BattlePalette.mysticRuby.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: BattlePalette.mysticRuby.withValues(alpha: 0.5),
+                  width: 0.8,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 11,
+                    color: BattlePalette.warningSolar,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'ÖFKE MODU — CANAVAR SALDIRILARI %45 GÜÇLENDİ!',
+                    style: TextStyle(
+                      color: BattlePalette.warningSolar,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Boss Rage Announcement Banner
+// =============================================================================
+
+class _BossRageAnnouncementBanner extends StatelessWidget {
+  const _BossRageAnnouncementBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.elasticOut,
+      builder: (BuildContext context, double t, Widget? child) {
+        return Transform.scale(
+          scale: 0.8 + 0.2 * t,
+          child: Opacity(
+            opacity: t.clamp(0.0, 1.0),
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: <Color>[
+              Color(0xFF7F1D1D),
+              Color(0xFFE11D48),
+              Color(0xFF7F1D1D),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: BattlePalette.warningSolar,
+            width: 1.5,
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: BattlePalette.mysticRuby.withValues(alpha: 0.8),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text(
+              '⚠️ ÖFKE PATLAMASI! ⚠️',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.6,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Hit-Stop Micro-Pause Specular Freeze-Frame Overlay
+// =============================================================================
+
+class _HitStopFreezeOverlay extends StatelessWidget {
+  const _HitStopFreezeOverlay({
+    required this.vfxController,
+  });
+
+  final DungeonCombatVfxController vfxController;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: vfxController.hitStopManager,
+      builder: (BuildContext context, Widget? child) {
+        final bool isPaused = vfxController.hitStopManager.globalTimeScale < 0.95 ||
+            vfxController.hitStopManager.activeCount > 0;
+        if (!isPaused) return const SizedBox.shrink();
+
+        return Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  width: 2.5,
+                ),
+                gradient: RadialGradient(
+                  colors: <Color>[
+                    Colors.white.withValues(alpha: 0.08),
+                    Colors.transparent,
+                    Colors.white.withValues(alpha: 0.15),
+                  ],
+                  stops: const <double>[0.0, 0.7, 1.0],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// =============================================================================
+// Boss Rage Perimeter Screen Vignette
+// =============================================================================
+
+class _BossRageScreenVignette extends StatelessWidget {
+  const _BossRageScreenVignette({
+    required this.ambient,
+  });
+
+  final AnimationController ambient;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: ambient,
+      builder: (BuildContext context, Widget? child) {
+        final double pulse = 0.12 + 0.10 * math.sin(ambient.value * 2 * math.pi * 3).abs();
+        return Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  radius: 0.95,
+                  colors: <Color>[
+                    Colors.transparent,
+                    BattlePalette.mysticRuby.withValues(alpha: pulse * 0.4),
+                    BattlePalette.mysticRuby.withValues(alpha: pulse),
+                  ],
+                  stops: const <double>[0.6, 0.85, 1.0],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

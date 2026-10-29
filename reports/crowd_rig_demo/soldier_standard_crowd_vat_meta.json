@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "model_name": "soldier_standard_crowd",
+  "vertex_count": 120,
+  "total_frames": 60,
+  "fps": 30.0,
+  "duration_seconds": 2.0,
+  "texture_dimensions": {
+    "width": 120,
+    "height": 60
+  },
+  "bounding_box": {
+    "min": [
+      -0.5999573469161987,
+      0.0,
+      -0.5999573469161987
+    ],
+    "max": [
+      0.5999573469161987,
+      1.784999966621399,
+      0.5999573469161987
+    ],
+    "scale": [
+      1.1999146938323975,
+      1.784999966621399,
+      1.1999146938323975
+    ],
+    "offset": [
+      -0.5999573469161987,
+      0.0,
+      -0.5999573469161987
+    ]
+  },
+  "clips": [
+    {
+      "name": "default",
+      "start_frame": 0,
+      "end_frame": 59,
+      "frame_count": 60,
+      "fps": 30.0,
+      "loop": true
+    }
+  ],
+  "textures": {
+    "position_map": "soldier_standard_crowd_vat_pos.png",
+    "normal_map": "soldier_standard_crowd_vat_norm.png"
+  }
+}

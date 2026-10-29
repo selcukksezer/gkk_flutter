@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -28,7 +29,13 @@ import '../../models/nemesis_model.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import '../guild_war/widgets/faction_crest_painter.dart';
+import 'widgets/arena_map_viewport.dart';
+import 'widgets/pvp_thumb_action_deck.dart';
 import 'widgets/nemesis_rival_panel.dart';
+import 'widgets/gladiator_tier_emblem.dart';
+import 'widgets/pvp_versus_splash_banner.dart';
+import 'widgets/pvp_colosseum_backdrop.dart';
 
 class OnlinePlayer {
   const OnlinePlayer({
@@ -102,6 +109,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
   NemesisRival _nemesis = NemesisRival.none;
   bool _dismissLoading = false;
   bool _revengeHandled = false;
+  int _selectedWager = 0;
 
   @override
   void initState() {
@@ -283,6 +291,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
   Future<void> _sendDuelInvite(
     OnlinePlayer player, {
     String source = 'discovery',
+    int? preSelectedWager,
   }) async {
     final PlayerProfile? profile = ref.read(playerProvider).profile;
     final String? combatBlock = combatRestrictionForProfile(
@@ -309,9 +318,21 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
       return;
     }
 
-    final int? wager = await _askWager(player);
+    final int? wager = preSelectedWager ?? await _askWager(player);
     if (wager == null || !mounted) return;
     if (_isInviteBlocked(player.authId)) return;
+
+    final int userGold = profile?.gold ?? 0;
+    if (wager > userGold) {
+      AppMessenger.showError(
+        context,
+        'Yetersiz altın! Bahis için $wager altın gerekiyor (Mevcut: $userGold).',
+      );
+      return;
+    }
+
+    // Tactile heavy impact feedback on duel challenge start
+    await HapticFeedback.heavyImpact();
 
     setState(() => _invitingId = player.authId);
     try {
@@ -358,63 +379,261 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     }
   }
 
+  Future<void> _handleQuickDuel(int wager) async {
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    final String? combatBlock = combatRestrictionForProfile(
+      health: profile?.health ?? 0,
+      maxHealth: profile?.maxHealth ?? 0,
+      hospitalUntil: profile?.hospitalUntil,
+      prisonUntil: profile?.prisonUntil,
+    );
+    if (combatBlock != null) {
+      AppMessenger.showError(context, combatBlock);
+      return;
+    }
+
+    final int userGold = profile?.gold ?? 0;
+    final int safeWager = wager.clamp(0, userGold > 0 ? userGold : 0);
+    if (wager > userGold && userGold >= 0) {
+      AppMessenger.showError(
+        context,
+        'Yetersiz altın! Hızlı düello için $wager altın gerekiyor (Mevcut: $userGold).',
+      );
+      setState(() => _selectedWager = safeWager);
+      return;
+    }
+
+    if (_onlinePlayers.isNotEmpty) {
+      OnlinePlayer? target;
+      for (final OnlinePlayer p in _onlinePlayers) {
+        if (!_isInviteBlocked(p.authId)) {
+          target = p;
+          break;
+        }
+      }
+      if (target != null) {
+        await _sendDuelInvite(target, preSelectedWager: safeWager);
+        return;
+      }
+    }
+
+    await _loadOnlinePlayers(userInitiated: true);
+    if (!mounted) return;
+    if (_onlinePlayers.isNotEmpty) {
+      for (final OnlinePlayer p in _onlinePlayers) {
+        if (!_isInviteBlocked(p.authId)) {
+          await _sendDuelInvite(p, preSelectedWager: safeWager);
+          return;
+        }
+      }
+    }
+
+    AppMessenger.show(context, 'Uygun açık düello rakibi bulunamadı. Arenaya yönlendiriliyorsunuz...');
+    final dashboard = ref.read(pvpDashboardProvider);
+    _goToFirstArena(dashboard.arenas);
+  }
+
   Future<int?> _askWager(OnlinePlayer player) async {
-    final TextEditingController ctrl = TextEditingController(text: '0');
+    final PlayerProfile? profile = ref.read(playerProvider).profile;
+    final int userGold = profile?.gold ?? 0;
+    final int initialVal = (_selectedWager > 0 && _selectedWager <= userGold)
+        ? _selectedWager
+        : (userGold > 0 && _selectedWager > userGold ? userGold : 0);
+    final TextEditingController ctrl = TextEditingController(
+      text: initialVal > 0 ? '$initialVal' : '0',
+    );
     final int? result = await showDialog<int>(
       context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141B2A),
-        title: Text(
-          '⚔️ ${player.displayName} ile Düello',
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(
-              'Bahis miktarı (0 = bahissiz dostluk maçı):',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) {
+          final int parsed = int.tryParse(ctrl.text.trim()) ?? 0;
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0F1523),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: AppColors.liquidGold.withValues(alpha: 0.35), width: 1.2),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: ctrl,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.amber),
-              decoration: InputDecoration(
-                prefixText: '🪙 ',
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.white24),
+            titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            contentPadding: const EdgeInsets.all(16),
+            title: const Row(
+              children: <Widget>[
+                Icon(Icons.shield_rounded, color: AppColors.liquidGold, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Düello Meydan Okuması',
+                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
                 ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  PvpVersusSplashBanner(
+                    challengerName: profile?.displayName ?? profile?.username ?? 'Gladyatör',
+                    challengerRating: profile?.pvpRating ?? 1000,
+                    challengerPower: profile?.power ?? 0,
+                    challengerAvatarUrl: profile?.avatarUrl ?? '',
+                    challengerLevel: profile?.level ?? 1,
+                    defenderName: player.displayName,
+                    defenderRating: player.pvpRating,
+                    defenderPower: player.power,
+                    defenderAvatarUrl: player.avatarUrl,
+                    defenderLevel: player.level,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: <Widget>[
+                      const Text(
+                        'Bahis Miktarı:',
+                        style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        'Mevcut: $userGold 🪙',
+                        style: const TextStyle(color: AppColors.liquidGold, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: ctrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: AppColors.liquidGold, fontWeight: FontWeight.bold, fontSize: 15),
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: InputDecoration(
+                      prefixText: '🪙 ',
+                      prefixStyle: const TextStyle(fontSize: 16),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Colors.white24),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.liquidGold, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Quick Preset Steppers
+                  Row(
+                    children: <Widget>[
+                      for (final int preset in const <int>[0, 100, 500, 1000])
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: OutlinedButton(
+                              onPressed: () {
+                                HapticFeedback.selectionClick();
+                                final int targetVal = preset.clamp(0, userGold > 0 ? userGold : 0);
+                                ctrl.text = '$targetVal';
+                                setDialogState(() {});
+                              },
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                side: BorderSide(
+                                  color: parsed == preset
+                                      ? AppColors.liquidGold
+                                      : Colors.white12,
+                                ),
+                                backgroundColor: parsed == preset
+                                    ? AppColors.liquidGold.withValues(alpha: 0.15)
+                                    : Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: Text(
+                                preset == 0 ? '0' : '+$preset',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: parsed == preset ? AppColors.liquidGold : Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: OutlinedButton(
+                            onPressed: userGold <= 0
+                                ? null
+                                : () {
+                                    HapticFeedback.selectionClick();
+                                    ctrl.text = '$userGold';
+                                    setDialogState(() {});
+                                  },
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              side: BorderSide(
+                                color: parsed == userGold && userGold > 0
+                                    ? AppColors.liquidGold
+                                    : Colors.white12,
+                              ),
+                              backgroundColor: parsed == userGold && userGold > 0
+                                  ? AppColors.liquidGold.withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text(
+                              'Max',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.liquidGold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Kazanan havuzu alır (%5 arena vergisi düşülür).',
+                    style: TextStyle(color: Colors.white38, fontSize: 11),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Kazanan havuzu alır (%5 arena vergisi düşülür).',
-              style: TextStyle(color: Colors.white38, fontSize: 11),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              final int wager = int.tryParse(ctrl.text.trim()) ?? 0;
-              Navigator.of(ctx).pop(wager < 0 ? 0 : wager);
-            },
-            child: const Text('Davet Gönder'),
-          ),
-        ],
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Vazgeç', style: TextStyle(color: Colors.white60)),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF1744),
+                  elevation: 4,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                onPressed: () {
+                  final int enteredWager = int.tryParse(ctrl.text.trim()) ?? 0;
+                  final int cappedWager = enteredWager.clamp(0, userGold > 0 ? userGold : 0);
+                  if (enteredWager > userGold && userGold > 0) {
+                    AppMessenger.showError(
+                      context,
+                      'Bahis mevcut altınınız ($userGold 🪙) ile sınırlandırıldı.',
+                    );
+                  }
+                  Navigator.of(ctx).pop(cappedWager);
+                },
+                child: const Text('⚔️ Davet Gönder', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
       ),
     );
     ctrl.dispose();
+    if (result != null && mounted) {
+      setState(() => _selectedWager = result);
+    }
     return result;
   }
 
@@ -524,6 +743,12 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
               const EdgeInsets.fromLTRB(16, 16, 16, 24),
             ),
             children: <Widget>[
+              // Cinematic Aion 2 Mobile Arena Viewport
+              ArenaMapViewport(
+                currentRating: pvpRating,
+                onEnterArena: () => _goToFirstArena(dashboard.arenas),
+              ),
+              const SizedBox(height: 12),
               if (_nemesis.hasRival) ...<Widget>[
                 TutorialAnchorScope(
                   id: TutorialAnchorId.pvpNemesisPanel,
@@ -546,6 +771,14 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
+              // High-Res Aion-2 Gladiator Tier Progress & Rank MMR Card
+              GladiatorTierProgressCard(
+                rating: pvpRating,
+                pvpWins: pvpWins,
+                pvpLosses: pvpLosses,
+                onViewLeaderboard: () => context.go(AppRoutes.pvpHistory),
+              ),
+              const SizedBox(height: 12),
               _card(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,13 +787,26 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                     const SizedBox(height: 14),
                     Row(
                       children: <Widget>[
-                        _StatChip(label: context.l10n.rating, value: '$pvpRating', color: Colors.amber),
+                        _StatChip(
+                          label: context.l10n.rating,
+                          value: '$pvpRating',
+                          color: AppColors.liquidGold,
+                          icon: Icons.emoji_events_rounded,
+                        ),
                         const SizedBox(width: 10),
                         _StatChip(
-                            label: context.l10n.kazanma_oran, value: '$winRate%', color: Colors.greenAccent),
+                          label: context.l10n.kazanma_oran,
+                          value: '$winRate%',
+                          color: Colors.greenAccent,
+                          icon: Icons.auto_graph_rounded,
+                        ),
                         const SizedBox(width: 10),
                         _StatChip(
-                            label: context.l10n.enerji_2, value: '$energy', color: const Color(0xFF00D7D7)),
+                          label: context.l10n.enerji_2,
+                          value: '$energy',
+                          color: const Color(0xFF00D7D7),
+                          icon: Icons.bolt_rounded,
+                        ),
                       ],
                     ),
                     if (hasWoundedCombatPenalty(health: health, maxHealth: maxHealth)) ...<Widget>[
@@ -578,10 +824,18 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                     Row(
                       children: <Widget>[
                         _StatChip(
-                            label: context.l10n.galibiyet, value: '$pvpWins', color: Colors.greenAccent),
+                          label: context.l10n.galibiyet,
+                          value: '$pvpWins',
+                          color: Colors.greenAccent,
+                          icon: Icons.shield_rounded,
+                        ),
                         const SizedBox(width: 10),
                         _StatChip(
-                            label: context.l10n.ma_lubiyet, value: '$pvpLosses', color: Colors.redAccent),
+                          label: context.l10n.ma_lubiyet,
+                          value: '$pvpLosses',
+                          color: Colors.redAccent,
+                          icon: Icons.heart_broken_rounded,
+                        ),
                       ],
                     ),
                   ],
@@ -592,24 +846,36 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                 children: <Widget>[
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => context.go(AppRoutes.pvpHistory),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        context.go(AppRoutes.pvpHistory);
+                      },
                       icon: const Icon(Icons.history_rounded, size: 16),
                       label: Text(context.l10n.ge_mi_i_a),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white24),
-                        foregroundColor: Colors.white70,
+                        side: BorderSide(color: AppColors.accentBlue.withValues(alpha: 0.4)),
+                        foregroundColor: AppColors.textPrimary,
+                        backgroundColor: AppColors.accentBlue.withValues(alpha: 0.08),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => context.go(AppRoutes.pvpTournament),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        context.go(AppRoutes.pvpTournament);
+                      },
                       icon: const Icon(Icons.emoji_events_rounded, size: 16),
                       label: Text(context.l10n.turnuva),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.amber),
-                        foregroundColor: Colors.amber,
+                        side: BorderSide(color: AppColors.liquidGold.withValues(alpha: 0.6)),
+                        foregroundColor: AppColors.liquidGold,
+                        backgroundColor: AppColors.liquidGold.withValues(alpha: 0.10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
@@ -642,6 +908,25 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                   color: AppColors.mysticRuby,
                 ),
               ],
+              const SizedBox(height: 16),
+              // Mobile Thumb Combat Action Deck
+              PvpThumbActionDeck(
+                disabled: isHospitalized || isImprisoned || lowHealthCombat,
+                maxGold: (profile?.gold != null && profile!.gold > 0) ? profile.gold : 0,
+                initialWager: _selectedWager.clamp(0, (profile?.gold != null && profile!.gold > 0) ? profile.gold : 0),
+                onWagerSelected: (int wager) {
+                  final int userGold = profile?.gold ?? 0;
+                  final int sanitizedWager = wager.clamp(0, userGold > 0 ? userGold : 0);
+                  if (wager > userGold && userGold > 0) {
+                    AppMessenger.showError(
+                      context,
+                      'Yetersiz altın! En fazla $userGold altın bahis belirleyebilirsiniz.',
+                    );
+                  }
+                  setState(() => _selectedWager = sanitizedWager);
+                },
+                onQuickDuel: _handleQuickDuel,
+              ),
               const SizedBox(height: 20),
               TutorialAnchorScope(
                 id: TutorialAnchorId.pvpFindMatch,
@@ -791,6 +1076,7 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
                       child: _ArenaCard(
                         arenaName: arena.name,
                         mekanTypeLabel: _mekanTypeLabel(arena.mekanType),
+                        index: entry.key,
                         onTap: () {
                           if (isHospitalized || isImprisoned) {
                             AppMessenger.showError(context, isHospitalized
@@ -852,17 +1138,41 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
   Widget _warningBanner(
       {required IconData icon, required String message, required Color color}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(13),
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: <Color>[
+            color.withValues(alpha: 0.16),
+            const Color(0xFF101422),
+          ],
+        ),
+        border: Border.all(color: color.withValues(alpha: 0.45), width: 1.1),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: <Widget>[
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: TextStyle(color: color, fontSize: 13))),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -872,17 +1182,19 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     showDialog<void>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1025),
+        backgroundColor: const Color(0xFF130E1F),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          side: BorderSide(color: AppColors.toxicNeon.withValues(alpha: 0.35), width: 1.2),
         ),
         title: const Row(
           children: <Widget>[
             Icon(Icons.info_outline_rounded, color: AppColors.toxicNeon, size: 20),
             SizedBox(width: 8),
-            Text('Eşleşme Nasıl Çalışır?',
-                style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text(
+              'Eşleşme Nasıl Çalışır?',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+            ),
           ],
         ),
         content: const Column(
@@ -949,23 +1261,50 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     required VoidCallback onPressed,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.03),
-        border: Border.all(color: Colors.white12),
+        borderRadius: BorderRadius.circular(14),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Color(0xFF121726),
+            Color(0xFF0A0D16),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         children: <Widget>[
-          Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54)),
-          const SizedBox(height: 12),
+          const Icon(Icons.shield_outlined, size: 36, color: Colors.white24),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.35),
+          ),
+          const SizedBox(height: 14),
           FilledButton.icon(
-            onPressed: onPressed,
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              onPressed();
+            },
             icon: const Icon(Icons.sports_mma_rounded, size: 18),
-            label: Text(ctaLabel),
+            label: Text(ctaLabel, style: const TextStyle(fontWeight: FontWeight.w800)),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              elevation: 4,
+              shadowColor: const Color(0xFFEF4444).withValues(alpha: 0.4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -977,20 +1316,50 @@ class _PvpScreenState extends ConsumerState<PvpScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.red.withValues(alpha: 0.08),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(13),
+        gradient: LinearGradient(
+          colors: <Color>[
+            Colors.red.withValues(alpha: 0.12),
+            const Color(0xFF150A10),
+          ],
+        ),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Text(message, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+      child: Row(
+        children: <Widget>[
+          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12.5, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value, required this.color});
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.icon,
+  });
+
   final String label;
   final String value;
   final Color color;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -998,19 +1367,56 @@ class _StatChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          color: color.withValues(alpha: 0.10),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              color.withValues(alpha: 0.14),
+              const Color(0xFF0F1523).withValues(alpha: 0.85),
+            ],
+          ),
+          border: Border.all(
+            color: color.withValues(alpha: 0.32),
+            width: 1.0,
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: color.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Text(value,
-                style:
-                    TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(color: Colors.white54, fontSize: 10),
-                textAlign: TextAlign.center),
+            if (icon != null) ...<Widget>[
+              Icon(icon, size: 14, color: color),
+              const SizedBox(height: 3),
+            ],
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: color,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
@@ -1033,61 +1439,131 @@ class _OnlinePlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isElite = player.pvpRating >= 1300;
+    final bool isChallenger = player.pvpRating >= 1100;
+    final Color borderTint = isElite
+        ? AppColors.liquidGold.withValues(alpha: 0.38)
+        : (isChallenger
+            ? AppColors.accentCyan.withValues(alpha: 0.28)
+            : Colors.white.withValues(alpha: 0.08));
+
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.04),
-        border: Border.all(color: Colors.white10),
+        borderRadius: BorderRadius.circular(14),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color(0xFF131A2B),
+            Color(0xFF0C101A),
+          ],
+        ),
+        border: Border.all(color: borderTint, width: 1.1),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: <Widget>[
           Stack(
             children: <Widget>[
-              ProfileAvatar(size: 40, avatarUrl: player.avatarUrl),
+              ProfileAvatar(size: 42, avatarUrl: player.avatarUrl),
               Positioned(
                 right: 0,
                 bottom: 0,
                 child: Container(
-                  width: 10,
-                  height: 10,
+                  width: 11,
+                  height: 11,
                   decoration: BoxDecoration(
                     color: Colors.greenAccent,
                     shape: BoxShape.circle,
                     border: Border.all(color: const Color(0xFF10131D), width: 2),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.greenAccent,
+                        blurRadius: 4,
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  player.displayName,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 13),
+                Row(
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(
+                        player.displayName,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    GladiatorTierEmblem(
+                      rating: player.pvpRating,
+                      size: 18,
+                      showGlow: false,
+                    ),
+                    const SizedBox(width: 4),
+                    FactionCrestWidget(
+                      faction: player.pvpRating >= 1100
+                          ? FactionType.elyos
+                          : FactionType.asmodian,
+                      size: 16,
+                      showGlow: false,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  'Lv ${player.level}  ⚡${player.power}  🏆${player.pvpRating}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  '${GladiatorTier.fromRating(player.pvpRating).title} · Lv ${player.level} · ⚡${player.power} · 🏆${player.pvpRating}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
           FilledButton(
-            onPressed: (inviting || inviteOpen) ? null : onInvite,
+            onPressed: (inviting || inviteOpen)
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    onInvite?.call();
+                  },
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              textStyle:
-                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+              backgroundColor: inviteOpen
+                  ? const Color(0xFF333A4D)
+                  : const Color(0xFFFF1744),
+              foregroundColor: Colors.white,
+              elevation: inviteOpen ? 0 : 4,
+              shadowColor: const Color(0xFFFF1744).withValues(alpha: 0.5),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
             ),
             child: Text(
               inviting
@@ -1108,47 +1584,36 @@ class _ArenaCard extends StatelessWidget {
     required this.arenaName,
     required this.mekanTypeLabel,
     required this.onTap,
+    this.index = 0,
   });
 
   final String arenaName;
   final String mekanTypeLabel;
   final VoidCallback onTap;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: <Widget>[
-          const Icon(Icons.sports_kabaddi_rounded, color: Colors.redAccent, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(arenaName,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                const SizedBox(height: 2),
-                Text(mekanTypeLabel,
-                    style: const TextStyle(color: Colors.white54, fontSize: 11)),
-              ],
-            ),
-          ),
-          FilledButton(
-            onPressed: onTap,
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
-            child: Text(context.l10n.arenaya_git),
-          ),
-        ],
+    final ColosseumThemeMood mood = index % 3 == 0
+        ? ColosseumThemeMood.abyssCrimson
+        : (index % 3 == 1
+            ? ColosseumThemeMood.sanctumGold
+            : ColosseumThemeMood.obsidianCyan);
+
+    return ColosseumCardIllustration(
+      title: arenaName,
+      subtitle: mekanTypeLabel,
+      mood: mood,
+      onTap: onTap,
+      trailing: FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: mood.primaryAccent,
+          foregroundColor: Colors.black,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+        ),
+        child: Text(context.l10n.arenaya_git),
       ),
     );
   }
@@ -1188,9 +1653,28 @@ class _MatchCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.04),
-        border: Border.all(color: Colors.white10),
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            resultColor.withValues(alpha: 0.08),
+            const Color(0xFF0E1322),
+          ],
+        ),
+        border: Border(
+          left: BorderSide(color: resultColor, width: 3.5),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

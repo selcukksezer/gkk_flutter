@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../components/common/gkk_tab_bar.dart';
 import '../../../components/layout/game_screen_background.dart';
@@ -29,6 +30,86 @@ abstract final class MarketDesign {
           if (accent != null) accent.withValues(alpha: 0.06) else AppColors.carbonVoid,
         ],
       );
+
+  static const LinearGradient obsidianGlassGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: <Color>[
+      Color(0xDD111827),
+      Color(0xEE090D18),
+      Color(0xF5060911),
+    ],
+  );
+}
+
+/// 2027 Aion 2 Mobile — Frosted glass card with ambient luminous glow and specular rim.
+class MarketGlassCard extends StatelessWidget {
+  const MarketGlassCard({
+    super.key,
+    required this.child,
+    this.borderColor,
+    this.glowColor,
+    this.borderRadius = 16.0,
+    this.padding = const EdgeInsets.all(14),
+    this.blurSigma = 12.0,
+    this.gradient,
+  });
+
+  final Widget child;
+  final Color? borderColor;
+  final Color? glowColor;
+  final double borderRadius;
+  final EdgeInsetsGeometry padding;
+  final double blurSigma;
+  final Gradient? gradient;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color border = borderColor ?? AppColors.liquidGold.withValues(alpha: 0.32);
+    final Color glow = glowColor ?? border.withValues(alpha: 0.16);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: glow,
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: AppColors.carbonVoid.withValues(alpha: 0.85),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(color: border, width: 1.2),
+              gradient: gradient ?? MarketDesign.obsidianGlassGradient,
+            ),
+            child: Stack(
+              children: <Widget>[
+                const Positioned.fill(
+                  child: CustomPaint(
+                    painter: DotGridPainter(spacing: 12, dotOpacity: 0.04),
+                  ),
+                ),
+                child,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Scale-down press feedback.
@@ -56,7 +137,12 @@ class _MarketPressableState extends State<MarketPressable> {
     final bool active = widget.enabled && widget.onTap != null;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: active ? (_) => setState(() => _down = true) : null,
+      onTapDown: active
+          ? (_) {
+              HapticFeedback.selectionClick();
+              setState(() => _down = true);
+            }
+          : null,
       onTapUp: active ? (_) => setState(() => _down = false) : null,
       onTapCancel: active ? () => setState(() => _down = false) : null,
       onTap: active ? widget.onTap : null,
@@ -122,7 +208,7 @@ class _MarketFadeSlideState extends State<MarketFadeSlide> with SingleTickerProv
   }
 }
 
-/// Hero banner — live economy strip (ref: Han Ticaret / Vault).
+/// Hero banner — live dark fantasy auction vault marquee (2027 Aion 2 Mobile standards).
 class MarketHeroBanner extends StatelessWidget {
   const MarketHeroBanner({
     super.key,
@@ -133,79 +219,123 @@ class MarketHeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DottedPanel(
-      borderColor: AppColors.liquidGold.withValues(alpha: 0.28),
-      borderRadius: 16,
-      padding: const EdgeInsets.all(14),
+    return MarketGlassCard(
+      borderColor: AppColors.liquidGold.withValues(alpha: 0.40),
+      glowColor: AppColors.liquidGold.withValues(alpha: 0.20),
+      borderRadius: 18,
+      padding: const EdgeInsets.all(15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   gradient: MarketDesign.fuchsiaGradient,
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: AppColors.cyberFuchsia.withValues(alpha: 0.35),
-                      blurRadius: 10,
+                      color: AppColors.cyberFuchsia.withValues(alpha: 0.4),
+                      blurRadius: 12,
                     ),
                   ],
                 ),
-                child: const Text(
-                  'CANLI EKONOMI',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.6,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(color: Colors.white, blurRadius: 4),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Text(
+                      'CANLI PAZAR • MEZAT',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const Spacer(),
-              Icon(
-                Icons.bolt_rounded,
-                size: 18,
-                color: AppColors.warningSolar.withValues(alpha: 0.9),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: AppColors.liquidGold.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.35)),
+                ),
+                child: Icon(
+                  Icons.storefront_rounded,
+                  size: 16,
+                  color: AppColors.liquidGold,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'OYUNCU PAZARI',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.4,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Oyuncular arasi alim-satim — en ucuz fiyatlar burada.',
-            style: TextStyle(
-              color: AppColors.mutedTitanium,
-              fontSize: 11,
-              height: 1.25,
-            ),
-          ),
           const SizedBox(height: 12),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const <Widget>[
+                    Text(
+                      'OYUNCU MEZAT HANESİ',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        height: 1.1,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Atreia gezginleri arası canlı alım-satım ve takas ağı.',
+                      style: TextStyle(
+                        color: AppColors.mutedTitanium,
+                        fontSize: 11,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
             children: <Widget>[
               _statPill(
-                icon: Icons.storefront_rounded,
-                label: '$listingCount ilan',
+                icon: Icons.inventory_2_rounded,
+                label: '$listingCount aktif ilan',
                 accent: AppColors.accentCyan,
               ),
-              const SizedBox(width: 8),
               _statPill(
                 icon: Icons.percent_rounded,
-                label: '%5 vergi',
-                accent: AppColors.coralFlare,
+                label: '%5 pazar vergisi',
+                accent: AppColors.liquidGold,
+              ),
+              _statPill(
+                icon: Icons.verified_user_rounded,
+                label: 'Güvenli teslimat',
+                accent: AppColors.toxicNeon,
               ),
             ],
           ),
@@ -220,22 +350,28 @@ class MarketHeroBanner extends StatelessWidget {
     required Color accent,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.darkObsidian.withValues(alpha: 0.75),
+        color: AppColors.carbonVoid.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
+        border: Border.all(color: accent.withValues(alpha: 0.45), width: 1.0),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: accent.withValues(alpha: 0.12),
+            blurRadius: 6,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Icon(icon, size: 12, color: accent),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-              color: AppColors.textPrimary.withValues(alpha: 0.92),
-              fontSize: 9,
+              color: AppColors.textPrimary.withValues(alpha: 0.95),
+              fontSize: 9.5,
               fontWeight: FontWeight.w700,
             ),
           ),

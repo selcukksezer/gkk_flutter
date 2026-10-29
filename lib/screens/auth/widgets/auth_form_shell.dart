@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
+import 'aion_rune_frame.dart';
+import 'aion_sky_particles.dart';
 import 'auth_design.dart';
 
 enum AuthScreenKind { login, register, forgotPassword, updatePassword }
@@ -30,9 +33,21 @@ class AuthFormShell extends StatelessWidget {
       case AuthScreenKind.login:
       case AuthScreenKind.forgotPassword:
       case AuthScreenKind.updatePassword:
-        return AuthDesign.gold;
+        return const Color(0xFFFFD700); // Aion Gold
       case AuthScreenKind.register:
-        return AuthDesign.fuchsia;
+        return AppColors.cyberFuchsia;
+    }
+  }
+
+  Color get _glowColor {
+    switch (kind) {
+      case AuthScreenKind.login:
+        return const Color(0xFF38BDF8); // Arcane Cyan
+      case AuthScreenKind.register:
+        return const Color(0xFFFF2D55); // Fuchsia Neon
+      case AuthScreenKind.forgotPassword:
+      case AuthScreenKind.updatePassword:
+        return const Color(0xFFEAB308); // Mystic Amber
     }
   }
 
@@ -52,24 +67,26 @@ class AuthFormShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AuthDesign.void_,
-      body: AuthBackdrop(
-        accent: _accent,
-        secondaryAccent: kind == AuthScreenKind.register
-            ? AuthDesign.gold
-            : AuthDesign.fuchsia,
+      backgroundColor: const Color(0xFF030712),
+      body: AionSkyParticlesBackground(
+        primaryAura: _glowColor.withValues(alpha: 0.6),
+        secondaryAura: _accent.withValues(alpha: 0.4),
+        accentEmissive: _accent,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.lg,
-                vertical: AppSpacing.xl,
+                vertical: AppSpacing.lg,
               ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
+                constraints: const BoxConstraints(maxWidth: 440),
                 child: AuthFadeSlide(
-                  child: AuthGlassPanel(
-                    accent: _accent,
+                  child: AionRuneCard(
+                    accentColor: _accent,
+                    glowColor: _glowColor,
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[

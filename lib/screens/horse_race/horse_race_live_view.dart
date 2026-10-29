@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -267,6 +268,10 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                         gateOpen: _raceStarted,
                         finalStretch: finalStretch,
                         showSpeedLines: _raceStarted && progress > 0.08,
+                        horsePositions: <double>[
+                          for (final HorseRaceEntry h in widget.horses)
+                            widget.raceScript.positionAt(h.horseId, progress),
+                        ],
                       ),
                     ),
                     LayoutBuilder(
@@ -283,6 +288,22 @@ class _HorseRaceLiveViewState extends State<HorseRaceLiveView>
                         return Stack(
                           clipBehavior: Clip.none,
                           children: <Widget>[
+                            // Atmospheric dynamic dust particle field behind galloping horses
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: _AtmosphericDustFieldPainter(
+                                  horses: widget.horses,
+                                  raceScript: widget.raceScript,
+                                  progress: progress,
+                                  laneCount: widget.horses.length,
+                                  raceStarted: _raceStarted,
+                                  finished: _finished,
+                                  leaderId: leaderId,
+                                  myHorseId: myHorseId,
+                                  finalStretch: finalStretch,
+                                ),
+                              ),
+                            ),
                             for (int i = 0; i < widget.horses.length; i++)
                               _TrackHorseSprite(
                                 horse: widget.horses[i],
@@ -432,7 +453,7 @@ class _TrackHorseSprite extends StatelessWidget {
         ? HorseRaceDesign.gold
         : isLeader
         ? HorseRaceDesign.gold
-        : silk;
+        : (isMine ? HorseRaceDesign.cyan : silk);
 
     return Positioned(
       left: (centerX - horseSize * 0.5).clamp(4.0, size.width - horseSize - 4),
@@ -447,33 +468,72 @@ class _TrackHorseSprite extends StatelessWidget {
             if (isLeader && raceStarted)
               Container(
                 margin: const EdgeInsets.only(bottom: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                 decoration: BoxDecoration(
-                  color: HorseRaceDesign.gold.withValues(alpha: 0.9),
+                  gradient: const LinearGradient(
+                    colors: <Color>[
+                      HorseRaceDesign.gold,
+                      Color(0xFFFFE082),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(4),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: HorseRaceDesign.gold.withValues(alpha: 0.6),
+                      blurRadius: 8,
+                    ),
+                  ],
                 ),
                 child: const Text(
                   'LİDER',
                   style: TextStyle(
                     color: HorseRaceDesign.void_,
-                    fontSize: 7,
+                    fontSize: 7.5,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 0.6,
+                    letterSpacing: 0.8,
                   ),
                 ),
               ),
             Stack(
               clipBehavior: Clip.none,
               children: <Widget>[
+                // Dynamic ground contact shadow beneath horse hooves
+                Positioned(
+                  left: horseSize * 0.12,
+                  bottom: -horseSize * 0.16,
+                  child: Container(
+                    width: horseSize * 0.76,
+                    height: horseSize * 0.22,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.all(
+                        Radius.elliptical(horseSize * 0.38, horseSize * 0.11),
+                      ),
+                      gradient: RadialGradient(
+                        colors: <Color>[
+                          Colors.black.withValues(alpha: 0.58),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Galloping hoof-strike atmospheric dust puffs & turf kicks
                 if (raceStarted && !finished)
                   Positioned(
-                    left: horseSize * 0.3,
-                    top: horseSize * 0.55,
-                    child: _DustPuff(size: horseSize * 0.35),
+                    left: horseSize * 0.2,
+                    top: horseSize * 0.60,
+                    child: _AnimatedHorseHoofDust(
+                      size: horseSize * 0.45,
+                      bobPhase: bobPhase,
+                      isLeader: isLeader,
+                      isMine: isMine,
+                      finalStretch: progress >= 0.78,
+                    ),
                   ),
+                // 2027 Aion 2 Glassmorphic horse card
                 Container(
                   width: horseSize,
-                  height: horseSize * 0.82,
+                  height: horseSize * 0.84,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
                     gradient: LinearGradient(
@@ -481,35 +541,64 @@ class _TrackHorseSprite extends StatelessWidget {
                       end: Alignment.bottomRight,
                       colors: <Color>[
                         silk,
-                        silk.withValues(alpha: 0.65),
-                        silk.withValues(alpha: 0.85),
+                        silk.withValues(alpha: 0.72),
+                        const Color(0xFF131822),
                       ],
                     ),
                     border: Border.all(
                       color: accent,
-                      width: isWinner ? 2.5 : (isMine ? 2 : 1.4),
+                      width: isWinner ? 2.5 : (isMine ? 2.0 : 1.4),
                     ),
                     boxShadow: <BoxShadow>[
                       BoxShadow(
                         color: accent.withValues(
-                          alpha: isLeader || isWinner ? 0.55 : 0.22,
+                          alpha: isLeader || isWinner ? 0.65 : (isMine ? 0.45 : 0.25),
                         ),
-                        blurRadius: isLeader ? 16 : 8,
+                        blurRadius: isLeader || isWinner ? 18 : 10,
+                        spreadRadius: isLeader ? 1.0 : 0,
                       ),
                     ],
                   ),
                   child: Stack(
                     children: <Widget>[
+                      // Specular top sheen
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: horseSize * 0.4,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(9),
+                            ),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: <Color>[
+                                Colors.white.withValues(alpha: 0.22),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                       Positioned(
                         left: 4,
                         top: 4,
                         child: Container(
-                          width: 16,
-                          height: 16,
+                          width: 17,
+                          height: 17,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.92),
+                            color: Colors.white.withValues(alpha: 0.94),
                             borderRadius: BorderRadius.circular(4),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 3,
+                              ),
+                            ],
                           ),
                           child: Text(
                             '${index + 1}',
@@ -524,7 +613,16 @@ class _TrackHorseSprite extends StatelessWidget {
                       Center(
                         child: Text(
                           horse.emoji,
-                          style: TextStyle(fontSize: horseSize * 0.42),
+                          style: TextStyle(
+                            fontSize: horseSize * 0.44,
+                            shadows: <Shadow>[
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -535,16 +633,22 @@ class _TrackHorseSprite extends StatelessWidget {
                     right: -4,
                     top: -4,
                     child: Container(
-                      width: 14,
-                      height: 14,
+                      width: 16,
+                      height: 16,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: HorseRaceDesign.cyan,
                         border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: HorseRaceDesign.cyan.withValues(alpha: 0.8),
+                            blurRadius: 6,
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.star_rounded,
-                        size: 9,
+                        size: 10,
                         color: HorseRaceDesign.void_,
                       ),
                     ),
@@ -553,11 +657,15 @@ class _TrackHorseSprite extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Container(
-              constraints: BoxConstraints(maxWidth: horseSize + 8),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              constraints: BoxConstraints(maxWidth: horseSize + 10),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
               decoration: BoxDecoration(
-                color: HorseRaceDesign.void_.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(4),
+                color: HorseRaceDesign.void_.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  width: 0.8,
+                ),
               ),
               child: Text(
                 horse.name,
@@ -566,7 +674,7 @@ class _TrackHorseSprite extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 8,
+                  fontSize: 8.5,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -578,27 +686,224 @@ class _TrackHorseSprite extends StatelessWidget {
   }
 }
 
-class _DustPuff extends StatelessWidget {
-  const _DustPuff({required this.size});
+/// Dynamic billowing hoof-strike dust puff attached to each horse sprite.
+class _AnimatedHorseHoofDust extends StatelessWidget {
+  const _AnimatedHorseHoofDust({
+    required this.size,
+    required this.bobPhase,
+    required this.isLeader,
+    required this.isMine,
+    required this.finalStretch,
+  });
 
   final double size;
+  final double bobPhase;
+  final bool isLeader;
+  final bool isMine;
+  final bool finalStretch;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: List<Widget>.generate(3, (int i) {
-        return Container(
-          width: size * (0.35 + i * 0.12),
-          height: size * (0.35 + i * 0.12),
-          margin: const EdgeInsets.only(bottom: 2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.12 - i * 0.03),
+    final double pulse = (math.sin(bobPhase * math.pi * 4) + 1.0) * 0.5;
+    return SizedBox(
+      width: size * 1.5,
+      height: size * 1.3,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          // Soft billowing earthen dust clouds
+          for (int i = 0; i < 4; i++)
+            Positioned(
+              left: (i * 3.5) - (pulse * 2.0),
+              top: (i * 5.0) + (pulse * 3.0),
+              child: Container(
+                width: size * (0.42 + i * 0.16 + pulse * 0.15),
+                height: size * (0.38 + i * 0.14 + pulse * 0.12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: <Color>[
+                      const Color(0xFFD4A373).withValues(
+                        alpha: (0.28 - i * 0.05).clamp(0.04, 0.32),
+                      ),
+                      const Color(0xFF8B5E3C).withValues(
+                        alpha: (0.16 - i * 0.03).clamp(0.02, 0.20),
+                      ),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          // High-velocity flying turf specks
+          Positioned(
+            left: -2 + pulse * 4.0,
+            top: 4 + pulse * 6.0,
+            child: Container(
+              width: 3.5,
+              height: 3.5,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF2C1E14),
+              ),
+            ),
           ),
-        );
-      }),
+          Positioned(
+            right: 2 + pulse * 3.0,
+            top: 7 + pulse * 8.0,
+            child: Container(
+              width: 2.5,
+              height: 2.5,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF3B281B),
+              ),
+            ),
+          ),
+          // Kinetic speed friction sparks for leader / final stretch
+          if (isLeader || finalStretch || isMine)
+            Positioned(
+              left: size * 0.3,
+              top: 2 + pulse * 4,
+              child: Container(
+                width: 3.0,
+                height: 3.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isLeader
+                      ? HorseRaceDesign.gold
+                      : (isMine ? HorseRaceDesign.cyan : Colors.white),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: (isLeader
+                              ? HorseRaceDesign.gold
+                              : HorseRaceDesign.cyan)
+                          .withValues(alpha: 0.8),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+}
+
+/// Atmospheric dust field painter that renders billowing dust plumes
+/// and kicked-up turf debris across the track behind galloping horses.
+class _AtmosphericDustFieldPainter extends CustomPainter {
+  _AtmosphericDustFieldPainter({
+    required this.horses,
+    required this.raceScript,
+    required this.progress,
+    required this.laneCount,
+    required this.raceStarted,
+    required this.finished,
+    required this.leaderId,
+    required this.myHorseId,
+    required this.finalStretch,
+  });
+
+  final List<HorseRaceEntry> horses;
+  final HorseRaceScript raceScript;
+  final double progress;
+  final int laneCount;
+  final bool raceStarted;
+  final bool finished;
+  final String? leaderId;
+  final String? myHorseId;
+  final bool finalStretch;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!raceStarted || finished || progress <= 0.005) return;
+
+    final Paint dustPaint = Paint()..style = PaintingStyle.fill;
+    final Paint turfPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF26190F);
+    final Paint sparkPaint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < horses.length; i++) {
+      final HorseRaceEntry horse = horses[i];
+      final double pos = raceScript.positionAt(horse.horseId, progress);
+      if (pos <= 0.01) continue;
+
+      final double centerX = HorseRaceTrackLayout.laneCenterX(
+        size,
+        i,
+        laneCount,
+      );
+      final double horseY = HorseRaceTrackLayout.horseY(size, pos);
+      final bool isLeader = horse.horseId == leaderId;
+      final bool isMine = horse.horseId == myHorseId;
+
+      // Gallop stride cycle
+      final double strideCycle = (progress * 38 + i * 0.7) % 1.0;
+      final double kickIntensity = (math.sin(strideCycle * math.pi * 2) + 1.0) * 0.5;
+
+      // Trailing billowing dust puffs behind the horse hooves
+      const int puffSteps = 6;
+      for (int step = 0; step < puffSteps; step++) {
+        final double distBack = 12.0 + step * 9.5;
+        final double py = horseY + distBack;
+        if (py > size.height) continue;
+
+        final double expansion = 7.0 + step * 5.0 + kickIntensity * 3.0;
+        final double alpha = ((0.24 - step * 0.035) * (0.8 + kickIntensity * 0.4))
+            .clamp(0.02, 0.35);
+        final double lateralWobble = math.sin((step * 1.8) + (i * 2.3)) * 6.5;
+        final Offset puffCenter = Offset(centerX + lateralWobble, py);
+
+        dustPaint.shader = ui.Gradient.radial(
+          puffCenter,
+          expansion,
+          <Color>[
+            const Color(0xFFD4A373).withValues(alpha: alpha * 1.3),
+            const Color(0xFF8C6239).withValues(alpha: alpha * 0.7),
+            Colors.transparent,
+          ],
+          <double>[0.0, 0.48, 1.0],
+        );
+        canvas.drawCircle(puffCenter, expansion, dustPaint);
+      }
+
+      // Ballistic flying turf clods
+      final math.Random rng = math.Random((pos * 80).floor() + i * 17);
+      for (int clod = 0; clod < 3; clod++) {
+        final double clodX = centerX + (rng.nextDouble() - 0.5) * 18;
+        final double clodY = horseY + 14 + rng.nextDouble() * 26;
+        final double r = 1.0 + rng.nextDouble() * 1.6;
+        canvas.drawCircle(Offset(clodX, clodY), r, turfPaint);
+      }
+
+      // Sprinting sparks / golden embers for leader or during final stretch
+      if (isLeader || finalStretch || isMine) {
+        final Color sparkColor = isLeader
+            ? AppColors.liquidGold
+            : (isMine ? AppColors.accentCyan : Colors.white);
+        for (int sp = 0; sp < 2; sp++) {
+          final double sx = centerX + (rng.nextDouble() - 0.5) * 14;
+          final double sy = horseY + 8 + rng.nextDouble() * 16;
+          sparkPaint.color = sparkColor.withValues(
+            alpha: 0.5 + rng.nextDouble() * 0.4,
+          );
+          canvas.drawCircle(Offset(sx, sy), 1.2, sparkPaint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AtmosphericDustFieldPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.raceStarted != raceStarted ||
+        oldDelegate.finished != finished ||
+        oldDelegate.leaderId != leaderId ||
+        oldDelegate.myHorseId != myHorseId ||
+        oldDelegate.finalStretch != finalStretch;
   }
 }
 

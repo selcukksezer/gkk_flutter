@@ -17,6 +17,7 @@ import '../../theme/app_spacing.dart';
 import '../../core/utils/combat_restriction.dart';
 import '../../utils/logout_helper.dart';
 import 'guild_war_defense_sheet.dart';
+import 'guild_war_siege_lighting.dart';
 import 'widgets/attack_log_tile.dart';
 import 'widgets/defense_power_bar.dart';
 import 'widgets/guild_war_design.dart';
@@ -389,6 +390,12 @@ class _TerritoryDetailScreenState extends ConsumerState<TerritoryDetailScreen> {
                         mapCoordinate: territoryMapCoordinateFor(t.id, territories),
                         accent: heroAccent,
                         isOwner: isOwner,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      GuildWarSiegeBattlefieldViewport(
+                        height: 180.0,
+                        title: '🏰 ${t.name.toUpperCase()} KUŞATMA SAVUNMASI',
+                        subtitle: 'Dinamik kale suru aydınlatması & siper ateşleri',
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       TerritoryGuildDuelPanel(

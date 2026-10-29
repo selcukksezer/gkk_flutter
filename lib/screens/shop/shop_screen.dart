@@ -27,7 +27,11 @@ import '../../providers/kingdom_market_blessing_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import 'widgets/battle_pass_shop_tab.dart';
+import 'widgets/merchant_vendor_header.dart';
 import 'widgets/night_market_tab.dart';
+import 'widgets/shop_quantity_dialog.dart';
+import '../../models/inventory_model.dart';
+import '../../models/item_model.dart';
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -75,8 +79,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   bool _shopDataLoading = true;
   bool _purchaseLoading = false;
   String _itemSearchQuery = '';
-  Map<String, dynamic>? _quantityDialogItem;
-  int _quantityInput = 1;
   String? _buyingId;
   String? _buyingGemId;
   String? _buyingGoldKey;
@@ -319,29 +321,93 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   }
 
   void _handleBuyClick(Map<String, dynamic> item) {
-    final isStackable = (item['is_stackable'] as bool?) ?? false;
-    if (isStackable) {
-      setState(() { _quantityDialogItem = item; _quantityInput = 1; });
-    } else {
-      _confirmAndBuyItem(item);
+    final String currency = item['currency']?.toString() ?? 'gold';
+    final int baseUnitPrice = ((item['price'] as num?) ?? 0).toInt();
+    final KingdomMarketBlessingStatus blessing = ref.read(kingdomMarketBlessingProvider);
+    final int unitPrice = blessing.applyDiscount(baseUnitPrice, currency);
+    final profile = ref.read(playerProvider).profile;
+    final int wallet = currency == 'gems'
+        ? (profile?.gems ?? 0).toInt()
+        : (profile?.gold ?? 0).toInt();
+    final bool isStackable = (item['is_stackable'] as bool?) ?? false;
+    final int maxStack = (item['max_stack'] as num?)?.toInt() ?? 99;
+
+    ShopQuantityDialog.show(
+      context,
+      mode: ShopDialogMode.buy,
+      item: item,
+      unitPrice: unitPrice,
+      baseUnitPrice: baseUnitPrice,
+      currency: currency,
+      walletBalance: wallet,
+      hasBlessingDiscount: blessing.hasDiscountForCurrency(currency) && unitPrice < baseUnitPrice,
+      blessingDiscountPct: blessing.discountPercent,
+      maxQuantityAvailable: isStackable ? maxStack : 1,
+      onConfirm: (int quantity) async {
+        await _buyShopItem(item, quantity);
+      },
+    );
+  }
+
+  Future<void> _sellShopItem(InventoryItem item, int qty) async {
+    if (_purchaseLoading) return;
+    setState(() => _purchaseLoading = true);
+    try {
+      final result = await ref.read(inventoryProvider.notifier).sellItemByRow(
+        rowId: item.rowId,
+        quantity: qty,
+      );
+      if (!mounted) return;
+      if (result.success) {
+        AppMessenger.show(
+          context,
+          '+${_fmtGoldFull(result.goldEarned)} altın kazanıldı!',
+          type: AppMessageType.success,
+        );
+      } else {
+        AppMessenger.showError(
+          context,
+          result.error ?? 'Satış işlemi başarısız.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppMessenger.showError(context, 'Satış işlemi başarısız.');
+      }
+    } finally {
+      if (mounted) setState(() => _purchaseLoading = false);
     }
   }
 
-  Future<void> _confirmAndBuyItem(Map<String, dynamic> item) async {
-    final name = item['name']?.toString() ?? 'Eşya';
-    final currency = item['currency']?.toString() ?? 'gold';
-    final price = item['price'] ?? 0;
-    final isGem = currency == 'gems';
-    final confirmed = await UniversalGameDialog.show(
+  void _handleSellClick(InventoryItem item) {
+    final int unitPrice = item.vendorSellPrice > 0
+        ? item.vendorSellPrice
+        : (item.basePrice * 0.5).round();
+    final profile = ref.read(playerProvider).profile;
+    final int wallet = (profile?.gold ?? 0).toInt();
+
+    ShopQuantityDialog.show(
       context,
-      title: name,
-      message:
-          '$name satin almak istedigine emin misin?\nFiyat: $price ${isGem ? 'gem' : 'altin'}',
-      confirmLabel: 'Satin Al',
-      cancelLabel: 'Iptal',
+      mode: ShopDialogMode.sell,
+      item: <String, dynamic>{
+        'id': item.itemId,
+        'item_id': item.itemId,
+        'name': item.name,
+        'description': item.description,
+        'icon': item.icon,
+        'rarity': item.rarity.name,
+        'is_stackable': item.isStackable,
+        'max_stack': item.maxStack,
+      },
+      unitPrice: unitPrice,
+      currency: 'gold',
+      walletBalance: wallet,
+      maxQuantityAvailable: item.quantity,
+      isFavorite: item.isFavorite,
+      onConfirm: (int quantity) async {
+        await _sellShopItem(item, quantity);
+      },
     );
-    if (confirmed != true) return;
-    _buyShopItem(item, 1);
   }
 
   Future<void> _buyGemPackage(_GemPackage pkg) async {
@@ -450,9 +516,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     final profile = ref.watch(playerProvider).profile;
     final int gems = (profile?.gems ?? 0).toInt();
 
-    return Stack(
-      children: [
-        Scaffold(
+    return Scaffold(
       appBar: GameTopBar(title: context.l10n.routeShop, onLogout: _doLogout),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.shop, onLogout: _doLogout),
@@ -481,7 +545,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                 '🪙 Altın',
                 '🌙 Gece Pazarı',
                 '⚔️ Pass',
-                '🛍️ Eşya',
+                '🛍️ Tüccar',
               ]),
             ),
             Expanded(
@@ -532,8 +596,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                   ),
                   GkkTabPageShell(
                     tabIndex: 4,
-                    sectionTitle: 'Mağaza Eşyaları',
-                    child: _ItemsTab(
+                    sectionTitle: 'Tüccar Pazarı',
+                    child: _MerchantGoodsTab(
                       items: _shopItems,
                       loading: _shopDataLoading,
                       searchQuery: _itemSearchQuery,
@@ -542,6 +606,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                           ref.watch(playerProvider).profile?.tolerance ?? 0,
                       onSearchChanged: (q) => setState(() => _itemSearchQuery = q),
                       onBuyTap: _handleBuyClick,
+                      onSellTap: _handleSellClick,
                       rarityColor: (String? rarity) =>
                           AppColors.forRarity(rarity ?? ''),
                       buildItemIcon: _buildItemIcon,
@@ -553,93 +618,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           ],
         ),
       ),
-        ),
-        // Quantity dialog overlay
-        if (_quantityDialogItem != null)
-          GestureDetector(
-            onTap: () => setState(() => _quantityDialogItem = null),
-            child: Container(
-              color: Colors.black87,
-              child: Center(
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      margin: const EdgeInsets.all(24),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A2030),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFFBBF24)),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_quantityDialogItem!['name']?.toString() ?? 'Eşya', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBBF24))),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Birim: ${_quantityDialogItem!['currency'] == 'gems' ? '💎' : '🪙'} ${_quantityDialogItem!['price'] ?? 0}',
-                            style: const TextStyle(color: Colors.white54, fontSize: 12),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                onPressed: () => setState(() => _quantityInput = (_quantityInput - 1).clamp(1, 99)),
-                                icon: const Icon(Icons.remove, color: Color(0xFFFBBF24)),
-                              ),
-                              SizedBox(
-                                width: 60,
-                                child: TextField(
-                                  controller: TextEditingController(text: '$_quantityInput')..selection = TextSelection.collapsed(offset: '$_quantityInput'.length),
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFFFBBF24)),
-                                  decoration: const InputDecoration(border: InputBorder.none),
-                                  onChanged: (v) => setState(() => _quantityInput = (int.tryParse(v) ?? 1).clamp(1, 99)),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => setState(() => _quantityInput = (_quantityInput + 1).clamp(1, 99)),
-                                icon: const Icon(Icons.add, color: Color(0xFFFBBF24)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    final item = _quantityDialogItem!;
-                                    final qty = _quantityInput;
-                                    setState(() => _quantityDialogItem = null);
-                                    _buyShopItem(item, qty);
-                                  },
-                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBBF24), foregroundColor: Colors.black),
-                                  child: const Text('✓ Satın Al', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => setState(() => _quantityDialogItem = null),
-                                  child: Text(context.l10n.commonCancel),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
     );
   }
 }
@@ -678,25 +656,63 @@ class _GemPackagesTab extends StatelessWidget {
           parent: BouncingScrollPhysics(),
         ),
         padding: _shopScrollPadding(context),
-        children: const <Widget>[
-          SizedBox(height: 24),
-          Text(
-            'Elmas satın alma yakında',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Mağaza IAP bağlantısı hazırlanıyor. Şimdilik elmas paketleri kullanılamıyor.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 13,
-              height: 1.35,
+        children: <Widget>[
+          const SizedBox(height: 24),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    const Color(0xFF141D2E).withValues(alpha: 0.88),
+                    const Color(0xFF0B101C).withValues(alpha: 0.94),
+                  ],
+                ),
+                border: Border.all(
+                  color: AppColors.accentCyan.withValues(alpha: 0.25),
+                  width: 1.0,
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.diamond_outlined,
+                    size: 44,
+                    color: AppColors.accentCyan.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Elmas Satın Alma Yakında',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Mağaza IAP bağlantısı hazırlanıyor. Şimdilik elmas paketleri kullanılamıyor.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.mutedTitanium,
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -750,10 +766,42 @@ class _GemPackageCard extends StatelessWidget {
     final int? bonus = pkg.bonusPercent;
     final String tierLabel = pkg.label ?? '💎 Elmas';
 
-    return DottedPanel(
-      borderColor: isBest
-          ? AppColors.liquidGold.withValues(alpha: 0.5)
-          : AppColors.liquidGold.withValues(alpha: 0.16),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            isBest
+                ? const Color(0xFF18243C).withValues(alpha: 0.92)
+                : const Color(0xFF131C2D).withValues(alpha: 0.88),
+            isBest
+                ? const Color(0xFF0E1626).withValues(alpha: 0.96)
+                : const Color(0xFF0B101C).withValues(alpha: 0.94),
+          ],
+        ),
+        border: Border.all(
+          color: isBest
+              ? AppColors.liquidGold.withValues(alpha: 0.65)
+              : AppColors.accentCyan.withValues(alpha: 0.28),
+          width: isBest ? 1.4 : 1.0,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: isBest
+                ? AppColors.liquidGold.withValues(alpha: 0.18)
+                : AppColors.accentCyan.withValues(alpha: 0.08),
+            blurRadius: isBest ? 16 : 10,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.50),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
       child: Stack(
         clipBehavior: Clip.none,
@@ -770,8 +818,15 @@ class _GemPackageCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     gradient: AppColors.liquidGoldGradient,
                     border: Border.all(
-                      color: AppColors.liquidGold.withValues(alpha: 0.65),
+                      color: AppColors.liquidGold.withValues(alpha: 0.75),
+                      width: 1.1,
                     ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: AppColors.liquidGold.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   child: const Text(
                     'En İyi Değer',
@@ -793,10 +848,16 @@ class _GemPackageCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  color: AppColors.accentCyan.withValues(alpha: 0.18),
+                  color: AppColors.accentCyan.withValues(alpha: 0.22),
                   border: Border.all(
-                    color: AppColors.accentCyan.withValues(alpha: 0.45),
+                    color: AppColors.accentCyan.withValues(alpha: 0.55),
                   ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: AppColors.accentCyan.withValues(alpha: 0.20),
+                      blurRadius: 6,
+                    ),
+                  ],
                 ),
                 child: Text(
                   '+$bonus% Bonus',
@@ -817,19 +878,26 @@ class _GemPackageCard extends StatelessWidget {
               children: <Widget>[
                 if (isBest) const SizedBox(height: 4),
                 Container(
-                  width: 46,
-                  height: 46,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: <Color>[
-                        AppColors.accentCyan.withValues(alpha: 0.28),
-                        AppColors.accentCyan.withValues(alpha: 0.04),
+                        AppColors.accentCyan.withValues(alpha: 0.32),
+                        AppColors.accentCyan.withValues(alpha: 0.05),
                       ],
                     ),
                     border: Border.all(
-                      color: AppColors.accentCyan.withValues(alpha: 0.45),
+                      color: AppColors.accentCyan.withValues(alpha: 0.55),
+                      width: 1.2,
                     ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: AppColors.accentCyan.withValues(alpha: 0.25),
+                        blurRadius: 10,
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.diamond_rounded,
@@ -896,12 +964,15 @@ class _GemPackageCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Center(
-                  child: _ShopScaleButton(
-                    label: 'Satın Al',
-                    accent: AppColors.accentCyan,
-                    loading: isBuying,
-                    enabled: !purchaseLoading && !isBuying,
-                    onTap: onBuy,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: _ShopScaleButton(
+                      label: 'Satın Al',
+                      accent: AppColors.accentCyan,
+                      loading: isBuying,
+                      enabled: !purchaseLoading && !isBuying,
+                      onTap: onBuy,
+                    ),
                   ),
                 ),
               ],
@@ -954,13 +1025,26 @@ class _GoldPurchaseTab extends StatelessWidget {
           },
         ),
         const SizedBox(height: 16),
-        Text(
-          'Kur: ${EconomyConstants.shopGoldPerGem} altın = 1 💎',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.mutedTitanium.withValues(alpha: 0.65),
-            fontSize: 10,
-            height: 1.3,
+        Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFF131C2D).withValues(alpha: 0.65),
+              border: Border.all(
+                color: AppColors.liquidGold.withValues(alpha: 0.20),
+                width: 0.8,
+              ),
+            ),
+            child: Text(
+              'Kur: ${EconomyConstants.shopGoldPerGem} altın = 1 💎',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.mutedTitanium.withValues(alpha: 0.85),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ],
@@ -985,15 +1069,47 @@ class _GoldPackageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DottedPanel(
-      borderColor: pkg.isBestValue
-          ? AppColors.liquidGold.withValues(alpha: 0.5)
-          : AppColors.liquidGold.withValues(alpha: 0.16),
+    final bool isBest = pkg.isBestValue;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            isBest
+                ? const Color(0xFF1B253D).withValues(alpha: 0.92)
+                : const Color(0xFF131C2D).withValues(alpha: 0.88),
+            isBest
+                ? const Color(0xFF0F1727).withValues(alpha: 0.96)
+                : const Color(0xFF0B101C).withValues(alpha: 0.94),
+          ],
+        ),
+        border: Border.all(
+          color: isBest
+              ? AppColors.liquidGold.withValues(alpha: 0.70)
+              : AppColors.liquidGold.withValues(alpha: 0.24),
+          width: isBest ? 1.4 : 1.0,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppColors.liquidGold.withValues(alpha: isBest ? 0.20 : 0.08),
+            blurRadius: isBest ? 16 : 10,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.50),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
       child: Stack(
         clipBehavior: Clip.none,
         children: <Widget>[
-          if (pkg.isBestValue)
+          if (isBest)
             Positioned(
               top: -10,
               left: 0,
@@ -1005,8 +1121,15 @@ class _GoldPackageCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     gradient: AppColors.liquidGoldGradient,
                     border: Border.all(
-                      color: AppColors.liquidGold.withValues(alpha: 0.65),
+                      color: AppColors.liquidGold.withValues(alpha: 0.75),
+                      width: 1.1,
                     ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: AppColors.liquidGold.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   child: const Text(
                     'En İyi Değer',
@@ -1014,69 +1137,94 @@ class _GoldPackageCard extends StatelessWidget {
                       fontSize: 8.5,
                       fontWeight: FontWeight.w900,
                       color: AppColors.carbonVoid,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
               ),
             ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (pkg.isBestValue) const SizedBox(height: 8),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: <Color>[
-                      AppColors.liquidGold.withValues(alpha: 0.28),
-                      AppColors.liquidGold.withValues(alpha: 0.04),
+          SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                if (isBest) const SizedBox(height: 6),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: <Color>[
+                        AppColors.liquidGold.withValues(alpha: 0.32),
+                        AppColors.liquidGold.withValues(alpha: 0.05),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: AppColors.liquidGold.withValues(alpha: 0.55),
+                      width: 1.2,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: AppColors.liquidGold.withValues(alpha: 0.25),
+                        blurRadius: 10,
+                      ),
                     ],
                   ),
-                  border: Border.all(
-                    color: AppColors.liquidGold.withValues(alpha: 0.45),
-                  ),
+                  child: const Icon(Icons.paid_rounded, color: AppColors.liquidGold, size: 28),
                 ),
-                child: const Icon(Icons.paid_rounded, color: AppColors.liquidGold, size: 28),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                fmtGold(pkg.gold),
-                style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Text(
-                '🪙 Altın',
-                style: TextStyle(color: AppColors.mutedTitanium, fontSize: 10),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Icon(Icons.diamond_rounded, size: 13, color: AppColors.accentCyan),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${pkg.gems}',
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: Text(
+                    fmtGold(pkg.gold),
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 19,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.accentCyan,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _ShopScaleButton(
-                label: 'Satın Al',
-                loading: isBuying,
-                enabled: !disabled,
-                onTap: onBuy,
-              ),
-            ],
+                ),
+                const Text(
+                  '🪙 Altın',
+                  style: TextStyle(color: AppColors.mutedTitanium, fontSize: 10),
+                ),
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      const Icon(Icons.diamond_rounded, size: 13, color: AppColors.accentCyan),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${pkg.gems}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.accentCyan,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: _ShopScaleButton(
+                      label: 'Satın Al',
+                      loading: isBuying,
+                      enabled: !disabled,
+                      onTap: onBuy,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1123,9 +1271,9 @@ class _ShopScaleButtonState extends State<_ShopScaleButton> {
         curve: Curves.easeOutCubic,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: EdgeInsets.symmetric(
-            horizontal: 18,
-            vertical: 6,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 6.5,
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
@@ -1157,15 +1305,19 @@ class _ShopScaleButtonState extends State<_ShopScaleButton> {
                     color: useGoldGradient ? AppColors.carbonVoid : Colors.white,
                   ),
                 )
-              : Text(
-                  widget.label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: active
-                        ? (useGoldGradient ? AppColors.carbonVoid : Colors.white)
-                        : AppColors.mutedTitanium,
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    widget.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: active
+                          ? (useGoldGradient ? AppColors.carbonVoid : Colors.white)
+                          : AppColors.mutedTitanium,
+                    ),
                   ),
                 ),
         ),
@@ -1174,10 +1326,10 @@ class _ShopScaleButtonState extends State<_ShopScaleButton> {
   }
 }
 
-// ── Items tab ──────────────────────────────────────────────────────────────
+// ── Merchant Goods tab (Buy & Sell) ──────────────────────────────────────────
 
-class _ItemsTab extends ConsumerWidget {
-  const _ItemsTab({
+class _MerchantGoodsTab extends ConsumerStatefulWidget {
+  const _MerchantGoodsTab({
     required this.items,
     required this.loading,
     required this.searchQuery,
@@ -1185,6 +1337,7 @@ class _ItemsTab extends ConsumerWidget {
     required this.playerTolerance,
     required this.onSearchChanged,
     required this.onBuyTap,
+    required this.onSellTap,
     required this.rarityColor,
     required this.buildItemIcon,
   });
@@ -1196,43 +1349,278 @@ class _ItemsTab extends ConsumerWidget {
   final int playerTolerance;
   final ValueChanged<String> onSearchChanged;
   final void Function(Map<String, dynamic>) onBuyTap;
+  final void Function(InventoryItem) onSellTap;
   final Color Function(String?) rarityColor;
   final Widget Function(Map<String, dynamic>) buildItemIcon;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (loading) return const Center(child: CircularProgressIndicator());
+  ConsumerState<_MerchantGoodsTab> createState() => _MerchantGoodsTabState();
+}
+
+class _MerchantGoodsTabState extends ConsumerState<_MerchantGoodsTab> {
+  int _merchantMode = 0; // 0 = Buy from Vendor, 1 = Sell to Vendor
+  String _selectedBuyCategory = 'all';
+  String _selectedBuyCurrency = 'all';
+  String _selectedSellCategory = 'all';
+
+  bool _matchesBuyCategory(Map<String, dynamic> item, String cat) {
+    if (cat == 'all') return true;
+    final String type = (item['item_type'] ?? '').toString().toLowerCase();
+    final String potionType = (item['potion_type'] ?? '').toString().toLowerCase();
+    final String name = (item['name'] ?? '').toString().toLowerCase();
+
+    if (cat == 'potion') {
+      return type == 'potion' || potionType.isNotEmpty || name.contains('iksir') || name.contains('potion');
+    }
+    if (cat == 'consumable') {
+      return type == 'consumable' || type == 'scroll' || name.contains('parşömen') || name.contains('kutu');
+    }
+    if (cat == 'equipment') {
+      return type == 'weapon' || type == 'armor' || type == 'accessory';
+    }
+    if (cat == 'material') {
+      return type == 'material' || type == 'recipe' || type == 'rune';
+    }
+    return true;
+  }
+
+  bool _matchesSellCategory(InventoryItem item, String cat) {
+    if (cat == 'all') return true;
+    if (cat == 'equipment') {
+      return item.itemType == ItemType.weapon || item.itemType == ItemType.armor;
+    }
+    if (cat == 'potion') {
+      return item.itemType == ItemType.potion;
+    }
+    if (cat == 'consumable') {
+      return item.itemType == ItemType.consumable || item.itemType == ItemType.scroll;
+    }
+    if (cat == 'material') {
+      return item.itemType == ItemType.material || item.itemType == ItemType.rune || item.itemType == ItemType.recipe;
+    }
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.loading) return const Center(child: CircularProgressIndicator());
 
     final KingdomMarketBlessingStatus blessing = ref.watch(kingdomMarketBlessingProvider);
+    final String q = widget.searchQuery.trim().toLowerCase();
 
-    final q = searchQuery.trim().toLowerCase();
-    final filtered = q.isEmpty ? items : items.where((it) => (it['name']?.toString() ?? '').toLowerCase().contains(q)).toList();
-    final int energyPotionIndex = filtered.indexWhere(
+    // Buy list filtering
+    final List<Map<String, dynamic>> buyList = widget.items.where((it) {
+      if (q.isNotEmpty) {
+        final String name = (it['name']?.toString() ?? '').toLowerCase();
+        if (!name.contains(q)) return false;
+      }
+      if (_selectedBuyCurrency != 'all') {
+        final String cur = it['currency']?.toString() ?? 'gold';
+        if (cur != _selectedBuyCurrency) return false;
+      }
+      return _matchesBuyCategory(it, _selectedBuyCategory);
+    }).toList(growable: false);
+
+    final int energyPotionIndex = buyList.indexWhere(
       (Map<String, dynamic> it) =>
-          shopEnergyPotionSubtitle(it, playerTolerance) != null,
+          shopEnergyPotionSubtitle(it, widget.playerTolerance) != null,
     );
+
+    // Sell list filtering
+    final List<InventoryItem> allInventory = ref.watch(inventoryProvider).items;
+    final List<InventoryItem> sellableList = allInventory.where((it) {
+      if (it.isEquipped) return false;
+      if (q.isNotEmpty && !it.name.toLowerCase().contains(q)) return false;
+      return _matchesSellCategory(it, _selectedSellCategory);
+    }).toList(growable: false);
+
+    // Category count helpers
+    final int buyPotionCount = widget.items.where((it) => _matchesBuyCategory(it, 'potion')).length;
+    final int buyConsumableCount = widget.items.where((it) => _matchesBuyCategory(it, 'consumable')).length;
+    final int buyEquipCount = widget.items.where((it) => _matchesBuyCategory(it, 'equipment')).length;
+    final int buyMaterialCount = widget.items.where((it) => _matchesBuyCategory(it, 'material')).length;
+
+    final int sellEquipCount = allInventory.where((it) => !it.isEquipped && _matchesSellCategory(it, 'equipment')).length;
+    final int sellPotionCount = allInventory.where((it) => !it.isEquipped && _matchesSellCategory(it, 'potion')).length;
+    final int sellConsumableCount = allInventory.where((it) => !it.isEquipped && _matchesSellCategory(it, 'consumable')).length;
+    final int sellMaterialCount = allInventory.where((it) => !it.isEquipped && _matchesSellCategory(it, 'material')).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        // NPC Vendor Atmosphere Header
+        MerchantVendorHeader(
+          hasKingdomBlessing: blessing.active,
+          blessingDiscountPct: blessing.discountPercent,
+        ),
+
+        // Mode Switcher: Buy vs Sell
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-          child: DottedPanel(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            borderColor: AppColors.liquidGold.withValues(alpha: 0.16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: _MerchantModeToggle(
+                  label: '🛍️ Satın Al',
+                  subtitle: '${widget.items.length} Tüccar Eşyası',
+                  isSelected: _merchantMode == 0,
+                  accent: AppColors.liquidGold,
+                  onTap: () => setState(() => _merchantMode = 0),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MerchantModeToggle(
+                  label: '💰 Eşya Sat',
+                  subtitle: '${allInventory.where((it) => !it.isEquipped).length} Çanta Eşyası',
+                  isSelected: _merchantMode == 1,
+                  accent: AppColors.accentCyan,
+                  onTap: () => setState(() => _merchantMode = 1),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Category Navigation Chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+          child: Row(
+            children: _merchantMode == 0
+                ? <Widget>[
+                    _CategoryChip(
+                      label: 'Tümü (${widget.items.length})',
+                      isSelected: _selectedBuyCategory == 'all',
+                      onTap: () => setState(() => _selectedBuyCategory = 'all'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '🧪 İksirler ($buyPotionCount)',
+                      isSelected: _selectedBuyCategory == 'potion',
+                      onTap: () => setState(() => _selectedBuyCategory = 'potion'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '📦 Tüketilebilir ($buyConsumableCount)',
+                      isSelected: _selectedBuyCategory == 'consumable',
+                      onTap: () => setState(() => _selectedBuyCategory = 'consumable'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '⚔️ Ekipman ($buyEquipCount)',
+                      isSelected: _selectedBuyCategory == 'equipment',
+                      onTap: () => setState(() => _selectedBuyCategory = 'equipment'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '💎 Malzeme ($buyMaterialCount)',
+                      isSelected: _selectedBuyCategory == 'material',
+                      onTap: () => setState(() => _selectedBuyCategory = 'material'),
+                    ),
+                    const SizedBox(width: 12),
+                    // Currency quick filter
+                    _CurrencyFilterChip(
+                      label: 'Hepsi',
+                      isSelected: _selectedBuyCurrency == 'all',
+                      onTap: () => setState(() => _selectedBuyCurrency = 'all'),
+                    ),
+                    const SizedBox(width: 4),
+                    _CurrencyFilterChip(
+                      label: '🪙 Altın',
+                      isSelected: _selectedBuyCurrency == 'gold',
+                      onTap: () => setState(() => _selectedBuyCurrency = 'gold'),
+                    ),
+                    const SizedBox(width: 4),
+                    _CurrencyFilterChip(
+                      label: '💎 Elmas',
+                      isSelected: _selectedBuyCurrency == 'gems',
+                      onTap: () => setState(() => _selectedBuyCurrency = 'gems'),
+                    ),
+                  ]
+                : <Widget>[
+                    _CategoryChip(
+                      label: 'Tümü (${allInventory.where((it) => !it.isEquipped).length})',
+                      isSelected: _selectedSellCategory == 'all',
+                      accent: AppColors.accentCyan,
+                      onTap: () => setState(() => _selectedSellCategory = 'all'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '⚔️ Ekipman ($sellEquipCount)',
+                      isSelected: _selectedSellCategory == 'equipment',
+                      accent: AppColors.accentCyan,
+                      onTap: () => setState(() => _selectedSellCategory = 'equipment'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '🧪 İksirler ($sellPotionCount)',
+                      isSelected: _selectedSellCategory == 'potion',
+                      accent: AppColors.accentCyan,
+                      onTap: () => setState(() => _selectedSellCategory = 'potion'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '📦 Tüketilebilir ($sellConsumableCount)',
+                      isSelected: _selectedSellCategory == 'consumable',
+                      accent: AppColors.accentCyan,
+                      onTap: () => setState(() => _selectedSellCategory = 'consumable'),
+                    ),
+                    const SizedBox(width: 6),
+                    _CategoryChip(
+                      label: '💎 Malzemeler ($sellMaterialCount)',
+                      isSelected: _selectedSellCategory == 'material',
+                      accent: AppColors.accentCyan,
+                      onTap: () => setState(() => _selectedSellCategory = 'material'),
+                    ),
+                  ],
+          ),
+        ),
+
+        // Search Bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  const Color(0xFF141C2E).withValues(alpha: 0.88),
+                  const Color(0xFF0B101C).withValues(alpha: 0.92),
+                ],
+              ),
+              border: Border.all(
+                color: (_merchantMode == 0 ? AppColors.liquidGold : AppColors.accentCyan).withValues(alpha: 0.25),
+                width: 1.0,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Row(
               children: <Widget>[
-                const Icon(Icons.search, color: AppColors.mutedTitanium, size: 16),
+                Icon(
+                  Icons.search_rounded,
+                  color: (_merchantMode == 0 ? AppColors.liquidGold : AppColors.accentCyan).withValues(alpha: 0.80),
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
-                    onChanged: onSearchChanged,
+                    onChanged: widget.onSearchChanged,
                     style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: context.l10n.e_ya_ara,
+                      hintText: _merchantMode == 0 ? 'Tüccar eşyalarında ara...' : 'Çantada satılacak eşya ara...',
                       hintStyle: TextStyle(
                         color: AppColors.mutedTitanium.withValues(alpha: 0.65),
-                        fontSize: 13,
+                        fontSize: 12.5,
                       ),
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
@@ -1240,231 +1628,838 @@ class _ItemsTab extends ConsumerWidget {
                     ),
                   ),
                 ),
-                if (searchQuery.isNotEmpty)
+                if (widget.searchQuery.isNotEmpty)
                   GestureDetector(
-                    onTap: () => onSearchChanged(''),
-                    child: Icon(
-                      Icons.close,
-                      color: AppColors.mutedTitanium.withValues(alpha: 0.75),
-                      size: 14,
+                    onTap: () => widget.onSearchChanged(''),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.close_rounded,
+                        color: AppColors.mutedTitanium.withValues(alpha: 0.85),
+                        size: 15,
+                      ),
                     ),
                   ),
               ],
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-          child: Text(
-            '${filtered.length} eşya${q.isNotEmpty ? ' · "$searchQuery"' : ''}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.mutedTitanium.withValues(alpha: 0.75),
-              fontSize: 10,
+
+        // Grid Content (Buy vs Sell)
+        Expanded(
+          child: _merchantMode == 0
+              ? _buildBuyGrid(context, buyList, blessing, energyPotionIndex, q)
+              : _buildSellGrid(context, sellableList, q),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBuyGrid(
+    BuildContext context,
+    List<Map<String, dynamic>> filtered,
+    KingdomMarketBlessingStatus blessing,
+    int energyPotionIndex,
+    String q,
+  ) {
+    if (filtered.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: _shopScrollPadding(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  const Color(0xFF151E30).withValues(alpha: 0.90),
+                  const Color(0xFF0C1220).withValues(alpha: 0.94),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.liquidGold.withValues(alpha: 0.25),
+                width: 1.0,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 46,
+                  color: AppColors.mutedTitanium.withValues(alpha: 0.35),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  q.isNotEmpty
+                      ? '"${widget.searchQuery}" için eşya bulunamadı'
+                      : 'Bu kategoride mağazada eşya yok',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.mutedTitanium,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        Expanded(
-          child: filtered.isEmpty
-              ? Center(
+      );
+    }
+
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final int crossCount = screenWidth < 360 ? 3 : (screenWidth > 680 ? 5 : 4);
+    final double aspect = screenWidth < 360 ? 0.75 : 0.71;
+
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: _shopScrollPadding(context),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossCount,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: aspect,
+      ),
+      itemCount: filtered.length,
+      itemBuilder: (context, i) {
+        final item = filtered[i];
+        final id = item['id']?.toString() ?? '';
+        final isBuying = widget.buyingId == id;
+        final rarity = item['rarity']?.toString();
+        final rc = widget.rarityColor(rarity);
+        final currency = item['currency']?.toString() ?? 'gold';
+        final int basePrice = ((item['price'] as num?) ?? 0).toInt();
+        final int price = blessing.applyDiscount(basePrice, currency);
+        final bool hasKingDiscount = blessing.hasDiscountForCurrency(currency) && price < basePrice;
+        final isGem = currency == 'gems';
+        final String? energySubtitle =
+            shopEnergyPotionSubtitle(item, widget.playerTolerance);
+
+        Widget cell = GestureDetector(
+          onTap: isBuying ? null : () => widget.onBuyTap(item),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  const Color(0xFF162035).withValues(alpha: 0.90),
+                  const Color(0xFF0C1322).withValues(alpha: 0.95),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: rc.withValues(alpha: 0.65),
+                width: 1.2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: rc.withValues(alpha: 0.16),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
                   child: Padding(
-                    padding: _shopScrollPadding(context),
-                    child: DottedPanel(
-                      borderColor: AppColors.liquidGold.withValues(alpha: 0.2),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Icon(
-                            Icons.shopping_bag_outlined,
-                            size: 48,
-                            color: AppColors.mutedTitanium.withValues(alpha: 0.35),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            q.isNotEmpty
-                                ? '"$searchQuery" için eşya bulunamadı'
-                                : 'Mağazada henüz eşya yok',
-                            textAlign: TextAlign.center,
+                    padding: const EdgeInsets.fromLTRB(6, 20, 6, 32),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        gradient: RadialGradient(
+                          center: const Alignment(0, -0.2),
+                          radius: 0.9,
+                          colors: <Color>[
+                            rc.withValues(alpha: 0.14),
+                            Colors.black.withValues(alpha: 0.35),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: rc.withValues(alpha: 0.20),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: widget.buildItemIcon(item),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        width: 0.6,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            item['name']?.toString() ?? '',
                             style: const TextStyle(
-                              color: AppColors.mutedTitanium,
-                              fontSize: 13,
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: rc,
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: rc.withValues(alpha: 0.6),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (energySubtitle != null)
+                  Positioned(
+                    top: 24,
+                    left: 6,
+                    right: 6,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.70),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Colors.amber.shade400.withValues(alpha: 0.35),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          energySubtitle,
+                          style: TextStyle(
+                            color: Colors.amber.shade200,
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w600,
+                            height: 1.1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  left: 6,
+                  right: 6,
+                  bottom: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isGem
+                            ? <Color>[
+                                AppColors.accentCyan.withValues(alpha: 0.24),
+                                AppColors.accentCyan.withValues(alpha: 0.08),
+                              ]
+                            : <Color>[
+                                AppColors.liquidGold.withValues(alpha: 0.24),
+                                AppColors.liquidGold.withValues(alpha: 0.08),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isGem
+                            ? AppColors.accentCyan.withValues(alpha: 0.45)
+                            : AppColors.liquidGold.withValues(alpha: 0.48),
+                        width: 1.0,
+                      ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: (isGem ? AppColors.accentCyan : AppColors.liquidGold).withValues(alpha: 0.15),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(isGem ? '💎' : '🪙', style: const TextStyle(fontSize: 9.5)),
+                          const SizedBox(width: 2.5),
+                          if (hasKingDiscount) ...<Widget>[
+                            Text(
+                              '$basePrice',
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                decoration: TextDecoration.lineThrough,
+                                color: AppColors.mutedTitanium.withValues(alpha: 0.75),
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                          ],
+                          Text(
+                            isBuying ? '...' : '$price',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: hasKingDiscount
+                                  ? AppColors.liquidGold
+                                  : (isGem ? const Color(0xFF7DD3FC) : const Color(0xFFFDE68A)),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                )
-              : GridView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: _shopScrollPadding(context),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 0.74,
-                  ),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, i) {
-                    final item = filtered[i];
-                    final id = item['id']?.toString() ?? '';
-                    final isBuying = buyingId == id;
-                    final rarity = item['rarity']?.toString();
-                    final rc = rarityColor(rarity);
-                    final currency = item['currency']?.toString() ?? 'gold';
-                    final int basePrice = ((item['price'] as num?) ?? 0).toInt();
-                    final int price = blessing.applyDiscount(basePrice, currency);
-                    final bool hasKingDiscount = blessing.hasDiscountForCurrency(currency) && price < basePrice;
-                    final isGem = currency == 'gems';
-                    final String? energySubtitle =
-                        shopEnergyPotionSubtitle(item, playerTolerance);
+                ),
+              ],
+            ),
+          ),
+        );
 
-                    Widget cell = GestureDetector(
-                      onTap: isBuying ? null : () => onBuyTap(item),
-                      child: Container(
+        if (i == energyPotionIndex) {
+          cell = TutorialAnchorScope(
+            id: TutorialAnchorId.shopPotionRow,
+            child: cell,
+          );
+        }
+        return GkkTabStaggerItem(index: i, child: cell);
+      },
+    );
+  }
+
+  Widget _buildSellGrid(
+    BuildContext context,
+    List<InventoryItem> sellable,
+    String q,
+  ) {
+    if (sellable.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: _shopScrollPadding(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  const Color(0xFF151E30).withValues(alpha: 0.90),
+                  const Color(0xFF0C1220).withValues(alpha: 0.94),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.accentCyan.withValues(alpha: 0.25),
+                width: 1.0,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 46,
+                  color: AppColors.mutedTitanium.withValues(alpha: 0.35),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  q.isNotEmpty
+                      ? '"${widget.searchQuery}" ile eşleşen çanta eşyası yok'
+                      : 'Çantanızda satılabilecek eşya bulunmuyor',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.mutedTitanium,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Ganimet ve craft eşyalarını bu ekranda doğrudan tüccara satabilirsiniz.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.mutedTitanium.withValues(alpha: 0.65),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final int crossCount = screenWidth < 360 ? 3 : (screenWidth > 680 ? 5 : 4);
+    final double aspect = screenWidth < 360 ? 0.75 : 0.71;
+
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: _shopScrollPadding(context),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossCount,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: aspect,
+      ),
+      itemCount: sellable.length,
+      itemBuilder: (context, i) {
+        final item = sellable[i];
+        final rc = widget.rarityColor(item.rarity.name);
+        final int sellPrice = item.vendorSellPrice > 0
+            ? item.vendorSellPrice
+            : (item.basePrice * 0.5).round();
+
+        return GkkTabStaggerItem(
+          index: i,
+          child: GestureDetector(
+            onTap: () => widget.onSellTap(item),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    const Color(0xFF162035).withValues(alpha: 0.90),
+                    const Color(0xFF0C1322).withValues(alpha: 0.95),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: rc.withValues(alpha: 0.65),
+                  width: 1.2,
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: rc.withValues(alpha: 0.16),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: <Widget>[
+                  // Item Icon
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 20, 6, 32),
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF121A2A),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: rc.withValues(alpha: 0.65), width: 1.2),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: rc.withValues(alpha: 0.12),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                          borderRadius: BorderRadius.circular(10),
+                          gradient: RadialGradient(
+                            center: const Alignment(0, -0.2),
+                            radius: 0.9,
+                            colors: <Color>[
+                              rc.withValues(alpha: 0.14),
+                              Colors.black.withValues(alpha: 0.35),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: rc.withValues(alpha: 0.20),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: ItemIconView(
+                            iconValue: item.icon.trim(),
+                            itemId: item.itemId,
+                            size: 64,
+                            expand: true,
+                            fallback: '📦',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Name header with integrated lock
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          width: 0.6,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          if (item.isFavorite) ...<Widget>[
+                            const Icon(
+                              Icons.lock_rounded,
+                              size: 10,
+                              color: AppColors.warning,
                             ),
+                            const SizedBox(width: 2.5),
+                          ],
+                          Flexible(
+                            child: Text(
+                              item.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Quantity badge
+                  Positioned(
+                    top: 22,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D1424).withValues(alpha: 0.90),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: AppColors.liquidGold.withValues(alpha: 0.45),
+                          width: 0.7,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'x${item.quantity}',
+                        style: const TextStyle(
+                          color: AppColors.liquidGold,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Sell price footer
+                  Positioned(
+                    left: 6,
+                    right: 6,
+                    bottom: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: <Color>[
+                            AppColors.liquidGold.withValues(alpha: 0.22),
+                            AppColors.liquidGold.withValues(alpha: 0.08),
                           ],
                         ),
-                        child: Stack(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.liquidGold.withValues(alpha: 0.45),
+                          width: 1.0,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: AppColors.liquidGold.withValues(alpha: 0.14),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
-                            Positioned.fill(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(8, 18, 8, 34),
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
-                                    color: Colors.black.withValues(alpha: 0.16),
-                                    border: Border.all(color: Colors.white10),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: buildItemIcon(item),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 6,
-                              left: 8,
-                              right: 20,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.36),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  item['name']?.toString() ?? '',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: rc,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 22,
-                              left: 6,
-                              right: 6,
-                              child: energySubtitle == null
-                                  ? const SizedBox.shrink()
-                                  : Text(
-                                      energySubtitle,
-                                      style: TextStyle(
-                                        color: Colors.amber.shade200
-                                            .withValues(alpha: 0.9),
-                                        fontSize: 7.5,
-                                        fontWeight: FontWeight.w600,
-                                        height: 1.1,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                    ),
-                            ),
-                            Positioned(
-                              left: 8,
-                              right: 8,
-                              bottom: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: (isGem ? Colors.blue : Colors.amber).withValues(alpha: 0.17),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: (isGem ? Colors.blue : Colors.amber).withValues(alpha: 0.28)),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: <Widget>[
-                                    Text(isGem ? '💎' : '🪙', style: const TextStyle(fontSize: 9)),
-                                    const SizedBox(width: 2),
-                                    if (hasKingDiscount) ...<Widget>[
-                                      Text(
-                                        '$basePrice',
-                                        style: TextStyle(
-                                          fontSize: 8.5,
-                                          decoration: TextDecoration.lineThrough,
-                                          color: AppColors.mutedTitanium.withValues(alpha: 0.75),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 3),
-                                    ],
-                                    Text(
-                                      isBuying ? '...' : '$price',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: hasKingDiscount
-                                            ? AppColors.liquidGold
-                                            : (isGem ? const Color(0xFF7DD3FC) : const Color(0xFFFDE68A)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            const Text('🪙', style: TextStyle(fontSize: 9.5)),
+                            const SizedBox(width: 2.5),
+                            Text(
+                              '+$sellPrice',
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.liquidGold,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    );
-                    if (i == energyPotionIndex) {
-                      cell = TutorialAnchorScope(
-                        id: TutorialAnchorId.shopPotionRow,
-                        child: cell,
-                      );
-                    }
-                    return GkkTabStaggerItem(index: i, child: cell);
-                  },
-                ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MerchantModeToggle extends StatelessWidget {
+  const _MerchantModeToggle({
+    required this.label,
+    required this.subtitle,
+    required this.isSelected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final String label;
+  final String subtitle;
+  final bool isSelected;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isSelected
+                ? <Color>[
+                    accent.withValues(alpha: 0.28),
+                    accent.withValues(alpha: 0.08),
+                  ]
+                : <Color>[
+                    const Color(0xFF131C2D).withValues(alpha: 0.75),
+                    const Color(0xFF090E18).withValues(alpha: 0.85),
+                  ],
+          ),
+          border: Border.all(
+            color: isSelected ? accent : Colors.white.withValues(alpha: 0.12),
+            width: isSelected ? 1.4 : 0.8,
+          ),
+          boxShadow: isSelected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.20),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
-      ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected ? AppColors.textPrimary : AppColors.mutedTitanium,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                subtitle,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: isSelected ? accent : AppColors.mutedTitanium.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.accent = AppColors.liquidGold,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isSelected
+                ? <Color>[
+                    accent.withValues(alpha: 0.26),
+                    accent.withValues(alpha: 0.10),
+                  ]
+                : <Color>[
+                    const Color(0xFF141C2D).withValues(alpha: 0.85),
+                    const Color(0xFF0C1220).withValues(alpha: 0.90),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? accent : Colors.white.withValues(alpha: 0.12),
+            width: isSelected ? 1.2 : 0.8,
+          ),
+          boxShadow: isSelected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+            color: isSelected ? accent : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CurrencyFilterChip extends StatelessWidget {
+  const _CurrencyFilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4.5),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isSelected
+                ? <Color>[
+                    AppColors.liquidGold.withValues(alpha: 0.26),
+                    AppColors.liquidGold.withValues(alpha: 0.10),
+                  ]
+                : <Color>[
+                    const Color(0xFF111726).withValues(alpha: 0.70),
+                    const Color(0xFF090E18).withValues(alpha: 0.80),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? AppColors.liquidGold : Colors.white.withValues(alpha: 0.10),
+            width: isSelected ? 1.2 : 0.7,
+          ),
+          boxShadow: isSelected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.liquidGold.withValues(alpha: 0.22),
+                    blurRadius: 6,
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+            color: isSelected ? AppColors.liquidGold : AppColors.mutedTitanium,
+          ),
+        ),
+      ),
     );
   }
 }

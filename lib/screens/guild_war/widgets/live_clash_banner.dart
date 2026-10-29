@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../models/guild_war_model.dart';
 import '../../../routing/app_router.dart';
 import '../../../theme/app_colors.dart';
+import 'faction_crest_painter.dart';
 import 'guild_war_design.dart';
 
 class LiveClashBanner extends StatefulWidget {
@@ -67,13 +68,32 @@ class _LiveClashBannerState extends State<LiveClashBanner> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(
-              '⚔ CANLI CLASH · ${clash.guild1Name ?? '?'} vs ${clash.guild2Name ?? '?'}',
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-                color: AppColors.textPrimary,
-              ),
+            Row(
+              children: <Widget>[
+                const FactionCrestWidget(
+                  faction: FactionType.elyos,
+                  size: 20,
+                  showGlow: false,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '⚔ CANLI CLASH · ${clash.guild1Name ?? '?'} vs ${clash.guild2Name ?? '?'}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const FactionCrestWidget(
+                  faction: FactionType.asmodian,
+                  size: 20,
+                  showGlow: false,
+                ),
+              ],
             ),
             const SizedBox(height: 6),
             ClipRRect(

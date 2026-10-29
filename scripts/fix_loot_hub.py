@@ -1,0 +1,5 @@
+content = open('lib/screens/loot/loot_hub_screen.dart', encoding='utf-8').read()
+content = content.replace('final PlayerModel? player = ref.read(playerProvider).value;', 'final PlayerProfile? player = ref.read(playerProvider).profile;')
+content = content.replace('final PlayerModel? player = ref.watch(playerProvider).value;', 'final PlayerProfile? player = ref.watch(playerProvider).profile;')
+open('lib/screens/loot/loot_hub_screen.dart', 'w', encoding='utf-8').write(content)
+print('Fixed loot_hub_screen.dart')

@@ -1,0 +1,205 @@
+[
+  {
+    "filename": "Arrow.glb",
+    "size_bytes": 16828,
+    "vertices": 444,
+    "faces": 224,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Arrow.glb"
+  },
+  {
+    "filename": "Axe.glb",
+    "size_bytes": 63764,
+    "vertices": 2173,
+    "faces": 1130,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Axe.glb"
+  },
+  {
+    "filename": "Axe_Double.glb",
+    "size_bytes": 101596,
+    "vertices": 3558,
+    "faces": 1892,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Axe_Double.glb"
+  },
+  {
+    "filename": "Axe_Small.glb",
+    "size_bytes": 54740,
+    "vertices": 1838,
+    "faces": 964,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Axe_Small.glb"
+  },
+  {
+    "filename": "Bow_Evil.glb",
+    "size_bytes": 44556,
+    "vertices": 1506,
+    "faces": 772,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Bow_Evil.glb"
+  },
+  {
+    "filename": "Bow_Golden.glb",
+    "size_bytes": 45448,
+    "vertices": 1542,
+    "faces": 776,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Bow_Golden.glb"
+  },
+  {
+    "filename": "Bow_Wooden.glb",
+    "size_bytes": 42668,
+    "vertices": 1438,
+    "faces": 728,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Bow_Wooden.glb"
+  },
+  {
+    "filename": "Bow_Wooden2.glb",
+    "size_bytes": 39308,
+    "vertices": 1314,
+    "faces": 664,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Bow_Wooden2.glb"
+  },
+  {
+    "filename": "Claymore.glb",
+    "size_bytes": 54980,
+    "vertices": 1787,
+    "faces": 1031,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Claymore.glb"
+  },
+  {
+    "filename": "Dagger.glb",
+    "size_bytes": 43740,
+    "vertices": 1395,
+    "faces": 726,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Dagger.glb"
+  },
+  {
+    "filename": "Dagger_2.glb",
+    "size_bytes": 40368,
+    "vertices": 1252,
+    "faces": 736,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Dagger_2.glb"
+  },
+  {
+    "filename": "DamagedHelmet.glb",
+    "size_bytes": 3773916,
+    "vertices": 14556,
+    "faces": 15452,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/DamagedHelmet.glb"
+  },
+  {
+    "filename": "Hammer_Double.glb",
+    "size_bytes": 105748,
+    "vertices": 3724,
+    "faces": 1918,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Hammer_Double.glb"
+  },
+  {
+    "filename": "Hammer_Small.glb",
+    "size_bytes": 82540,
+    "vertices": 2868,
+    "faces": 1474,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Hammer_Small.glb"
+  },
+  {
+    "filename": "Scythe.glb",
+    "size_bytes": 75252,
+    "vertices": 2606,
+    "faces": 1310,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Scythe.glb"
+  },
+  {
+    "filename": "Shield_Celtic_Golden.glb",
+    "size_bytes": 47584,
+    "vertices": 1572,
+    "faces": 832,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Shield_Celtic_Golden.glb"
+  },
+  {
+    "filename": "Shield_Heater.glb",
+    "size_bytes": 97820,
+    "vertices": 3386,
+    "faces": 1948,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Shield_Heater.glb"
+  },
+  {
+    "filename": "Shield_Heater_2.glb",
+    "size_bytes": 63424,
+    "vertices": 2122,
+    "faces": 1272,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Shield_Heater_2.glb"
+  },
+  {
+    "filename": "Shield_Round.glb",
+    "size_bytes": 60448,
+    "vertices": 2052,
+    "faces": 1056,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Shield_Round.glb"
+  },
+  {
+    "filename": "Shield_Round_2.glb",
+    "size_bytes": 69492,
+    "vertices": 2348,
+    "faces": 1204,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Shield_Round_2.glb"
+  },
+  {
+    "filename": "Spear.glb",
+    "size_bytes": 69892,
+    "vertices": 2410,
+    "faces": 1202,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Spear.glb"
+  },
+  {
+    "filename": "Sword.glb",
+    "size_bytes": 58220,
+    "vertices": 1928,
+    "faces": 1006,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Sword.glb"
+  },
+  {
+    "filename": "Sword_2.glb",
+    "size_bytes": 54156,
+    "vertices": 1775,
+    "faces": 942,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Sword_2.glb"
+  },
+  {
+    "filename": "Sword_Big.glb",
+    "size_bytes": 50336,
+    "vertices": 1644,
+    "faces": 830,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Sword_Big.glb"
+  },
+  {
+    "filename": "Sword_Golden.glb",
+    "size_bytes": 58220,
+    "vertices": 1928,
+    "faces": 1006,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Sword_Golden.glb"
+  },
+  {
+    "filename": "battleaxe.glb",
+    "size_bytes": 101596,
+    "vertices": 3558,
+    "faces": 1892,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Axe_Double.glb (copied as battleaxe.glb)"
+  },
+  {
+    "filename": "broadsword.glb",
+    "size_bytes": 54980,
+    "vertices": 1787,
+    "faces": 1031,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Claymore.glb (copied as broadsword.glb)"
+  },
+  {
+    "filename": "shield.glb",
+    "size_bytes": 47584,
+    "vertices": 1572,
+    "faces": 832,
+    "source_url": "https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/medieval_weapons_pack/Shield_Celtic_Golden.glb (copied as shield.glb)"
+  },
+  {
+    "filename": "katana_antique.glb",
+    "size_bytes": 4368244,
+    "vertices": 5685,
+    "faces": 6670,
+    "source_url": "https://polyhaven.com/a/antique_katana_01 (Imported via Blender MCP, CC0 Tal Swicegood)"
+  }
+]

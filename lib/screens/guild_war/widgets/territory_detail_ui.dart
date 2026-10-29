@@ -1,8 +1,11 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../models/guild_war_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
+import 'faction_crest_painter.dart';
+import 'fortress_siege_illustration.dart';
 import 'guild_war_design.dart';
 
 const List<String> kTerritoryMapIcons = <String>['🏰', '🌾', '🐉', '⚓', '🔥', '🏔'];
@@ -67,15 +70,36 @@ class TerritoryDetailHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<String> bonuses = territoryBonusSummary(territory);
+    final bool isDamaged = territory.defensePower < territory.baseDefensePower;
+    final double shieldIntegrity =
+        (territory.defensePower / math.max(1, territory.baseDefensePower)).clamp(0.0, 1.0);
+    final FactionType faction = isOwner
+        ? FactionType.elyos
+        : (territory.isUnclaimed ? FactionType.neutral : FactionType.asmodian);
 
-    return WarHeroBanner(
-      accent: accent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        // High-Res Aion-2 Fortress Siege Cinematic Hero Illustration
+        FortressSiegeIllustration(
+          fortressName: territory.name,
+          faction: faction,
+          shieldIntegrity: shieldIntegrity,
+          isUnderSiege: isDamaged,
+          height: 190,
+          showTitle: false,
+          defensePower: territory.defensePower,
+          maxDefensePower: territory.baseDefensePower,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        WarHeroBanner(
+          accent: accent,
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
               Container(
                 width: 52,
                 height: 52,
@@ -149,6 +173,8 @@ class TerritoryDetailHero extends StatelessWidget {
           ),
         ],
       ),
+    ),
+      ],
     );
   }
 }

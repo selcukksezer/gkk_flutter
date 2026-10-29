@@ -1,0 +1,743 @@
+[
+  {
+    "model_name": "Soldier",
+    "category": "characters",
+    "source_path": "assets/models/characters/Soldier.glb",
+    "verified": true,
+    "original": {
+      "verts": 7476,
+      "tris": 11456,
+      "bytes": 2160468
+    },
+    "lod0": {
+      "verts": 7476,
+      "tris": 11456,
+      "bytes": 1067624,
+      "path": "assets/models/characters\\Soldier_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4279,
+      "tris": 5727,
+      "bytes": 1006028,
+      "path": "assets/models/characters\\Soldier_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2108,
+      "tris": 2291,
+      "bytes": 952864,
+      "path": "assets/models/characters\\Soldier_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 35972,
+      "path": "assets/models/characters\\Soldier_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "archer",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\archer.glb",
+    "verified": true,
+    "original": {
+      "verts": 7776,
+      "tris": 8980,
+      "bytes": 484712
+    },
+    "lod0": {
+      "verts": 7776,
+      "tris": 8980,
+      "bytes": 117664,
+      "path": "assets\\models\\characters\\archer_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4786,
+      "tris": 4488,
+      "bytes": 91456,
+      "path": "assets\\models\\characters\\archer_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2553,
+      "tris": 1793,
+      "bytes": 61700,
+      "path": "assets\\models\\characters\\archer_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 46128,
+      "path": "assets\\models\\characters\\archer_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "Barbarian",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\Barbarian.glb",
+    "verified": true,
+    "original": {
+      "verts": 5964,
+      "tris": 6623,
+      "bytes": 3613268
+    },
+    "lod0": {
+      "verts": 5964,
+      "tris": 6623,
+      "bytes": 2883928,
+      "path": "assets\\models\\characters\\Barbarian_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 3679,
+      "tris": 3308,
+      "bytes": 2862012,
+      "path": "assets\\models\\characters\\Barbarian_LOD1.glb",
+      "tri_ratio": 0.499
+    },
+    "lod2": {
+      "verts": 2050,
+      "tris": 1314,
+      "bytes": 2839344,
+      "path": "assets\\models\\characters\\Barbarian_LOD2.glb",
+      "tri_ratio": 0.198
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 50352,
+      "path": "assets\\models\\characters\\Barbarian_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "druid",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\druid.glb",
+    "verified": true,
+    "original": {
+      "verts": 7523,
+      "tris": 7864,
+      "bytes": 465800
+    },
+    "lod0": {
+      "verts": 7523,
+      "tris": 7864,
+      "bytes": 120296,
+      "path": "assets\\models\\characters\\druid_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4766,
+      "tris": 3931,
+      "bytes": 93864,
+      "path": "assets\\models\\characters\\druid_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2687,
+      "tris": 1570,
+      "bytes": 62888,
+      "path": "assets\\models\\characters\\druid_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 47436,
+      "path": "assets\\models\\characters\\druid_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "hero",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\hero.glb",
+    "verified": true,
+    "original": {
+      "verts": 7476,
+      "tris": 11456,
+      "bytes": 2160468
+    },
+    "lod0": {
+      "verts": 7476,
+      "tris": 11456,
+      "bytes": 1067624,
+      "path": "assets\\models\\characters\\hero_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4279,
+      "tris": 5727,
+      "bytes": 1006028,
+      "path": "assets\\models\\characters\\hero_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2108,
+      "tris": 2291,
+      "bytes": 952864,
+      "path": "assets\\models\\characters\\hero_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 35960,
+      "path": "assets\\models\\characters\\hero_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "Knight",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\Knight.glb",
+    "verified": true,
+    "original": {
+      "verts": 7066,
+      "tris": 7032,
+      "bytes": 3659532
+    },
+    "lod0": {
+      "verts": 7066,
+      "tris": 7032,
+      "bytes": 2896532,
+      "path": "assets\\models\\characters\\Knight_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4366,
+      "tris": 3513,
+      "bytes": 2870680,
+      "path": "assets\\models\\characters\\Knight_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2503,
+      "tris": 1397,
+      "bytes": 2844248,
+      "path": "assets\\models\\characters\\Knight_LOD2.glb",
+      "tri_ratio": 0.199
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 45044,
+      "path": "assets\\models\\characters\\Knight_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "KnightCharacter",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\KnightCharacter.glb",
+    "verified": true,
+    "original": {
+      "verts": 2100,
+      "tris": 1036,
+      "bytes": 393060
+    },
+    "lod0": {
+      "verts": 2100,
+      "tris": 1036,
+      "bytes": 306084,
+      "path": "assets\\models\\characters\\KnightCharacter_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 1602,
+      "tris": 518,
+      "bytes": 294380,
+      "path": "assets\\models\\characters\\KnightCharacter_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 1303,
+      "tris": 207,
+      "bytes": 286064,
+      "path": "assets\\models\\characters\\KnightCharacter_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 37976,
+      "path": "assets\\models\\characters\\KnightCharacter_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "Mage",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\Mage.glb",
+    "verified": true,
+    "original": {
+      "verts": 5321,
+      "tris": 5763,
+      "bytes": 3589240
+    },
+    "lod0": {
+      "verts": 5321,
+      "tris": 5763,
+      "bytes": 2875996,
+      "path": "assets\\models\\characters\\Mage_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 3288,
+      "tris": 2878,
+      "bytes": 2855276,
+      "path": "assets\\models\\characters\\Mage_LOD1.glb",
+      "tri_ratio": 0.499
+    },
+    "lod2": {
+      "verts": 1899,
+      "tris": 1146,
+      "bytes": 2835624,
+      "path": "assets\\models\\characters\\Mage_LOD2.glb",
+      "tri_ratio": 0.199
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 39644,
+      "path": "assets\\models\\characters\\Mage_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "marksman",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\marksman.glb",
+    "verified": true,
+    "original": {
+      "verts": 8112,
+      "tris": 7735,
+      "bytes": 664844
+    },
+    "lod0": {
+      "verts": 8112,
+      "tris": 7735,
+      "bytes": 303952,
+      "path": "assets\\models\\characters\\marksman_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 5535,
+      "tris": 3866,
+      "bytes": 275936,
+      "path": "assets\\models\\characters\\marksman_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 3475,
+      "tris": 1545,
+      "bytes": 237536,
+      "path": "assets\\models\\characters\\marksman_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 48276,
+      "path": "assets\\models\\characters\\marksman_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "paladin",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\paladin.glb",
+    "verified": true,
+    "original": {
+      "verts": 2100,
+      "tris": 1036,
+      "bytes": 393060
+    },
+    "lod0": {
+      "verts": 2100,
+      "tris": 1036,
+      "bytes": 306084,
+      "path": "assets\\models\\characters\\paladin_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 1602,
+      "tris": 518,
+      "bytes": 294380,
+      "path": "assets\\models\\characters\\paladin_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 1303,
+      "tris": 207,
+      "bytes": 286064,
+      "path": "assets\\models\\characters\\paladin_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 37944,
+      "path": "assets\\models\\characters\\paladin_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "ranger",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\ranger.glb",
+    "verified": true,
+    "original": {
+      "verts": 7776,
+      "tris": 8980,
+      "bytes": 484712
+    },
+    "lod0": {
+      "verts": 7776,
+      "tris": 8980,
+      "bytes": 117664,
+      "path": "assets\\models\\characters\\ranger_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4786,
+      "tris": 4488,
+      "bytes": 91456,
+      "path": "assets\\models\\characters\\ranger_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2553,
+      "tris": 1793,
+      "bytes": 61700,
+      "path": "assets\\models\\characters\\ranger_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 46128,
+      "path": "assets\\models\\characters\\ranger_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "rogue",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\rogue.glb",
+    "verified": true,
+    "original": {
+      "verts": 5943,
+      "tris": 6457,
+      "bytes": 3616284
+    },
+    "lod0": {
+      "verts": 5943,
+      "tris": 6457,
+      "bytes": 2881140,
+      "path": "assets\\models\\characters\\rogue_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 3643,
+      "tris": 3226,
+      "bytes": 2859388,
+      "path": "assets\\models\\characters\\rogue_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2028,
+      "tris": 1285,
+      "bytes": 2838504,
+      "path": "assets\\models\\characters\\rogue_LOD2.glb",
+      "tri_ratio": 0.199
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 50632,
+      "path": "assets\\models\\characters\\rogue_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "rogue_hooded",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\rogue_hooded.glb",
+    "verified": true,
+    "original": {
+      "verts": 5628,
+      "tris": 6115,
+      "bytes": 3597652
+    },
+    "lod0": {
+      "verts": 5628,
+      "tris": 6115,
+      "bytes": 2878492,
+      "path": "assets\\models\\characters\\rogue_hooded_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 3426,
+      "tris": 3054,
+      "bytes": 2857440,
+      "path": "assets\\models\\characters\\rogue_hooded_LOD1.glb",
+      "tri_ratio": 0.499
+    },
+    "lod2": {
+      "verts": 1885,
+      "tris": 1216,
+      "bytes": 2837244,
+      "path": "assets\\models\\characters\\rogue_hooded_LOD2.glb",
+      "tri_ratio": 0.199
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 49208,
+      "path": "assets\\models\\characters\\rogue_hooded_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "Skeleton_Mage",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\Skeleton_Mage.glb",
+    "verified": true,
+    "original": {
+      "verts": 4098,
+      "tris": 4668,
+      "bytes": 4761048
+    },
+    "lod0": {
+      "verts": 4098,
+      "tris": 4668,
+      "bytes": 3917400,
+      "path": "assets\\models\\characters\\Skeleton_Mage_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 2587,
+      "tris": 2332,
+      "bytes": 3900784,
+      "path": "assets\\models\\characters\\Skeleton_Mage_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 1457,
+      "tris": 929,
+      "bytes": 3884420,
+      "path": "assets\\models\\characters\\Skeleton_Mage_LOD2.glb",
+      "tri_ratio": 0.199
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 40632,
+      "path": "assets\\models\\characters\\Skeleton_Mage_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "Skeleton_Warrior",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\Skeleton_Warrior.glb",
+    "verified": true,
+    "original": {
+      "verts": 6159,
+      "tris": 6014,
+      "bytes": 4863620
+    },
+    "lod0": {
+      "verts": 6159,
+      "tris": 6014,
+      "bytes": 3947300,
+      "path": "assets\\models\\characters\\Skeleton_Warrior_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4023,
+      "tris": 3007,
+      "bytes": 3924520,
+      "path": "assets\\models\\characters\\Skeleton_Warrior_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2429,
+      "tris": 1199,
+      "bytes": 3896924,
+      "path": "assets\\models\\characters\\Skeleton_Warrior_LOD2.glb",
+      "tri_ratio": 0.199
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 45256,
+      "path": "assets\\models\\characters\\Skeleton_Warrior_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "Soldier",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\Soldier.glb",
+    "verified": true,
+    "original": {
+      "verts": 7476,
+      "tris": 11456,
+      "bytes": 2160468
+    },
+    "lod0": {
+      "verts": 7476,
+      "tris": 11456,
+      "bytes": 1067624,
+      "path": "assets\\models\\characters\\Soldier_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4279,
+      "tris": 5727,
+      "bytes": 1006028,
+      "path": "assets\\models\\characters\\Soldier_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2108,
+      "tris": 2291,
+      "bytes": 952864,
+      "path": "assets\\models\\characters\\Soldier_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 35972,
+      "path": "assets\\models\\characters\\Soldier_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "warrior",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\warrior.glb",
+    "verified": true,
+    "original": {
+      "verts": 5964,
+      "tris": 6623,
+      "bytes": 3613268
+    },
+    "lod0": {
+      "verts": 5964,
+      "tris": 6623,
+      "bytes": 2883928,
+      "path": "assets\\models\\characters\\warrior_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 3679,
+      "tris": 3308,
+      "bytes": 2862012,
+      "path": "assets\\models\\characters\\warrior_LOD1.glb",
+      "tri_ratio": 0.499
+    },
+    "lod2": {
+      "verts": 2050,
+      "tris": 1314,
+      "bytes": 2839344,
+      "path": "assets\\models\\characters\\warrior_LOD2.glb",
+      "tri_ratio": 0.198
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 50344,
+      "path": "assets\\models\\characters\\warrior_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "witch",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\witch.glb",
+    "verified": true,
+    "original": {
+      "verts": 4908,
+      "tris": 6290,
+      "bytes": 320316
+    },
+    "lod0": {
+      "verts": 4908,
+      "tris": 6290,
+      "bytes": 84504,
+      "path": "assets\\models\\characters\\witch_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 2943,
+      "tris": 3143,
+      "bytes": 66420,
+      "path": "assets\\models\\characters\\witch_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 1577,
+      "tris": 1254,
+      "bytes": 49988,
+      "path": "assets\\models\\characters\\witch_LOD2.glb",
+      "tri_ratio": 0.199
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 42880,
+      "path": "assets\\models\\characters\\witch_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  },
+  {
+    "model_name": "wizard",
+    "category": "characters",
+    "source_path": "assets\\models\\characters\\wizard.glb",
+    "verified": true,
+    "original": {
+      "verts": 7523,
+      "tris": 7864,
+      "bytes": 465800
+    },
+    "lod0": {
+      "verts": 7523,
+      "tris": 7864,
+      "bytes": 120296,
+      "path": "assets\\models\\characters\\wizard_LOD0.glb"
+    },
+    "lod1": {
+      "verts": 4766,
+      "tris": 3931,
+      "bytes": 93864,
+      "path": "assets\\models\\characters\\wizard_LOD1.glb",
+      "tri_ratio": 0.5
+    },
+    "lod2": {
+      "verts": 2687,
+      "tris": 1570,
+      "bytes": 62888,
+      "path": "assets\\models\\characters\\wizard_LOD2.glb",
+      "tri_ratio": 0.2
+    },
+    "impostor": {
+      "verts": 4,
+      "tris": 2,
+      "bytes": 47440,
+      "path": "assets\\models\\characters\\wizard_Impostor.glb"
+    },
+    "draco_enabled": true,
+    "draco_level": 6
+  }
+]

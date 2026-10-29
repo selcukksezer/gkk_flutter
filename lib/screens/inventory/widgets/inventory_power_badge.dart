@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/power_helpers.dart';
 import '../../../providers/inventory_provider.dart';
 import '../../../providers/player_provider.dart';
-import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
+import 'aion_rarity_glow.dart';
 
-/// Envanter ustunde canli POWER sayaci — kuşanma/çıkarmada animasyonlu guncellenir.
+/// 2027 Aion 2 Dark Fantasy Combat Score Rating Badge.
+/// Displays live animated combat power with metallic gradient border,
+/// specular sweep shimmer, dynamic tier crest, and floating delta indicators.
 class InventoryPowerBadge extends ConsumerStatefulWidget {
   const InventoryPowerBadge({super.key});
 
@@ -17,21 +19,44 @@ class InventoryPowerBadge extends ConsumerStatefulWidget {
 }
 
 class _InventoryPowerBadgeState extends ConsumerState<InventoryPowerBadge>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
+  late final AnimationController _shimmerCtrl;
+  late final AnimationController _countCtrl;
+
   int? _lastPower;
-  int _displayPower = 0;
+  int _startPower = 0;
+  int _targetPower = 0;
+  int _currentAnimatedPower = 0;
   bool? _lastWasIncrease;
+  int _lastDelta = 0;
 
   @override
   void initState() {
     super.initState();
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 520),
+      duration: const Duration(milliseconds: 600),
     );
-    ref.listenManual(inventoryProvider, (_, __) => _syncPower());
-    ref.listenManual(playerProvider, (_, __) => _syncPower());
+
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
+
+    _countCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    )..addListener(() {
+        final double progress = Curves.easeOutCubic.transform(_countCtrl.value);
+        setState(() {
+          _currentAnimatedPower =
+              (_startPower + ((_targetPower - _startPower) * progress)).round();
+        });
+      });
+
+    ref.listenManual(inventoryProvider, (previous, next) => _syncPower());
+    ref.listenManual(playerProvider, (previous, next) => _syncPower());
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncPower());
   }
 
@@ -41,26 +66,45 @@ class _InventoryPowerBadgeState extends ConsumerState<InventoryPowerBadge>
     if (!mounted) return;
     final int next = _readPower();
     final int? prev = _lastPower;
+
     if (prev == null) {
       _lastPower = next;
-      setState(() => _displayPower = next);
+      _startPower = next;
+      _targetPower = next;
+      setState(() => _currentAnimatedPower = next);
       return;
     }
+
     if (prev == next) {
-      if (_displayPower != next) {
-        setState(() => _displayPower = next);
+      if (_targetPower != next) {
+        setState(() {
+          _targetPower = next;
+          _currentAnimatedPower = next;
+        });
       }
       return;
     }
-    _lastWasIncrease = next > prev;
+
+    final bool isIncrease = next > prev;
+    _lastWasIncrease = isIncrease;
+    _lastDelta = (next - prev).abs();
     _lastPower = next;
-    setState(() => _displayPower = next);
+
+    _startPower = _currentAnimatedPower;
+    _targetPower = next;
+    _countCtrl.forward(from: 0);
     _pulseCtrl.forward(from: 0);
+
+    if (isIncrease) {
+      AionHaptics.equipSuccess();
+    }
   }
 
   @override
   void dispose() {
     _pulseCtrl.dispose();
+    _shimmerCtrl.dispose();
+    _countCtrl.dispose();
     super.dispose();
   }
 
@@ -69,21 +113,22 @@ class _InventoryPowerBadgeState extends ConsumerState<InventoryPowerBadge>
     ref.watch(inventoryProvider);
     ref.watch(playerProvider);
 
-    final int power = _displayPower > 0 || _lastPower != null
-        ? _displayPower
+    final int displayValue = _currentAnimatedPower > 0 || _lastPower != null
+        ? _currentAnimatedPower
         : _readPower();
+
     final Color pulseColor = _lastWasIncrease == true
-        ? AppColors.toxicNeon
+        ? const Color(0xFF07CA6B)
         : _lastWasIncrease == false
-            ? AppColors.coralFlare
-            : AppColors.cyberFuchsia;
+            ? const Color(0xFFEF4444)
+            : const Color(0xFFFFB800);
 
     return AnimatedBuilder(
-      animation: _pulseCtrl,
+      animation: Listenable.merge(<Listenable>[_pulseCtrl, _shimmerCtrl]),
       builder: (BuildContext context, Widget? child) {
-        final double t = Curves.easeOut.transform(_pulseCtrl.value);
-        final double scale = 1 + (t * 0.08);
-        final double glow = (1 - t) * 0.35;
+        final double pulseT = Curves.easeOut.transform(_pulseCtrl.value);
+        final double scale = 1.0 + (pulseT * 0.05);
+        final double glowAlpha = (1.0 - pulseT) * 0.40;
 
         return Transform.scale(
           scale: scale,
@@ -91,23 +136,28 @@ class _InventoryPowerBadgeState extends ConsumerState<InventoryPowerBadge>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               boxShadow: <BoxShadow>[
-                if (glow > 0)
+                if (glowAlpha > 0)
                   BoxShadow(
-                    color: pulseColor.withValues(alpha: glow),
-                    blurRadius: 18,
-                    spreadRadius: 1,
+                    color: pulseColor.withValues(alpha: glowAlpha),
+                    blurRadius: 16,
+                    spreadRadius: 2,
                   ),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                _PowerBadgeShell(value: formatPowerValue(power)),
+                _PowerBadgeMetallicShell(
+                  value: formatPowerValue(displayValue),
+                  shimmerProgress: _shimmerCtrl.value,
+                  powerLevel: displayValue,
+                ),
                 if (_pulseCtrl.isAnimating && _lastWasIncrease != null) ...<Widget>[
-                  const SizedBox(width: 8),
-                  _DeltaChip(
+                  const SizedBox(width: 6),
+                  _FloatingDeltaChip(
                     increase: _lastWasIncrease!,
-                    opacity: (1 - t).clamp(0.0, 1.0),
+                    delta: _lastDelta,
+                    opacity: (1.0 - pulseT).clamp(0.0, 1.0),
                   ),
                 ],
               ],
@@ -119,42 +169,71 @@ class _InventoryPowerBadgeState extends ConsumerState<InventoryPowerBadge>
   }
 }
 
-class _PowerBadgeShell extends StatelessWidget {
-  const _PowerBadgeShell({required this.value});
+class _PowerBadgeMetallicShell extends StatelessWidget {
+  const _PowerBadgeMetallicShell({
+    required this.value,
+    required this.shimmerProgress,
+    required this.powerLevel,
+  });
 
   final String value;
+  final double shimmerProgress;
+  final int powerLevel;
+
+  (String, Color, IconData) _getCombatTier(int power) {
+    if (power >= 20000) {
+      return ('İLAHİ', const Color(0xFFFFB800), Icons.workspace_premium_rounded);
+    } else if (power >= 10000) {
+      return ('ARKON', const Color(0xFF06D0D8), Icons.military_tech_rounded);
+    } else if (power >= 5000) {
+      return ('KAHRAMAN', const Color(0xFFA855F7), Icons.shield_rounded);
+    } else if (power >= 1000) {
+      return ('SAVAŞÇI', const Color(0xFF38BDF8), Icons.hardware_rounded);
+    }
+    return ('ÇAYLAK', const Color(0xFF94A3B8), Icons.radio_button_checked_rounded);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final (tierTitle, tierColor, tierIcon) = _getCombatTier(powerLevel);
+
     return Container(
-      constraints: const BoxConstraints(minWidth: 72, maxWidth: 120),
+      constraints: const BoxConstraints(minWidth: 84, maxWidth: 140),
       padding: const EdgeInsets.all(1.2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: <Color>[
-            AppColors.cyberFuchsia.withValues(alpha: 0.95),
-            AppColors.mysticRuby.withValues(alpha: 0.65),
+            tierColor.withValues(alpha: 0.95),
+            const Color(0xFF1E293B),
+            tierColor.withValues(alpha: 0.70),
+          ],
+          stops: <double>[
+            0.0,
+            (shimmerProgress).clamp(0.1, 0.9),
+            1.0,
           ],
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: AppColors.cyberFuchsia.withValues(alpha: 0.35),
+            color: tierColor.withValues(alpha: 0.28),
             blurRadius: 10,
-            spreadRadius: -2,
+            spreadRadius: -1,
           ),
         ],
       ),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10.6),
-          gradient: LinearGradient(
+          borderRadius: BorderRadius.circular(10.8),
+          gradient: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: <Color>[
-              AppColors.spaceNavy.withValues(alpha: 0.96),
-              AppColors.carbonVoid.withValues(alpha: 0.98),
+              Color(0xF5111827),
+              Color(0xFA090E17),
             ],
           ),
         ),
@@ -162,14 +241,25 @@ class _PowerBadgeShell extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            Text(
-              'POWER',
-              style: AppTextStyles.micro.copyWith(
-                fontSize: 8.5,
-                color: AppColors.textPrimary.withValues(alpha: 0.88),
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.1,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  tierIcon,
+                  size: 9.5,
+                  color: tierColor,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  'GÜÇ · $tierTitle',
+                  style: AppTextStyles.micro.copyWith(
+                    fontSize: 8.0,
+                    color: tierColor,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 2),
             Text(
@@ -177,12 +267,14 @@ class _PowerBadgeShell extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.h3.copyWith(
-                fontSize: 13,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w900,
-                height: 1,
+                letterSpacing: 0.4,
+                height: 1.0,
+                color: Colors.white,
                 shadows: <Shadow>[
                   Shadow(
-                    color: AppColors.cyberFuchsia.withValues(alpha: 0.7),
+                    color: tierColor.withValues(alpha: 0.75),
                     blurRadius: 8,
                   ),
                 ],
@@ -195,13 +287,15 @@ class _PowerBadgeShell extends StatelessWidget {
   }
 }
 
-class _DeltaChip extends StatelessWidget {
-  const _DeltaChip({
+class _FloatingDeltaChip extends StatelessWidget {
+  const _FloatingDeltaChip({
     required this.increase,
+    required this.delta,
     required this.opacity,
   });
 
   final bool increase;
+  final int delta;
   final double opacity;
 
   @override
@@ -209,16 +303,22 @@ class _DeltaChip extends StatelessWidget {
     if (opacity <= 0) return const SizedBox.shrink();
 
     final Color color =
-        increase ? AppColors.toxicNeon : AppColors.coralFlare;
+        increase ? const Color(0xFF07CA6B) : const Color(0xFFEF4444);
 
     return Opacity(
       opacity: opacity,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.18),
+          color: color.withValues(alpha: 0.20),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: color.withValues(alpha: 0.55)),
+          border: Border.all(color: color.withValues(alpha: 0.60)),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: color.withValues(alpha: 0.35),
+              blurRadius: 6,
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -227,16 +327,17 @@ class _DeltaChip extends StatelessWidget {
               increase
                   ? Icons.arrow_upward_rounded
                   : Icons.arrow_downward_rounded,
-              size: 12,
+              size: 11,
               color: color,
             ),
             const SizedBox(width: 2),
             Text(
-              increase ? 'ARTTI' : 'AZALDI',
+              '${increase ? '+' : '-'}$delta',
               style: AppTextStyles.micro.copyWith(
                 color: color,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 0.6,
+                letterSpacing: 0.4,
               ),
             ),
           ],

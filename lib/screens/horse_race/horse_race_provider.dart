@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -259,6 +260,61 @@ class HorseRaceScript {
     final double a = prev.positions[horseId] ?? 0;
     final double b = next.positions[horseId] ?? 0;
     return a + (b - a) * local.clamp(0.0, 1.0);
+  }
+
+  /// Instantaneous normalized speed of [horseId] at [progress] (1.0 = average race pace).
+  double velocityAt(
+    String horseId,
+    double progress, {
+    double sampleDelta = 0.02,
+  }) {
+    final double p0 = (progress - sampleDelta * 0.5).clamp(0.0, 1.0);
+    final double p1 = (progress + sampleDelta * 0.5).clamp(0.0, 1.0);
+    final double dt = p1 - p0;
+    if (dt <= 0.0001) return 1.0;
+    final double y0 = positionAt(horseId, p0);
+    final double y1 = positionAt(horseId, p1);
+    return math.max((y1 - y0) / dt, 0.0);
+  }
+
+  /// Instantaneous acceleration of [horseId] at [progress].
+  double accelerationAt(
+    String horseId,
+    double progress, {
+    double sampleDelta = 0.03,
+  }) {
+    final double vPrev = velocityAt(
+      horseId,
+      (progress - sampleDelta).clamp(0.0, 1.0),
+    );
+    final double vNext = velocityAt(
+      horseId,
+      (progress + sampleDelta).clamp(0.0, 1.0),
+    );
+    return (vNext - vPrev) / (sampleDelta * 2);
+  }
+
+  /// Whether [horseId] is actively performing a high-velocity sprint at [progress].
+  bool isSprinting(
+    String horseId,
+    double progress, {
+    double speedThreshold = 1.15,
+  }) {
+    return velocityAt(horseId, progress) >= speedThreshold;
+  }
+
+  /// Normalized camera shake intensity (0.0 to 1.0) derived from race climax progress.
+  double climaxCameraShake(double progress) {
+    if (progress < 0.75) return 0.0;
+    final double surge = ((progress - 0.75) / 0.25).clamp(0.0, 1.0);
+    return math.pow(surge, 1.8).toDouble();
+  }
+
+  /// Climax camera surge scale multiplier (1.0 to 1.045) on final sprint stretch.
+  double climaxSurgeScale(double progress) {
+    if (progress < 0.78) return 1.0;
+    final double surge = ((progress - 0.78) / 0.22).clamp(0.0, 1.0);
+    return 1.0 + 0.045 * math.sin(surge * math.pi * 0.5);
   }
 }
 

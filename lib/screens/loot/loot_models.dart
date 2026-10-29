@@ -27,6 +27,9 @@ class LootBoxView {
   final int displayOrder;
   final String? themeId;
 
+  /// Helper for 10x multi-open price (with standard 10x multiplier).
+  int multiOpenPrice({int multiplier = 10}) => price * multiplier;
+
   factory LootBoxView.fromMap(Map<String, dynamic> map) {
     final String? themeId = map['theme_id']?.toString();
     return LootBoxView(
@@ -46,6 +49,20 @@ class LootBoxView {
       themeId: themeId == null || themeId.isEmpty ? null : themeId,
     );
   }
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+    'id': id,
+    'name': name,
+    'description': description,
+    'currency_type': currencyType,
+    'price': price,
+    'drop_count': dropCount,
+    'jackpot_rate': jackpotRate,
+    'reward_multiplier': rewardMultiplier,
+    'art_asset': artAsset,
+    'display_order': displayOrder,
+    if (themeId != null) 'theme_id': themeId,
+  };
 }
 
 class LootDropView {
@@ -81,6 +98,156 @@ class LootDropView {
       isFeatured: map['is_featured'] == true,
     );
   }
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+    'item_id': itemId,
+    'item_name': itemName,
+    'icon': icon,
+    'rarity': rarity,
+    'drop_rate': dropRate,
+    'min_quantity': minQuantity,
+    'max_quantity': maxQuantity,
+    'is_featured': isFeatured,
+  };
+}
+
+/// Represents an individual item drop in a 10x Multi-Open bundle.
+class LootMultiOpenReward {
+  const LootMultiOpenReward({
+    required this.itemId,
+    required this.itemName,
+    required this.icon,
+    required this.rarity,
+    required this.quantity,
+    this.isJackpot = false,
+  });
+
+  final String itemId;
+  final String itemName;
+  final String icon;
+  final String rarity;
+  final int quantity;
+  final bool isJackpot;
+
+  factory LootMultiOpenReward.fromMap(Map<String, dynamic> map) {
+    final int qty = lootToInt(
+      map['quantity'],
+      fallback: lootToInt(map['amount'], fallback: 1),
+    );
+    return LootMultiOpenReward(
+      itemId: map['item_id']?.toString() ?? '',
+      itemName: map['name']?.toString() ??
+          map['item_name']?.toString() ??
+          'Eşya',
+      icon: map['icon']?.toString() ?? '',
+      rarity: map['rarity']?.toString() ?? 'common',
+      quantity: qty > 0 ? qty : 1,
+      isJackpot: map['is_jackpot'] == true || map['is_featured'] == true,
+    );
+  }
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+    'item_id': itemId,
+    'item_name': itemName,
+    'name': itemName,
+    'icon': icon,
+    'rarity': rarity,
+    'quantity': quantity,
+    'is_jackpot': isJackpot,
+  };
+}
+
+/// Aggregated result of a 10x Multi-Open session.
+class LootMultiOpenResult {
+  const LootMultiOpenResult({
+    required this.boxId,
+    required this.boxName,
+    required this.rewards,
+    required this.openedAt,
+    this.totalGold = 0,
+    this.totalGems = 0,
+  });
+
+  final String boxId;
+  final String boxName;
+  final List<LootMultiOpenReward> rewards;
+  final DateTime openedAt;
+  final int totalGold;
+  final int totalGems;
+
+  /// Returns the highest rarity reward in the bundle for celebration highlight.
+  LootMultiOpenReward? get highestRarityReward {
+    if (rewards.isEmpty) return null;
+    const Map<String, int> ranks = <String, int>{
+      'eternal': 5,
+      'ebedi': 5,
+      'archon': 5,
+      'mythic': 4,
+      'fabled': 4,
+      'efsanevi': 4,
+      'legendary': 4,
+      'heroic': 3,
+      'epic': 3,
+      'kahraman': 3,
+      'destansi': 3,
+      'rare': 2,
+      'nadir': 2,
+      'uncommon': 1,
+      'common': 0,
+      'siradan': 0,
+    };
+
+    LootMultiOpenReward best = rewards.first;
+    int bestRank = ranks[best.rarity.toLowerCase()] ?? 0;
+    for (final LootMultiOpenReward item in rewards) {
+      final int r = ranks[item.rarity.toLowerCase()] ?? 0;
+      if (r > bestRank) {
+        bestRank = r;
+        best = item;
+      }
+    }
+    return best;
+  }
+
+  /// Breakdown of drops by rarity tier.
+  Map<String, int> get rarityCounts {
+    final Map<String, int> counts = <String, int>{};
+    for (final LootMultiOpenReward r in rewards) {
+      final String k = r.rarity.toLowerCase();
+      counts[k] = (counts[k] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  factory LootMultiOpenResult.fromMap(Map<String, dynamic> map) {
+    final List<dynamic> rawList = map['rewards'] is List
+        ? map['rewards'] as List<dynamic>
+        : (map['items'] is List
+            ? map['items'] as List<dynamic>
+            : const <dynamic>[]);
+
+    return LootMultiOpenResult(
+      boxId: map['box_id']?.toString() ?? '',
+      boxName: map['box_name']?.toString() ?? 'Sandık',
+      rewards: rawList
+          .whereType<Map>()
+          .map((m) => LootMultiOpenReward.fromMap(Map<String, dynamic>.from(m)))
+          .toList(growable: false),
+      openedAt: DateTime.tryParse(map['opened_at']?.toString() ?? '') ??
+          DateTime.now(),
+      totalGold: lootToInt(map['total_gold']),
+      totalGems: lootToInt(map['total_gems']),
+    );
+  }
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+    'box_id': boxId,
+    'box_name': boxName,
+    'rewards': rewards.map((r) => r.toMap()).toList(growable: false),
+    'opened_at': openedAt.toIso8601String(),
+    'total_gold': totalGold,
+    'total_gems': totalGems,
+  };
 }
 
 int compareLootDropsForPreview(LootDropView a, LootDropView b) {
@@ -106,7 +273,7 @@ double lootToDouble(dynamic value, {double fallback = 0}) {
   return fallback;
 }
 
-/// SQL `jackpot_rate` is a 0–1 fraction; UI shows percent.
+/// SQL jackpot_rate is a 0–1 fraction; UI shows percent.
 double lootJackpotPercent(double rate) {
   if (rate <= 0) return 0;
   // Guard: already-percent values (>1) stay as-is.
@@ -114,15 +281,15 @@ double lootJackpotPercent(double rate) {
 }
 
 String lootJackpotPercentLabel(double rate, {int fractionDigits = 1}) {
-  return '%${lootJackpotPercent(rate).toStringAsFixed(fractionDigits)}';
+  return '%';
 }
 
 String lootCompactNum(int value) {
   if (value >= 1000000000) {
-    return '${(value / 1000000000).toStringAsFixed(1)}B';
+    return 'B';
   }
-  if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-  if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
+  if (value >= 1000000) return 'M';
+  if (value >= 1000) return 'K';
   return value.toString();
 }
 
@@ -139,7 +306,7 @@ List<Map<String, dynamic>> parseLootRpcRows(dynamic payload) {
     if (rows == null) {
       if (kDebugMode) {
         debugPrint(
-          'parseLootRpcRows: map payload missing data/rows (${map.keys.join(', ')})',
+          'parseLootRpcRows: map payload missing data/rows ()',
         );
       }
       return const <Map<String, dynamic>>[];
@@ -147,7 +314,7 @@ List<Map<String, dynamic>> parseLootRpcRows(dynamic payload) {
   } else {
     if (kDebugMode) {
       debugPrint(
-        'parseLootRpcRows: unsupported payload type ${payload.runtimeType}',
+        'parseLootRpcRows: unsupported payload type ',
       );
     }
     return const <Map<String, dynamic>>[];
@@ -155,7 +322,7 @@ List<Map<String, dynamic>> parseLootRpcRows(dynamic payload) {
 
   if (rows is! List) {
     if (kDebugMode) {
-      debugPrint('parseLootRpcRows: rows is ${rows.runtimeType}, expected List');
+      debugPrint('parseLootRpcRows: rows is , expected List');
     }
     return const <Map<String, dynamic>>[];
   }
@@ -164,6 +331,23 @@ List<Map<String, dynamic>> parseLootRpcRows(dynamic payload) {
       .whereType<Map>()
       .map((Map row) => Map<String, dynamic>.from(row))
       .toList(growable: false);
+}
+
+List<LootMultiOpenReward> parseLootMultiOpenRewards(dynamic payload) {
+  final List<Map<String, dynamic>> rows = parseLootRpcRows(payload);
+  if (rows.isNotEmpty) {
+    return rows.map((r) => LootMultiOpenReward.fromMap(r)).toList(growable: false);
+  }
+  if (payload is Map) {
+    final dynamic rewards = payload['rewards'] ?? payload['items'];
+    if (rewards is List) {
+      return rewards
+          .whereType<Map>()
+          .map((m) => LootMultiOpenReward.fromMap(Map<String, dynamic>.from(m)))
+          .toList(growable: false);
+    }
+  }
+  return const <LootMultiOpenReward>[];
 }
 
 int findLootTargetDropIndex(

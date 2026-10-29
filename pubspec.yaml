@@ -44,16 +44,16 @@ dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
   google_fonts: ^6.3.2
-  lottie: ^3.3.3
-  flutter_svg: ^2.3.0
+  lottie: ^3.3.1
+  flutter_svg: ^2.2.3
   motor: ^1.1.0
-  shared_preferences: ^2.5.5
-  audioplayers: ^6.7.1
-  flutter_local_notifications: ^22.1.0
-  timezone: ^0.11.1
+  shared_preferences: ^2.5.3
+  audioplayers: ^6.6.0
+  flutter_local_notifications: ^20.1.0
+  timezone: ^0.10.1
   flutter_timezone: ^5.1.0
   flutter_markdown: ^0.7.7+1
-  package_info_plus: ^10.2.1
+  package_info_plus: ^9.0.1
   sign_in_with_apple: ^7.0.1
   crypto: ^3.0.6
 
@@ -86,7 +86,11 @@ flutter:
   uses-material-design: true
 
   assets:
+    # Root & Audio SFX
+    - assets/
     - assets/audio/
+
+    # Core 2D UI & Game Sprites
     - assets/dungeon/
     - assets/characters/
     - assets/profile/
@@ -96,8 +100,101 @@ flutter:
     - assets/items/generated/
     - assets/wheel/
     - assets/chest/
+    - assets/ui/
     - assets/ui/character_status_bar/
     - assets/menuitems/
+
+    # 3D GLB Models
+    - assets/models/
+    - assets/models/characters/
+    - assets/models/monsters/
+    - assets/models/weapons/
+    - assets/models/weapons/textures/
+    - assets/models/weapons/textures/DamagedHelmet/
+    - assets/models/weapons/textures/sword/
+    - assets/models/environment/
+    - assets/models/props/
+    - assets/models/aion2/
+    - assets/models/aion2/textures/
+
+    # Real 2K PBR Textures & Baked Maps
+    - assets/textures/
+    - assets/textures/pbr_2k/
+    - assets/textures/pbr_2k/ground_dirt/
+    - assets/textures/pbr_2k/metal_iron/
+    - assets/textures/pbr_2k/stone_wall/
+    - assets/textures/pbr_2k/wood_planks/
+    - assets/textures/baked/
+    - assets/textures/baked/sword/
+
+    # Blender Beauty Renders
+    - assets/renders/
+    - assets/renders/characters/
+    - assets/renders/monsters/
+    - assets/renders/weapons/
+    - assets/renders/environment/
+    - assets/renders/props/
+    - assets/renders/aion2/
+
+    # Image Assets Root & Production Aion-2 UI System
+    - assets/images/
+    - assets/images/aion2_ui/
+
+    # Aion-2 Dark Fantasy Portraits
+    - assets/images/portraits/
+    - assets/images/portraits/elyos/
+    - assets/images/portraits/asmodian/
+    - assets/images/portraits/bosses/
+    - assets/images/portraits/npcs/
+
+    # High-Detail Fantasy Skill & Equipment Icons
+    - assets/images/icons/
+    - assets/images/icons/skills_elemental/
+    - assets/images/icons/skills_physical/
+    - assets/images/icons/weapons/
+    - assets/images/icons/armor/
+
+    # Atmospheric Living Backgrounds
+    - assets/images/backgrounds/
+    - assets/images/backgrounds/elysea/
+    - assets/images/backgrounds/asmodae/
+    - assets/images/backgrounds/dungeons/
+
+    # VFX Sprites, Runic Circles & Atlases
+    - assets/images/vfx_sprites/
+    - assets/images/vfx_sprites/magic_circles/
+    - assets/images/vfx_sprites/flipbooks/
+
+  shaders:
+    # Postprocess Passes
+    - shaders/postprocess/aces_tonemap.frag
+    - shaders/postprocess/ssao.frag
+    - shaders/postprocess/ssao_bilateral_blur.frag
+    - shaders/postprocess/ssao_composite_aces.frag
+
+    # Lighting & Clustered Shading
+    - shaders/lighting/dungeon_lighting.frag
+    - shaders/lighting/clustered_crowd_lighting.frag
+
+    # PBR Master Materials
+    - shaders/materials/aion2_pbr_master.frag
+
+    # Combat & Environmental VFX
+    - shaders/vfx/forge_fire.frag
+    - shaders/vfx/gpu_particles.frag
+    - shaders/vfx/ground_decal.frag
+    - shaders/vfx/ribbon_trail.frag
+    - shaders/vfx/rim_hit_flash.frag
+    - shaders/vfx/shockwave_refraction.frag
+
+    # World & Environmental Surface Simulation
+    - shaders/world/atmospheric_sky.frag
+    - shaders/world/puddle_ssr.frag
+
+    # Crowd Rendering & VAT Deformation
+    - shaders/crowd/vat_crowd.frag
+    - shaders/crowd/vat_crowd.vert
+    - shaders/crowd/gpu_instancing.vert
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

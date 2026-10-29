@@ -48,3 +48,8 @@ app.*.map.json
 
 # QA credentials (local only)
 .env.qa.local
+
+.agents/
+temp_kaykit/
+*.ipynb
+atlas_output/

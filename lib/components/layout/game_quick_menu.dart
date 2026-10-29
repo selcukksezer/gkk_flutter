@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,19 +22,33 @@ import '../../theme/app_text_styles.dart';
 import '../layout/game_screen_background.dart';
 import '../common/profile_avatar.dart';
 import '../daily_reward/daily_reward_dialog.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n.dart';
 
-/// Premium palette — quick menu only (does not affect global chrome).
+/// 2027 Aion 2 Obsidian-Glass & Luminescence Design System for Quick Menu.
 abstract final class _QuickMenuTheme {
-  /// Matte vignette background — muted teal-gray center, charcoal edges.
-  static const Color bgHighlight = Color(0xFF232D31);
-  static const Color bgMid = Color(0xFF1A2428);
-  static const Color bgDeep = Color(0xFF0D1112);
-  static const Color bgEdge = Color(0xFF0A0C0D);
+  // Obsidian dark glass surface hierarchy
+  static const Color obsidianVoid = Color(0xFF07090E); // Deepest void base
+  static const Color obsidianDeep = Color(0xFF0B0E14); // Mid-depth glass body
+  static const Color obsidianSurface = Color(0xFF101522); // Top glass reflection
 
-  static const Color panelBorder = Color(0x40232D31);
-  static const Color gold = Color(0xFFF5C842);
+  // Luminescence accents
+  static const Color celestialGold = Color(0xFFE5C158); // Celestial gold (#E5C158)
+  static const Color etherCyan = Color(0xFF00E5FF); // Ether cyan (#00E5FF)
+  static const Color etherCyanMuted = Color(0x6600E5FF);
+
+  // Surface border & glow constants
+  static const Color panelBorderGold = Color(0x40E5C158);
+  static const Color panelBorderCyan = Color(0x3300E5FF);
+
+  // Backward compatibility tokens
+  static const Color bgHighlight = obsidianSurface;
+  static const Color bgMid = obsidianDeep;
+  static const Color bgDeep = obsidianVoid;
+  static const Color bgEdge = Color(0xFF040609);
+
+  static const Color panelBorder = Color(0x40E5C158);
+  static const Color gold = celestialGold;
+  static const Color cyan = etherCyan;
 }
 
 abstract final class _MenuAssets {
@@ -84,14 +100,14 @@ List<GameMenuItem> buildGameMenuItems(AppLocalizations l10n) => <GameMenuItem>[
   GameMenuItem(label: l10n.menuMekans, icon: Icons.location_city_outlined, assetPath: '${_MenuAssets.base}mekan.png', route: AppRoutes.mekans),
   GameMenuItem(label: l10n.menuQuests, icon: Icons.task_alt_rounded, assetPath: '${_MenuAssets.base}gorev.png', route: AppRoutes.quests),
   GameMenuItem(label: l10n.routeReputation, icon: Icons.handshake_outlined, route: AppRoutes.reputation),
-  GameMenuItem(label: l10n.menuDailyReward, icon: Icons.card_giftcard_rounded, action: GameMenuAction.dailyReward, accentColor: _QuickMenuTheme.gold),
+  GameMenuItem(label: l10n.menuDailyReward, icon: Icons.card_giftcard_rounded, action: GameMenuAction.dailyReward, accentColor: _QuickMenuTheme.celestialGold),
   GameMenuItem(label: l10n.menuHospital, icon: Icons.local_hospital_outlined, assetPath: '${_MenuAssets.base}hastane.png', route: AppRoutes.hospital),
   GameMenuItem(label: l10n.menuPrison, icon: Icons.gavel_rounded, assetPath: '${_MenuAssets.base}hapishane.png', route: AppRoutes.prison),
   GameMenuItem(label: 'Arkadaşlar', icon: Icons.people_alt_outlined, route: AppRoutes.friends),
   GameMenuItem(label: l10n.menuChat, icon: Icons.chat_outlined, assetPath: '${_MenuAssets.base}sohbet.png', route: AppRoutes.chat, action: GameMenuAction.chat),
   GameMenuItem(label: l10n.menuSettings, icon: Icons.settings_outlined, assetPath: '${_MenuAssets.base}ayarlar.png', route: AppRoutes.settings),
   GameMenuItem(label: l10n.menuLogout, icon: Icons.logout_rounded, assetPath: '${_MenuAssets.base}cikis.png', action: GameMenuAction.logout, accentColor: AppColors.danger),
-  GameMenuItem(label: l10n.routeHorseRace, icon: Icons.sports_motorsports_rounded, route: AppRoutes.horseRace, accentColor: AppColors.gold),
+  GameMenuItem(label: l10n.routeHorseRace, icon: Icons.sports_motorsports_rounded, route: AppRoutes.horseRace, accentColor: _QuickMenuTheme.celestialGold),
   const GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
   const GameMenuItem(label: '', icon: Icons.circle, action: GameMenuAction.none),
 ];
@@ -118,13 +134,18 @@ Future<void> showGameQuickMenu(
   Future<void> Function()? onLogout,
   required void Function(BuildContext context) onOpenChat,
 }) {
+  HapticFeedback.lightImpact();
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
     barrierLabel: context.l10n.menuBarrier,
-    barrierColor: Colors.black54,
+    barrierColor: Colors.black.withValues(alpha: 0.58),
     transitionDuration: const Duration(milliseconds: 280),
-    pageBuilder: (BuildContext ctx, _, __) {
+    pageBuilder: (
+      BuildContext ctx,
+      Animation<double> animation,
+      Animation<double> secondaryAnimation,
+    ) {
       return _GameQuickMenuPanel(onLogout: onLogout, onOpenChat: onOpenChat);
     },
     transitionBuilder:
@@ -178,113 +199,162 @@ class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
               ? profile.username
               : (profile.displayName ?? profile.username));
     final int level = profile?.level ?? 1;
-    final double maxHeight = MediaQuery.sizeOf(context).height * 0.55;
+
+    // Robust SafeArea & responsive bounds calculation
+    final MediaQueryData media = MediaQuery.of(context);
+    final EdgeInsets padding = media.padding;
+    final double screenHeight = media.size.height;
     final double bottomInset = _panelBottomInset(context);
+
+    // Ensure menu does not encroach on top notch / status bar / dynamic island
+    final double topSafeLimit = padding.top + 18.0;
+    final double maxUsableHeight = screenHeight - bottomInset - topSafeLimit;
+    final double maxHeight = maxUsableHeight.clamp(240.0, screenHeight * 0.58);
+
+    // Horizontal margins respecting device cutouts / bezels
+    final double horizontalMargin = math.max(12.0, math.max(padding.left, padding.right) + 8.0);
 
     return Material(
       type: MaterialType.transparency,
       child: Stack(
         children: <Widget>[
+          // Obsidian ethereal blurred backdrop
           Positioned.fill(
             child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                Navigator.of(context).pop();
+              },
               behavior: HitTestBehavior.opaque,
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
-                  color: _QuickMenuTheme.bgEdge.withValues(alpha: 0.45),
+                  color: _QuickMenuTheme.obsidianVoid.withValues(alpha: 0.52),
                 ),
               ),
             ),
           ),
+          // Floating 2027 Aion 2 Obsidian-Glass Card
           Positioned(
-            left: 12,
-            right: 12,
+            left: horizontalMargin,
+            right: horizontalMargin,
             bottom: bottomInset,
             child: Container(
               constraints: BoxConstraints(maxHeight: maxHeight),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
                 boxShadow: <BoxShadow>[
+                  // Celestial Gold top crest luminescence
                   BoxShadow(
-                    color: _QuickMenuTheme.bgHighlight.withValues(alpha: 0.18),
+                    color: _QuickMenuTheme.celestialGold.withValues(alpha: 0.12),
                     blurRadius: 28,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 6),
+                    spreadRadius: -1,
+                    offset: const Offset(0, -3),
                   ),
+                  // Ether Cyan ambient mana aura
                   BoxShadow(
-                    color: _QuickMenuTheme.bgEdge.withValues(alpha: 0.65),
-                    blurRadius: 36,
-                    offset: const Offset(0, 14),
+                    color: _QuickMenuTheme.etherCyan.withValues(alpha: 0.09),
+                    blurRadius: 32,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 4),
+                  ),
+                  // Deep obsidian occlusion shadow
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.72),
+                    blurRadius: 40,
+                    offset: const Offset(0, 16),
                   ),
                 ],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  // 2027 Aion 2 standard sigmaX: 16, sigmaY: 16
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                   child: Container(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.topCenter,
-                        radius: 1.35,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
                         colors: <Color>[
-                          _QuickMenuTheme.bgHighlight.withValues(alpha: 0.96),
-                          _QuickMenuTheme.bgMid.withValues(alpha: 0.98),
-                          _QuickMenuTheme.bgDeep,
-                          _QuickMenuTheme.bgEdge,
+                          Color(0xF0101522), // Obsidian Surface Highlight
+                          Color(0xF50B0E14), // Obsidian Deep Core
+                          Color(0xFA07090E), // Obsidian Void Base
                         ],
-                        stops: const <double>[0.0, 0.38, 0.72, 1.0],
+                        stops: <double>[0.0, 0.45, 1.0],
                       ),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-                      border: Border.all(
-                        color: _QuickMenuTheme.panelBorder,
-                        width: 1.0,
-                      ),
+                      borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusXxl)),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        const SizedBox(height: 5),
-                        Container(
-                          width: 36,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: _QuickMenuTheme.bgHighlight.withValues(
-                              alpha: 0.45,
-                            ),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-                          child: _MenuProfileStrip(
-                            displayName: displayName,
-                            level: level,
-                            profile: profile,
-                          ),
-                        ),
-                        Flexible(
-                          child: NotificationListener<ScrollNotification>(
-                            onNotification: (ScrollNotification n) {
-                              if (n is ScrollUpdateNotification ||
-                                  n is ScrollEndNotification) {
-                                TutorialAnchorRegistry.instance
-                                    .scheduleRefresh();
-                              }
-                              return false;
-                            },
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                              child: _MenuGrid(
-                                onLogout: widget.onLogout,
-                                onOpenChat: widget.onOpenChat,
-                                canClaimDaily: canClaimDaily,
+                    child: CustomPaint(
+                      foregroundPainter: const _Aion2LuminousBorderPainter(
+                        borderRadius: AppSpacing.radiusXxl,
+                        borderWidth: 1.2,
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        bottom: false,
+                        left: true,
+                        right: true,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            const SizedBox(height: 8),
+                            // Handle pill with celestial gold and ether cyan gradient luminescence
+                            Center(
+                              child: Container(
+                                width: 38,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: <Color>[
+                                      Color(0x6600E5FF),
+                                      _QuickMenuTheme.celestialGold,
+                                      Color(0x6600E5FF),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(2),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color: _QuickMenuTheme.celestialGold.withValues(alpha: 0.35),
+                                      blurRadius: 6,
+                                      spreadRadius: 0,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                              child: _MenuProfileStrip(
+                                displayName: displayName,
+                                level: level,
+                                profile: profile,
+                              ),
+                            ),
+                            Flexible(
+                              child: NotificationListener<ScrollNotification>(
+                                onNotification: (ScrollNotification n) {
+                                  if (n is ScrollUpdateNotification ||
+                                      n is ScrollEndNotification) {
+                                    TutorialAnchorRegistry.instance
+                                        .scheduleRefresh();
+                                  }
+                                  return false;
+                                },
+                                child: SingleChildScrollView(
+                                  physics: const BouncingScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
+                                  child: _MenuGrid(
+                                    onLogout: widget.onLogout,
+                                    onOpenChat: widget.onOpenChat,
+                                    canClaimDaily: canClaimDaily,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -294,6 +364,74 @@ class _GameQuickMenuPanelState extends ConsumerState<_GameQuickMenuPanel> {
         ],
       ),
     );
+  }
+}
+
+/// Custom painter rendering 2027 Aion 2 dual-luminescence border:
+/// Celestial gold (#E5C158) + Ether cyan (#00E5FF) with top specular crystalline sheen.
+class _Aion2LuminousBorderPainter extends CustomPainter {
+  const _Aion2LuminousBorderPainter({
+    required this.borderRadius,
+    this.borderWidth = 1.2,
+  });
+
+  final double borderRadius;
+  final double borderWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+
+    final Rect rect = Offset.zero & size;
+    final RRect rrect = RRect.fromRectAndRadius(
+      rect.deflate(borderWidth / 2),
+      Radius.circular(borderRadius),
+    );
+
+    // Multi-stop Celestial Gold & Ether Cyan luminescence border gradient
+    final Paint borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          Color(0x8CE5C158), // Celestial gold luminescence crest
+          Color(0x6600E5FF), // Ether cyan luminescence shoulder
+          Color(0x26101522), // Obsidian glass body blend
+          Color(0x40E5C158), // Celestial gold subtle rim
+        ],
+        stops: <double>[0.0, 0.32, 0.70, 1.0],
+      ).createShader(rect);
+
+    canvas.drawRRect(rrect, borderPaint);
+
+    // Specular crystalline glare line along top edge
+    final Paint specularPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..shader = const LinearGradient(
+        colors: <Color>[
+          Colors.transparent,
+          Color(0x80FFFFFF),
+          Color(0xB3E5C158),
+          Color(0x8000E5FF),
+          Colors.transparent,
+        ],
+        stops: <double>[0.05, 0.30, 0.50, 0.70, 0.95],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, 2));
+
+    final Path topPath = Path()
+      ..moveTo(borderRadius, borderWidth / 2)
+      ..lineTo(size.width - borderRadius, borderWidth / 2);
+
+    canvas.drawPath(topPath, specularPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _Aion2LuminousBorderPainter oldDelegate) {
+    return oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.borderWidth != borderWidth;
   }
 }
 
@@ -311,27 +449,40 @@ class _MenuProfileStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: <Color>[
-            _QuickMenuTheme.bgHighlight.withValues(alpha: 0.55),
-            _QuickMenuTheme.bgDeep.withValues(alpha: 0.35),
+            _QuickMenuTheme.obsidianSurface.withValues(alpha: 0.82),
+            _QuickMenuTheme.obsidianDeep.withValues(alpha: 0.72),
           ],
         ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         border: Border.all(
-          color: _QuickMenuTheme.bgHighlight.withValues(alpha: 0.28),
+          color: _QuickMenuTheme.celestialGold.withValues(alpha: 0.28),
+          width: 1.0,
         ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: _QuickMenuTheme.celestialGold.withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: _QuickMenuTheme.etherCyan.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: <Widget>[
           ProfileAvatar(
             size: 40,
             avatarUrl: profile?.avatarUrl,
-            backgroundColor: _QuickMenuTheme.gold.withValues(alpha: 0.2),
+            backgroundColor: _QuickMenuTheme.celestialGold.withValues(alpha: 0.18),
             glowFrame: profile?.avatarFrame == 'glow',
             codexFrame: profile?.avatarFrame == 'codex',
           ),
@@ -348,14 +499,22 @@ class _MenuProfileStrip extends StatelessWidget {
                     fontSize: 14,
                     color: Colors.white,
                     letterSpacing: 0.2,
+                    shadows: const <Shadow>[
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
                   ),
                 ),
                 if (profile?.username.isNotEmpty ?? false)
                   Text(
                     '@${profile!.username}',
                     style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary.withValues(alpha: 0.85),
+                      color: _QuickMenuTheme.etherCyan.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w500,
+                      letterSpacing: 0.1,
                     ),
                   ),
               ],
@@ -365,13 +524,19 @@ class _MenuProfileStrip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-              color: _QuickMenuTheme.gold.withValues(alpha: 0.12),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  _QuickMenuTheme.celestialGold.withValues(alpha: 0.22),
+                  _QuickMenuTheme.etherCyan.withValues(alpha: 0.10),
+                ],
+              ),
               border: Border.all(
-                color: _QuickMenuTheme.gold.withValues(alpha: 0.4),
+                color: _QuickMenuTheme.celestialGold.withValues(alpha: 0.55),
+                width: 1.0,
               ),
               boxShadow: <BoxShadow>[
                 BoxShadow(
-                  color: _QuickMenuTheme.gold.withValues(alpha: 0.15),
+                  color: _QuickMenuTheme.celestialGold.withValues(alpha: 0.22),
                   blurRadius: 8,
                 ),
               ],
@@ -379,8 +544,9 @@ class _MenuProfileStrip extends StatelessWidget {
             child: Text(
               'Lv.$level',
               style: AppTextStyles.captionBold.copyWith(
-                color: _QuickMenuTheme.gold,
+                color: _QuickMenuTheme.celestialGold,
                 fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
               ),
             ),
           ),
@@ -411,7 +577,7 @@ class _MenuGrid extends ConsumerWidget {
           label: 'Staff',
           icon: Icons.admin_panel_settings,
           route: AppRoutes.staffHub,
-          accentColor: AppColors.gold,
+          accentColor: _QuickMenuTheme.celestialGold,
         ),
     ];
     return GameFixedGrid(
@@ -428,6 +594,7 @@ class _MenuGrid extends ConsumerWidget {
               ? GameMenuItem(
                   label: item.label,
                   icon: item.icon,
+                  assetPath: item.assetPath,
                   action: item.action,
                   accentColor: item.accentColor,
                   showBadge: canClaimDaily,
@@ -459,6 +626,7 @@ class _MenuGrid extends ConsumerWidget {
         item.route,
       );
       if (tappedAnchor != requiredAnchor) {
+        HapticFeedback.mediumImpact();
         tutorialCtrl.registerWrongTap();
         return;
       }
@@ -469,11 +637,13 @@ class _MenuGrid extends ConsumerWidget {
     if (item.action == GameMenuAction.navigate) {
       final String? route = item.route;
       if (route != null && tutorialCtrl.blocksNavigation(route)) {
+        HapticFeedback.mediumImpact();
         tutorialCtrl.registerWrongTap();
         return;
       }
     }
 
+    HapticFeedback.lightImpact();
     Navigator.of(context).pop();
     switch (item.action) {
       case GameMenuAction.chat:
@@ -513,11 +683,17 @@ class _MenuTileState extends State<_MenuTile> {
 
   @override
   Widget build(BuildContext context) {
+    final bool hasAccent = widget.item.accentColor != null;
+    final Color effectiveAccent = widget.item.accentColor ?? Colors.white;
+
     return Semantics(
       button: true,
       label: widget.item.label,
       child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
+        onTapDown: (_) {
+          HapticFeedback.selectionClick();
+          setState(() => _pressed = true);
+        },
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
         onTap: widget.onTap,
@@ -527,26 +703,60 @@ class _MenuTileState extends State<_MenuTile> {
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOutCubic,
           child: AnimatedOpacity(
-            opacity: _pressed ? 0.88 : 1.0,
+            opacity: _pressed ? 0.85 : 1.0,
             duration: const Duration(milliseconds: 120),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Stack(
                   clipBehavior: Clip.none,
+                  alignment: Alignment.center,
                   children: <Widget>[
+                    // Subtle luminescence underglow on press or for accented items
+                    if (_pressed || hasAccent)
+                      Positioned(
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: (_pressed
+                                        ? _QuickMenuTheme.etherCyan
+                                        : effectiveAccent)
+                                    .withValues(alpha: _pressed ? 0.28 : 0.16),
+                                blurRadius: _pressed ? 16 : 12,
+                                spreadRadius: _pressed ? 2 : 0,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     _MenuIcon(item: widget.item),
                     if (widget.item.showBadge)
                       Positioned(
                         right: -2,
                         top: -2,
                         child: Container(
-                          width: 10,
-                          height: 10,
+                          width: 11,
+                          height: 11,
                           decoration: BoxDecoration(
-                            color: AppColors.danger,
+                            gradient: const LinearGradient(
+                              colors: <Color>[
+                                Color(0xFFFF5252),
+                                AppColors.danger,
+                              ],
+                            ),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 1.5),
+                            boxShadow: const <BoxShadow>[
+                              BoxShadow(
+                                color: Color(0x80FF1744),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -565,14 +775,20 @@ class _MenuTileState extends State<_MenuTile> {
                     height: 1.15,
                     letterSpacing: 0.1,
                     shadows: widget.item.accentColor == null
-                        ? <Shadow>[
+                        ? const <Shadow>[
                             Shadow(
-                              color: Colors.black.withValues(alpha: 0.6),
+                              color: Colors.black87,
                               blurRadius: 4,
-                              offset: const Offset(0, 1),
+                              offset: Offset(0, 1),
                             ),
                           ]
-                        : null,
+                        : <Shadow>[
+                            Shadow(
+                              color: widget.item.accentColor!.withValues(alpha: 0.5),
+                              blurRadius: 6,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                   ),
                 ),
               ],
@@ -585,6 +801,7 @@ class _MenuTileState extends State<_MenuTile> {
 }
 
 /// Bare asset — PNG already has gold frame; no extra socket/shadow layers.
+/// Non-asset icons are embedded in an obsidian glass circular bezel with ethereal luminescence.
 class _MenuIcon extends StatelessWidget {
   const _MenuIcon({required this.item});
 
@@ -593,7 +810,7 @@ class _MenuIcon extends StatelessWidget {
   static const double _size = 64;
 
   /// Unified soft drop shadow — same for every menu icon.
-  static const double _shadowOpacity = 0.30;
+  static const double _shadowOpacity = 0.32;
   static const double _shadowBlur = 8.0;
   static const double _shadowOffsetY = 4.0;
 
@@ -602,17 +819,52 @@ class _MenuIcon extends StatelessWidget {
     final bool isLogout = item.action == GameMenuAction.logout;
 
     if (item.assetPath == null) {
-      return Icon(
-        item.icon,
-        size: 36,
-        color: isLogout ? AppColors.danger : Colors.white,
-        shadows: const <Shadow>[
-          Shadow(
-            color: Color(0x99000000),
-            blurRadius: _shadowBlur,
-            offset: Offset(0, _shadowOffsetY),
+      final Color iconColor = isLogout
+          ? AppColors.danger
+          : (item.accentColor ?? _QuickMenuTheme.etherCyan);
+
+      return Container(
+        width: 50,
+        height: 50,
+        margin: const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: <Color>[
+              _QuickMenuTheme.obsidianSurface.withValues(alpha: 0.95),
+              _QuickMenuTheme.obsidianVoid.withValues(alpha: 0.95),
+            ],
           ),
-        ],
+          border: Border.all(
+            color: iconColor.withValues(alpha: 0.40),
+            width: 1.2,
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: iconColor.withValues(alpha: 0.20),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+            const BoxShadow(
+              color: Colors.black54,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            item.icon,
+            size: 26,
+            color: iconColor,
+            shadows: <Shadow>[
+              Shadow(
+                color: iconColor.withValues(alpha: 0.6),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+        ),
       );
     }
 

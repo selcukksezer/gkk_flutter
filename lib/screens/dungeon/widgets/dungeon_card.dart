@@ -10,6 +10,8 @@ import '../../../models/dungeon_model.dart';
 import '../../../models/dungeon_siege_model.dart';
 import '../dungeon_zone_data.dart';
 import '../../../theme/app_colors.dart';
+import 'aion2_boss_illustration_catalog.dart';
+import 'aion2_presentation_frame.dart';
 import 'dungeon_progress_row.dart';
 import 'dungeon_siege_badge.dart';
 import 'dungeon_siege_prime_timer_chip.dart';
@@ -86,30 +88,44 @@ class DungeonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color accent = zone?.color ?? const Color(0xFF5B8FFF);
     final Color threat = _threatColor;
+    final Aion2BossArtDefinition bossArt = Aion2BossIllustrationCatalog.resolveForDungeon(
+      dungeon: dungeon,
+      zoneOverride: zone?.number,
+    );
 
     Widget card = Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         color: const Color(0xFF0D1525),
-        border: Border.all(color: const Color(0xFF1A2540)),
+        border: Border.all(
+          color: _isBoss ? bossArt.goldFiligreeColor.withValues(alpha: 0.65) : const Color(0xFF1A2540),
+          width: _isBoss ? 1.4 : 1.0,
+        ),
         boxShadow: _isBoss
             ? <BoxShadow>[
                 BoxShadow(
-                  color: threat.withValues(alpha: 0.12),
-                  blurRadius: 18,
-                  spreadRadius: 0,
-                )
+                  color: bossArt.glowColor.withValues(alpha: 0.2),
+                  blurRadius: 22,
+                  spreadRadius: 1,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
               ]
             : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
             children: <Widget>[
-              Container(width: 4, color: accent),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Container(width: 4, color: _isBoss ? bossArt.goldFiligreeColor : accent),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -179,7 +195,24 @@ class DungeonCard extends StatelessWidget {
                                     ],
                                   ],
                                 ),
-                                const SizedBox(height: 5),
+                                if (_isBoss) ...<Widget>[
+                                  Row(
+                                    children: <Widget>[
+                                      Icon(bossArt.tier.icon, size: 11, color: bossArt.goldFiligreeColor),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        bossArt.title.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: bossArt.goldFiligreeColor,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                ],
                                 Text(
                                   dungeon.name,
                                   style: const TextStyle(
@@ -257,9 +290,26 @@ class DungeonCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
+          if (_isBoss)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: Aion2GoldFiligreePainter(
+                    primaryGold: bossArt.goldFiligreeColor,
+                    deepGold: const Color(0xFFB8860B),
+                    highlightGold: Colors.white,
+                    cornerSize: 18,
+                    showCrest: true,
+                    showGems: true,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
-    );
+    ),
+  ),
+);
 
     if (useTutorialAnchors) {
       card = TutorialAnchorScope(

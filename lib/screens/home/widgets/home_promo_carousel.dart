@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/services/app_foreground_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../models/retention_promos_model.dart';
 import '../../../providers/retention_promos_provider.dart';
@@ -27,6 +30,7 @@ class _HomePromoSlide {
     required this.ctaLabel,
     required this.route,
     required this.artAsset,
+    this.tag = 'ÖNE ÇIKAN',
     this.showTimer = false,
     this.timerSeconds = 0,
     this.ctaIcon = Icons.diamond,
@@ -41,6 +45,7 @@ class _HomePromoSlide {
 
   final String id;
   final String title;
+  final String tag;
   final String subtitle;
   final String ctaLabel;
   final String route;
@@ -87,6 +92,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
   Timer? _autoTimer;
   Timer? _countdownTimer;
   bool _userInteracting = false;
+  bool _isAutoAdvancing = false;
   bool _dismissingNemesis = false;
   int _nightMarketBaseSeconds = 0;
   DateTime? _nightMarketSyncedAt;
@@ -96,13 +102,35 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    AppForegroundService.instance.addListener(_onForegroundChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Retention fetch = retentionPromosProvider only (poll/build). No double RPC.
       _loadFeaturedBox();
+      _precacheSlideImages();
+      if (AppForegroundService.instance.isForeground) {
+        _startAutoAdvance();
+        _startCountdownTick();
+      }
+    });
+  }
+
+  void _onForegroundChanged() {
+    if (!mounted) return;
+    if (AppForegroundService.instance.isForeground) {
       _startAutoAdvance();
       _startCountdownTick();
-    });
+    } else {
+      _autoTimer?.cancel();
+      _countdownTimer?.cancel();
+    }
+  }
+
+  void _precacheSlideImages() {
+    if (!mounted) return;
+    for (final _HomePromoSlide slide in _slides) {
+      precacheImage(AssetImage(slide.artAsset), context).catchError((_) {});
+    }
   }
 
   @override
@@ -113,6 +141,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
 
   @override
   void dispose() {
+    AppForegroundService.instance.removeListener(_onForegroundChanged);
     _autoTimer?.cancel();
     _countdownTimer?.cancel();
     _pageController.dispose();
@@ -191,6 +220,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       _HomePromoSlide(
         id: 'night_market',
         title: 'GECE PAZARI',
+        tag: 'GÜNLÜK FIRSAT',
         subtitle: nightOpen
             ? 'Günlük gem teklifleri.\nSınırlı stok — kaçırma.'
             : 'Her gün 20:00–22:00 TR.\nGem fırsatları seni bekliyor.',
@@ -213,6 +243,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       _HomePromoSlide(
         id: 'codex',
         title: 'KODEX',
+        tag: 'KEŞİF & ÖDÜL',
         subtitle: claimable
             ? '${promos.codex.discovered}/${promos.codex.total} keşif · ${promos.codex.claimableMilestones} ödül bekliyor.'
             : '${promos.codex.discovered}/${promos.codex.total} keşif.\nBoss, eşya, zindan topla.',
@@ -235,6 +266,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
         _HomePromoSlide(
           id: 'nemesis',
           title: 'NEMESIS',
+          tag: 'KAN DAVASI',
           subtitle: '$rival — ${promos.nemesis.losses} yenilgi.\nİntikam zamanı.',
           ctaLabel: 'Düello Gönder',
           route: revengeRoute,
@@ -255,6 +287,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
         const _HomePromoSlide(
           id: 'nemesis',
           title: 'NEMESIS',
+          tag: 'ARENA MEYDAN OKUMA',
           subtitle: 'PvP rakibin peşinde.\nİntikam + bonus altın.',
           ctaLabel: 'Arenaya Gir',
           route: AppRoutes.pvp,
@@ -279,6 +312,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       _HomePromoSlide(
         id: 'loot',
         title: 'KASA AÇ',
+        tag: 'EFSANEVİ DROPLAR',
         subtitle: 'Sınırlı bir süre için.\nEfsanevi hediyeler seni bekliyor.',
         ctaLabel: lootCta,
         route: AppRoutes.loot,
@@ -289,6 +323,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       const _HomePromoSlide(
         id: 'dungeon',
         title: 'ZİNDAN',
+        tag: 'BOSS AVI',
         subtitle: 'Boss avla.\nEfsanevi loot seni bekliyor.',
         ctaLabel: 'Zindana Gir',
         route: AppRoutes.dungeon,
@@ -304,6 +339,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       const _HomePromoSlide(
         id: 'horse',
         title: 'AT YARIŞI',
+        tag: 'JACKPOT',
         subtitle: 'Bahis yap.\nJackpot peşinde koş.',
         ctaLabel: 'Yarışa Git',
         route: AppRoutes.horseRace,
@@ -319,6 +355,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       const _HomePromoSlide(
         id: 'season',
         title: 'SAVAŞ GEÇİDİ',
+        tag: 'SEZON PASSI',
         subtitle: 'Sezon ödüllerini kaçırma.\nSavaş geçidini aç.',
         ctaLabel: 'Geçidi Aç',
         route: AppRoutes.season,
@@ -338,6 +375,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       const _HomePromoSlide(
         id: 'enhance',
         title: 'EŞYA YÜKSELT',
+        tag: 'DEMİRCİ OCAĞI',
         subtitle: 'Forge ile güç katla.\nEfsane ol.',
         ctaLabel: 'Yükselt',
         route: AppRoutes.enhancement,
@@ -353,6 +391,7 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
       const _HomePromoSlide(
         id: 'pvp',
         title: 'PvP ARENA',
+        tag: 'GLADYATÖR',
         subtitle: 'Rakipleri ez.\nSıralamada yüksel.',
         ctaLabel: 'Düelloya Gir',
         route: AppRoutes.pvp,
@@ -400,11 +439,16 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
     _autoTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted || _userInteracting || !_pageController.hasClients) return;
       final int next = (_page + 1) % _slides.length;
-      _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutCubic,
-      );
+      _isAutoAdvancing = true;
+      _pageController
+          .animateToPage(
+            next,
+            duration: const Duration(milliseconds: 420),
+            curve: Curves.easeOutCubic,
+          )
+          .then((_) {
+        if (mounted) _isAutoAdvancing = false;
+      });
     });
   }
 
@@ -424,8 +468,17 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool compact = constraints.maxWidth < 390;
-        final double bannerHeight = compact ? 200 : 212;
+        final double width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final bool isNarrow = width < 360;
+        final bool compact = width < 390;
+        final double bannerHeight = isNarrow ? 196 : (compact ? 204 : 212);
+        final int safeIndex =
+            _page.clamp(0, slides.isNotEmpty ? slides.length - 1 : 0);
+        final Color activeIndicatorColor = slides.isNotEmpty
+            ? slides[safeIndex].ctaBorderColor
+            : AppColors.liquidGold;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -443,16 +496,27 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
                     clipBehavior: Clip.none,
                     itemCount: slides.length,
                     onPageChanged: (int index) {
-                      setState(() => _page = index);
+                      if (_page != index) {
+                        if (!_isAutoAdvancing) {
+                          HapticFeedback.selectionClick();
+                        }
+                        setState(() => _page = index);
+                      }
                     },
                     itemBuilder: (BuildContext context, int index) {
                       return _CrateBannerShell(
                         slide: slides[index],
                         compact: compact,
                         bannerHeight: bannerHeight,
-                        onTap: () => context.push(slides[index].route),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          context.push(slides[index].route);
+                        },
                         onDismiss: slides[index].showDismiss
-                            ? _dismissNemesisBanner
+                            ? () {
+                                HapticFeedback.mediumImpact();
+                                _dismissNemesisBanner();
+                              }
                             : null,
                         dismissLoading: _dismissingNemesis,
                       );
@@ -460,8 +524,22 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              _PageDots(count: slides.length, index: _page),
+              const SizedBox(height: 10),
+              _PageDots(
+                count: slides.length,
+                index: safeIndex,
+                activeColor: activeIndicatorColor,
+                onTapDot: (int dotIndex) {
+                  if (_page != dotIndex) {
+                    HapticFeedback.selectionClick();
+                    _pageController.animateToPage(
+                      dotIndex,
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                },
+              ),
             ],
           ),
         );
@@ -470,8 +548,8 @@ class _HomePromoCarouselState extends ConsumerState<HomePromoCarousel> {
   }
 }
 
-/// Kasa chrome — tüm slide'lar aynı shell (overflow art + grid + radial).
-class _CrateBannerShell extends StatelessWidget {
+/// Kasa chrome — tüm slide'lar aynı shell (overflow art + Aion-2 lattice + radial + obsidian frosted glass).
+class _CrateBannerShell extends StatefulWidget {
   const _CrateBannerShell({
     required this.slide,
     required this.compact,
@@ -489,224 +567,430 @@ class _CrateBannerShell extends StatelessWidget {
   final bool dismissLoading;
 
   @override
+  State<_CrateBannerShell> createState() => _CrateBannerShellState();
+}
+
+class _CrateBannerShellState extends State<_CrateBannerShell> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
+    final _HomePromoSlide slide = widget.slide;
+    final bool compact = widget.compact;
+    final double bannerHeight = widget.bannerHeight;
+
     // Kasa: büyük overflow. Diğerleri: daha küçük contained art.
     final bool isLoot = slide.id == 'loot';
     final double imageWidth = isLoot
-        ? (compact ? 240.0 : 280.0)
-        : (compact ? 118.0 : 132.0);
+        ? (compact ? 232.0 : 272.0)
+        : (compact ? 116.0 : 130.0);
     final double imageRight = isLoot
-        ? (compact ? -34.0 : -50.0)
+        ? (compact ? -30.0 : -44.0)
         : (compact ? 8.0 : 12.0);
     final double imageTopBottom = isLoot
-        ? (compact ? -36.0 : -50.0)
-        : (compact ? 22.0 : 26.0);
+        ? (compact ? -32.0 : -44.0)
+        : (compact ? 20.0 : 24.0);
     final double contentRight = isLoot
-        ? (compact ? 148.0 : 180.0)
-        : (compact ? 128.0 : 146.0);
-    final Color borderColor =
-        slide.borderColor ?? Colors.red.withValues(alpha: 0.3);
+        ? (compact ? 140.0 : 164.0)
+        : (compact ? 124.0 : 142.0);
+    final Color accentColor = slide.borderColor ?? slide.ctaBorderColor;
+    final Color rimColor = slide.borderColor ?? accentColor.withValues(alpha: 0.55);
 
     return GestureDetector(
-      onTap: onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: double.infinity,
-        height: bannerHeight,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: <Widget>[
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: RadialGradient(
-                    center: const Alignment(0.6, 0.0),
-                    radius: 1.5,
-                    colors: <Color>[slide.radialInner, slide.radialOuter],
-                  ),
-                  border: Border.all(color: borderColor, width: 1),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: const CustomPaint(painter: _GridPainter()),
-                ),
-              ),
-            ),
-            Positioned(
-              right: imageRight,
-              top: imageTopBottom,
-              bottom: imageTopBottom,
-              width: imageWidth,
-              child: Image.asset(
-                slide.artAsset,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => Icon(
-                  slide.ctaIcon,
-                  size: compact ? 72 : 88,
-                  color: Colors.white.withValues(alpha: 0.35),
-                ),
-              ),
-            ),
-            if (onDismiss != null)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Material(
-                  color: AppColors.carbonVoid.withValues(alpha: 0.55),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    onPressed: dismissLoading ? null : onDismiss,
-                    tooltip: '24 saat gizle',
-                    iconSize: 18,
-                    padding: const EdgeInsets.all(6),
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
+      child: AnimatedScale(
+        scale: _pressed ? 0.985 : 1.0,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: SizedBox(
+          width: double.infinity,
+          height: bannerHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              // Outer Luminous Container & Frosted Glass Backdrop
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    // Multi-stop celestial luminous rim gradient
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        Colors.white.withValues(alpha: 0.45),
+                        rimColor.withValues(alpha: 0.85),
+                        rimColor.withValues(alpha: 0.35),
+                        Colors.white.withValues(alpha: 0.12),
+                      ],
+                      stops: const <double>[0.0, 0.30, 0.75, 1.0],
                     ),
-                    icon: dismissLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            Icons.close_rounded,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                  ),
-                ),
-              ),
-            Positioned(
-              left: 20,
-              top: compact ? 16 : 20,
-              bottom: compact ? 16 : 20,
-              right: contentRight,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          slide.title,
-                          style: GoogleFonts.urbanist(
-                            textStyle: TextStyle(
-                              color: Colors.white,
-                              fontSize: compact ? 24 : 28,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ),
+                    boxShadow: <BoxShadow>[
+                      // Ambient primary glow
+                      BoxShadow(
+                        color: accentColor.withValues(alpha: 0.28),
+                        blurRadius: 24,
+                        offset: const Offset(0, 6),
+                        spreadRadius: -2,
                       ),
-                      SizedBox(height: compact ? 6 : 8),
-                      if (slide.showTimer && slide.timerSeconds > 0)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.carbonVoid.withValues(alpha: 0.65),
-                              borderRadius: BorderRadius.circular(99),
-                              border: Border.all(
-                                color: AppColors.warningSolar.withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: Text(
-                              _formatTimer(slide.timerSeconds),
-                              style: GoogleFonts.urbanist(
-                                fontSize: compact ? 11 : 12,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.warningSolar,
-                              ),
-                            ),
-                          ),
-                        ),
-                      Text(
-                        slide.subtitle,
-                        style: GoogleFonts.urbanist(
-                          textStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: compact ? 12 : 13,
-                            height: 1.4,
-                          ),
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
+                      // Ground contrast shadow
+                      const BoxShadow(
+                        color: Color(0xDD000000),
+                        blurRadius: 14,
+                        offset: Offset(0, 5),
                       ),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                  padding: const EdgeInsets.all(1.25),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18.75),
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 14.0, sigmaY: 14.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          // Multi-tier dark fantasy radial obsidian glow
+                          gradient: RadialGradient(
+                            center: const Alignment(0.65, -0.15),
+                            radius: 1.45,
+                            colors: <Color>[
+                              slide.radialInner.withValues(alpha: 0.90),
+                              slide.radialOuter.withValues(alpha: 0.98),
+                            ],
+                          ),
+                        ),
+                        child: Stack(
+                          children: <Widget>[
+                            // Celestial Runic Lattice Ornament
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: _AionPromoOrnamentPainter(
+                                  accentColor: accentColor,
+                                ),
+                              ),
+                            ),
+                            // Celestial top specular highlight sheen
+                            Positioned(
+                              top: 0,
+                              left: 20,
+                              right: 20,
+                              height: 1.0,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: <Color>[
+                                      Colors.transparent,
+                                      Colors.white.withValues(alpha: 0.40),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+                  ),
+                ),
+              ),
+
+              // Ambient Aura Halo behind hero art
+              Positioned(
+                right: imageRight,
+                top: imageTopBottom,
+                bottom: imageTopBottom,
+                width: imageWidth,
+                child: Center(
+                  child: Container(
+                    width: imageWidth * 0.75,
+                    height: imageWidth * 0.75,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        colors: slide.ctaGradient,
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          offset: const Offset(0, 4),
-                          blurRadius: 8,
-                        ),
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          offset: const Offset(0, 1),
-                          blurRadius: 0,
-                        ),
-                      ],
-                      border: Border.all(
-                        color: slide.ctaBorderColor.withValues(alpha: 0.5),
-                        width: 1,
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: <Color>[
+                          accentColor.withValues(alpha: 0.28),
+                          accentColor.withValues(alpha: 0.0),
+                        ],
                       ),
                     ),
-                    child: Row(
+                  ),
+                ),
+              ),
+
+              // Hero Art Asset
+              Positioned(
+                right: imageRight,
+                top: imageTopBottom,
+                bottom: imageTopBottom,
+                width: imageWidth,
+                child: Image.asset(
+                  slide.artAsset,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                  errorBuilder: (_, _, _) => Icon(
+                    slide.ctaIcon,
+                    size: compact ? 72 : 88,
+                    color: Colors.white.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+
+              // Nemesis Dismiss Action
+              if (widget.onDismiss != null)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Material(
+                    color: AppColors.carbonVoid.withValues(alpha: 0.70),
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      onPressed:
+                          widget.dismissLoading ? null : widget.onDismiss,
+                      tooltip: '24 saat gizle',
+                      iconSize: 18,
+                      padding: const EdgeInsets.all(6),
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      icon: widget.dismissLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white70,
+                              ),
+                            )
+                          : Icon(
+                              Icons.close_rounded,
+                              color: Colors.white.withValues(alpha: 0.85),
+                            ),
+                    ),
+                  ),
+                ),
+
+              // Slide Content
+              Positioned(
+                left: 20,
+                top: compact ? 16 : 20,
+                bottom: compact ? 16 : 20,
+                right: contentRight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Text(
-                          slide.ctaLabel,
-                          style: GoogleFonts.urbanist(
-                            textStyle: TextStyle(
-                              color: Colors.white,
-                              fontSize: compact ? 15 : 16,
-                              fontWeight: FontWeight.bold,
-                              shadows: const <Shadow>[
-                                Shadow(
-                                  color: Colors.black54,
-                                  offset: Offset(0, 1),
-                                  blurRadius: 2,
+                        // Category Pill Tag
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2.5,
+                          ),
+                          margin: const EdgeInsets.only(bottom: 5),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: accentColor.withValues(alpha: 0.50),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: accentColor,
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color: accentColor.withValues(alpha: 0.8),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                              const SizedBox(width: 4.5),
+                              Text(
+                                slide.tag,
+                                style: GoogleFonts.urbanist(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            slide.title,
+                            style: GoogleFonts.urbanist(
+                              textStyle: TextStyle(
+                                color: Colors.white,
+                                fontSize: compact ? 22 : 25,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.1,
+                                shadows: const <Shadow>[
+                                  Shadow(
+                                    color: Colors.black87,
+                                    offset: Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          slide.ctaIcon,
-                          color: slide.ctaIconColor,
-                          size: 18,
+                        SizedBox(height: compact ? 4 : 6),
+                        if (slide.showTimer && slide.timerSeconds > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 3.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.carbonVoid
+                                    .withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(99),
+                                border: Border.all(
+                                  color: AppColors.warningSolar
+                                      .withValues(alpha: 0.65),
+                                  width: 1,
+                                ),
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: AppColors.warningSolar
+                                        .withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.timer_outlined,
+                                    size: 13,
+                                    color: AppColors.warningSolar,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatTimer(slide.timerSeconds),
+                                    style: GoogleFonts.urbanist(
+                                      fontSize: compact ? 11 : 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.warningSolar,
+                                      letterSpacing: 0.3,
+                                      fontFeatures: const <ui.FontFeature>[
+                                        ui.FontFeature.tabularFigures(),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        Text(
+                          slide.subtitle,
+                          style: GoogleFonts.urbanist(
+                            textStyle: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.82),
+                              fontSize: compact ? 12 : 13,
+                              height: 1.35,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                  ),
-                ],
+
+                    // Celestial Luminous CTA
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: compact ? 14 : 16,
+                          vertical: compact ? 8 : 10,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          gradient: LinearGradient(
+                            colors: slide.ctaGradient,
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: slide.ctaBorderColor.withValues(alpha: 0.35),
+                              offset: const Offset(0, 3),
+                              blurRadius: 10,
+                            ),
+                            const BoxShadow(
+                              color: Color(0x66000000),
+                              offset: Offset(0, 4),
+                              blurRadius: 8,
+                            ),
+                          ],
+                          border: Border.all(
+                            color: slide.ctaBorderColor.withValues(alpha: 0.75),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              slide.ctaLabel,
+                              style: GoogleFonts.urbanist(
+                                textStyle: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: compact ? 13.5 : 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.3,
+                                  shadows: const <Shadow>[
+                                    Shadow(
+                                      color: Colors.black54,
+                                      offset: Offset(0, 1),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              slide.ctaIcon,
+                              color: slide.ctaIconColor,
+                              size: compact ? 15 : 17,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -714,63 +998,121 @@ class _CrateBannerShell extends StatelessWidget {
 }
 
 class _PageDots extends StatelessWidget {
-  const _PageDots({required this.count, required this.index});
+  const _PageDots({
+    required this.count,
+    required this.index,
+    required this.activeColor,
+    required this.onTapDot,
+  });
 
   final int count;
   final int index;
+  final Color activeColor;
+  final ValueChanged<int> onTapDot;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List<Widget>.generate(count, (int i) {
-        final bool active = i == index;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: active ? 14 : 6,
-          height: 6,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
+            color: AppColors.carbonVoid.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(99),
-            color: active
-                ? const Color(0xFFE50000)
-                : Colors.white.withValues(alpha: 0.28),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.12),
+              width: 1,
+            ),
           ),
-        );
-      }),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List<Widget>.generate(count, (int i) {
+              final bool active = i == index;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onTapDot(i),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOutCubic,
+                    width: active ? 22 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(99),
+                      color: active
+                          ? activeColor
+                          : Colors.white.withValues(alpha: 0.28),
+                      boxShadow: active
+                          ? <BoxShadow>[
+                              BoxShadow(
+                                color: activeColor.withValues(alpha: 0.70),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _GridPainter extends CustomPainter {
-  const _GridPainter();
+class _AionPromoOrnamentPainter extends CustomPainter {
+  const _AionPromoOrnamentPainter({required this.accentColor});
+
+  final Color accentColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
-      ..strokeWidth = 1.0;
-    const double cell = 20.0;
-    for (double x = 0.0; x <= size.width; x += cell) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    final Paint dotPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.04);
+    const double spacing = 18.0;
+    for (double y = spacing / 2; y < size.height; y += spacing) {
+      final bool odd = ((y / spacing).floor()) % 2 == 1;
+      for (double x = odd ? spacing : spacing / 2; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 0.7, dotPaint);
+      }
     }
-    for (double y = 0.0; y <= size.height; y += cell) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
+
+    final Paint bracketPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.28)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    const double corner = 7.0;
+    canvas.drawLine(const Offset(8, 5), const Offset(8 + corner, 5), bracketPaint);
+    canvas.drawLine(const Offset(5, 8), const Offset(5, 8 + corner), bracketPaint);
+
+    canvas.drawLine(Offset(8, size.height - 5), Offset(8 + corner, size.height - 5), bracketPaint);
+    canvas.drawLine(Offset(5, size.height - 8), Offset(5, size.height - 8 - corner), bracketPaint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _AionPromoOrnamentPainter oldDelegate) =>
+      oldDelegate.accentColor != accentColor;
 }
 
 String _formatTimer(int seconds) {
   final int h = seconds ~/ 3600;
   final int m = (seconds % 3600) ~/ 60;
   final int s = seconds % 60;
-  if (h > 0) return '${h}s ${m}dk ${s}sn';
-  if (m > 0) return '${m}dk ${s}sn';
-  return '${s}sn';
+  if (h > 0) {
+    return '${h}s ${m.toString().padLeft(2, '0')}dk ${s.toString().padLeft(2, '0')}sn';
+  }
+  if (m > 0) {
+    return '${m.toString().padLeft(2, '0')}dk ${s.toString().padLeft(2, '0')}sn';
+  }
+  return '${s.toString().padLeft(2, '0')}sn';
 }
 
 List<Map<String, dynamic>> _lootRowsFromRpc(dynamic raw) {

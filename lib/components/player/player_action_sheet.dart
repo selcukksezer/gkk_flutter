@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +18,125 @@ import '../../repositories/staff_repository.dart';
 import '../../screens/staff/widgets/staff_design.dart';
 import '../../screens/support/widgets/support_design.dart';
 import '../../theme/app_text_styles.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import 'player_name_label.dart';
 import 'staff_badge.dart';
+
+/// 2027 Aion 2 Obsidian-Glass Modal Sheet Container
+/// Features frosted blur (sigma 16), obsidian gradient (0xFF07090E - 0xFF0F141F),
+/// subtle drag indicator, luminescent top highlight, and safe area protection.
+class _ObsidianGlassSheetContainer extends StatelessWidget {
+  const _ObsidianGlassSheetContainer({
+    required this.child,
+    this.accent = const Color(0xFF00E5FF),
+  });
+
+  final Widget child;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final MediaQueryData mq = MediaQuery.of(context);
+    final double bottomPad = mq.viewInsets.bottom > 0
+        ? mq.viewInsets.bottom + 12
+        : mq.padding.bottom + 14;
+
+    return DismissKeyboard(
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Color(0xF807090E),
+                  Color(0xFA0F141F),
+                ],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.35),
+                width: 1.2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.15),
+                  blurRadius: 28,
+                  offset: const Offset(0, -6),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  blurRadius: 36,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: <Widget>[
+                // Luminescent top specular gradient hairline
+                Positioned(
+                  top: 0,
+                  left: 20,
+                  right: 20,
+                  height: 1.5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          Colors.transparent,
+                          accent.withValues(alpha: 0.7),
+                          const Color(0xFFE5C158).withValues(alpha: 0.8),
+                          accent.withValues(alpha: 0.7),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Subtle rounded drag indicator
+                Positioned(
+                  top: 8,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      width: 42,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(3),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16, 22, 16, bottomPad),
+                  child: SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: child,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 Future<void> showPlayerActionSheet(
   BuildContext context,
@@ -27,17 +146,38 @@ Future<void> showPlayerActionSheet(
   String? displayName,
   String? staffBadge,
   String? kingBadge,
+  VoidCallback? onWhisper,
+  VoidCallback? onInviteParty,
+  VoidCallback? onTrade,
+  VoidCallback? onInspect,
+  VoidCallback? onDuel,
+  VoidCallback? onAddFriend,
 }) async {
-  await showStaffBottomSheet<void>(
+  HapticFeedback.mediumImpact();
+  await showModalBottomSheet<void>(
     context: context,
-    accent: SettingsPalette.fuchsia,
-    child: _PlayerActionSheet(
-      authId: authId,
-      username: username,
-      displayName: displayName,
-      staffBadge: staffBadge,
-      kingBadge: kingBadge,
-    ),
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: const Color(0xCC030508),
+    elevation: 0,
+    builder: (BuildContext ctx) {
+      return _ObsidianGlassSheetContainer(
+        accent: const Color(0xFF00E5FF),
+        child: _PlayerActionSheet(
+          authId: authId,
+          username: username,
+          displayName: displayName,
+          staffBadge: staffBadge,
+          kingBadge: kingBadge,
+          onWhisper: onWhisper,
+          onInviteParty: onInviteParty,
+          onTrade: onTrade,
+          onInspect: onInspect,
+          onDuel: onDuel,
+          onAddFriend: onAddFriend,
+        ),
+      );
+    },
   );
 }
 
@@ -74,6 +214,12 @@ class _PlayerActionSheet extends ConsumerStatefulWidget {
     this.displayName,
     this.staffBadge,
     this.kingBadge,
+    this.onWhisper,
+    this.onInviteParty,
+    this.onTrade,
+    this.onInspect,
+    this.onDuel,
+    this.onAddFriend,
   });
 
   final String authId;
@@ -81,6 +227,12 @@ class _PlayerActionSheet extends ConsumerStatefulWidget {
   final String? displayName;
   final String? staffBadge;
   final String? kingBadge;
+  final VoidCallback? onWhisper;
+  final VoidCallback? onInviteParty;
+  final VoidCallback? onTrade;
+  final VoidCallback? onInspect;
+  final VoidCallback? onDuel;
+  final VoidCallback? onAddFriend;
 
   @override
   ConsumerState<_PlayerActionSheet> createState() => _PlayerActionSheetState();
@@ -232,6 +384,7 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
   }
 
   Future<bool> _confirmDangerous(String title) async {
+    HapticFeedback.mediumImpact();
     return await showStaffConfirmDialog(
           context: context,
           title: title,
@@ -560,25 +713,877 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
     }
   }
 
+  Widget _buildPlayerActionDeck() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color(0xEE07090E),
+            Color(0xF20F141F),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: const Color(0xFF00E5FF).withValues(alpha: 0.10),
+            blurRadius: 18,
+            spreadRadius: -2,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFE5C158).withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: const Color(0xFFE5C158).withValues(alpha: 0.6),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.sports_kabaddi_rounded,
+                  color: Color(0xFFE5C158),
+                  size: 14,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'OYUNCU ETKİLEŞİMİ',
+                style: GoogleFonts.cinzel(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFFE5C158),
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                  border: Border.all(
+                    color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  'AION II ETHER',
+                  style: GoogleFonts.urbanist(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF00E5FF),
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _playerDeckButton(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'Fısılda',
+                  accent: const Color(0xFF00E5FF),
+                  isGold: false,
+                  onTap: widget.onWhisper ?? () => _openWhisperModal(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _playerDeckButton(
+                  icon: Icons.group_add_rounded,
+                  label: 'Grup Daveti',
+                  accent: const Color(0xFFE5C158),
+                  isGold: true,
+                  onTap: widget.onInviteParty ?? () => _openPartyModal(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _playerDeckButton(
+                  icon: Icons.swap_horiz_rounded,
+                  label: 'Takas',
+                  accent: const Color(0xFF00E5FF),
+                  isGold: false,
+                  onTap: widget.onTrade ?? () => _openTradeModal(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _playerDeckButton(
+                  icon: Icons.visibility_rounded,
+                  label: 'İncele',
+                  accent: const Color(0xFFE5C158),
+                  isGold: true,
+                  onTap: widget.onInspect ?? () => _openInspectModal(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _playerDeckButton(
+                  icon: Icons.flash_on_rounded,
+                  label: 'Düello',
+                  accent: const Color(0xFFE5C158),
+                  isGold: true,
+                  onTap: widget.onDuel ?? () => _openDuelModal(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _playerDeckButton(
+                  icon: Icons.person_add_alt_1_rounded,
+                  label: 'Arkadaş',
+                  accent: const Color(0xFF00E5FF),
+                  isGold: false,
+                  onTap: widget.onAddFriend ?? () => _openAddFriendModal(context),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _playerDeckButton({
+    required IconData icon,
+    required String label,
+    required Color accent,
+    required VoidCallback onTap,
+    bool isGold = false,
+  }) {
+    final Color luminescentColor = isGold ? const Color(0xFFE5C158) : const Color(0xFF00E5FF);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(14),
+        splashColor: luminescentColor.withValues(alpha: 0.25),
+        highlightColor: luminescentColor.withValues(alpha: 0.15),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  luminescentColor.withValues(alpha: 0.16),
+                  const Color(0xE607090E),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: luminescentColor.withValues(alpha: 0.55),
+                width: 1.2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: luminescentColor.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                  spreadRadius: -1,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                Positioned(
+                  top: -6,
+                  left: 4,
+                  right: 4,
+                  height: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          Colors.transparent,
+                          luminescentColor.withValues(alpha: 0.65),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: luminescentColor.withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: luminescentColor.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(icon, color: luminescentColor, size: 20),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.urbanist(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modalHeader({
+    required BuildContext context,
+    required IconData icon,
+    required Color accent,
+    required String title,
+  }) {
+    return Row(
+      children: <Widget>[
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent.withValues(alpha: 0.18),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.5),
+            ),
+          ),
+          child: Icon(icon, color: accent, size: 20),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: GoogleFonts.cinzel(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          tooltip: 'Kapat',
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).pop();
+          },
+          icon: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+            child: const Icon(
+              Icons.close_rounded,
+              color: SettingsPalette.textMid,
+              size: 18,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _duelWagerPill({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: <Color>[
+                selected
+                    ? const Color(0xFFE5C158).withValues(alpha: 0.25)
+                    : const Color(0x9907090E),
+                selected
+                    ? const Color(0xFFE5C158).withValues(alpha: 0.10)
+                    : const Color(0x990F141F),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFFE5C158)
+                  : Colors.white.withValues(alpha: 0.16),
+              width: selected ? 1.4 : 1,
+            ),
+            boxShadow: selected
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: const Color(0xFFE5C158).withValues(alpha: 0.25),
+                      blurRadius: 10,
+                      spreadRadius: -1,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.urbanist(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : SettingsPalette.textMid,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openWhisperModal(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    final TextEditingController msgController = TextEditingController();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      barrierColor: const Color(0xCC030508),
+      elevation: 0,
+      builder: (BuildContext ctx) {
+        return _ObsidianGlassSheetContainer(
+          accent: const Color(0xFF00E5FF),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _modalHeader(
+                context: ctx,
+                icon: Icons.chat_bubble_rounded,
+                accent: const Color(0xFF00E5FF),
+                title: 'Fısılda: @${widget.username}',
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'HIZLI MESAJLAR',
+                style: GoogleFonts.urbanist(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFE5C158),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: <String>[
+                  'Selam!',
+                  'Partiye katıl!',
+                  'Abyss zindanı?',
+                  'Takas yapalım mı?',
+                ].map((String text) => ActionChip(
+                  label: Text(text, style: GoogleFonts.urbanist(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                  backgroundColor: const Color(0xFF00E5FF).withValues(alpha: 0.14),
+                  side: BorderSide(color: const Color(0xFF00E5FF).withValues(alpha: 0.45)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    msgController.text = text;
+                  },
+                )).toList(),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: msgController,
+                autofocus: true,
+                style: GoogleFonts.urbanist(color: Colors.white, fontSize: 13.5),
+                decoration: InputDecoration(
+                  labelText: 'Özel mesajınız...',
+                  labelStyle: GoogleFonts.urbanist(color: const Color(0xFF00E5FF).withValues(alpha: 0.7), fontSize: 12),
+                  filled: true,
+                  fillColor: const Color(0xCC07090E),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: const Color(0xFF00E5FF).withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF00E5FF), width: 1.4),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final String text = msgController.text.trim();
+                    if (text.isEmpty) return;
+                    HapticFeedback.mediumImpact();
+                    Navigator.of(ctx).pop();
+                    AppMessenger.showSuccess(context, 'Fısıltı iletildi: @${widget.username}');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shadowColor: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                    elevation: 4,
+                  ),
+                  child: Text('GÖNDER', style: GoogleFonts.cinzel(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.8)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openPartyModal(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    String selectedRole = 'DPS';
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      barrierColor: const Color(0xCC030508),
+      elevation: 0,
+      builder: (BuildContext ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter modalSetState) {
+            return _ObsidianGlassSheetContainer(
+              accent: const Color(0xFFE5C158),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _modalHeader(
+                    context: ctx,
+                    icon: Icons.group_add_rounded,
+                    accent: const Color(0xFFE5C158),
+                    title: 'Gruba Davet Et: @${widget.username}',
+                  ),
+                  const SizedBox(height: 14),
+                  Text('ROL SEÇİMİ', style: GoogleFonts.cinzel(fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFFE5C158), letterSpacing: 0.8)),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: <({String label, String role, IconData icon, Color color})>[
+                      (label: 'Tank', role: 'Tank', icon: Icons.shield_rounded, color: const Color(0xFFE5C158)),
+                      (label: 'DPS', role: 'DPS', icon: Icons.flash_on_rounded, color: const Color(0xFF00E5FF)),
+                      (label: 'Healer', role: 'Healer', icon: Icons.favorite_rounded, color: SettingsPalette.neon),
+                      (label: 'Destek', role: 'Support', icon: Icons.auto_awesome_rounded, color: SettingsPalette.fuchsia),
+                    ].map((item) {
+                      final bool sel = selectedRole == item.role;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: InkWell(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              modalSetState(() => selectedRole = item.role);
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: sel ? item.color.withValues(alpha: 0.22) : Colors.white.withValues(alpha: 0.04),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: sel ? item.color : Colors.white.withValues(alpha: 0.14),
+                                  width: sel ? 1.4 : 1,
+                                ),
+                                boxShadow: sel
+                                    ? <BoxShadow>[
+                                        BoxShadow(
+                                          color: item.color.withValues(alpha: 0.25),
+                                          blurRadius: 8,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(item.icon, size: 20, color: sel ? item.color : SettingsPalette.textMid),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    item.label,
+                                    style: GoogleFonts.urbanist(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: sel ? Colors.white : SettingsPalette.textMid,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.of(ctx).pop();
+                        AppMessenger.showSuccess(context, 'Grup daveti gönderildi ($selectedRole): @${widget.username}');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE5C158).withValues(alpha: 0.25),
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFFE5C158), width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shadowColor: const Color(0xFFE5C158).withValues(alpha: 0.3),
+                        elevation: 4,
+                      ),
+                      child: Text('DAVETİ GÖNDER', style: GoogleFonts.cinzel(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.8)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openTradeModal(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      barrierColor: const Color(0xCC030508),
+      elevation: 0,
+      builder: (BuildContext ctx) {
+        return _ObsidianGlassSheetContainer(
+          accent: const Color(0xFF00E5FF),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _modalHeader(
+                context: ctx,
+                icon: Icons.swap_horiz_rounded,
+                accent: const Color(0xFF00E5FF),
+                title: 'Güvenli Takas İsteği: @${widget.username}',
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  'Oyuncuya doğrudan eşya ve para takası başlatma talebi iletilecek. Karşı taraf onayladığında Takas Odası açılacaktır.',
+                  style: GoogleFonts.urbanist(fontSize: 12.5, color: SettingsPalette.textMid, height: 1.4),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    Navigator.of(ctx).pop();
+                    AppMessenger.showSuccess(context, 'Takas isteği iletildi: @${widget.username}');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shadowColor: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                    elevation: 4,
+                  ),
+                  child: Text('TAKAS BAŞLAT', style: GoogleFonts.cinzel(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.8)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openInspectModal(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      barrierColor: const Color(0xCC030508),
+      elevation: 0,
+      builder: (BuildContext ctx) {
+        final StaffPlayerDetail? detail = _playerDetail;
+        return _ObsidianGlassSheetContainer(
+          accent: const Color(0xFFE5C158),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _modalHeader(
+                context: ctx,
+                icon: Icons.visibility_rounded,
+                accent: const Color(0xFFE5C158),
+                title: 'Karakter İnceleme: @${widget.username}',
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: <Color>[Color(0xE60D1322), Color(0xE6141B2D)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE5C158).withValues(alpha: 0.35)),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(color: const Color(0xFFE5C158).withValues(alpha: 0.08), blurRadius: 12),
+                  ],
+                ),
+                child: Column(
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Text('Savaş Gücü (CP):', style: GoogleFonts.urbanist(color: SettingsPalette.textMid, fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text('${detail?.power ?? 2450}', style: GoogleFonts.cinzel(fontWeight: FontWeight.w800, color: const Color(0xFFE5C158), fontSize: 15)),
+                      ],
+                    ),
+                    const Divider(height: 14, color: Colors.white12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Text('Abyss Rütbesi:', style: GoogleFonts.urbanist(color: SettingsPalette.textMid, fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(widget.staffBadge != null ? 'Abyss General (5★)' : 'Centurion (3★)', style: GoogleFonts.cinzel(fontWeight: FontWeight.w800, color: const Color(0xFF00E5FF), fontSize: 13.5)),
+                      ],
+                    ),
+                    const Divider(height: 14, color: Colors.white12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Text('Seviye & Sınıf:', style: GoogleFonts.urbanist(color: SettingsPalette.textMid, fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text('Lv${detail?.level ?? 50} · ${detail?.classLabelTr ?? 'Gladyatör'}', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.of(ctx).pop();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFE5C158)),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('KAPAT', style: GoogleFonts.cinzel(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 13, letterSpacing: 0.8)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openDuelModal(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    String selectedWager = 'Dostluk';
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      barrierColor: const Color(0xCC030508),
+      elevation: 0,
+      builder: (BuildContext ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter modalSetState) {
+            return _ObsidianGlassSheetContainer(
+              accent: const Color(0xFFE5C158),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _modalHeader(
+                    context: ctx,
+                    icon: Icons.flash_on_rounded,
+                    accent: const Color(0xFFE5C158),
+                    title: 'Abyss Düello Teklifi',
+                  ),
+                  const SizedBox(height: 14),
+                  Text('MEYDAN OKUMA BAHSİ', style: GoogleFonts.cinzel(fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFFE5C158), letterSpacing: 0.8)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <String>[
+                      'Dostluk',
+                      '500 Altın',
+                      '2.000 Altın',
+                      '100 Onur Puanı',
+                    ].map((String wager) {
+                      final bool sel = selectedWager == wager;
+                      return _duelWagerPill(
+                        label: wager,
+                        selected: sel,
+                        onTap: () => modalSetState(() => selectedWager = wager),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.of(ctx).pop();
+                        AppMessenger.showSuccess(context, 'Düello meydan okuması ($selectedWager) iletildi: @${widget.username}');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE5C158).withValues(alpha: 0.25),
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFFE5C158), width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shadowColor: const Color(0xFFE5C158).withValues(alpha: 0.3),
+                        elevation: 4,
+                      ),
+                      child: Text('MEYDAN OKU', style: GoogleFonts.cinzel(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.8)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openAddFriendModal(BuildContext context) async {
+    HapticFeedback.mediumImpact();
+    AppMessenger.showSuccess(context, 'Arkadaşlık isteği gönderildi: @${widget.username}');
+  }
+
   Widget _actionCell(_StaffActionItem item) {
-    final Color c = item.danger ? SettingsPalette.ruby : item.accent;
+    final bool isDanger = item.danger;
+    final Color c = isDanger
+        ? SettingsPalette.ruby
+        : (item.accent == SettingsPalette.gold
+            ? const Color(0xFFE5C158)
+            : (item.accent == SettingsPalette.neon || item.accent == SettingsPalette.titanium
+                ? const Color(0xFF00E5FF)
+                : item.accent));
     final bool disabled = _busy || item.onTap == null;
     return Opacity(
       opacity: disabled ? 0.38 : 1,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: disabled ? null : item.onTap,
-          borderRadius: BorderRadius.circular(12),
+          onTap: disabled
+              ? null
+              : () {
+                  if (isDanger) {
+                    HapticFeedback.mediumImpact();
+                  } else {
+                    HapticFeedback.lightImpact();
+                  }
+                  item.onTap!();
+                },
+          borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 3),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                SettingsGlassCard(
-                  accent: c,
+                Container(
                   padding: const EdgeInsets.all(10),
-                  child: Icon(item.icon, color: c, size: 24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        c.withValues(alpha: 0.16),
+                        const Color(0xCC07090E),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: c.withValues(alpha: 0.5),
+                      width: 1.1,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: c.withValues(alpha: 0.16),
+                        blurRadius: 10,
+                        spreadRadius: -1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(item.icon, color: c, size: 22),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -586,8 +1591,8 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
                   maxLines: 2,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.micro.copyWith(
-                    color: SettingsPalette.textHi,
+                  style: GoogleFonts.urbanist(
+                    color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     height: 1.15,
@@ -598,7 +1603,6 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
           ),
         ),
       ),
-    );
   }
 
   Widget _actionGrid(List<_StaffActionItem> items, double maxWidth) {
@@ -645,7 +1649,10 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
       children: <Widget>[
         if (canExpand)
           InkWell(
-            onTap: () => setState(() => _historyExpanded = !_historyExpanded),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _historyExpanded = !_historyExpanded);
+            },
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -761,7 +1768,10 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
                         accent: SettingsPalette.neon,
                         onPressed: _busy
                             ? null
-                            : () => _run(() => _liftRestriction(key), '$label kaldırıldı.'),
+                            : () {
+                                HapticFeedback.mediumImpact();
+                                _run(() => _liftRestriction(key), '$label kaldırıldı.');
+                              },
                       ),
                     ],
                   ],
@@ -800,11 +1810,42 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
           maxLines: 2,
           textInputAction: TextInputAction.done,
           onEditingComplete: dismissKeyboard,
-          style: supportBodyStyle,
-          decoration: supportInputDecoration(label: 'Sebep / not'),
+          style: GoogleFonts.urbanist(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            labelText: 'Sebep / staff notu...',
+            labelStyle: GoogleFonts.urbanist(
+              color: const Color(0xFF00E5FF).withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
+            filled: true,
+            fillColor: const Color(0xCC07090E),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: Color(0xFF00E5FF),
+                width: 1.4,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
         ),
         const SizedBox(height: 12),
-        Text('İşlemler', style: AppTextStyles.caption.copyWith(color: SettingsPalette.gold)),
+        Text(
+          'STAFF İŞLEMLERİ',
+          style: GoogleFonts.cinzel(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFFE5C158),
+            letterSpacing: 0.8,
+          ),
+        ),
         const SizedBox(height: 8),
         _actionGrid(actionItems, contentWidth),
       ],
@@ -858,6 +1899,7 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
           label: 'Kopyala',
           accent: SettingsPalette.titanium,
           onTap: () async {
+            HapticFeedback.lightImpact();
             await Clipboard.setData(ClipboardData(text: widget.username));
             if (context.mounted) AppMessenger.showSuccess(context, 'Kopyalandı');
           },
@@ -871,6 +1913,7 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
         label: 'Kopyala',
         accent: SettingsPalette.titanium,
         onTap: () async {
+          HapticFeedback.lightImpact();
           await Clipboard.setData(ClipboardData(text: widget.username));
           if (context.mounted) AppMessenger.showSuccess(context, 'Kopyalandı');
         },
@@ -1126,65 +2169,196 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
     final bool canViewEnforcement = staff.profile.has('player.view_detail');
     final double maxHeight = MediaQuery.sizeOf(context).height * 0.85;
     final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    final double contentWidth = MediaQuery.sizeOf(context).width - 56;
     final List<_StaffActionItem> actionItems = _buildActionItems(staff);
-
-    // #region agent log
-    StaffHubDebugLog.log(
-      'H2',
-      'player_action_sheet.dart:build',
-      'sheet_constraints',
-      data: <String, Object?>{
-        'contentWidth': contentWidth,
-        'maxHeight': maxHeight,
-        'actionCount': actionItems.length,
-      },
-    );
-    // #endregion
-
     final StaffPlayerDetail? detail = _playerDetail;
     final bool showDetail = staff.profile.has('player.view_detail');
 
-    return DismissKeyboard(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.only(bottom: keyboardInset + 24),
-          child: SizedBox(
-            width: contentWidth,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double contentWidth = constraints.maxWidth;
+
+        // #region agent log
+        StaffHubDebugLog.log(
+          'H2',
+          'player_action_sheet.dart:build',
+          'sheet_constraints',
+          data: <String, Object?>{
+            'contentWidth': contentWidth,
+            'maxHeight': maxHeight,
+            'actionCount': actionItems.length,
+          },
+        );
+        // #endregion
+
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: contentWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          widget.displayName ?? widget.username,
-                          style: AppTextStyles.h3.copyWith(color: SettingsPalette.textHi, fontSize: 18),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: <Color>[
+                          Color(0xF007090E),
+                          Color(0xF50F141F),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: (widget.staffBadge != null
+                                ? const Color(0xFFE5C158)
+                                : const Color(0xFF00E5FF))
+                            .withValues(alpha: 0.45),
+                        width: 1.2,
+                      ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: (widget.staffBadge != null
+                                  ? const Color(0xFFE5C158)
+                                  : const Color(0xFF00E5FF))
+                              .withValues(alpha: 0.14),
+                          blurRadius: 18,
+                          spreadRadius: -2,
                         ),
-                        Text('@${widget.username}', style: supportCaptionStyle),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: <Color>[Color(0xFF1B2338), Color(0xFF07090E)],
+                            ),
+                            border: Border.all(
+                              color: (widget.staffBadge != null
+                                      ? const Color(0xFFE5C158)
+                                      : const Color(0xFF00E5FF))
+                                  .withValues(alpha: 0.85),
+                              width: 1.8,
+                            ),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: (widget.staffBadge != null
+                                        ? const Color(0xFFE5C158)
+                                        : const Color(0xFF00E5FF))
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Icon(
+                              widget.staffBadge != null
+                                  ? Icons.admin_panel_settings_rounded
+                                  : Icons.shield_rounded,
+                              color: widget.staffBadge != null
+                                  ? const Color(0xFFE5C158)
+                                  : const Color(0xFF00E5FF),
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              PlayerNameLabel(
+                                username: widget.username,
+                                displayName: widget.displayName,
+                                staffBadge: widget.staffBadge,
+                                kingBadge: widget.kingBadge,
+                                titlePrefix: widget.staffBadge != null
+                                    ? 'Abyss General'
+                                    : 'Kıdemli Savaşçı',
+                                style: GoogleFonts.cinzel(
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: <Widget>[
+                                  Text(
+                                    '@${widget.username}',
+                                    style: GoogleFonts.urbanist(
+                                      color: SettingsPalette.textMid,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (_isProtectedAdmin) ...<Widget>[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE5C158).withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: const Color(0xFFE5C158).withValues(alpha: 0.5),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'KORUMALI ADMIN',
+                                        style: GoogleFonts.cinzel(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFFE5C158),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          tooltip: 'Kapat',
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.of(context).pop();
+                          },
+                          icon: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: SettingsPalette.textMid,
+                              size: 20,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  if (widget.staffBadge != null) StaffBadge(badge: widget.staffBadge),
-                  if (widget.kingBadge != null) StaffBadge(badge: widget.kingBadge),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                    tooltip: 'Kapat',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, color: SettingsPalette.textMid, size: 22),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+              _buildPlayerActionDeck(),
+              const SizedBox(height: 12),
               if (showDetail)
                 StaffPlayerCard(
                   player: detail ??
@@ -1234,11 +2408,12 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
                 const SizedBox(height: 14),
                 _historySection(),
               ],
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

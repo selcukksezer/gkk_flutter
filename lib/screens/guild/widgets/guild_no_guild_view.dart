@@ -7,6 +7,7 @@ import '../../../l10n/l10n.dart';
 import '../../../models/guild_model.dart';
 import '../guild_helpers.dart';
 import 'guild_design.dart';
+import 'guild_emblem_banner.dart';
 
 class GuildNoGuildView extends StatelessWidget {
   const GuildNoGuildView({
@@ -52,55 +53,99 @@ class GuildNoGuildView extends StatelessWidget {
         backgroundColor: GuildPalette.navy,
         onRefresh: onRefresh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
           children: <Widget>[
             TutorialAnchorScope(
               id: TutorialAnchorId.guildHeader,
-              child: GuildNeonPanel(
+              child: GuildGlassCard(
                 accent: GuildPalette.fuchsia,
                 glow: true,
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: GuildPalette.fuchsia.withValues(alpha: 0.55),
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: GuildPalette.fuchsia.withValues(alpha: 0.55),
+                            ),
+                            color: GuildPalette.fuchsia.withValues(alpha: 0.14),
+                          ),
+                          child: Text(
+                            'LONCA AĞI',
+                            style: GoogleFonts.urbanist(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.4,
+                              color: GuildPalette.fuchsia,
+                            ),
+                          ),
                         ),
-                        color: GuildPalette.fuchsia.withValues(alpha: 0.12),
-                      ),
-                      child: Text(
-                        'LONCA AĞI',
-                        style: GoogleFonts.urbanist(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.4,
-                          color: GuildPalette.fuchsia,
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            color: GuildPalette.iridescentCyan.withValues(alpha: 0.14),
+                            border: Border.all(
+                              color: GuildPalette.iridescentCyan.withValues(alpha: 0.45),
+                            ),
+                          ),
+                          child: const Text(
+                            'AION 2 ÇAĞI',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                              color: GuildPalette.iridescentCyan,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'LONCA ARA',
-                      style: GoogleFonts.urbanist(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
-                        color: GuildPalette.textHi,
-                        height: 1.05,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Henüz loncada değilsin. Ara, önerilenlere katıl veya kendi loncanı kur.',
-                      style: GoogleFonts.urbanist(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: GuildPalette.titanium,
-                        height: 1.35,
-                      ),
+                    const SizedBox(height: 14),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        const GuildCelestialEmblem(
+                          level: 1,
+                          monogram: '🏰',
+                          size: 64,
+                          showGlow: true,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'LONCANI BUL',
+                                style: GoogleFonts.urbanist(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.0,
+                                  color: GuildPalette.textHi,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Lonca güçlerini birleştir, anıtını yükselt, kasadan pay al ve fetihlere katıl.',
+                                style: GoogleFonts.urbanist(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: GuildPalette.titanium,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 14),
                     Wrap(
@@ -109,14 +154,15 @@ class GuildNoGuildView extends StatelessWidget {
                       children: <Widget>[
                         GuildStatPill(
                           icon: Icons.bolt_rounded,
-                          label: 'Güç ${formatGuildCompact(myPower)}',
+                          label: 'Gücün ${formatGuildCompact(myPower)}',
                           accent: GuildPalette.gold,
                           filled: true,
                         ),
                         GuildStatPill(
                           icon: Icons.groups_rounded,
-                          label: '${recommendedGuilds.length} öneri',
+                          label: '${recommendedGuilds.length} önerilen lonca',
                           accent: GuildPalette.neon,
+                          filled: true,
                         ),
                       ],
                     ),
@@ -133,7 +179,7 @@ class GuildNoGuildView extends StatelessWidget {
                     child: TutorialAnchorScope(
                       id: TutorialAnchorId.guildJoinBtn,
                       child: Container(
-                        height: 52,
+                        height: 50,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
@@ -171,7 +217,7 @@ class GuildNoGuildView extends StatelessWidget {
                     onTap: isSearching ? null : onSearch,
                     enabled: !isSearching,
                     child: Container(
-                      height: 52,
+                      height: 50,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
@@ -182,7 +228,7 @@ class GuildNoGuildView extends StatelessWidget {
                         ),
                         boxShadow: <BoxShadow>[
                           BoxShadow(
-                            color: GuildPalette.fuchsia.withValues(alpha: 0.12),
+                            color: GuildPalette.fuchsia.withValues(alpha: 0.16),
                             blurRadius: 12,
                           ),
                         ],
@@ -222,10 +268,10 @@ class GuildNoGuildView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            GuildNeonPanel(
+            GuildGlassCard(
               accent: GuildPalette.gold,
               glow: false,
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
               child: TextField(
                 controller: searchController,
                 textInputAction: TextInputAction.search,
@@ -301,7 +347,7 @@ class GuildNoGuildView extends StatelessWidget {
             else if (_hasSearchQuery && !isSearching && searchResults.isEmpty)
               const _GuildEmptyState(
                 icon: Icons.search_off_rounded,
-                label: 'Eşleşen lonca yok',
+                label: 'Eşleşen lonca bulunamadı',
                 accent: GuildPalette.titanium,
               )
             else if (list.isEmpty)
@@ -314,13 +360,13 @@ class GuildNoGuildView extends StatelessWidget {
               ...List<Widget>.generate(list.length, (int i) {
                 return TweenAnimationBuilder<double>(
                   tween: Tween<double>(begin: 0, end: 1),
-                  duration: Duration(milliseconds: 220 + (i * 45).clamp(0, 360)),
+                  duration: Duration(milliseconds: 200 + (i * 40).clamp(0, 320)),
                   curve: Curves.easeOutCubic,
                   builder: (BuildContext context, double t, Widget? child) {
                     return Opacity(
                       opacity: t,
                       child: Transform.translate(
-                        offset: Offset(0, 14 * (1 - t)),
+                        offset: Offset(0, 12 * (1 - t)),
                         child: child,
                       ),
                     );
@@ -353,7 +399,7 @@ class _GuildEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GuildNeonPanel(
+    return GuildGlassCard(
       accent: accent,
       glow: false,
       child: Row(
@@ -400,55 +446,35 @@ class GuildResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color accent = _accent;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: GuildNeonPanel(
+      child: GuildGlassCard(
         accent: accent,
-        glow: !( _powerTooLow || _full),
+        glow: !(_powerTooLow || _full),
         padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             if (rank != null) ...<Widget>[
               SizedBox(
-                width: 34,
+                width: 30,
                 child: Text(
                   '#$rank',
                   style: GoogleFonts.urbanist(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                     color: accent,
                   ),
                 ),
               ),
             ],
-            Container(
-              width: 48,
-              height: 48,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: <Color>[
-                    accent.withValues(alpha: 0.28),
-                    GuildPalette.navy,
-                  ],
-                ),
-                border: Border.all(color: accent.withValues(alpha: 0.5)),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 10),
-                ],
-              ),
-              child: Text(
-                guild.name.isNotEmpty ? guild.name.characters.first.toUpperCase() : 'L',
-                style: GoogleFonts.urbanist(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: accent,
-                ),
-              ),
+            // Emblem preview
+            GuildCelestialEmblem(
+              level: guild.level,
+              monogram: guild.name.isNotEmpty ? guild.name.characters.first.toUpperCase() : '⚔️',
+              size: 46,
+              showGlow: !(_powerTooLow || _full),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -521,7 +547,7 @@ class GuildResultTile extends StatelessWidget {
               enabled: !_powerTooLow && !_full,
               onTap: (_powerTooLow || _full) ? null : () => onJoin(guild.guildId),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   gradient: (_powerTooLow || _full)

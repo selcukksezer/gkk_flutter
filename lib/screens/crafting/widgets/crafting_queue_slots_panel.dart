@@ -6,6 +6,7 @@ import '../../../core/utils/crafting_queue_slots.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../inventory/widgets/aion_rarity_glow.dart';
 
 Future<bool> showCraftQueueSlotUnlockDialog(
   BuildContext context, {
@@ -133,7 +134,12 @@ class _CraftQueueSlotCell extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         accentColor: AppColors.accentPurple,
         borderGlow: canAffordUnlock,
-        onTap: isExpanding ? null : onUnlock,
+        onTap: isExpanding
+            ? null
+            : () async {
+                await AionHaptics.slotSelect();
+                onUnlock();
+              },
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

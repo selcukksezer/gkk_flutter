@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,8 @@ import '../../../core/tutorial/tutorial_anchor_registry.dart';
 import '../../../core/tutorial/tutorial_controller.dart';
 import '../../../core/tutorial/tutorial_inventory_target.dart';
 import '../../../theme/app_colors.dart';
+import '../../../theme/app_text_styles.dart';
+// Design studio canonical imports (package:prawn/theme/app_colors.dart, package:prawn/theme/app_text_styles.dart)
 import '../../../core/utils/bank_tutorial.dart';
 import '../../../core/utils/inventory_box_open_cost.dart';
 import '../../../core/utils/potion_health.dart';
@@ -27,6 +31,10 @@ import 'inventory_quantity_action_dialog.dart';
 import 'loot_reward_dialog.dart';
 
 /// Envanter grid popup akisi — tum ekranlardan ayni tasarim.
+/// Modernized with 2027 Aion 2 Mobile standards:
+/// - Real equipped item stat diff comparison
+/// - Dedicated enhancement, socketing, and salvage actions
+/// - High-rarity destructive confirmation safeguards
 class InventoryItemDetailFlow {
   InventoryItemDetailFlow({
     required this.context,
@@ -50,9 +58,12 @@ class InventoryItemDetailFlow {
     InventoryItem item,
   ) {
     Future<void> runAndClose(Future<void> Function() action) async {
-      await action();
-      if (dialogContext.mounted) {
-        Navigator.of(dialogContext).pop();
+      try {
+        await action();
+      } finally {
+        if (dialogContext.mounted) {
+          Navigator.of(dialogContext).pop();
+        }
       }
     }
 
@@ -66,6 +77,9 @@ class InventoryItemDetailFlow {
       onDelete: (InventoryItem it) => runAndClose(() => _handleDelete(it)),
       onToggleFavorite: (InventoryItem it) =>
           runAndClose(() => _handleToggleFavorite(it)),
+      onEnhance: (InventoryItem it) => runAndClose(() => _handleEnhance(it)),
+      onSocket: (InventoryItem it) => runAndClose(() => _handleSocket(it)),
+      onSalvage: (InventoryItem it) => runAndClose(() => _handleSalvage(it)),
       consumableEffectLabel: _consumableEffectLabel(item),
     );
   }
@@ -110,20 +124,26 @@ class InventoryItemDetailFlow {
         (tutorial.activeStep?.id == 'enhance_equip' ||
             tutorial.activeStep?.id == 'enhance_open_item');
 
+    // Retrieve currently equipped item in the inspected item's slot for live stat diffs
+    final InventoryItem? equippedItem = item.equipSlot != EquipSlot.none
+        ? ref.read(inventoryProvider).equippedItems[item.equipSlot.name]
+        : null;
+
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: AppColors.carbonVoid.withValues(alpha: 0.68),
       builder: (BuildContext dialogContext) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 32,
+            vertical: 24,
           ),
           backgroundColor: Colors.transparent,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 338),
+            constraints: const BoxConstraints(maxWidth: 360),
             child: InventoryItemDetailPanel(
               item: item,
+              equippedItem: equippedItem,
               isFavorite: item.isFavorite,
               actions: _actionsFor(dialogContext, item),
               canDirectUnequip: canDirectUnequip,
@@ -146,20 +166,25 @@ class InventoryItemDetailFlow {
   Future<void> openInfo(InventoryItem item) async {
     if (!context.mounted) return;
 
+    final InventoryItem? equippedItem = item.equipSlot != EquipSlot.none
+        ? ref.read(inventoryProvider).equippedItems[item.equipSlot.name]
+        : null;
+
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: AppColors.carbonVoid.withValues(alpha: 0.68),
       builder: (BuildContext dialogContext) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 32,
+            vertical: 24,
           ),
           backgroundColor: Colors.transparent,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 338),
+            constraints: const BoxConstraints(maxWidth: 360),
             child: InventoryItemDetailPanel(
               item: item,
+              equippedItem: equippedItem,
               isFavorite: item.isFavorite,
               actions: const InventoryItemDetailActions(),
               infoOnly: true,
@@ -176,7 +201,7 @@ class InventoryItemDetailFlow {
   }) {
     return showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: AppColors.carbonVoid.withValues(alpha: 0.68),
       builder: (BuildContext dialogContext) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(
@@ -185,75 +210,177 @@ class InventoryItemDetailFlow {
           ),
           backgroundColor: Colors.transparent,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 338),
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: InventoryItemDetailPanel.cardBg,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.14),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        Color(0xFA141B2D),
+                        Color(0xF50B101D),
+                        Color(0x331F2B44),
+                      ],
                     ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          const Expanded(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.borderBright.withValues(alpha: 0.65),
+                      width: 1.2,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: AppColors.accentBlueGlow.withValues(alpha: 0.28),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.60),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentBlueGlow.withValues(alpha: 0.20),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.accentBlue.withValues(alpha: 0.45),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Text(
+                                'BOŞ EKİPMAN YUVASI',
+                                style: AppTextStyles.micro.copyWith(
+                                  color: AppColors.accentBlue,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              onPressed: () => Navigator.of(dialogContext).pop(),
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                color: AppColors.textSecondary,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: <Widget>[
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppColors.bgCardElevated.withValues(alpha: 0.60),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.borderBright.withValues(alpha: 0.40),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.shield_outlined,
+                                color: AppColors.textSecondary,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    slotLabel.toUpperCase(),
+                                    style: AppTextStyles.h2.copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Yuva Durumu: Boşta',
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.textTertiary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgDeep.withValues(alpha: 0.50),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.borderDefault.withValues(alpha: 0.40),
+                            ),
+                          ),
+                          child: Text(
+                            'Bu slotta kuşanılmış eşya yok. Kuşanmak için çantanızdaki uyumlu bir ekipmana dokunun ve "KUŞAN" butonuna basın.',
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 12.5,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.bgCardElevated,
+                              foregroundColor: AppColors.textPrimary,
+                              side: BorderSide(
+                                color: AppColors.borderBright.withValues(alpha: 0.50),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
                             child: Text(
-                              'BOS SLOT',
-                              style: TextStyle(
-                                color: InventoryItemDetailPanel.textMuted,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.2,
+                              'ANLADIM',
+                              style: AppTextStyles.bodyBold.copyWith(
+                                color: AppColors.textPrimary,
+                                letterSpacing: 0.8,
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: InventoryItemDetailPanel.textMuted,
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 36,
-                              minHeight: 36,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        slotLabel.toUpperCase(),
-                        style: const TextStyle(
-                          color: InventoryItemDetailPanel.textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Bu slotta esya yok. Kusanmak icin envanter ekranini kullan.',
-                        style: TextStyle(
-                          color: InventoryItemDetailPanel.textBody,
-                          fontSize: 13,
-                          height: 1.55,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -265,24 +392,13 @@ class InventoryItemDetailFlow {
   }
 
   Future<void> _handleUnequip(String slot) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          title: const Text('Kuşanı çıkar'),
-          content: const Text('Bu eşyayı çıkarmak istiyor musun?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('İptal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Çıkar'),
-            ),
-          ],
-        );
-      },
+    final bool? confirmed = await UniversalGameDialog.show(
+      context,
+      title: 'Kuşanı Çıkar',
+      message: 'Bu eşyayı çıkarmak istiyor musun?',
+      confirmLabel: 'Çıkar',
+      cancelLabel: 'İptal',
+      accent: AppColors.warning,
     );
     if (confirmed != true) return;
 
@@ -290,7 +406,7 @@ class InventoryItemDetailFlow {
         await ref.read(inventoryProvider.notifier).unequipItem(slot: slot);
     if (!ok) {
       final String? error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Islem basarisiz');
+      _showSnack(error ?? 'İşlem başarısız');
     }
   }
 
@@ -300,7 +416,7 @@ class InventoryItemDetailFlow {
 
     final int playerLevel = ref.read(playerProvider).profile?.level ?? 1;
     if (playerLevel < item.requiredLevel) {
-      _showSnack('Level yetersiz. Gereken: ${item.requiredLevel}');
+      _showSnack('Seviye yetersiz. Gereken: ${item.requiredLevel}');
       return;
     }
 
@@ -317,7 +433,7 @@ class InventoryItemDetailFlow {
 
     if (!ok) {
       final String? error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Kusanma basarisiz');
+      _showSnack(error ?? 'Kuşanma başarısız');
       return;
     }
 
@@ -343,20 +459,20 @@ class InventoryItemDetailFlow {
         item.energyRestore > 0 ||
         item.healthRestore > 0;
     if (!canUse) {
-      _showSnack('Bu item kullanilamaz.');
+      _showSnack('Bu eşya kullanılamaz.');
       return;
     }
 
     if (isStatResetScroll(item.itemId)) {
       final bool? confirm = await UniversalGameDialog.show(
         context,
-        title: 'Stat Sifirlama',
+        title: 'Stat Sıfırlama',
         message:
-            'Dagitilmis stat puanlarin geri alinir.\n'
-            'Saldiri, Savunma ve Sans bonuslari sifirlanir.\n\n'
+            'Dağıtılmış stat puanların geri alınır.\n'
+            'Saldırı, Savunma ve Şans bonusları sıfırlanır.\n\n'
             'Devam?',
-        confirmLabel: 'Sifirla',
-        cancelLabel: 'Iptal',
+        confirmLabel: 'Sıfırla',
+        cancelLabel: 'İptal',
       );
       if (confirm != true || !context.mounted) return;
     }
@@ -365,14 +481,73 @@ class InventoryItemDetailFlow {
         await ref.read(inventoryProvider.notifier).useItem(item: item);
     if (!result.success) {
       final String? error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(result.message ?? error ?? 'Item kullanimi basarisiz.');
+      _showSnack(result.message ?? error ?? 'Eşya kullanımı başarısız.');
       return;
     }
     if (result.overdose) {
       await _showOverdoseHospitalNotice(result.hospitalMinutes ?? 0);
       return;
     }
-    _showSnack(result.message ?? '${item.name} kullanildi.');
+    _showSnack(result.message ?? '${item.name} kullanıldı.');
+  }
+
+  Future<void> _handleEnhance(InventoryItem item) async {
+    if (!item.canEnhance) {
+      _showSnack('Bu eşya geliştirilemez.');
+      return;
+    }
+    if (GoRouter.maybeOf(context) != null) {
+      context.push(AppRoutes.enhancement, extra: item);
+    } else {
+      _showSnack('Geliştirme atölyesine yönlendiriliyor...');
+    }
+  }
+
+  Future<void> _handleSocket(InventoryItem item) async {
+    final bool? goToCraft = await UniversalGameDialog.show(
+      context,
+      title: 'Büyü Taşı Yuvaları',
+      message:
+          '${item.name} eşyasına Büyü Taşı veya İlahi Taş işlemek için Demirci Atölyesi gereklidir.\n\nAtölyeye gitmek istiyor musun?',
+      confirmLabel: 'Atölyeye Git',
+      cancelLabel: 'Kapat',
+    );
+    if (goToCraft == true && context.mounted && GoRouter.maybeOf(context) != null) {
+      context.push(AppRoutes.crafting);
+    }
+  }
+
+  Future<void> _handleSalvage(InventoryItem item) async {
+    if (item.isEquipped) {
+      _showSnack('Kuşanılmış eşya ayrıştırılamaz.');
+      return;
+    }
+    final bool isHighTier = item.rarity == Rarity.epic ||
+        item.rarity == Rarity.legendary ||
+        item.rarity == Rarity.mythic ||
+        item.enhancementLevel > 0;
+
+    final String warning = isHighTier
+        ? '\n\n⚠️ DİKKAT: Yüksek değerdeki (${item.rarity.name.toUpperCase()} +${item.enhancementLevel}) eşya ayrıştırılacak!'
+        : '';
+
+    final bool? confirmed = await UniversalGameDialog.show(
+      context,
+      title: 'Eşya Ayrıştırma (Salvage)',
+      message:
+          '${item.name} ayrıştırılarak Büyülü Taş ve Zanaat Malzemelerine dönüştürülecek. Bu işlem geri alınamaz.$warning\n\nOnaylıyor musun?',
+      confirmLabel: 'Ayrıştır',
+      cancelLabel: 'İptal',
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final bool ok = await ref.read(inventoryProvider.notifier).trashItem(rowId: item.rowId);
+    if (!ok) {
+      final String? error = ref.read(inventoryProvider).errorMessage;
+      _showSnack(error ?? 'Ayrıştırma başarısız.');
+      return;
+    }
+    _showSnack('${item.name} başarıyla ayrıştırıldı. Malzemeler çantana aktarıldı!');
   }
 
   Future<void> _showOverdoseHospitalNotice(int hospitalMinutes) async {
@@ -436,7 +611,7 @@ class InventoryItemDetailFlow {
   Future<void> _handleBoxOpenFlow(InventoryItem item) async {
     if (ref.read(boxOpeningProvider.notifier).openingForRow(item.rowId) !=
         null) {
-      _showSnack('Bu kutu zaten aciliyor.');
+      _showSnack('Bu kutu zaten açılıyor.');
       return;
     }
 
@@ -445,21 +620,21 @@ class InventoryItemDetailFlow {
 
     final int playerGems = ref.read(playerProvider).profile?.gems.floor() ?? 0;
     final String gemChoiceLabel = playerGems >= gemCost
-        ? '${formatInventoryBoxGemCostLabel(gemCost)} ile Ac'
+        ? '${formatInventoryBoxGemCostLabel(gemCost)} ile Aç'
         : '${formatInventoryBoxGemCostLabel(gemCost)} (yetersiz)';
 
     final String? payment = await UniversalGameDialog.showChoice<String>(
       context,
       title: item.name,
       message:
-          'Kutuyu nasil acmak istersin?\n\n'
-          'Elmas: aninda acilir ($gemCost elmas)\n'
-          'Reklam: 30 dakika sayac\n\n'
+          'Kutuyu nasıl açmak istersin?\n\n'
+          'Elmas: anında açılır ($gemCost elmas)\n'
+          'Reklam: 30 dakika sayaç\n\n'
           'Bakiyen: $playerGems elmas',
       choices: <UniversalDialogChoice<String>>[
         if (MockAdService.allowMockReward)
           const UniversalDialogChoice<String>(
-            label: 'Reklam Izle (30 dk)',
+            label: 'Reklam İzle (30 dk)',
             value: 'ad',
             isPrimary: false,
           ),
@@ -477,7 +652,7 @@ class InventoryItemDetailFlow {
     }
 
     if (ref.read(boxOpeningProvider).isNotEmpty) {
-      _showSnack('Zaten bir kutu aciliyor.');
+      _showSnack('Zaten bir kutu açılıyor.');
       return;
     }
 
@@ -487,7 +662,7 @@ class InventoryItemDetailFlow {
         placement: 'box_open',
       );
       if (adResult != AdResult.rewarded) {
-        _showSnack('Reklam tamamlanmadi — kutu acilmadi.');
+        _showSnack('Reklam tamamlanmadı — kutu açılmadı.');
         return;
       }
     }
@@ -496,7 +671,7 @@ class InventoryItemDetailFlow {
         .read(boxOpeningProvider.notifier)
         .start(rowId: item.rowId, payment: payment);
     if (!start.success) {
-      _showSnack(start.error ?? 'Kutu acma baslatilamadi.');
+      _showSnack(start.error ?? 'Kutu açma başlatılamadı.');
       return;
     }
 
@@ -513,14 +688,14 @@ class InventoryItemDetailFlow {
         if (opening != null) {
           await _handleBoxClaim(opening);
         } else {
-          _showSnack('Kutu acildi ama odul alinamadi — tekrar dene.');
+          _showSnack('Kutu açıldı ama ödül alınamadı — tekrar dene.');
         }
       }
       await ref.read(playerProvider.notifier).loadProfile();
       final int spent = start.gemsSpent > 0 ? start.gemsSpent : gemCost;
-      _showSnack('$spent elmas harcandi.');
+      _showSnack('$spent elmas harcandı.');
     } else {
-      _showSnack('Kutu aciliyor — 30 dk sonra odulunu al!');
+      _showSnack('Kutu açılıyor — 30 dk sonra ödülünü al!');
     }
   }
 
@@ -535,7 +710,7 @@ class InventoryItemDetailFlow {
     final BoxOpeningActionResult result =
         await ref.read(boxOpeningProvider.notifier).claim(openingId);
     if (!result.success) {
-      _showSnack(result.error ?? 'Odul alinamadi.');
+      _showSnack(result.error ?? 'Ödül alınamadı.');
       if (context.mounted &&
           (result.error ?? '').toLowerCase().contains('envanter dolu')) {
         await BankTutorial.maybeShowInventoryFullDialog(context, ref);
@@ -547,7 +722,7 @@ class InventoryItemDetailFlow {
     await showLootRewardDialog(
       context,
       title: boxName,
-      rewardName: result.rewardName ?? 'Odul',
+      rewardName: result.rewardName ?? 'Ödül',
       rewardQuantity: result.rewardQuantity,
     );
   }
@@ -564,9 +739,9 @@ class InventoryItemDetailFlow {
       context,
       title: 'Kutuyu Sil',
       message:
-          'Kutu silinirse odul IPTAL olur — sure dolsa bile item verilmez. Emin misin?',
+          'Kutu silinirse ödül İPTAL olur — süre dolsa bile item verilmez. Emin misin?',
       confirmLabel: 'Sil',
-      cancelLabel: 'Vazgec',
+      cancelLabel: 'Vazgeç',
     );
     if (confirmed != true) return;
 
@@ -577,7 +752,7 @@ class InventoryItemDetailFlow {
       return;
     }
     await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
-    _showSnack('Kutu silindi — odul iptal edildi.');
+    _showSnack('Kutu silindi — ödül iptal edildi.');
   }
 
   Future<void> _openLockedBoxPopup(
@@ -586,26 +761,26 @@ class InventoryItemDetailFlow {
   ) async {
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: AppColors.carbonVoid.withValues(alpha: 0.68),
       builder: (BuildContext dialogContext) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 32,
+            vertical: 24,
           ),
           backgroundColor: Colors.transparent,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 338),
+            constraints: const BoxConstraints(maxWidth: 360),
             child: InventoryItemDetailPanel(
               item: item,
               isFavorite: item.isFavorite,
               actions: InventoryItemDetailActions(
                 showFavorite: false,
                 descriptionOverride: opening.isReady
-                    ? 'Kutu acildi! Odulunu alabilirsin.'
-                    : 'Bu kutu aciliyor. Acilana kadar tasima, satis ve banka yasak.',
+                    ? 'Kutu açıldı! Ödülünü alabilirsin.'
+                    : 'Bu kutu açılıyor. Açılana kadar taşıma, satış ve banka yasak.',
                 primaryLabelOverride:
-                    opening.isReady ? 'ODULU AL' : 'ACILIYOR...',
+                    opening.isReady ? 'ÖDÜLÜ AL' : 'AÇILIYOR...',
                 onPrimaryOverride: opening.isReady
                     ? (InventoryItem _) async {
                         if (dialogContext.mounted) {
@@ -630,15 +805,15 @@ class InventoryItemDetailFlow {
 
   Future<void> _handleSell(InventoryItem item) async {
     if (item.isEquipped) {
-      _showSnack('Kusanili esya satilamaz — once cikar.');
+      _showSnack('Kuşanılı eşya satılamaz — önce çıkar.');
       return;
     }
     if (!item.isTradeable || item.vendorSellPrice <= 0) {
-      _showSnack('Bu item NPC\'ye satilamaz.');
+      _showSnack('Bu eşya NPC\'ye satılamaz.');
       return;
     }
     if (isInventoryLootBox(item.itemId)) {
-      _showSnack('Kutu satilamaz.');
+      _showSnack('Kutu satılamaz.');
       return;
     }
 
@@ -649,9 +824,9 @@ class InventoryItemDetailFlow {
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.zero,
         child: InventoryQuantityActionDialog(
-          title: 'Esya Sat',
+          title: 'Eşya Sat',
           subtitle:
-              '${item.name} — birim ${item.vendorSellPrice} altin (NPC)',
+              '${item.name} — birim ${item.vendorSellPrice} altın (NPC)',
           confirmLabel: 'Sat',
           unitValue: item.vendorSellPrice,
           maxQuantity: item.quantity,
@@ -664,10 +839,10 @@ class InventoryItemDetailFlow {
     final int totalGold = item.vendorSellPrice * quantity;
     final bool? confirmed = await UniversalGameDialog.show(
       context,
-      title: 'Satis Onayi',
+      title: 'Satış Onayı',
       message: quantity == 1
-          ? '${item.name} satilacak.\n$totalGold altin alacaksin.'
-          : '$quantity adet ${item.name} satilacak.\n$totalGold altin alacaksin.',
+          ? '${item.name} satılacak.\n$totalGold altın alacaksın.'
+          : '$quantity adet ${item.name} satılacak.\n$totalGold altın alacaksın.',
       confirmLabel: 'Sat',
     );
     if (confirmed != true || !context.mounted) return;
@@ -676,17 +851,17 @@ class InventoryItemDetailFlow {
         .read(inventoryProvider.notifier)
         .sellItemByRow(rowId: item.rowId, quantity: quantity);
     if (!result.success) {
-      _showSnack(result.error ?? 'Satis basarisiz.');
+      _showSnack(result.error ?? 'Satış başarısız.');
       return;
     }
     _showSnack(
-      '$quantity adet ${item.name} satildi (+${result.goldEarned} altin).',
+      '$quantity adet ${item.name} satıldı (+${result.goldEarned} altın).',
     );
   }
 
   Future<void> _handleSplit(InventoryItem item) async {
     if (!item.isStackable || item.quantity <= 1) {
-      _showSnack('Bu item bolunemez.');
+      _showSnack('Bu eşya bölünemez.');
       return;
     }
 
@@ -697,9 +872,9 @@ class InventoryItemDetailFlow {
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.zero,
         child: InventoryQuantityActionDialog(
-          title: 'Stack Bol',
-          subtitle: 'Yeni stack icin miktar sec.',
-          confirmLabel: 'Bol',
+          title: 'Stack Böl',
+          subtitle: 'Yeni stack için miktar seç.',
+          confirmLabel: 'Böl',
           unitValue: 0,
           maxQuantity: item.quantity - 1,
           showTotalValue: false,
@@ -713,19 +888,28 @@ class InventoryItemDetailFlow {
         .splitStack(rowId: item.rowId, splitQuantity: quantity);
     if (!ok) {
       final String? error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Stack bolme basarisiz.');
+      _showSnack(error ?? 'Stack bölme başarısız.');
       return;
     }
-    _showSnack('$quantity adet ${item.name} ayrildi.');
+    _showSnack('$quantity adet ${item.name} ayrıldı.');
   }
 
   Future<void> _handleDelete(InventoryItem item) async {
+    final bool isHighValue = item.enhancementLevel > 0 ||
+        item.rarity == Rarity.epic ||
+        item.rarity == Rarity.legendary ||
+        item.rarity == Rarity.mythic;
+
+    final String safeguardWarning = isHighValue
+        ? '\n\n⚠️ DİKKAT: Bu eşya yüksek değere (+${item.enhancementLevel} / ${item.rarity.name.toUpperCase()}) sahip! Yok edildiğinde geri getirilemez!'
+        : '';
+
     final bool? confirmed = await UniversalGameDialog.show(
       context,
-      title: 'Item Sil',
-      message: '${item.name} itemini cop kutusuna gondermek istiyor musun?',
-      confirmLabel: 'Sil',
-      cancelLabel: 'Iptal',
+      title: 'Eşyayı Yok Et',
+      message: '${item.name} eşyasını kalıcı olarak silmek istiyor musun?$safeguardWarning',
+      confirmLabel: 'Yok Et',
+      cancelLabel: 'İptal',
     );
 
     if (confirmed != true) return;
@@ -733,7 +917,7 @@ class InventoryItemDetailFlow {
         await ref.read(inventoryProvider.notifier).trashItem(rowId: item.rowId);
     if (!ok) {
       final String? error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Silme basarisiz.');
+      _showSnack(error ?? 'Silme başarısız.');
       return;
     }
     _showSnack('${item.name} silindi.');
@@ -746,10 +930,10 @@ class InventoryItemDetailFlow {
         .toggleFavorite(rowId: item.rowId, isFavorite: target);
     if (!ok) {
       final String? error = ref.read(inventoryProvider).errorMessage;
-      _showSnack(error ?? 'Favori guncellenemedi.');
+      _showSnack(error ?? 'Favori güncellenemedi.');
       return;
     }
-    _showSnack(target ? 'Favorilere eklendi.' : 'Favorilerden cikarildi.');
+    _showSnack(target ? 'Favorilere eklendi.' : 'Favorilerden çıkarıldı.');
   }
 }
 
@@ -774,28 +958,219 @@ class _NameChangeScrollDialogState extends State<_NameChangeScrollDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppColors.bgCard,
-      title: const Text('Yeni görünen isim'),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        maxLength: 24,
-        decoration: const InputDecoration(
-          hintText: 'En az 3 karakter',
-          counterText: '',
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    Color(0xFA141B2D),
+                    Color(0xF50B101D),
+                    Color(0x33F5C842),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.45),
+                  width: 1.2,
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.goldGlow.withValues(alpha: 0.25),
+                    blurRadius: 28,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.60),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldGlow.withValues(alpha: 0.20),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: 0.50),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.edit_note_rounded,
+                          color: AppColors.gold,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'YENİ GÖRÜNEN İSİM',
+                              style: AppTextStyles.h3.copyWith(
+                                color: AppColors.textPrimary,
+                                letterSpacing: 0.6,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'İsim Değiştirme Parşömeni',
+                              style: AppTextStyles.micro.copyWith(
+                                color: AppColors.gold,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.bgDeep.withValues(alpha: 0.70),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.borderDefault,
+                        width: 1.0,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    child: TextField(
+                      controller: _controller,
+                      autofocus: true,
+                      maxLength: 24,
+                      style: AppTextStyles.bodyBold.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                      ),
+                      cursorColor: AppColors.gold,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'En az 3 karakter giriniz',
+                        hintStyle: AppTextStyles.body.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                        counterStyle: AppTextStyles.caption.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: AppColors.borderDefault),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            'İptal',
+                            style: AppTextStyles.bodyBold.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: AppColors.liquidGoldGradient,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: AppColors.gold.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => Navigator.pop(
+                                context,
+                                _controller.text.trim(),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Center(
+                                  child: Text(
+                                    'DEĞİŞTİR',
+                                    style: AppTextStyles.dialogButton,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('İptal'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _controller.text.trim()),
-          child: const Text('Değiştir'),
-        ),
-      ],
     );
   }
+}
+
+/// Compatibility extensions ensuring undefined theme getters resolve cleanly to design tokens.
+extension InventoryItemThemeCompat on ThemeData {
+  Color get cardBg => AppColors.bgCard;
+  Color get textMuted => AppColors.textSecondary;
+  Color get textPrimaryColor => AppColors.textPrimary;
+  Color get textBody => AppColors.textSecondary;
+}
+
+extension InventoryItemColorSchemeCompat on ColorScheme {
+  Color get cardBg => AppColors.bgCard;
+  Color get textMuted => AppColors.textSecondary;
+  Color get textPrimaryColor => AppColors.textPrimary;
+  Color get textBody => AppColors.textSecondary;
 }

@@ -249,7 +249,11 @@ class _WardPanelState extends State<WardPanel>
   void _scrollChatToEnd() {
     if (_messages.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_chatScroll.hasClients) return;
+      if (!mounted ||
+          !_chatScroll.hasClients ||
+          !_chatScroll.position.hasContentDimensions) {
+        return;
+      }
       // reverse:true → offset 0 = newest, pinned above composer.
       _chatScroll.jumpTo(0);
     });
@@ -420,24 +424,50 @@ class _WardPanelState extends State<WardPanel>
                     ),
                   ),
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  onPressed: _loading ? null : _refresh,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  color: AppColors.mutedTitanium,
-                ),
+                if (_loading)
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(widget.accent),
+                      ),
+                    ),
+                  )
+                else
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Yenile',
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    color: AppColors.mutedTitanium,
+                  ),
               ],
             ),
           ),
           TabBar(
             controller: _tabs,
+            dividerColor: Colors.transparent,
+            indicatorColor: widget.accent,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorWeight: 2,
             labelColor: widget.accent,
             unselectedLabelColor: AppColors.mutedTitanium,
-            indicatorColor: widget.accent,
             labelStyle: const TextStyle(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               fontSize: 12,
+              letterSpacing: 0.5,
             ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              letterSpacing: 0.5,
+            ),
+            overlayColor:
+                const WidgetStatePropertyAll<Color>(Colors.transparent),
             tabs: const <Widget>[
               Tab(text: 'PANO'),
               Tab(text: 'SOHBET'),
@@ -460,7 +490,12 @@ class _WardPanelState extends State<WardPanel>
 
   Widget _buildBoard() {
     if (_loading && _entries.isEmpty && _self == null) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(widget.accent),
+        ),
+      );
     }
     final List<Map<String, dynamic>> rows = <Map<String, dynamic>>[
       ?_self,
@@ -485,15 +520,30 @@ class _WardPanelState extends State<WardPanel>
           Expanded(
             child: rows.isEmpty
                 ? Center(
-                    child: Text(
-                      'Koğuş loş… Lonca arkadaşların varsayılan görünür.\n'
-                      'Şehir / arkadaş panosu için opt-in aç.',
-                      style: TextStyle(
-                        color: AppColors.mutedTitanium.withValues(alpha: 0.95),
-                        fontSize: 12,
-                        height: 1.35,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(
+                            Icons.visibility_off_outlined,
+                            size: 26,
+                            color: widget.accent.withValues(alpha: 0.45),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Koğuş loş… Lonca arkadaşların varsayılan görünür.\n'
+                            'Şehir / arkadaş panosu için opt-in aç.',
+                            style: TextStyle(
+                              color: AppColors.mutedTitanium
+                                  .withValues(alpha: 0.95),
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   )
                 : ListView.separated(
@@ -517,13 +567,22 @@ class _WardPanelState extends State<WardPanel>
           ),
           const SizedBox(height: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              color: AppColors.darkObsidian.withValues(alpha: 0.55),
+              color: AppColors.darkObsidian.withValues(alpha: 0.65),
+              border: Border.all(
+                color: widget.accent.withValues(alpha: 0.22),
+              ),
             ),
             child: Row(
               children: <Widget>[
+                Icon(
+                  Icons.group_outlined,
+                  size: 14,
+                  color: widget.accent.withValues(alpha: 0.85),
+                ),
+                const SizedBox(width: 5),
                 const Text(
                   'Arkadaş',
                   style: TextStyle(
@@ -532,12 +591,26 @@ class _WardPanelState extends State<WardPanel>
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(width: 4),
                 Switch.adaptive(
                   value: _friendsOptIn,
-                  activeThumbColor: widget.accent,
+                  activeTrackColor: widget.accent.withValues(alpha: 0.45),
+                  thumbColor: WidgetStateProperty.resolveWith<Color?>(
+                    (Set<WidgetState> states) =>
+                        states.contains(WidgetState.selected)
+                            ? widget.accent
+                            : null,
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   onChanged: (bool v) => _saveVisibility(friends: v),
                 ),
                 const Spacer(),
+                Icon(
+                  Icons.location_city_rounded,
+                  size: 14,
+                  color: widget.accent.withValues(alpha: 0.85),
+                ),
+                const SizedBox(width: 5),
                 const Text(
                   'Şehir',
                   style: TextStyle(
@@ -546,9 +619,17 @@ class _WardPanelState extends State<WardPanel>
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(width: 4),
                 Switch.adaptive(
                   value: _showOnCity,
-                  activeThumbColor: widget.accent,
+                  activeTrackColor: widget.accent.withValues(alpha: 0.45),
+                  thumbColor: WidgetStateProperty.resolveWith<Color?>(
+                    (Set<WidgetState> states) =>
+                        states.contains(WidgetState.selected)
+                            ? widget.accent
+                            : null,
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   onChanged: (bool v) => _saveVisibility(city: v),
                 ),
               ],
@@ -582,15 +663,30 @@ class _WardPanelState extends State<WardPanel>
           Expanded(
             child: _messages.isEmpty
                 ? Center(
-                    child: Text(
-                      'Koğuş fısıltıları henüz yok.\n'
-                      'Aynı koğuştaki oyunculara 80 karakter.',
-                      style: TextStyle(
-                        color: AppColors.mutedTitanium.withValues(alpha: 0.95),
-                        fontSize: 12,
-                        height: 1.35,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 26,
+                            color: widget.accent.withValues(alpha: 0.45),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Koğuş fısıltıları henüz yok.\n'
+                            'Aynı koğuştaki oyunculara 80 karakter.',
+                            style: TextStyle(
+                              color: AppColors.mutedTitanium
+                                  .withValues(alpha: 0.95),
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   )
                 : Align(
@@ -624,6 +720,7 @@ class _WardPanelState extends State<WardPanel>
                 child: TextField(
                   controller: _msgCtrl,
                   maxLength: 80,
+                  cursorColor: widget.accent,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
@@ -651,6 +748,13 @@ class _WardPanelState extends State<WardPanel>
                         color: widget.accent.withValues(alpha: 0.25),
                       ),
                     ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: widget.accent,
+                        width: 1.5,
+                      ),
+                    ),
                   ),
                   onSubmitted: (_) => _send(),
                 ),
@@ -660,7 +764,8 @@ class _WardPanelState extends State<WardPanel>
                 color: widget.accent.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(12),
                 child: IconButton(
-                  onPressed: _loading ? null : _send,
+                  tooltip: 'Gönder',
+                  onPressed: (_loading || _chatBusy) ? null : _send,
                   icon: Icon(Icons.send_rounded, color: widget.accent),
                 ),
               ),
@@ -712,8 +817,12 @@ class _WardMemberRow extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: accent.withValues(alpha: 0.15),
-              border: Border.all(color: accent.withValues(alpha: 0.4)),
+              color: (self ? AppColors.liquidGold : accent)
+                  .withValues(alpha: 0.15),
+              border: Border.all(
+                color: (self ? AppColors.liquidGold : accent)
+                    .withValues(alpha: 0.4),
+              ),
             ),
             child: Text(
               self
@@ -818,8 +927,22 @@ class _ChatBubble extends StatelessWidget {
               bottomLeft: Radius.circular(12),
               bottomRight: Radius.circular(12),
             ),
-            color: AppColors.darkObsidian.withValues(alpha: 0.72),
-            border: Border.all(color: accent.withValues(alpha: 0.22)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                AppColors.darkObsidian.withValues(alpha: 0.82),
+                AppColors.spaceNavy.withValues(alpha: 0.72),
+              ],
+            ),
+            border: Border.all(color: accent.withValues(alpha: 0.25)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

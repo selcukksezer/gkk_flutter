@@ -153,6 +153,74 @@ class ItemIconResolver {
     return keys.toList(growable: false);
   }
 
+  static const Map<String, String> _economyAliases = <String, String>{
+    // Crafting Materials
+    'herb': 'res_herb_common',
+    'res_herb': 'res_herb_common',
+    'mining': 'res_mining_common',
+    'ore': 'res_mining_common',
+    'iron_ore': 'res_mining_common',
+    'res_mining': 'res_mining_common',
+    'lumber': 'res_lumber_common',
+    'wood': 'res_lumber_common',
+    'res_lumber': 'res_lumber_common',
+    'farming': 'res_farming_common',
+    'res_farming': 'res_farming_common',
+    'quarry': 'res_quarry_common',
+    'stone': 'res_quarry_common',
+    'res_quarry': 'res_quarry_common',
+    'elemental': 'res_elemental_common',
+    'res_elemental': 'res_elemental_common',
+    'apiary': 'res_apiary_common',
+    'res_apiary': 'res_apiary_common',
+    'clay': 'res_clay_common',
+    'res_clay': 'res_clay_common',
+    'holy': 'res_holy_common',
+    'res_holy': 'res_holy_common',
+    'mushroom': 'res_mushroom_common',
+    'res_mushroom': 'res_mushroom_common',
+    'ranch': 'res_ranch_common',
+    'res_ranch': 'res_ranch_common',
+    'sand': 'res_sand_common',
+    'res_sand': 'res_sand_common',
+    'shadow': 'res_shadow_common',
+    'res_shadow': 'res_shadow_common',
+    'time': 'res_time_common',
+    'res_time': 'res_time_common',
+    'catalyst': 'catalyst_common',
+    'rune': 'rune_basic',
+    'resource_crit': 'resource_critical',
+    'resource_mystic': 'resource_mystical',
+    'resource_struct': 'resource_structural',
+
+    // Glowing Potions
+    'potion_health': 'potion_health_minor',
+    'health_potion': 'potion_health_minor',
+    'potion_hp': 'potion_health_minor',
+    'potion_energy': 'potion_energy_minor',
+    'energy_potion': 'potion_energy_minor',
+    'potion_mana': 'potion_energy_minor',
+    'mana_potion': 'potion_energy_minor',
+    'potion_attack': 'potion_attack_buff',
+    'attack_potion': 'potion_attack_buff',
+    'potion_defense': 'potion_defense_buff',
+    'defense_potion': 'potion_defense_buff',
+    'potion_luck': 'potion_luck_buff',
+    'potion_xp': 'potion_xp_buff',
+    'potion_detox': 'detox_minor',
+    'detox': 'detox_minor',
+
+    // Chests & Boxes
+    'box_weapon': 'box_weapon_common',
+    'box_armor': 'box_armor_rare',
+    'box_jewelry': 'box_jewelry_rare',
+    'chest_wood': 'kasaokyanus',
+    'chest_iron': 'kasakorsan',
+    'chest_gold': 'kasalav',
+    'chest_crystal': 'kasabuzdevri',
+    'chest_abyss': 'kasawitch',
+  };
+
   static List<String> resolveCandidates({
     required String iconValue,
     String? itemId,
@@ -180,7 +248,15 @@ class ItemIconResolver {
         'assets/items/$key.webp',
         'assets/items/$key.jpg',
         'assets/items/$key.jpeg',
+        'assets/chest/$key.png',
+        'assets/elements/$key.png',
       };
+
+      final String? alias = _economyAliases[key.toLowerCase()];
+      if (alias != null) {
+        candidates.add('assets/items/generated/$alias.png');
+        candidates.add('assets/chest/$alias.png');
+      }
 
       for (final legacyKey in _legacyWeaponKeys(
         stem: stem,
@@ -206,7 +282,10 @@ class ItemIconResolver {
     if (key.isEmpty) return const <String>[];
 
     final String folder = _folderByItemType(itemType, key);
-    return <String>[
+    final String lowerKey = key.toLowerCase();
+    final String? alias = _economyAliases[lowerKey];
+
+    final Set<String> result = <String>{
       'assets/items/$folder/$key.png',
       'assets/items/$folder/$key.webp',
       'assets/items/$folder/$key.jpg',
@@ -219,6 +298,23 @@ class ItemIconResolver {
       'assets/items/$key.webp',
       'assets/items/$key.jpg',
       'assets/items/$key.jpeg',
-    ];
+      'assets/chest/$key.png',
+      'assets/elements/$key.png',
+    };
+
+    if (alias != null) {
+      result.add('assets/items/generated/$alias.png');
+      result.add('assets/chest/$alias.png');
+      result.add('assets/elements/$alias.png');
+    }
+
+    // Material tier suffix variations fallback (e.g. res_herb -> res_herb_common.png)
+    if (lowerKey.startsWith('res_') || lowerKey.startsWith('catalyst')) {
+      for (final suffix in const ['_common', '_uncommon', '_rare', '_epic', '_legendary', '_mythic']) {
+        result.add('assets/items/generated/$lowerKey$suffix.png');
+      }
+    }
+
+    return result.toList(growable: false);
   }
 }

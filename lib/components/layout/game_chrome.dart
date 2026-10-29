@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -29,6 +31,22 @@ import '../player/staff_badge.dart';
 import 'game_quick_menu.dart';
 import 'live_ticker.dart';
 import '../notifications/notification_inbox_ui.dart';
+
+/// 2027 Aion 2 Obsidian-Glass & Luminescence Design Tokens
+abstract final class _AionChromeTheme {
+  // Obsidian dark glass surface layers
+  static const Color obsidianVoid = Color(0xFF07090E); // Deepest obsidian void
+  static const Color obsidianBase = Color(0xFF0B0E14); // Core obsidian glass base
+  static const Color obsidianElevated = Color(0xFF101522); // Highlight / elevated obsidian
+
+  // Luminescence accents
+  static const Color celestialGold = Color(0xFFE5C158); // Aion 2 celestial gold
+  static const Color etherCyan = Color(0xFF00E5FF); // Aion 2 ether cyan
+  static const Color goldGlow = Color(0x33E5C158); // 20% gold luminous blur
+  static const Color cyanGlow = Color(0x3300E5FF); // 20% cyan ethereal aura
+
+  static const double glassBlurSigma = 16.0;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GameTopBar
@@ -88,211 +106,255 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
       header: true,
       label: title,
       child: Material(
-        // Kill scaffold blue bleed in status-bar / preferredSize gap.
-        color: const Color(0xFF0A0F16),
+        color: Colors.transparent,
         elevation: 0,
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
-        child: Builder(
-          builder: (context) {
-            final topInset = MediaQuery.paddingOf(context).top;
-            // ~8px up vs full SafeArea.
-            final topPad = (topInset - 8).clamp(0.0, double.infinity);
-            return Padding(
-              padding: EdgeInsets.only(top: topPad),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: width,
-                      // Tight to XP row — less dead space above ticker/bell.
-                      height: bgHeight + 8,
-                      margin: EdgeInsets.zero,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: bgHeight,
-                      child: CustomPaint(
-                        size: Size(width, bgHeight),
-                        painter: TopBarShapePainter(),
-                      ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      left: 15,
-                      width: width * (compact ? 0.31 : 0.28),
-                      height: bgHeight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          top: 10,
-                          left: 8,
-                          right: 4,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            TutorialHudAnchorChip(
-                              anchorId: TutorialAnchorId.hudGold,
-                              child: _buildStatLikeRightLeft(
-                                _compact(gold),
-                                Icons.paid_rounded,
-                                Colors.orange,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _buildToleranceStat(tolerance),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      right: 15,
-                      width: width * (compact ? 0.31 : 0.28),
-                      height: bgHeight,
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            TutorialHudAnchorChip(
-                              anchorId: TutorialAnchorId.hudGems,
-                              child: _buildStatRight(
-                                _formatGems(gems),
-                                Icons.diamond_rounded,
-                                Colors.blue,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            TutorialHudAnchorChip(
-                              anchorId: TutorialAnchorId.hudEnergy,
-                              child: _buildStatRight(
-                                _compact(energy),
-                                Icons.bolt_rounded,
-                                AppColors.warningSolar,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      left: width * (compact ? 0.28 : 0.24),
-                      right: width * (compact ? 0.28 : 0.24),
-                      height: bgHeight - cutHeight + 5,
-                      child: Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ProfileAvatar(
-                              size: 40,
-                              avatarUrl: profile?.avatarUrl,
-                              backgroundColor: Colors.red.withValues(
-                                alpha: 0.3,
-                              ),
-                              glowFrame: profile?.avatarFrame == 'glow',
-                              codexFrame: profile?.avatarFrame == 'codex',
-                            ),
-                            const SizedBox(width: 8),
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: width * (compact ? 0.30 : 0.34),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      Flexible(
-                                        child: Text(
-                                          displayName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      StaffBadge(badge: staffProfile.badge, compact: true),
-                                    ],
-                                  ),
-                                  if (usernameStr.isNotEmpty)
-                                    Text(
-                                      '@$usernameStr',
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 10,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  if (hasCosmeticTitle(
-                                    profile?.cosmeticTitle,
-                                  )) ...<Widget>[
-                                    const SizedBox(height: 2),
-                                    CosmeticTitleBadge(
-                                      titleKey: profile!.cosmeticTitle,
-                                      compact: true,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: bgHeight - cutHeight + 8,
-                      left: width * (compact ? 0.16 : 0.20),
-                      right: width * (compact ? 0.16 : 0.20),
-                      child: TutorialAnchorScope(
-                        id: TutorialAnchorId.hudHealth,
-                        onTutorialTap: () async {
-                          await ref
-                              .read(tutorialProvider.notifier)
-                              .onAnchorTap(TutorialAnchorId.hudHealth);
-                        },
-                        child: TopBarVitalsBars(
-                          level: level,
-                          xpPercent: xpPercent,
-                          currentXp: xpProgress.xpInLevel,
-                          requiredXp: xpProgress.xpNeededInLevel,
-                          health: health,
-                          maxHealth: maxHealth,
-                        ),
-                      ),
-                    ),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: _AionChromeTheme.glassBlurSigma,
+              sigmaY: _AionChromeTheme.glassBlurSigma,
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    Color(0xF507090E),
+                    Color(0xE60B0E14),
+                    Color(0xD907090E),
                   ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-              child: Row(
-                children: <Widget>[
-                  const Expanded(child: LiveTicker()),
-                  const NotificationBellButton(),
-                  if (trailingActions != null) ...trailingActions!,
-                ],
+              child: Builder(
+                builder: (context) {
+                  final double topInset = MediaQuery.paddingOf(context).top;
+                  // Robust modern notch & Dynamic Island avoidance:
+                  // Ensure clearance so camera cutout and island pill do not overlap HUD elements.
+                  final double topPad = topInset >= 44
+                      ? topInset
+                      : (topInset > 0
+                          ? (topInset - 2).clamp(0.0, double.infinity)
+                          : 4.0);
+                  return Padding(
+                    padding: EdgeInsets.only(top: topPad),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: width,
+                            // Tight to XP row — less dead space above ticker/bell.
+                            height: bgHeight + 8,
+                            margin: EdgeInsets.zero,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: bgHeight,
+                                  child: CustomPaint(
+                                    size: Size(width, bgHeight),
+                                    painter: TopBarShapePainter(),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  left: 15,
+                                  width: width * (compact ? 0.31 : 0.28),
+                                  height: bgHeight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: 10,
+                                      left: 8,
+                                      right: 4,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        TutorialHudAnchorChip(
+                                          anchorId: TutorialAnchorId.hudGold,
+                                          child: _buildStatLikeRightLeft(
+                                            _compact(gold),
+                                            Icons.paid_rounded,
+                                            _AionChromeTheme.celestialGold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        _buildToleranceStat(tolerance),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  right: 15,
+                                  width: width * (compact ? 0.31 : 0.28),
+                                  height: bgHeight,
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        TutorialHudAnchorChip(
+                                          anchorId: TutorialAnchorId.hudGems,
+                                          child: _buildStatRight(
+                                            _formatGems(gems),
+                                            Icons.diamond_rounded,
+                                            _AionChromeTheme.etherCyan,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        TutorialHudAnchorChip(
+                                          anchorId: TutorialAnchorId.hudEnergy,
+                                          child: _buildStatRight(
+                                            _compact(energy),
+                                            Icons.bolt_rounded,
+                                            AppColors.warningSolar,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  left: width * (compact ? 0.28 : 0.24),
+                                  right: width * (compact ? 0.28 : 0.24),
+                                  height: bgHeight - cutHeight + 5,
+                                  child: Center(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        context.go(AppRoutes.character);
+                                      },
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ProfileAvatar(
+                                            size: 40,
+                                            avatarUrl: profile?.avatarUrl,
+                                            backgroundColor: const Color(0xFF101522),
+                                            glowFrame: profile?.avatarFrame == 'glow',
+                                            codexFrame: profile?.avatarFrame == 'codex',
+                                          ),
+                                          const SizedBox(width: 8),
+                                          ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              maxWidth: width * (compact ? 0.30 : 0.34),
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: <Widget>[
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: <Widget>[
+                                                    Flexible(
+                                                      child: Text(
+                                                        displayName,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 12,
+                                                          shadows: <Shadow>[
+                                                            Shadow(
+                                                              color: _AionChromeTheme.goldGlow,
+                                                              blurRadius: 6,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    StaffBadge(badge: staffProfile.badge, compact: true),
+                                                  ],
+                                                ),
+                                                if (usernameStr.isNotEmpty)
+                                                  Text(
+                                                    '@$usernameStr',
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF8E9CAE),
+                                                      fontSize: 10,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                if (hasCosmeticTitle(
+                                                  profile?.cosmeticTitle,
+                                                )) ...<Widget>[
+                                                  const SizedBox(height: 2),
+                                                  CosmeticTitleBadge(
+                                                    titleKey: profile!.cosmeticTitle,
+                                                    compact: true,
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: bgHeight - cutHeight + 8,
+                                  left: width * (compact ? 0.16 : 0.20),
+                                  right: width * (compact ? 0.16 : 0.20),
+                                  child: TutorialAnchorScope(
+                                    id: TutorialAnchorId.hudHealth,
+                                    onTutorialTap: () async {
+                                      HapticFeedback.lightImpact();
+                                      await ref
+                                          .read(tutorialProvider.notifier)
+                                          .onAnchorTap(TutorialAnchorId.hudHealth);
+                                    },
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        context.go(AppRoutes.character);
+                                      },
+                                      behavior: HitTestBehavior.opaque,
+                                      child: TopBarVitalsBars(
+                                        level: level,
+                                        xpPercent: xpPercent,
+                                        currentXp: xpProgress.xpInLevel,
+                                        requiredXp: xpProgress.xpNeededInLevel,
+                                        health: health,
+                                        maxHealth: maxHealth,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                          child: Row(
+                            children: <Widget>[
+                              const Expanded(child: LiveTicker()),
+                              const NotificationBellButton(),
+                              if (trailingActions != null) ...trailingActions!,
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
-                ],
-              ),
-            );
-          },
+          ),
         ),
       ),
     );
@@ -323,95 +385,208 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
     final Color color = _toleranceColor(tolerance);
     final double percent = tolerance.clamp(0, 100) / 100;
 
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double barWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth.clamp(0.0, 52.0)
-            : 52.0;
+    return GestureDetector(
+      onTap: () => HapticFeedback.selectionClick(),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double barWidth = constraints.maxWidth.isFinite
+              ? constraints.maxWidth.clamp(0.0, 56.0)
+              : 56.0;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$tolerance%',
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            decoration: BoxDecoration(
+              color: _AionChromeTheme.obsidianBase.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: color.withValues(alpha: 0.35),
+                width: 0.8,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: color.withValues(alpha: 0.12),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$tolerance%',
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.balance_rounded, color: color, size: 14),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                SizedBox(
+                  width: barWidth,
+                  height: 3,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: percent,
+                      backgroundColor: const Color(0xFF101522),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                      minHeight: 3,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Icon(Icons.balance_rounded, color: color, size: 16),
-                ],
-              ),
-            ),
-            const SizedBox(height: 3),
-            SizedBox(
-              width: barWidth,
-              height: 3,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: percent,
-                  backgroundColor: const Color(0xFF1E2633),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                  minHeight: 3,
                 ),
-              ),
+              ],
             ),
-          ],
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildStatLikeRightLeft(String value, IconData icon, Color color) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+    return GestureDetector(
+      onTap: () => HapticFeedback.selectionClick(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: _AionChromeTheme.obsidianBase.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: color.withValues(alpha: 0.38),
+            width: 0.8,
           ),
-          const SizedBox(width: 5),
-          Icon(icon, color: color, size: 20),
-        ],
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: color.withValues(alpha: 0.16),
+              blurRadius: 8,
+            ),
+            const BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  letterSpacing: 0.3,
+                  shadows: <Shadow>[
+                    Shadow(
+                      color: Color(0x66000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.20),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.22),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildStatRight(String value, IconData icon, Color color) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerRight,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+    return GestureDetector(
+      onTap: () => HapticFeedback.selectionClick(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: _AionChromeTheme.obsidianBase.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: color.withValues(alpha: 0.38),
+            width: 0.8,
           ),
-          const SizedBox(width: 5),
-          Icon(icon, color: color, size: 20),
-        ],
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: color.withValues(alpha: 0.16),
+              blurRadius: 8,
+            ),
+            const BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  letterSpacing: 0.3,
+                  shadows: <Shadow>[
+                    Shadow(
+                      color: Color(0x66000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.20),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.22),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -420,24 +595,42 @@ class GameTopBar extends ConsumerWidget implements PreferredSizeWidget {
 class TopBarShapePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()
+    final double w = size.width;
+    final double h = size.height;
+    const double r = 20;
+    const double cutHeight = 35; // Kavisin yüksekliği
+
+    // 2027 Aion 2 Obsidian Dark Glass Gradient
+    final Paint paint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF161D27), Color(0xFF0A0F16)],
+        colors: <Color>[
+          Color(0xF0101522), // Obsidian elevated glass
+          Color(0xF50B0E14), // Obsidian glass base
+          Color(0xFA07090E), // Obsidian dark void
+        ],
+        stops: <double>[0.0, 0.48, 1.0],
       ).createShader(Offset.zero & size)
       ..style = PaintingStyle.fill;
 
-    Paint strokePaint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+    // Dual luminescence outer border (Celestial Gold & Ether Cyan rim)
+    final Paint strokePaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          Color(0x66E5C158), // Celestial gold luminescence
+          Color(0x33FFFFFF), // Specular crystalline edge
+          Color(0x5500E5FF), // Ether cyan luminescence
+          Color(0x1F00E5FF),
+        ],
+        stops: <double>[0.0, 0.35, 0.75, 1.0],
+      ).createShader(Offset.zero & size)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.2;
 
-    Path path = Path();
-    double w = size.width;
-    double h = size.height;
-    double r = 20;
-    double cutHeight = 35; // Kavisin yüksekliği
+    final Path path = Path();
 
     // Üst köşeler (sol üstten sağ üste düz çizgi)
     path.moveTo(r, 0);
@@ -449,10 +642,10 @@ class TopBarShapePainter extends CustomPainter {
     path.quadraticBezierTo(w, h, w - r, h); // Sağ alt köşe
 
     // Kavis koordinatları
-    double pR = w * 0.90; // Sağ panel kenarı (daha sağa alındı)
-    double cR = w * 0.77; // Sağ kavis bitişi
-    double cL = w * 0.23; // Sol kavis bitişi
-    double pL = w * 0.10; // Sol panel kenarı (daha sola alındı)
+    final double pR = w * 0.90; // Sağ panel kenarı
+    final double cR = w * 0.77; // Sağ kavis bitişi
+    final double cL = w * 0.23; // Sol kavis bitişi
+    final double pL = w * 0.10; // Sol panel kenarı
 
     // Sağ alt köşeden orta kavisin sağına çizgi
     path.lineTo(pR, h);
@@ -475,21 +668,71 @@ class TopBarShapePainter extends CustomPainter {
     path.quadraticBezierTo(0, 0, r, 0); // Sol üst köşe
     path.close();
 
+    // Ambient ether cyan outer glow
+    final Paint glowPaint = Paint()
+      ..color = const Color(0x2400E5FF)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 8)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, glowPaint);
+
     canvas.drawPath(path, paint);
 
-    // Çapraz Çizgiler (Arkaplan dokusu)
+    // 2027 Aion 2 Dark-Fantasy HUD accents
     canvas.save();
     canvas.clipPath(path);
-    Paint texturePaint = Paint()
-      ..color = Colors.black.withOpacity(0.2)
-      ..strokeWidth = 2
+
+    // Fine horizontal datum grid lines with ether cyan luminescence
+    final Paint gridLinePaint = Paint()
+      ..color = const Color(0x1F00E5FF)
+      ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
-    for (double i = -h; i < w; i += 8) {
-      canvas.drawLine(Offset(i, h), Offset(i + h, 0), texturePaint);
-    }
+    canvas.drawLine(Offset(12, h * 0.48), Offset(cL - 8, h * 0.48), gridLinePaint);
+    canvas.drawLine(Offset(cR + 8, h * 0.48), Offset(w - 12, h * 0.48), gridLinePaint);
+
+    // Micro grid ticks
+    final Paint tickPaint = Paint()
+      ..color = const Color(0x3300E5FF)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(32, h * 0.48 - 3), Offset(32, h * 0.48 + 3), tickPaint);
+    canvas.drawLine(Offset(w - 32, h * 0.48 - 3), Offset(w - 32, h * 0.48 + 3), tickPaint);
+
+    // Runic edge brackets with celestial gold luminescence
+    final Paint accentBracketPaint = Paint()
+      ..color = const Color(0x80E5C158)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(8, 8), Offset(8, 24), accentBracketPaint);
+    canvas.drawLine(Offset(8, 8), Offset(24, 8), accentBracketPaint);
+    canvas.drawLine(Offset(w - 8, 8), Offset(w - 8, 24), accentBracketPaint);
+    canvas.drawLine(Offset(w - 8, 8), Offset(w - 24, 8), accentBracketPaint);
+
+    // Ether cyan corner aura nodes
+    final Paint cyanNodePaint = Paint()
+      ..color = const Color(0xCC00E5FF)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(const Offset(8, 8), 1.8, cyanNodePaint);
+    canvas.drawCircle(Offset(w - 8, 8), 1.8, cyanNodePaint);
+
     canvas.restore();
 
     canvas.drawPath(path, strokePaint);
+
+    // Luminous top-edge celestial rim highlight (Celestial Gold + Ether Cyan)
+    final Paint topRimPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: <Color>[
+          Colors.transparent,
+          Color(0x9900E5FF),
+          Color(0xFFE5C158),
+          Color(0x9900E5FF),
+          Colors.transparent,
+        ],
+        stops: <double>[0.0, 0.25, 0.50, 0.75, 1.0],
+      ).createShader(Rect.fromLTWH(r, 0, w - 2 * r, 2.5))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawLine(Offset(r, 0), Offset(w - r, 0), topRimPaint);
   }
 
   @override
@@ -509,41 +752,91 @@ class GameBackBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.bgSurface.withValues(alpha: 0.95),
-      child: SafeArea(
-        bottom: false,
-        child: InkWell(
-          onTap: onBack,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.sm,
+      color: Colors.transparent,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: _AionChromeTheme.glassBlurSigma,
+            sigmaY: _AionChromeTheme.glassBlurSigma,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Color(0xF007090E),
+                  Color(0xE60B0E14),
+                ],
+              ),
+              border: Border(
+                bottom: BorderSide(
+                  color: _AionChromeTheme.celestialGold.withValues(alpha: 0.22),
+                  width: 0.8,
+                ),
+              ),
             ),
-            child: Row(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    border: Border.all(color: AppColors.borderDefault),
+            child: SafeArea(
+              bottom: false,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onBack();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.sm,
                   ),
-                  child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: AppColors.gold,
+                  child: Row(
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: _AionChromeTheme.obsidianElevated.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          border: Border.all(
+                            color: _AionChromeTheme.celestialGold.withValues(alpha: 0.45),
+                            width: 1.0,
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: _AionChromeTheme.celestialGold.withValues(alpha: 0.18),
+                              blurRadius: 10,
+                            ),
+                            BoxShadow(
+                              color: _AionChromeTheme.etherCyan.withValues(alpha: 0.12),
+                              blurRadius: 6,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 15,
+                          color: _AionChromeTheme.celestialGold,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: _AionChromeTheme.celestialGold.withValues(alpha: 0.95),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          letterSpacing: 0.3,
+                          shadows: const <Shadow>[
+                            Shadow(
+                              color: _AionChromeTheme.goldGlow,
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: AppColors.gold.withValues(alpha: 0.9),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -573,6 +866,7 @@ class GameSubScreenScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     void goBack() {
+      HapticFeedback.lightImpact();
       if (context.canPop()) {
         context.pop();
       } else if (fallbackRoute != null) {
@@ -584,10 +878,12 @@ class GameSubScreenScaffold extends ConsumerWidget {
       canPop: context.canPop(),
       onPopInvokedWithResult: (bool didPop, _) {
         if (!didPop && fallbackRoute != null) {
+          HapticFeedback.lightImpact();
           context.go(fallbackRoute!);
         }
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFF07090E),
         resizeToAvoidBottomInset: true,
         extendBody: bottomNavRoute != null,
         appBar: GameTopBar(title: title, onLogout: onLogout),
@@ -760,6 +1056,7 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
   }
 
   Future<void> _openMenu() async {
+    HapticFeedback.mediumImpact();
     setState(() => _menuOpen = true);
     _animateIndicatorTo(_menuTabIndex);
     await showGameQuickMenu(
@@ -855,9 +1152,9 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: <Color>[
-                        AppColors.carbonVoid.withValues(alpha: 0),
-                        AppColors.carbonVoid.withValues(alpha: 0.55),
-                        AppColors.carbonVoid.withValues(alpha: 0.92),
+                        const Color(0xFF07090E).withValues(alpha: 0),
+                        const Color(0xFF07090E).withValues(alpha: 0.65),
+                        const Color(0xFF07090E).withValues(alpha: 0.96),
                       ],
                       stops: const <double>[0.0, 0.45, 1.0],
                     ),
@@ -870,27 +1167,50 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
               right: 0,
               bottom: 0,
               child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-                  // No BackdropFilter — Impeller SaveLayer kills SimMetal on iOS sim.
+                borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: _AionChromeTheme.glassBlurSigma,
+                    sigmaY: _AionChromeTheme.glassBlurSigma,
+                  ),
                   child: TutorialAnchorScope(
                     id: TutorialAnchorId.navBottomBar,
                     child: Container(
                       height: kGameBottomNavPillHeight,
                       clipBehavior: Clip.hardEdge,
                       decoration: BoxDecoration(
-                        color: AppColors.spaceNavy,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[
+                            Color(0xEB101522), // Obsidian elevated glass
+                            Color(0xF50B0E14), // Obsidian dark glass base
+                            Color(0xF807090E), // Obsidian void
+                          ],
+                          stops: <double>[0.0, 0.55, 1.0],
+                        ),
                         borderRadius: BorderRadius.circular(
                           AppSpacing.radiusXxl,
                         ),
                         border: Border.all(
-                          color: AppColors.darkObsidian,
+                          color: _AionChromeTheme.celestialGold.withValues(alpha: 0.42),
                           width: 1.2,
                         ),
                         boxShadow: <BoxShadow>[
+                          const BoxShadow(
+                            color: Color(0x9907090E),
+                            blurRadius: 24,
+                            offset: Offset(0, 8),
+                          ),
                           BoxShadow(
-                            color: AppColors.carbonVoid.withValues(alpha: 0.55),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
+                            color: _AionChromeTheme.celestialGold.withValues(alpha: 0.16),
+                            blurRadius: 16,
+                            offset: const Offset(0, -1),
+                          ),
+                          BoxShadow(
+                            color: _AionChromeTheme.etherCyan.withValues(alpha: 0.15),
+                            blurRadius: 12,
+                            spreadRadius: 0,
                           ),
                         ],
                       ),
@@ -901,17 +1221,17 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                           return Stack(
                             clipBehavior: Clip.hardEdge,
                             children: <Widget>[
-                              // Animated active indicator — inset inside pill.
+                              // Animated active indicator — inset inside pill with dual luminescence.
                               AnimatedBuilder(
                                 animation: _indicatorAnim,
                                 builder: (context, _) {
                                   return Positioned(
-                                    top: 8,
-                                    bottom: 8,
+                                    top: 7,
+                                    bottom: 7,
                                     left:
                                         _indicatorAnim.value * itemW +
-                                        itemW * 0.10,
-                                    width: itemW * 0.80,
+                                        itemW * 0.08,
+                                    width: itemW * 0.84,
                                     child: IgnorePointer(
                                       child: ExcludeSemantics(
                                         child: DecoratedBox(
@@ -923,17 +1243,26 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                               begin: Alignment.topLeft,
                                               end: Alignment.bottomRight,
                                               colors: <Color>[
-                                                AppColors.liquidGold.withValues(
-                                                  alpha: 0.22,
-                                                ),
-                                                AppColors.warningSolar
-                                                    .withValues(alpha: 0.10),
+                                                _AionChromeTheme.celestialGold.withValues(alpha: 0.32),
+                                                _AionChromeTheme.etherCyan.withValues(alpha: 0.14),
                                               ],
                                             ),
                                             border: Border.all(
-                                              color: AppColors.liquidGold
-                                                  .withValues(alpha: 0.42),
+                                              color: _AionChromeTheme.celestialGold.withValues(alpha: 0.65),
+                                              width: 1.2,
                                             ),
+                                            boxShadow: <BoxShadow>[
+                                              BoxShadow(
+                                                color: _AionChromeTheme.celestialGold.withValues(alpha: 0.30),
+                                                blurRadius: 12,
+                                                spreadRadius: 0,
+                                              ),
+                                              BoxShadow(
+                                                color: _AionChromeTheme.etherCyan.withValues(alpha: 0.18),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, -1),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
@@ -941,8 +1270,7 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                   );
                                 },
                               ),
-                              // Fill full pill height — Stack default is topLeft,
-                              // so a short Row would pin icons to the top edge.
+                              // Fill full pill height
                               Positioned.fill(
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -958,12 +1286,56 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       mainAxisSize: MainAxisSize.max,
                                       children: <Widget>[
-                                        Icon(
-                                          item.icon,
-                                          size: 22,
-                                          color: isActive
-                                              ? AppColors.liquidGold
-                                              : AppColors.mutedTitanium,
+                                        Stack(
+                                          alignment: Alignment.center,
+                                          children: <Widget>[
+                                            if (isActive)
+                                              Positioned.fill(
+                                                child: Center(
+                                                  child: Container(
+                                                    width: 32,
+                                                    height: 32,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      gradient: RadialGradient(
+                                                        colors: <Color>[
+                                                          _AionChromeTheme.celestialGold.withValues(alpha: 0.32),
+                                                          _AionChromeTheme.etherCyan.withValues(alpha: 0.12),
+                                                          Colors.transparent,
+                                                        ],
+                                                        stops: const <double>[0.0, 0.60, 1.0],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            AnimatedScale(
+                                              scale: isActive ? 1.10 : 1.0,
+                                              duration: const Duration(
+                                                milliseconds: 240,
+                                              ),
+                                              curve: Curves.easeOutCubic,
+                                              child: Icon(
+                                                item.icon,
+                                                size: 22,
+                                                color: isActive
+                                                    ? _AionChromeTheme.celestialGold
+                                                    : AppColors.mutedTitanium,
+                                                shadows: isActive
+                                                    ? <Shadow>[
+                                                        Shadow(
+                                                          color: _AionChromeTheme.celestialGold.withValues(alpha: 0.55),
+                                                          blurRadius: 10,
+                                                        ),
+                                                        Shadow(
+                                                          color: _AionChromeTheme.etherCyan.withValues(alpha: 0.35),
+                                                          blurRadius: 6,
+                                                        ),
+                                                      ]
+                                                    : null,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
@@ -980,6 +1352,19 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                                 : FontWeight.w600,
                                             fontSize: 9,
                                             height: 1.0,
+                                            shadows: isActive
+                                                ? <Shadow>[
+                                                    Shadow(
+                                                      color: Colors.black.withValues(alpha: 0.65),
+                                                      blurRadius: 4,
+                                                      offset: const Offset(0, 1),
+                                                    ),
+                                                    Shadow(
+                                                      color: _AionChromeTheme.celestialGold.withValues(alpha: 0.30),
+                                                      blurRadius: 4,
+                                                    ),
+                                                  ]
+                                                : null,
                                           ),
                                         ),
                                       ],
@@ -987,6 +1372,7 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                     Widget tabButton = GestureDetector(
                                       onTap: () async {
                                         if (widget.navigationLocked) return;
+                                        HapticFeedback.selectionClick();
                                         final TutorialController tutorialCtrl =
                                             ref.read(tutorialProvider.notifier);
                                         if (!tutorialCtrl.allowsNavTab(i)) {
@@ -1009,23 +1395,17 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                                         if (path == widget.currentRoute) {
                                           return;
                                         }
-                                        // Shell tabs: go() replaces stack. push()
-                                        // stacks inventory→character and confuses
-                                        // tutorial route sync / pause banner.
                                         context.go(path);
                                       },
                                       behavior: HitTestBehavior.opaque,
                                       child: tabCell,
                                     );
                                     if (navAnchor != null) {
-                                      // Opaque hole catcher (hasTapAction) — bottom
-                                      // bar sits under TutorialHost; pass-through
-                                      // alone often misses Character tab after
-                                      // inventory/equip overlays.
                                       tabButton = TutorialAnchorScope(
                                         id: navAnchor,
                                         onTutorialTap: () async {
                                           if (widget.navigationLocked) return;
+                                          HapticFeedback.selectionClick();
                                           final TutorialController tutorialCtrl =
                                               ref.read(
                                                 tutorialProvider.notifier,
@@ -1109,78 +1489,50 @@ class _BottomItem {
   final bool isMenuTrigger;
 }
 
-class _ResourceChip extends StatelessWidget {
-  const _ResourceChip({
-    required this.icon,
-    required this.value,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-        color: color.withValues(alpha: 0.14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 3),
-          Text(
-            value,
-            style: AppTextStyles.micro.copyWith(
-              color: AppColors.textPrimary,
-              fontSize: 10,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _compact(int value) {
-  final int abs = value.abs();
-  if (abs >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-  if (abs >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
-  return value.toString();
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Chat modal & FAB
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Web FloatingChat'ın Flutter karşılığı — bottom sheet olarak açılır.
 Future<void> showChatModal(BuildContext context) {
+  HapticFeedback.mediumImpact();
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
+    barrierColor: const Color(0x9907090E),
     enableDrag: true,
     builder: (BuildContext ctx) {
       return FractionallySizedBox(
         heightFactor: 0.94,
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0D1117),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(
-              top: BorderSide(color: Color(0x1AFFFFFF)),
-              left: BorderSide(color: Color(0x1AFFFFFF)),
-              right: BorderSide(color: Color(0x1AFFFFFF)),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: _AionChromeTheme.glassBlurSigma,
+              sigmaY: _AionChromeTheme.glassBlurSigma,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xEB07090E),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border.all(
+                  color: _AionChromeTheme.celestialGold.withValues(alpha: 0.35),
+                  width: 1.0,
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: _AionChromeTheme.etherCyan.withValues(alpha: 0.18),
+                    blurRadius: 20,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: const ChatScreen(asPanel: true),
             ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: const ChatScreen(asPanel: true),
         ),
       );
     },
@@ -1264,60 +1616,77 @@ class _GameChatFabState extends State<GameChatFab> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () async {
+        HapticFeedback.lightImpact();
         await showChatModal(context);
         await _loadUnreadCount();
       },
       child: Stack(
         clipBehavior: Clip.none,
         children: <Widget>[
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[
-                  AppColors.spaceNavy.withValues(alpha: 0.96),
-                  AppColors.carbonVoid.withValues(alpha: 0.96),
-                ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: _AionChromeTheme.glassBlurSigma,
+                sigmaY: _AionChromeTheme.glassBlurSigma,
               ),
-              border: Border.all(
-                color: AppColors.cyberFuchsia.withValues(alpha: 0.35),
-              ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: AppColors.cyberFuchsia.withValues(alpha: 0.18),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: AppColors.carbonVoid.withValues(alpha: 0.65),
-                  blurRadius: 10,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Icon(
-                  Icons.chat_bubble_rounded,
-                  color: AppColors.cyberFuchsia,
-                  size: 22,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Sohbet',
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.mutedTitanium,
-                    letterSpacing: 0.6,
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      Color(0xEB101522),
+                      Color(0xF20B0E14),
+                      Color(0xF807090E),
+                    ],
                   ),
+                  border: Border.all(
+                    color: _AionChromeTheme.etherCyan.withValues(alpha: 0.45),
+                    width: 1.2,
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: _AionChromeTheme.etherCyan.withValues(alpha: 0.22),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                    BoxShadow(
+                      color: _AionChromeTheme.celestialGold.withValues(alpha: 0.18),
+                      blurRadius: 8,
+                      offset: const Offset(0, -1),
+                    ),
+                    const BoxShadow(
+                      color: Color(0x9907090E),
+                      blurRadius: 10,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
                 ),
-              ],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const <Widget>[
+                    Icon(
+                      Icons.chat_bubble_rounded,
+                      color: _AionChromeTheme.etherCyan,
+                      size: 22,
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Sohbet',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
+                        color: _AionChromeTheme.celestialGold,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           if (_unreadCount > 0)
@@ -1330,17 +1699,29 @@ class _GameChatFabState extends State<GameChatFab> with WidgetsBindingObserver {
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: <Color>[Color(0xFAF97316), Color(0xFAC2410C)],
+                    colors: <Color>[
+                      _AionChromeTheme.celestialGold,
+                      Color(0xFFD97706),
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0x70FBBF24)),
+                  border: Border.all(
+                    color: _AionChromeTheme.etherCyan.withValues(alpha: 0.85),
+                    width: 1.0,
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: _AionChromeTheme.etherCyan.withValues(alpha: 0.45),
+                      blurRadius: 6,
+                    ),
+                  ],
                 ),
                 child: Text(
                   _unreadCount > 99 ? '99+' : '$_unreadCount',
                   style: const TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFFFFF0E0),
+                    color: Color(0xFF07090E),
                   ),
                 ),
               ),

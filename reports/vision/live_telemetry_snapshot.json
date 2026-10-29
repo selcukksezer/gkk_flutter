@@ -1,0 +1,471 @@
+{
+  "timestamp": "2026-10-28T21:49:00Z",
+  "reporter": "b10_worker_12_feed_vision_prompt_director",
+  "role": "QA Council Auditors \u2014 Vision Telemetry Director Feeder",
+  "3d_assets": {
+    "total_3d_models": 81,
+    "total_size_mb": 61.74,
+    "categories": {
+      "aion2": 15,
+      "characters": 7,
+      "environment": 10,
+      "monsters": 4,
+      "props": 36,
+      "weapons": 9
+    },
+    "lod_distribution": {
+      "LOD0": 9,
+      "LOD1": 9,
+      "LOD2": 9,
+      "Impostor": 9,
+      "Base": 45
+    },
+    "polygon_range": {
+      "min_tris": 76,
+      "max_tris": 390104,
+      "typical_avg_tris": 22160
+    },
+    "sample_models": [
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword.glb",
+        "size_kb": 1813.0,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_Impostor.glb",
+        "size_kb": 1802.7,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_LOD0.glb",
+        "size_kb": 1806.4,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_LOD1.glb",
+        "size_kb": 1805.3,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_LOD2.glb",
+        "size_kb": 1804.0,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings.glb",
+        "size_kb": 1203.4,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_Impostor.glb",
+        "size_kb": 1166.3,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_LOD0.glb",
+        "size_kb": 1182.7,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_LOD1.glb",
+        "size_kb": 1178.1,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_LOD2.glb",
+        "size_kb": 1172.5,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar.glb",
+        "size_kb": 918.2,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_Impostor.glb",
+        "size_kb": 900.0,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_LOD0.glb",
+        "size_kb": 907.1,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_LOD1.glb",
+        "size_kb": 905.5,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_LOD2.glb",
+        "size_kb": 902.9,
+        "category": "aion2"
+      },
+      {
+        "path": "assets/models/characters/Barbarian.glb",
+        "size_kb": 3528.6,
+        "category": "characters"
+      },
+      {
+        "path": "assets/models/characters/Knight.glb",
+        "size_kb": 3573.8,
+        "category": "characters"
+      },
+      {
+        "path": "assets/models/characters/KnightCharacter.glb",
+        "size_kb": 383.8,
+        "category": "characters"
+      },
+      {
+        "path": "assets/models/characters/Mage.glb",
+        "size_kb": 3505.1,
+        "category": "characters"
+      },
+      {
+        "path": "assets/models/characters/Skeleton_Mage.glb",
+        "size_kb": 4649.5,
+        "category": "characters"
+      }
+    ],
+    "catalog_file": "reports/assets/harvested_glb_catalog.md"
+  },
+  "pbr_textures": {
+    "total_texture_files": 551,
+    "total_size_mb": 266.1,
+    "pbr_channel_distribution": {
+      "albedo_basecolor": 8,
+      "normal": 8,
+      "roughness": 8,
+      "metallic": 9,
+      "ambient_occlusion": 1,
+      "emission": 8,
+      "displacement_height": 0,
+      "other_ui_art": 509
+    },
+    "sample_pbr_textures": [
+      {
+        "path": "assets/chest/kasaokyanus.png",
+        "size_kb": 1671.8
+      },
+      {
+        "path": "assets/images/icons/skills_elemental/skill_meteor_strike.png",
+        "size_kb": 34.2
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_albedo.png",
+        "size_kb": 521.2
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_emission.png",
+        "size_kb": 21.7
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_metallic.png",
+        "size_kb": 262.8
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_normal.png",
+        "size_kb": 738.0
+      },
+      {
+        "path": "assets/models/aion2/aion2_dark_fantasy_sword_roughness.png",
+        "size_kb": 422.6
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_albedo.png",
+        "size_kb": 398.5
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_emission.png",
+        "size_kb": 275.8
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_metallic.png",
+        "size_kb": 116.4
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_normal.png",
+        "size_kb": 164.1
+      },
+      {
+        "path": "assets/models/aion2/aion2_ethereal_wings_roughness.png",
+        "size_kb": 264.0
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_albedo.png",
+        "size_kb": 193.4
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_emission.png",
+        "size_kb": 23.9
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_metallic.png",
+        "size_kb": 122.8
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_normal.png",
+        "size_kb": 363.1
+      },
+      {
+        "path": "assets/models/aion2/aion2_gothic_dungeon_pillar_roughness.png",
+        "size_kb": 299.6
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_dark_fantasy_sword_albedo.png",
+        "size_kb": 521.2
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_dark_fantasy_sword_emission.png",
+        "size_kb": 21.7
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_dark_fantasy_sword_metallic.png",
+        "size_kb": 262.8
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_dark_fantasy_sword_normal.png",
+        "size_kb": 738.0
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_dark_fantasy_sword_roughness.png",
+        "size_kb": 422.6
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_ethereal_wings_albedo.png",
+        "size_kb": 398.5
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_ethereal_wings_emission.png",
+        "size_kb": 275.8
+      },
+      {
+        "path": "assets/models/aion2/textures/aion2_ethereal_wings_metallic.png",
+        "size_kb": 116.4
+      }
+    ]
+  },
+  "golden_screenshots": {
+    "total_golden_screenshot_images": 100,
+    "total_screen_definitions": 62,
+    "sample_screens": [
+      "announcements_screen",
+      "banned_screen",
+      "character_select_screen",
+      "email_confirm_waiting_screen",
+      "forgot_password_screen",
+      "login_screen",
+      "register_screen",
+      "splash_screen",
+      "update_password_screen",
+      "bank_screen",
+      "character_screen",
+      "codex_screen",
+      "chat_screen",
+      "crafting_screen",
+      "dungeon_battle_screen"
+    ],
+    "golden_test_suites_count": 0,
+    "golden_test_suites": [],
+    "sample_screenshots": [
+      "reports/screenshots/audit_2026-06-27/bank.png",
+      "reports/screenshots/audit_2026-06-27/character.png",
+      "reports/screenshots/audit_2026-06-27/chat.png",
+      "reports/screenshots/audit_2026-06-27/crafting.png",
+      "reports/screenshots/audit_2026-06-27/dungeon.png",
+      "reports/screenshots/audit_2026-06-27/dungeon_battle.png",
+      "reports/screenshots/audit_2026-06-27/enhancement.png",
+      "reports/screenshots/audit_2026-06-27/facilities.png",
+      "reports/screenshots/audit_2026-06-27/facilities_farm.png",
+      "reports/screenshots/audit_2026-06-27/guild.png",
+      "reports/screenshots/audit_2026-06-27/guild_monument.png",
+      "reports/screenshots/audit_2026-06-27/guild_monument_donate.png",
+      "reports/screenshots/audit_2026-06-27/guild_war.png",
+      "reports/screenshots/audit_2026-06-27/guild_war_logs.png",
+      "reports/screenshots/audit_2026-06-27/guild_war_territory_00000000_0000_0000_0000_000000030001.png"
+    ]
+  },
+  "shader_pipeline": {
+    "total_shader_files": 17,
+    "registered_in_pubspec": 14,
+    "shader_feature_breakdown": {
+      "other": 5,
+      "VAT_Crowd_Impostor": 2,
+      "ACES_Tonemapping": 1,
+      "SSAO": 3,
+      "GPU_Particles": 1,
+      "Dynamic_Decals": 1,
+      "Ribbon_Trails": 1,
+      "Rim_Light_Hit_Flash": 1,
+      "Refraction_Distortion": 1,
+      "SSR_Water_Reflections": 1
+    },
+    "shaders": [
+      {
+        "name": "gpu_instancing.vert",
+        "path": "shaders/crowd/gpu_instancing.vert",
+        "size_bytes": 10959
+      },
+      {
+        "name": "vat_crowd.frag",
+        "path": "shaders/crowd/vat_crowd.frag",
+        "size_bytes": 4069
+      },
+      {
+        "name": "vat_crowd.vert",
+        "path": "shaders/crowd/vat_crowd.vert",
+        "size_bytes": 7719
+      },
+      {
+        "name": "clustered_crowd_lighting.frag",
+        "path": "shaders/lighting/clustered_crowd_lighting.frag",
+        "size_bytes": 10576
+      },
+      {
+        "name": "dungeon_lighting.frag",
+        "path": "shaders/lighting/dungeon_lighting.frag",
+        "size_bytes": 11642
+      },
+      {
+        "name": "aion2_pbr_master.frag",
+        "path": "shaders/materials/aion2_pbr_master.frag",
+        "size_bytes": 17065
+      },
+      {
+        "name": "aces_tonemap.frag",
+        "path": "shaders/postprocess/aces_tonemap.frag",
+        "size_bytes": 4632
+      },
+      {
+        "name": "ssao.frag",
+        "path": "shaders/postprocess/ssao.frag",
+        "size_bytes": 6221
+      },
+      {
+        "name": "ssao_bilateral_blur.frag",
+        "path": "shaders/postprocess/ssao_bilateral_blur.frag",
+        "size_bytes": 2948
+      },
+      {
+        "name": "ssao_composite_aces.frag",
+        "path": "shaders/postprocess/ssao_composite_aces.frag",
+        "size_bytes": 3964
+      },
+      {
+        "name": "gpu_particles.frag",
+        "path": "shaders/vfx/gpu_particles.frag",
+        "size_bytes": 11560
+      },
+      {
+        "name": "ground_decal.frag",
+        "path": "shaders/vfx/ground_decal.frag",
+        "size_bytes": 14905
+      },
+      {
+        "name": "ribbon_trail.frag",
+        "path": "shaders/vfx/ribbon_trail.frag",
+        "size_bytes": 7314
+      },
+      {
+        "name": "rim_hit_flash.frag",
+        "path": "shaders/vfx/rim_hit_flash.frag",
+        "size_bytes": 6554
+      },
+      {
+        "name": "shockwave_refraction.frag",
+        "path": "shaders/vfx/shockwave_refraction.frag",
+        "size_bytes": 9185
+      },
+      {
+        "name": "atmospheric_sky.frag",
+        "path": "shaders/world/atmospheric_sky.frag",
+        "size_bytes": 15164
+      },
+      {
+        "name": "puddle_ssr.frag",
+        "path": "shaders/world/puddle_ssr.frag",
+        "size_bytes": 14991
+      }
+    ],
+    "pubspec_shader_entries": [
+      "shaders/postprocess/aces_tonemap.frag",
+      "shaders/postprocess/ssao.frag",
+      "shaders/postprocess/ssao_bilateral_blur.frag",
+      "shaders/postprocess/ssao_composite_aces.frag",
+      "shaders/lighting/dungeon_lighting.frag",
+      "shaders/lighting/clustered_crowd_lighting.frag",
+      "shaders/vfx/rim_hit_flash.frag",
+      "shaders/vfx/ribbon_trail.frag",
+      "shaders/vfx/gpu_particles.frag",
+      "shaders/vfx/shockwave_refraction.frag",
+      "shaders/vfx/ground_decal.frag",
+      "shaders/world/puddle_ssr.frag",
+      "shaders/world/atmospheric_sky.frag",
+      "shaders/materials/aion2_pbr_master.frag"
+    ]
+  },
+  "performance_and_benchmark": {
+    "bench_files_found": [
+      "reports/benchmark/crowd_10k_report.md"
+    ],
+    "bench_scripts": [
+      "scripts/opti/compress_ktx2.py",
+      "scripts/opti/texture_atlas_packer.py",
+      "scripts/opti/__pycache__/compress_ktx2.cpython-310.pyc",
+      "scripts/opti/__pycache__/texture_atlas_packer.cpython-310.pyc",
+      "scripts/benchmark/run_10k_benchmark.ps1",
+      "test/benchmark/crowd_10k_stress_test.dart"
+    ],
+    "extracted_data": {
+      "crowd_10k_report.md": {
+        "fps_samples": [
+          "200",
+          "4690.6"
+        ],
+        "draw_call_samples": [
+          "000",
+          "21"
+        ],
+        "memory_samples": [
+          "132.37",
+          "132.48"
+        ]
+      }
+    }
+  },
+  "teamwork_concurrency": {
+    "total_agent_workspace_directories": 245,
+    "agents_with_progress_md": 206,
+    "agents_with_handoff_md": 55,
+    "domain_distribution": {
+      "aion2": 5,
+      "asset": 3,
+      "b1": 14,
+      "b2": 15,
+      "b3": 15,
+      "b4": 15,
+      "b6": 14,
+      "b7": 15,
+      "b8": 15,
+      "battalion": 10,
+      "blender": 11,
+      "chief": 5,
+      "council": 5,
+      "integ": 8,
+      "interviewer": 1,
+      "opti": 12,
+      "orchestrator": 2,
+      "polish": 5,
+      "remedy": 3,
+      "res": 3,
+      "scout": 10,
+      "screenshot": 4,
+      "soc": 15,
+      "test": 2,
+      "vfx": 13,
+      "vision": 1,
+      "worker": 14,
+      "world": 10
+    }
+  }
+}

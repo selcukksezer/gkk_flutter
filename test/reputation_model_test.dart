@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gkk_flutter/models/reputation_model.dart';
+import 'package:gkk_flutter/screens/reputation/widgets/faction_standing_model.dart';
 
 void main() {
   group('ReputationShopItem', () {
@@ -130,6 +131,81 @@ void main() {
         computeSiegeRepGain(repBonusPct: 1.0, siegeMoralePct: 25),
         25,
       );
+    });
+  });
+
+  group('FactionStandingTier & StandingData', () {
+    test('tier thresholds and discounts are mapped accurately', () {
+      expect(FactionStandingTier.neutral.minPoints, 0);
+      expect(FactionStandingTier.neutral.vendorDiscountPct, 0);
+
+      expect(FactionStandingTier.friendly.minPoints, 3000);
+      expect(FactionStandingTier.friendly.vendorDiscountPct, 5);
+
+      expect(FactionStandingTier.honored.minPoints, 9000);
+      expect(FactionStandingTier.honored.vendorDiscountPct, 10);
+
+      expect(FactionStandingTier.revered.minPoints, 25000);
+      expect(FactionStandingTier.revered.vendorDiscountPct, 15);
+
+      expect(FactionStandingTier.exalted.minPoints, 50000);
+      expect(FactionStandingTier.exalted.vendorDiscountPct, 20);
+    });
+
+    test('faction standing points correctly compute tier and remaining progress', () {
+      final List<FactionStandingData> presets = defaultFactionStandings();
+      expect(presets, isNotEmpty);
+
+      // Miragent Templars: 34,200 points -> Revered IV
+      final FactionStandingData miragent = presets.firstWhere((FactionStandingData f) => f.id == 'miragent_templars');
+      expect(miragent.currentTier, FactionStandingTier.revered);
+      expect(miragent.vendorDiscountPct, 15);
+      expect(miragent.remainingPointsToNext, 50000 - 34200);
+      expect(miragent.nextTier, FactionStandingTier.exalted);
+      expect(miragent.tierProgress, closeTo((34200 - 25000) / (50000 - 25000), 0.001));
+
+      // Inggison Wardens: 2,100 points -> Neutral I
+      final FactionStandingData inggison = presets.firstWhere((FactionStandingData f) => f.id == 'inggison_wardens');
+      expect(inggison.currentTier, FactionStandingTier.neutral);
+      expect(inggison.vendorDiscountPct, 0);
+      expect(inggison.remainingPointsToNext, 3000 - 2100);
+      expect(inggison.nextTier, FactionStandingTier.friendly);
+    });
+
+    test('claiming faction milestone reward immutably updates claimed state', () {
+      final List<FactionStandingData> presets = defaultFactionStandings();
+      final FactionStandingData fenris = presets.firstWhere((FactionStandingData f) => f.id == 'fenris_fangs');
+
+      // Revered milestone reward f_rew_3 is initially unclaimed
+      final FactionMilestoneReward initialReward = fenris.milestones.firstWhere((FactionMilestoneReward m) => m.id == 'f_rew_3');
+      expect(initialReward.isClaimed, isFalse);
+      expect(initialReward.isEligible(fenris.currentTier), isTrue);
+
+      // Claim reward
+      final FactionStandingData updatedFenris = fenris.claimReward('f_rew_3');
+      final FactionMilestoneReward claimedReward = updatedFenris.milestones.firstWhere((FactionMilestoneReward m) => m.id == 'f_rew_3');
+      expect(claimedReward.isClaimed, isTrue);
+      expect(claimedReward.isEligible(updatedFenris.currentTier), isFalse);
+
+      // Original instance remains unmodified (immutability check)
+      expect(fenris.milestones.firstWhere((FactionMilestoneReward m) => m.id == 'f_rew_3').isClaimed, isFalse);
+    });
+
+    test('perks unlock strictly according to required tier', () {
+      final List<FactionStandingData> presets = defaultFactionStandings();
+      final FactionStandingData tigraki = presets.firstWhere((FactionStandingData f) => f.id == 'tigraki_workshop');
+
+      // Tigraki is Honored (Tier III)
+      expect(tigraki.currentTier, FactionStandingTier.honored);
+
+      // Perks at or below Honored are unlocked
+      final FactionPerk friendlyPerk = tigraki.perks.firstWhere((FactionPerk p) => p.requiredTier == FactionStandingTier.friendly);
+      final FactionPerk honoredPerk = tigraki.perks.firstWhere((FactionPerk p) => p.requiredTier == FactionStandingTier.honored);
+      final FactionPerk reveredPerk = tigraki.perks.firstWhere((FactionPerk p) => p.requiredTier == FactionStandingTier.revered);
+
+      expect(friendlyPerk.isUnlockedFor(tigraki.currentTier), isTrue);
+      expect(honoredPerk.isUnlockedFor(tigraki.currentTier), isTrue);
+      expect(reveredPerk.isUnlockedFor(tigraki.currentTier), isFalse);
     });
   });
 }

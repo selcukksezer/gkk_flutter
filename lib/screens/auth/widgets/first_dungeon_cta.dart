@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/tutorial/tutorial_features.dart';
 import '../../../l10n/l10n.dart';
-import '../../../routing/app_router.dart';
 import 'auth_design.dart';
 
 /// After character select: one clear CTA to first dungeon.
@@ -12,7 +11,7 @@ Future<void> presentFirstDungeonCta(BuildContext context) async {
   if (!context.mounted) return;
 
   if (TutorialFeatures.enabled) {
-    context.go(AppRoutes.home);
+    context.go('/home');
     return;
   }
 
@@ -53,8 +52,8 @@ Future<void> presentFirstDungeonCta(BuildContext context) async {
 
   if (!context.mounted) return;
   if (goDungeon == true) {
-    context.go(AppRoutes.dungeon);
+    context.go('/dungeon');
   } else {
-    context.go(AppRoutes.home);
+    context.go('/home');
   }
 }

@@ -24,9 +24,26 @@ class BankItemIcon extends StatelessWidget {
     final String value = icon.trim();
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        decoration: BoxDecoration(color: rarityColor.withValues(alpha: 0.08)),
+        decoration: BoxDecoration(
+          color: rarityColor.withValues(alpha: 0.08),
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 0.85,
+            colors: <Color>[
+              rarityColor.withValues(alpha: 0.20),
+              rarityColor.withValues(alpha: 0.02),
+            ],
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: rarityColor.withValues(alpha: 0.16),
+              blurRadius: 8,
+              spreadRadius: -2,
+            ),
+          ],
+        ),
         child: ItemIconView(
           iconValue: value,
           itemId: itemId,
@@ -85,6 +102,7 @@ class BankInventorySlot extends StatelessWidget {
       upgradeLevel: hasItem ? item!.enhancementLevel : 0,
       icon: hasItem ? item!.icon : '',
       itemId: hasItem ? item!.itemId : null,
+      isRoyalVault: false,
     );
 
     final Widget interactive = GestureDetector(
@@ -112,7 +130,13 @@ class BankInventorySlot extends StatelessWidget {
       onDragEnd: onDragEnd,
       feedback: Material(
         color: Colors.transparent,
-        child: SizedBox(width: 74, height: 86, child: slotBody),
+        elevation: 6,
+        shadowColor: Colors.black54,
+        child: SizedBox(
+          width: 76,
+          height: 88,
+          child: slotBody,
+        ),
       ),
       childWhenDragging: Opacity(opacity: 0.35, child: interactive),
       child: tutorialAnchorId == null
@@ -178,6 +202,7 @@ class BankStorageSlot extends StatelessWidget {
       icon: hasItem ? item!['icon']?.toString() ?? '' : '',
       itemId: hasItem ? item!['item_id']?.toString() : null,
       lockedUnlockCost: isLocked ? unlockGemCost : null,
+      isRoyalVault: true,
     );
 
     final Widget interactive = GestureDetector(
@@ -209,7 +234,13 @@ class BankStorageSlot extends StatelessWidget {
       onDragEnd: onDragEnd,
       feedback: Material(
         color: Colors.transparent,
-        child: SizedBox(width: 74, height: 86, child: slotBody),
+        elevation: 6,
+        shadowColor: Colors.black54,
+        child: SizedBox(
+          width: 76,
+          height: 88,
+          child: slotBody,
+        ),
       ),
       childWhenDragging: Opacity(opacity: 0.35, child: interactive),
       child: interactive,
@@ -232,6 +263,7 @@ class _BankSlotBody extends StatelessWidget {
     required this.icon,
     this.itemId,
     this.lockedUnlockCost,
+    this.isRoyalVault = false,
   });
 
   final bool hasItem;
@@ -247,78 +279,226 @@ class _BankSlotBody extends StatelessWidget {
   final String icon;
   final String? itemId;
   final int? lockedUnlockCost;
+  final bool isRoyalVault;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    Color effectiveBorderColor;
+    double borderWidth = 1.0;
+    if (isDragTargetActive) {
+      effectiveBorderColor = BankDesign.crystalCyan;
+      borderWidth = 1.8;
+    } else if (isSelected) {
+      effectiveBorderColor = selectedColor;
+      borderWidth = 1.8;
+    } else if (isLocked) {
+      effectiveBorderColor = Colors.white.withValues(alpha: 0.08);
+    } else if (hasItem) {
+      effectiveBorderColor = rarityColor.withValues(alpha: 0.55);
+      borderWidth = 1.2;
+    } else {
+      effectiveBorderColor = Colors.white.withValues(alpha: 0.06);
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isLocked
-              ? Colors.white12
-              : isDragTargetActive
-              ? BankDesign.deposit
-              : isSelected
-              ? selectedColor
-              : hasItem
-              ? rarityColor.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.08),
-          width: isDragTargetActive ? 1.8 : 1,
+          color: effectiveBorderColor,
+          width: borderWidth,
         ),
-        color: isLocked
-            ? AppColors.carbonVoid.withValues(alpha: 0.65)
+        gradient: isLocked
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  Color(0xFF0F141F),
+                  Color(0xFF070A10),
+                ],
+              )
             : isDragTargetActive
-            ? BankDesign.deposit.withValues(alpha: 0.12)
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  BankDesign.crystalCyan.withValues(alpha: 0.28),
+                  BankDesign.crystalCyan.withValues(alpha: 0.08),
+                ],
+              )
             : isSelected
-            ? selectedColor.withValues(alpha: isSelected && selectedColor == BankDesign.withdraw ? 0.1 : 0.08)
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  selectedColor.withValues(alpha: 0.24),
+                  selectedColor.withValues(alpha: 0.08),
+                ],
+              )
             : hasItem
-            ? AppColors.spaceNavy
-            : AppColors.darkObsidian.withValues(alpha: 0.35),
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  isRoyalVault ? const Color(0xFF1B2332) : AppColors.spaceNavy,
+                  const Color(0xFF0C1019),
+                ],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  BankDesign.royalObsidian.withValues(alpha: 0.65),
+                  BankDesign.royalObsidianDeep.withValues(alpha: 0.85),
+                ],
+              ),
+        boxShadow: isDragTargetActive
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: BankDesign.crystalCyan.withValues(alpha: 0.45),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ]
+            : isSelected
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: selectedColor.withValues(alpha: 0.38),
+                  blurRadius: 10,
+                  spreadRadius: 0.5,
+                ),
+              ]
+            : hasItem
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: rarityColor.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  spreadRadius: -2,
+                ),
+              ]
+            : null,
       ),
       child: isLocked
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Icon(
-                    Icons.lock_outline_rounded,
-                    size: 18,
-                    color: BankDesign.gold.withValues(alpha: 0.75),
-                  ),
-                  if (lockedUnlockCost != null) ...<Widget>[
-                    const SizedBox(height: 4),
-                    Text(
-                      '$lockedUnlockCost 💎',
-                      style: const TextStyle(
-                        color: BankDesign.gold,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(4.5),
+                        decoration: BoxDecoration(
+                          color: BankDesign.gold.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: BankDesign.royalGoldFiligree
+                                .withValues(alpha: 0.35),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.lock_outline_rounded,
+                          size: 14,
+                          color: BankDesign.royalGoldFiligree
+                              .withValues(alpha: 0.85),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '+1 slot',
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
+                      if (lockedUnlockCost != null) ...<Widget>[
+                        const SizedBox(height: 3),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: <Color>[
+                                BankDesign.crystalCyan.withValues(alpha: 0.2),
+                                BankDesign.crystalCyan.withValues(alpha: 0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: BankDesign.crystalCyan
+                                  .withValues(alpha: 0.45),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                '$lockedUnlockCost',
+                                style: const TextStyle(
+                                  color: BankDesign.crystalCyan,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 1.5),
+                              const Text(
+                                '💎',
+                                style: TextStyle(fontSize: 8),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        const Text(
+                          'Aç',
+                          style: TextStyle(
+                            color: BankDesign.gold,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 1),
+                      Text(
+                        '#${globalSlotIndex + 1}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 2),
-                  Text(
-                    '#${globalSlotIndex + 1}',
-                    style: const TextStyle(color: Colors.white24, fontSize: 9),
+                    ],
                   ),
-                ],
+                ),
               ),
             )
           : hasItem
           ? Stack(
               fit: StackFit.expand,
               children: <Widget>[
+                // Subtle top specular highlight for 2027 dark-glass curvature
+                Positioned(
+                  top: 0,
+                  left: 6,
+                  right: 6,
+                  height: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          Colors.transparent,
+                          Colors.white.withValues(alpha: 0.2),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Item Visual
                 Positioned.fill(
                   child: Padding(
-                    padding: const EdgeInsets.all(3),
+                    padding: const EdgeInsets.fromLTRB(3, 3, 3, 17),
                     child: BankItemIcon(
                       icon: icon,
                       rarityColor: rarityColor,
@@ -326,95 +506,193 @@ class _BankSlotBody extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                // Name Pill
                 Positioned(
-                  left: 3,
-                  right: 3,
-                  bottom: 3,
+                  left: 2.5,
+                  right: 2.5,
+                  bottom: 2.5,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
+                      horizontal: 3,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.62),
-                      borderRadius: BorderRadius.circular(6),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: <Color>[
+                          const Color(0xFF111724).withValues(alpha: 0.95),
+                          const Color(0xFF080B12).withValues(alpha: 0.98),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(
+                        color: isSelected
+                            ? selectedColor.withValues(alpha: 0.6)
+                            : rarityColor.withValues(alpha: 0.35),
+                        width: 0.8,
+                      ),
                     ),
                     child: Text(
                       name,
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                      style: TextStyle(
+                        color: isSelected
+                            ? selectedColor
+                            : Colors.white.withValues(alpha: 0.95),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
                 ),
+
+                // Quantity Chip
                 if (quantity > 1)
                   Positioned(
-                    left: 4,
-                    bottom: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: const Color(0xFFFBBF24).withValues(alpha: 0.6),
+                    left: 3,
+                    top: 3,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 36),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
                         ),
-                      ),
-                      child: Text(
-                        '$quantity',
-                        style: const TextStyle(
-                          color: Color(0xFFFBBF24),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0A0E17).withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: const Color(0xFFFBBF24).withValues(alpha: 0.8),
+                            width: 0.8,
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '$quantity',
+                            style: const TextStyle(
+                              color: Color(0xFFFDE68A),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                              height: 1.1,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
+
+                // Upgrade / Enhancement Level
                 if (upgradeLevel > 0)
                   Positioned(
-                    right: 4,
-                    top: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 3,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFBBF24),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '+$upgradeLevel',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
+                    right: 3,
+                    top: 3,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 32),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: <Color>[
+                              BankDesign.royalGoldFiligree,
+                              BankDesign.goldDim,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: BankDesign.gold.withValues(alpha: 0.45),
+                              blurRadius: 4,
+                              spreadRadius: 0.5,
+                            ),
+                          ],
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '+$upgradeLevel',
+                            style: const TextStyle(
+                              color: Color(0xFF0A0710),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                              height: 1.1,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                Positioned(
-                  left: 4,
-                  top: 3,
-                  child: Text(
-                    '#${globalSlotIndex + 1}',
-                    style: const TextStyle(color: Colors.white24, fontSize: 9),
+
+                // Selection Check Indicator (placed dynamically to avoid badge collisions)
+                if (isSelected)
+                  Positioned(
+                    left: upgradeLevel > 0 ? 3 : null,
+                    right: upgradeLevel > 0 ? null : 3,
+                    top: 3,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: selectedColor,
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: selectedColor.withValues(alpha: 0.6),
+                            blurRadius: 4,
+                            spreadRadius: 0.5,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.check,
+                          size: 9,
+                          color: AppColors.carbonVoid,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
               ],
             )
           : Center(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  const Icon(Icons.add, color: Colors.white12, size: 14),
+                  Icon(
+                    Icons.add,
+                    color: isDragTargetActive
+                        ? BankDesign.crystalCyan
+                        : Colors.white.withValues(alpha: 0.12),
+                    size: 15,
+                  ),
+                  const SizedBox(height: 2),
                   Text(
                     '#${globalSlotIndex + 1}',
-                    style: const TextStyle(color: Colors.white12, fontSize: 9),
+                    style: TextStyle(
+                      color: isDragTargetActive
+                          ? BankDesign.crystalCyan.withValues(alpha: 0.7)
+                          : Colors.white.withValues(alpha: 0.18),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -435,13 +713,20 @@ class BankFixedSlotGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (itemCount <= 0) return const SizedBox.shrink();
+
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final int columns = BankDesign.gridColumns;
         final double spacing = BankDesign.gridSpacing;
+        final double safeWidth =
+            constraints.maxWidth.isFinite && constraints.maxWidth > 0
+                ? constraints.maxWidth
+                : 320.0;
         final double cellWidth =
-            (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        final double cellHeight = cellWidth / BankDesign.slotAspectRatio;
+            ((safeWidth - spacing * (columns - 1)) / columns).clamp(36.0, 120.0);
+        final double cellHeight =
+            (cellWidth / BankDesign.slotAspectRatio).clamp(44.0, 140.0);
 
         final List<Widget> cells = List<Widget>.generate(
           itemCount,
@@ -478,7 +763,7 @@ class BankPageControls extends StatelessWidget {
     if (totalPages <= 1) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
@@ -486,24 +771,61 @@ class BankPageControls extends StatelessWidget {
             icon: Icons.chevron_left_rounded,
             enabled: currentPage > 1,
             onTap: () => onPageChanged(currentPage - 1),
+            tooltip: 'Önceki sayfa',
           ),
           const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.darkObsidian.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  BankDesign.royalObsidian.withValues(alpha: 0.85),
+                  BankDesign.royalObsidianDeep.withValues(alpha: 0.95),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: BankDesign.gold.withValues(alpha: 0.28),
+                color: BankDesign.royalGoldFiligree.withValues(alpha: 0.35),
+                width: 1.0,
               ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: BankDesign.gold.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Text(
-              'Sayfa $currentPage / $totalPages',
-              style: const TextStyle(
-                color: BankDesign.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const Text(
+                  'Sayfa ',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  '$currentPage',
+                  style: const TextStyle(
+                    color: BankDesign.goldLight,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  ' / $totalPages',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 10),
@@ -511,6 +833,7 @@ class BankPageControls extends StatelessWidget {
             icon: Icons.chevron_right_rounded,
             enabled: currentPage < totalPages,
             onTap: () => onPageChanged(currentPage + 1),
+            tooltip: 'Sonraki sayfa',
           ),
         ],
       ),
@@ -523,11 +846,13 @@ class _BankPageButton extends StatelessWidget {
     required this.icon,
     required this.enabled,
     required this.onTap,
+    this.tooltip,
   });
 
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -537,22 +862,32 @@ class _BankPageButton extends StatelessWidget {
         onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: enabled
-                ? BankDesign.gold.withValues(alpha: 0.12)
-                : Colors.white.withValues(alpha: 0.03),
+                ? BankDesign.royalObsidian.withValues(alpha: 0.7)
+                : Colors.white.withValues(alpha: 0.02),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: enabled
-                  ? BankDesign.gold.withValues(alpha: 0.4)
+                  ? BankDesign.royalGoldFiligree.withValues(alpha: 0.45)
                   : Colors.white.withValues(alpha: 0.06),
+              width: 1.0,
             ),
+            boxShadow: enabled
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: BankDesign.gold.withValues(alpha: 0.08),
+                      blurRadius: 6,
+                    ),
+                  ]
+                : null,
           ),
           child: Icon(
             icon,
-            size: 22,
-            color: enabled ? BankDesign.gold : Colors.white24,
+            size: 20,
+            color: enabled ? BankDesign.goldLight : Colors.white24,
           ),
         ),
       ),

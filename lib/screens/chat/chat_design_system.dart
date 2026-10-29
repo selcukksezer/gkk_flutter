@@ -8,8 +8,10 @@ class ChatDesignSystem {
 
   static const Color colorGlobalAccent = Color(0xFF38BDF8);
   static const Color colorGuildAccent = Color(0xFFF97316);
-  static const Color colorTradeAccent = Color(0xFFFCCC15);
+  static const Color colorPartyAccent = Color(0xFF10B981);
   static const Color colorDmAccent = AppColors.cyberFuchsia;
+  static const Color colorSystemAccent = Color(0xFFA855F7);
+  static const Color colorTradeAccent = Color(0xFFFCCC15);
 
   static const Color colorSuccess = Color(0xFF10B981);
   static const Color colorError = Color(0xFFF87171);
@@ -20,6 +22,10 @@ class ChatDesignSystem {
   static const Color colorOffline = Color(0xFF8E9CAE);
 
   static const Color colorBgSecondary = Color(0xFF090D15);
+  static const Color colorBgGlass = Color(0xCC0B0F19);
+  static const Color colorBgGlassOverlay = Color(0xEB090D15);
+  static const Color colorBorderGlass = Color(0x24FFFFFF);
+  static const double blurGlassSigma = 16.0;
 
   static const Color colorTextPrimary = Colors.white;
   static const Color colorTextSecondary = Color(0xFFE2E8F0);
@@ -61,6 +67,12 @@ class ChatDesignSystem {
     colors: [Color(0x1FF97316), Color(0x06F97316)],
   );
 
+  static const LinearGradient gradientParty = LinearGradient(
+    begin: Alignment.topRight,
+    end: Alignment.bottomLeft,
+    colors: [Color(0x1F10B981), Color(0x0610B981)],
+  );
+
   static const LinearGradient gradientTrade = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
@@ -71,5 +83,11 @@ class ChatDesignSystem {
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
     colors: [Color(0x1EE01E5A), Color(0x06E01E5A)],
+  );
+
+  static const LinearGradient gradientSystem = LinearGradient(
+    begin: Alignment.topRight,
+    end: Alignment.bottomLeft,
+    colors: [Color(0x1FA855F7), Color(0x06A855F7)],
   );
 }

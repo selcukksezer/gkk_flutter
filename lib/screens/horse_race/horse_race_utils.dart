@@ -134,3 +134,166 @@ HorseBetAmountValidation validateHorseBetAmount(
 }
 
 int horseBetMaxInputLength(int maxBet) => math.max(maxBet.toString().length, 1);
+
+/// Data point representing a historical position for motion trail rendering.
+class HorseSprintTrailPoint {
+  const HorseSprintTrailPoint({
+    required this.position,
+    required this.progress,
+    required this.color,
+    this.speed = 1.0,
+    this.opacity = 1.0,
+    this.width = 4.0,
+  });
+
+  final Offset position;
+  final double progress;
+  final Color color;
+  final double speed;
+  final double opacity;
+  final double width;
+}
+
+/// Motion trail and path math utilities for horse race sprites.
+abstract final class HorseMotionTrailUtils {
+  /// Builds a smooth ribbon path from a series of trailing points.
+  static Path createRibbonPath({
+    required List<Offset> points,
+    required double startWidth,
+    required double endWidth,
+  }) {
+    final Path path = Path();
+    if (points.length < 2) return path;
+
+    final List<Offset> leftPoints = <Offset>[];
+    final List<Offset> rightPoints = <Offset>[];
+
+    for (int i = 0; i < points.length; i++) {
+      final double fraction = i / (points.length - 1);
+      final double w = startWidth + (endWidth - startWidth) * fraction;
+
+      // Normal vector based on adjacent points
+      Offset tangent;
+      if (i == 0) {
+        tangent = points[1] - points[0];
+      } else if (i == points.length - 1) {
+        tangent = points[points.length - 1] - points[points.length - 2];
+      } else {
+        tangent = points[i + 1] - points[i - 1];
+      }
+
+      final double len = tangent.distance;
+      final Offset normal = len > 0.0001
+          ? Offset(-tangent.dy / len, tangent.dx / len)
+          : const Offset(1, 0);
+
+      leftPoints.add(points[i] + normal * (w * 0.5));
+      rightPoints.add(points[i] - normal * (w * 0.5));
+    }
+
+    path.moveTo(leftPoints.first.dx, leftPoints.first.dy);
+    for (int i = 1; i < leftPoints.length; i++) {
+      path.lineTo(leftPoints[i].dx, leftPoints[i].dy);
+    }
+    for (int i = rightPoints.length - 1; i >= 0; i--) {
+      path.lineTo(rightPoints[i].dx, rightPoints[i].dy);
+    }
+    path.close();
+    return path;
+  }
+}
+
+/// Computes instantaneous forward speed (dPos / dt) of [horseId] at [progress].
+double computeHorseVelocity({
+  required HorseRaceScript script,
+  required String horseId,
+  required double progress,
+  double sampleDelta = 0.02,
+}) {
+  return script.velocityAt(horseId, progress, sampleDelta: sampleDelta);
+}
+
+/// Computes instantaneous acceleration of [horseId] at [progress].
+double computeHorseAcceleration({
+  required HorseRaceScript script,
+  required String horseId,
+  required double progress,
+  double sampleDelta = 0.03,
+}) {
+  return script.accelerationAt(horseId, progress, sampleDelta: sampleDelta);
+}
+
+/// Computes the climax surge factor (0.0 to 1.0) along the final stretch (>= 0.72).
+double computeClimaxSurgeFactor(double progress) {
+  if (progress < 0.72) return 0.0;
+  final double t = ((progress - 0.72) / 0.28).clamp(0.0, 1.0);
+  return math.pow(t, 2.0).toDouble();
+}
+
+/// Computes high-frequency directional camera shake for race climax.
+Offset computeCameraShakeOffset({
+  required double progress,
+  required double timeSeconds,
+  double maxIntensity = 6.0,
+  bool isClimax = false,
+}) {
+  final double surge = computeClimaxSurgeFactor(progress);
+  final double intensity = (isClimax ? 1.0 : surge) * maxIntensity;
+  if (intensity <= 0.01) return Offset.zero;
+
+  // Multi-frequency harmonic perturbation
+  const double f1 = 31.0;
+  const double f2 = 53.0;
+  const double f3 = 23.0;
+
+  final double dx =
+      (math.sin(timeSeconds * f1) * 0.65 + math.cos(timeSeconds * f2) * 0.35) *
+      intensity;
+  final double dy =
+      (math.cos(timeSeconds * f1 * 1.25) * 0.7 +
+          math.sin(timeSeconds * f3) * 0.3) *
+      (intensity * 0.6);
+
+  return Offset(dx, dy);
+}
+
+/// Computes the dynamic camera surge scale on race climax (e.g. 1.0 -> 1.04).
+double computeClimaxCameraSurgeScale({
+  required double progress,
+  double baseScale = 1.0,
+  double peakSurge = 1.04,
+}) {
+  final double surge = computeClimaxSurgeFactor(progress);
+  return baseScale + (peakSurge - baseScale) * math.sin(surge * math.pi * 0.5);
+}
+
+/// Sprint acceleration tier classification for dynamic HUD indicators.
+enum HorseSprintAccelerationTier {
+  cruising('SÜRÜŞ', AppColors.mutedTitanium, 1),
+  accelerating('HIZLANMA', AppColors.accentCyan, 2),
+  sprinting('SPRİNT', AppColors.liquidGold, 3),
+  climaxSurge('SON SURGE', AppColors.cyberFuchsia, 4);
+
+  const HorseSprintAccelerationTier(this.label, this.color, this.chevrons);
+
+  final String label;
+  final Color color;
+  final int chevrons;
+
+  static HorseSprintAccelerationTier fromSpeedAndProgress({
+    required double speed,
+    required double progress,
+    bool isLeader = false,
+  }) {
+    if (progress >= 0.85 && (speed >= 1.15 || isLeader)) {
+      return HorseSprintAccelerationTier.climaxSurge;
+    }
+    if (speed >= 1.20) {
+      return HorseSprintAccelerationTier.sprinting;
+    }
+    if (speed >= 1.05) {
+      return HorseSprintAccelerationTier.accelerating;
+    }
+    return HorseSprintAccelerationTier.cruising;
+  }
+}

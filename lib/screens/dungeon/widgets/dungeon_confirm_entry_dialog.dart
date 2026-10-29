@@ -11,6 +11,8 @@ import '../../../core/utils/gold_format.dart';
 import '../../../models/dungeon_model.dart';
 import '../../../theme/app_colors.dart';
 import '../dungeon_zone_data.dart';
+import 'aion2_boss_illustration_catalog.dart';
+import 'aion2_presentation_frame.dart';
 
 /// Premium zindan giriş onayı — /tasarim: blur, dot doku, Liquid Gold CTA.
 class DungeonConfirmEntryDialog extends StatefulWidget {
@@ -316,6 +318,83 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
                                   const SizedBox(height: 12),
                                   FadeTransition(
                                     opacity: _stagger(1),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: SizedBox(
+                                        height: 82,
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: <Widget>[
+                                            CustomPaint(
+                                              painter: Aion2AbyssalIllustrationPainter(
+                                                boss: Aion2BossIllustrationCatalog.resolveForDungeon(
+                                                  dungeon: widget.dungeon,
+                                                ),
+                                                animationProgress: _entry.value,
+                                                intensity: 0.9,
+                                              ),
+                                            ),
+                                            Positioned.fill(
+                                              child: DecoratedBox(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topCenter,
+                                                    end: Alignment.bottomCenter,
+                                                    colors: <Color>[
+                                                      Colors.transparent,
+                                                      Colors.black.withValues(alpha: 0.72),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: 6,
+                                              left: 10,
+                                              right: 10,
+                                              child: Row(
+                                                children: <Widget>[
+                                                  Icon(
+                                                    widget.dungeon.isBoss
+                                                        ? Icons.whatshot_rounded
+                                                        : Icons.shield_rounded,
+                                                    size: 13,
+                                                    color: AppColors.liquidGold,
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Expanded(
+                                                    child: Text(
+                                                      Aion2BossIllustrationCatalog.resolveForDungeon(
+                                                        dungeon: widget.dungeon,
+                                                      ).title.toUpperCase(),
+                                                      style: GoogleFonts.urbanist(
+                                                        fontSize: 9.5,
+                                                        fontWeight: FontWeight.w800,
+                                                        color: AppColors.liquidGold,
+                                                        letterSpacing: 1.2,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            CustomPaint(
+                                              painter: Aion2GoldFiligreePainter(
+                                                primaryGold: AppColors.liquidGold,
+                                                deepGold: const Color(0xFFB8860B),
+                                                highlightGold: Colors.white,
+                                                cornerSize: 14,
+                                                showCrest: false,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  FadeTransition(
+                                    opacity: _stagger(1),
                                     child: SlideTransition(
                                       position: Tween<Offset>(
                                         begin: const Offset(0, 0.1),
@@ -495,6 +574,20 @@ class _DungeonConfirmEntryDialogState extends State<DungeonConfirmEntryDialog>
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: CustomPaint(
+                                  painter: Aion2GoldFiligreePainter(
+                                    primaryGold: _accent,
+                                    deepGold: const Color(0xFFB8860B),
+                                    highlightGold: Colors.white,
+                                    cornerSize: 22,
+                                    showCrest: true,
+                                    showGems: true,
+                                  ),
+                                ),
                               ),
                             ),
                           ],

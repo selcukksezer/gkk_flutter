@@ -10,6 +10,7 @@ import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/logout_helper.dart';
+import 'widgets/faction_crest_painter.dart';
 import 'widgets/guild_war_design.dart';
 import 'widgets/guild_war_empty_state.dart';
 import 'widgets/guild_war_sub_screen_scaffold.dart';
@@ -162,7 +163,17 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.shield_outlined, color: WarPalette.gold, size: 20),
+                                  GuildCustomCrestWidget(
+                                    symbol: GuildCrestSymbol.values[i % GuildCrestSymbol.values.length],
+                                    primaryColor: participants[i].guildId == guildId
+                                        ? WarPalette.neon
+                                        : WarPalette.gold,
+                                    secondaryColor: const Color(0xFF1B1B2A),
+                                    frame: participants[i].guildId == guildId
+                                        ? GuildHeraldicFrame.celestialSilver
+                                        : GuildHeraldicFrame.goldFiligree,
+                                    size: 24,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(

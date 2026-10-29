@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../models/guild_war_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
+import 'faction_crest_painter.dart';
+import 'fortress_siege_illustration.dart';
 import 'guild_war_design.dart';
 
 class GuildWarSeasonHeader extends StatelessWidget {
@@ -33,65 +35,66 @@ class GuildWarSeasonHeader extends StatelessWidget {
     final s = season;
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
-      child: WarHeroBanner(
-        accent: WarPalette.fuchsia,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          // High-Res Aion-2 Fortress Siege Cinematic Header Illustration
+          const FortressSiegeIllustration(
+            fortressName: 'Uçurum Bastionu',
+            faction: FactionType.elyos,
+            shieldIntegrity: 0.92,
+            isUnderSiege: true,
+            height: 165,
+            showTitle: false,
+          ),
+          const SizedBox(height: 8),
+          WarHeroBanner(
+            accent: WarPalette.fuchsia,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: <Color>[
-                        WarPalette.fuchsia.withValues(alpha: 0.35),
-                        WarPalette.gold.withValues(alpha: 0.15),
-                      ],
+                Row(
+                  children: <Widget>[
+                    const GuildCustomCrestWidget(
+                      symbol: GuildCrestSymbol.dragon,
+                      primaryColor: WarPalette.gold,
+                      secondaryColor: WarPalette.ruby,
+                      frame: GuildHeraldicFrame.goldFiligree,
+                      size: 46,
                     ),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: WarPalette.fuchsia.withValues(alpha: 0.5)),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(color: WarPalette.fuchsia.withValues(alpha: 0.25), blurRadius: 14),
-                    ],
-                  ),
-                  child: const Text('⚔', style: TextStyle(fontSize: 24)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Text(
-                        'LONCA SAVAŞI',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: WarPalette.titanium,
-                          letterSpacing: 1.2,
-                        ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Text(
+                            'LONCA SAVAŞI · HAREKAT ODASI',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: WarPalette.titanium,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          Text(
+                            'Sezon ${s?.season ?? '?'} · Hafta ${s?.week ?? '?'}',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Sezon ${s?.season ?? '?'} · Hafta ${s?.week ?? '?'}',
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    WarStatusPill(
+                      label: _countdown(s?.endAt),
+                      color: WarPalette.gold,
+                      pulse: s?.endAt != null && s!.endAt!.isAfter(DateTime.now()),
+                    ),
+                  ],
                 ),
-                WarStatusPill(
-                  label: _countdown(s?.endAt),
-                  color: WarPalette.gold,
-                  pulse: s?.endAt != null && s!.endAt!.isAfter(DateTime.now()),
-                ),
-              ],
-            ),
             if (guildName != null) ...<Widget>[
               const SizedBox(height: 10),
               Text(
@@ -121,6 +124,9 @@ class GuildWarSeasonHeader extends StatelessWidget {
           ],
         ),
       ),
+        ],
+      ),
     );
   }
 }
+

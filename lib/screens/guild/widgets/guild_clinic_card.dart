@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../components/common/app_messenger.dart';
 import '../../../components/common/gkk_progress_bar.dart';
+import '../../../core/services/app_haptics.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/gold_format.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/guild_model.dart';
 import '../../../repositories/guild_monument_repository.dart';
 import '../../../routing/app_router.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import 'guild_design.dart';
 import 'monument_donate_amount_dialog.dart';
@@ -185,6 +188,20 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
     return true;
   }
 
+  double get _poolProgress {
+    if (_nextCost == null) return 1.0;
+    double sumProgress = 0.0;
+    int count = 0;
+    for (final MonumentResourceKind kind in MonumentResourceKind.values) {
+      final int need = _needFor(kind);
+      if (need > 0) {
+        count++;
+        sumProgress += (_poolFor(kind) / need).clamp(0.0, 1.0);
+      }
+    }
+    return count > 0 ? (sumProgress / count) : 1.0;
+  }
+
   double get _softCut {
     final double base = _level < 1 ? 0 : _cutPct;
     return _monumentLevel >= 60 ? base * 0.9 : base;
@@ -195,9 +212,13 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
   Future<void> _donateKind(MonumentResourceKind kind) async {
     final MonumentMyStats stats = _clinicDonateStats();
     if (stats.maxDonatable(kind) <= 0) {
+      await AppHaptics.light();
+      if (!mounted) return;
       AppMessenger.show(context, '${kind.shortLabel}: elinde yok');
       return;
     }
+    await AppHaptics.selection();
+    if (!mounted) return;
     final int? amount = await MonumentDonateAmountDialog.show(
       context,
       kind: kind,
@@ -220,6 +241,8 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
       );
       if (!mounted) return;
       if (raw is Map && raw['success'] == true) {
+        await AppHaptics.success();
+        if (!mounted) return;
         AppMessenger.showSuccess(
           context,
           context.l10n.sys2_clinic_donate_ok(kind.shortLabel, amount),
@@ -241,11 +264,14 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
   }
 
   Future<void> _upgrade() async {
+    await AppHaptics.heavy();
     setState(() => _busy = true);
     try {
       final dynamic raw = await SupabaseService.client.rpc('upgrade_clinic');
       if (!mounted) return;
       if (raw is Map && raw['success'] == true) {
+        await AppHaptics.success();
+        if (!mounted) return;
         AppMessenger.showSuccess(
           context,
           context.l10n.sys2_clinic_level(
@@ -281,79 +307,123 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
 
   Widget _buildCompact(BuildContext context) {
     return GuildPressable(
-      onTap: () => context.go(AppRoutes.guild),
+      onTap: () {
+        AppHaptics.light();
+        context.go(AppRoutes.guild);
+      },
       child: GuildNeonPanel(
         accent: GuildPalette.neon,
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
               children: <Widget>[
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 42,
+                  height: 42,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: GuildPalette.neon.withValues(alpha: 0.16),
-                    border: Border.all(
-                      color: GuildPalette.neon.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        GuildPalette.neon.withValues(alpha: 0.24),
+                        GuildPalette.iridescentCyan.withValues(alpha: 0.12),
+                        GuildPalette.celestialVoid,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    border: Border.all(
+                      color: GuildPalette.neon.withValues(alpha: 0.55),
+                      width: 1.2,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: GuildPalette.neon.withValues(alpha: 0.28),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Text('🏥', style: TextStyle(fontSize: 18)),
+                  child: const Text('🏥', style: TextStyle(fontSize: 20)),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
-                        context.l10n.sys2_clinic_title,
-                        style: AppTextStyles.label.copyWith(
-                          color: GuildPalette.textHi,
-                          fontWeight: FontWeight.w900,
-                        ),
+                      Row(
+                        children: <Widget>[
+                          Text(
+                            context.l10n.sys2_clinic_title,
+                            style: AppTextStyles.label.copyWith(
+                              color: GuildPalette.textHi,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_loading)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: GuildPalette.neon,
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(999),
+                                gradient: GuildPalette.goldGrad,
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: GuildPalette.gold.withValues(alpha: 0.3),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                'Lv $_level',
+                                style: const TextStyle(
+                                  color: GuildPalette.void_,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         context.l10n.sys2_clinic_compact_hint,
                         style: AppTextStyles.caption.copyWith(
                           color: GuildPalette.titanium,
                           height: 1.3,
+                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (_loading)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: GuildPalette.neon,
-                    ),
-                  )
-                else
-                  Text(
-                    'Lv $_level',
-                    style: const TextStyle(
-                      color: GuildPalette.gold,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                    ),
-                  ),
+                const SizedBox(width: 6),
                 const Icon(
                   Icons.chevron_right_rounded,
-                  color: GuildPalette.titanium,
-                  size: 20,
+                  color: GuildPalette.neon,
+                  size: 22,
                 ),
               ],
             ),
             if (!_loading && _error == null) ...<Widget>[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Wrap(
-                spacing: 6,
+                spacing: 8,
                 runSpacing: 6,
                 children: <Widget>[
                   GuildStatPill(
@@ -378,17 +448,36 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                         : GuildPalette.titanium,
                     filled: _dailyAvailable,
                   ),
+                  if (_poolReady)
+                    const GuildStatPill(
+                      icon: Icons.bolt_rounded,
+                      label: 'Yükseltme Hazır',
+                      accent: GuildPalette.gold,
+                      filled: true,
+                    ),
                 ],
               ),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
-                child: Text(
-                  context.l10n.sys2_clinic_open_on_guild,
-                  style: AppTextStyles.caption.copyWith(
-                    color: GuildPalette.neon,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      context.l10n.sys2_clinic_open_on_guild,
+                      style: AppTextStyles.caption.copyWith(
+                        color: GuildPalette.neon,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 13,
+                      color: GuildPalette.neon,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -410,163 +499,438 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          // Top Eyebrow + Level Pill
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: GuildPalette.neon.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: GuildPalette.neon.withValues(alpha: 0.4),
+                    color: GuildPalette.neon.withValues(alpha: 0.45),
+                    width: 1.1,
                   ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: GuildPalette.neon.withValues(alpha: 0.22),
+                      blurRadius: 10,
+                      spreadRadius: 0,
+                    ),
+                  ],
                 ),
-                child: Text(
-                  context.l10n.sys2_clinic_eyebrow,
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
-                    color: GuildPalette.neon,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: GuildPalette.neon,
+                        shape: BoxShape.circle,
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: GuildPalette.neon,
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      context.l10n.sys2_clinic_eyebrow.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.9,
+                        color: GuildPalette.neon,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const Spacer(),
               if (!_loading)
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
                     gradient: GuildPalette.goldGrad,
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: GuildPalette.gold.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    'Lv $_level',
-                    style: const TextStyle(
-                      color: GuildPalette.void_,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const Icon(
+                        Icons.shield_outlined,
+                        size: 13,
+                        color: GuildPalette.void_,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Lv $_level',
+                        style: const TextStyle(
+                          color: GuildPalette.void_,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          // Avatar + Title & Flavor
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              const Text('🏥', style: TextStyle(fontSize: 22)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  context.l10n.sys2_clinic_title,
-                  style: AppTextStyles.h3.copyWith(
-                    color: GuildPalette.textHi,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
+              Container(
+                width: 46,
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    colors: <Color>[
+                      GuildPalette.neon.withValues(alpha: 0.24),
+                      GuildPalette.iridescentCyan.withValues(alpha: 0.12),
+                      GuildPalette.celestialVoid,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  border: Border.all(
+                    color: GuildPalette.neon.withValues(alpha: 0.5),
+                    width: 1.3,
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: GuildPalette.neon.withValues(alpha: 0.28),
+                      blurRadius: 14,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Text('🏥', style: TextStyle(fontSize: 24)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      context.l10n.sys2_clinic_title,
+                      style: AppTextStyles.h3.copyWith(
+                        color: GuildPalette.textHi,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n.sys2_clinic_flavor,
+                      style: AppTextStyles.caption.copyWith(
+                        color: GuildPalette.titanium,
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            context.l10n.sys2_clinic_flavor,
-            style: AppTextStyles.caption.copyWith(
-              color: GuildPalette.titanium,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (_loading)
-            const LinearProgressIndicator(
-              minHeight: 2,
-              color: GuildPalette.neon,
-              backgroundColor: GuildPalette.obsidian,
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: GuildPalette.neon,
+                ),
+              ),
             )
           else if (_error != null)
-            Text(
-              _error!,
-              style: const TextStyle(color: GuildPalette.coral),
-            )
-          else ...<Widget>[
-            // Daily + cut status strip
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: GuildPalette.obsidian.withValues(alpha: 0.55),
+                color: GuildPalette.coral.withValues(alpha: 0.12),
                 border: Border.all(
-                  color: (_dailyAvailable ? GuildPalette.neon : GuildPalette.titanium)
-                      .withValues(alpha: 0.35),
+                  color: GuildPalette.coral.withValues(alpha: 0.4),
                 ),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: GuildPalette.coral,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(
+                        color: GuildPalette.coral,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...<Widget>[
+            // Restful Healing Sanctuary Pod
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  colors: <Color>[
+                    GuildPalette.celestialSurface.withValues(alpha: 0.95),
+                    GuildPalette.obsidian.withValues(alpha: 0.90),
+                    GuildPalette.celestialVoid.withValues(alpha: 0.95),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(
+                  color: (_dailyAvailable
+                          ? GuildPalette.neon
+                          : GuildPalette.titanium)
+                      .withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: (_dailyAvailable ? GuildPalette.neon : Colors.black)
+                        .withValues(alpha: _dailyAvailable ? 0.14 : 0.4),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
+                  // Restful triage status row
                   Row(
                     children: <Widget>[
-                      Icon(
-                        _dailyAvailable
-                            ? Icons.medical_services_outlined
-                            : Icons.hourglass_bottom_rounded,
-                        size: 18,
-                        color: _dailyAvailable
-                            ? GuildPalette.neon
-                            : GuildPalette.titanium,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _dailyAvailable
-                              ? context.l10n.sys2_clinic_daily_ready
-                              : context.l10n.sys2_clinic_daily_used(
-                                  _dailyUseKind ?? '—',
-                                ),
-                          style: AppTextStyles.label.copyWith(
-                            color: GuildPalette.textHi,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: (_dailyAvailable
+                                  ? GuildPalette.neon
+                                  : GuildPalette.titanium)
+                              .withValues(alpha: 0.15),
+                          border: Border.all(
+                            color: (_dailyAvailable
+                                    ? GuildPalette.neon
+                                    : GuildPalette.titanium)
+                                .withValues(alpha: 0.45),
                           ),
                         ),
-                      ),
-                      Text(
-                        _dailyAvailable ? '1/1' : '0/1',
-                        style: TextStyle(
+                        child: Icon(
+                          _dailyAvailable
+                              ? Icons.medical_services_rounded
+                              : Icons.hourglass_bottom_rounded,
+                          size: 16,
                           color: _dailyAvailable
                               ? GuildPalette.neon
                               : GuildPalette.titanium,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              _dailyAvailable
+                                  ? context.l10n.sys2_clinic_daily_ready
+                                  : context.l10n.sys2_clinic_daily_used(
+                                      _dailyUseKind ?? '—',
+                                    ),
+                              style: AppTextStyles.label.copyWith(
+                                color: GuildPalette.textHi,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              _dailyAvailable
+                                  ? 'Acil durum tedavisi için hazır'
+                                  : 'Günlük limit doldu, yarın sıfırlanır',
+                              style: AppTextStyles.caption.copyWith(
+                                color: GuildPalette.titanium,
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: (_dailyAvailable
+                                  ? GuildPalette.neon
+                                  : GuildPalette.titanium)
+                              .withValues(alpha: 0.16),
+                          border: Border.all(
+                            color: (_dailyAvailable
+                                    ? GuildPalette.neon
+                                    : GuildPalette.titanium)
+                                .withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          _dailyAvailable ? '1/1 HAZIR' : '0/1 KULLANILDI',
+                          style: TextStyle(
+                            color: _dailyAvailable
+                                ? GuildPalette.neon
+                                : GuildPalette.titanium,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 10.5,
+                            letterSpacing: 0.4,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _level < 1
-                        ? context.l10n.sys2_clinic_cut_none
-                        : context.l10n.sys2_clinic_cut_preview(
-                            _pctLabel(softNow),
-                          ),
-                    style: AppTextStyles.caption.copyWith(
-                      color: GuildPalette.titanium,
-                      height: 1.3,
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0x22FFFFFF),
                     ),
                   ),
+                  // Hospital Cut stat metric row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          gradient: LinearGradient(
+                            colors: <Color>[
+                              GuildPalette.coral.withValues(alpha: 0.22),
+                              GuildPalette.fuchsia.withValues(alpha: 0.14),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: GuildPalette.coral.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            const Icon(
+                              Icons.content_cut_rounded,
+                              size: 14,
+                              color: GuildPalette.coral,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _level < 1 ? '%0.0' : '-${_pctLabel(softNow)}%',
+                              style: const TextStyle(
+                                color: GuildPalette.coral,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _level < 1
+                              ? context.l10n.sys2_clinic_cut_none
+                              : context.l10n.sys2_clinic_cut_preview(
+                                  _pctLabel(softNow),
+                                ),
+                          style: AppTextStyles.caption.copyWith(
+                            color: GuildPalette.titanium,
+                            fontSize: 11,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   if (_monumentLevel >= 60) ...<Widget>[
-                    const SizedBox(height: 6),
-                    GuildStatPill(
-                      icon: Icons.auto_awesome,
-                      label: context.l10n.sys2_clinic_monument_soft,
-                      accent: GuildPalette.gold,
-                      filled: true,
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        gradient: LinearGradient(
+                          colors: <Color>[
+                            GuildPalette.gold.withValues(alpha: 0.16),
+                            GuildPalette.celestialGold.withValues(alpha: 0.08),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: GuildPalette.gold.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(
+                            Icons.auto_awesome,
+                            size: 15,
+                            color: GuildPalette.gold,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              context.l10n.sys2_clinic_monument_soft,
+                              style: const TextStyle(
+                                color: GuildPalette.gold,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             // Cut bands
             Text(
               context.l10n.sys2_clinic_bands_title,
@@ -587,6 +951,12 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                     ),
                     active: _level >= 1 && _level < 50,
                     accent: GuildPalette.coral,
+                    onTap: () {
+                      AppMessenger.show(
+                        context,
+                        'Kademe 1 (Lv 1 - 49): Temel Hastane Masrafı İndirimi %${_pctLabel(lv1)}',
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -598,6 +968,12 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                     ),
                     active: _level >= 50 && _level < 100,
                     accent: GuildPalette.solar,
+                    onTap: () {
+                      AppMessenger.show(
+                        context,
+                        'Kademe 2 (Lv 50 - 99): Gelişmiş Hastane Masrafı İndirimi %${_pctLabel(lv50)}',
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -609,6 +985,12 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                     ),
                     active: _level >= 100,
                     accent: GuildPalette.gold,
+                    onTap: () {
+                      AppMessenger.show(
+                        context,
+                        'Kademe 3 (Lv 100): Maksimum Hastane Masrafı İndirimi %${_pctLabel(lv100)}',
+                      );
+                    },
                   ),
                 ),
               ],
@@ -622,7 +1004,7 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                 filled: true,
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             // Services
             Text(
               context.l10n.sys2_clinic_services_title,
@@ -641,6 +1023,13 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                     title: context.l10n.sys2_clinic_service_doctor,
                     subtitle: context.l10n.sys2_clinic_service_doctor_sub,
                     accent: GuildPalette.neon,
+                    badgeText: 'ŞİFA',
+                    onTap: () {
+                      AppMessenger.show(
+                        context,
+                        '${context.l10n.sys2_clinic_service_doctor}: ${context.l10n.sys2_clinic_service_doctor_sub}',
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -650,21 +1039,29 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                     title: context.l10n.sys2_clinic_service_lawyer,
                     subtitle: context.l10n.sys2_clinic_service_lawyer_sub,
                     accent: GuildPalette.gold,
+                    badgeText: 'SAVUNMA',
+                    onTap: () {
+                      AppMessenger.show(
+                        context,
+                        '${context.l10n.sys2_clinic_service_lawyer}: ${context.l10n.sys2_clinic_service_lawyer_sub}',
+                      );
+                    },
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             // Pool
             Row(
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    context.l10n.sys2_clinic_pool_title,
+                    context.l10n.sys2_clinic_pool_title.toUpperCase(),
                     style: AppTextStyles.caption.copyWith(
                       color: GuildPalette.titanium,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -690,10 +1087,10 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
               style: AppTextStyles.caption.copyWith(
                 color: GuildPalette.titanium,
                 height: 1.3,
-                fontSize: 10,
+                fontSize: 10.5,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             for (final MonumentResourceKind kind
                 in MonumentResourceKind.values) ...<Widget>[
               _PoolBar(
@@ -705,7 +1102,7 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                 accent: _kindAccent(kind),
                 onDonate: _busy ? null : () => _donateKind(kind),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
             ],
             if (_nextCost != null) ...<Widget>[
               const SizedBox(height: 4),
@@ -716,7 +1113,7 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                   height: 1.3,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: GuildPressable(
@@ -725,45 +1122,64 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
                       ? _upgrade
                       : null,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       gradient: widget.canUpgrade && _poolReady
-                          ? LinearGradient(
+                          ? const LinearGradient(
                               colors: <Color>[
-                                GuildPalette.neon.withValues(alpha: 0.95),
-                                GuildPalette.neon.withValues(alpha: 0.65),
+                                GuildPalette.neon,
+                                GuildPalette.iridescentCyan,
                               ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             )
                           : null,
                       color: widget.canUpgrade && _poolReady
                           ? null
-                          : GuildPalette.obsidian.withValues(alpha: 0.7),
+                          : GuildPalette.obsidian.withValues(alpha: 0.75),
                       border: Border.all(
-                        color: GuildPalette.neon.withValues(
-                          alpha: widget.canUpgrade && _poolReady ? 0.0 : 0.25,
-                        ),
+                        color: widget.canUpgrade && _poolReady
+                            ? GuildPalette.neon.withValues(alpha: 0.9)
+                            : GuildPalette.titanium.withValues(alpha: 0.25),
+                        width: widget.canUpgrade && _poolReady ? 1.5 : 1.0,
                       ),
+                      boxShadow: widget.canUpgrade && _poolReady
+                          ? <BoxShadow>[
+                              BoxShadow(
+                                color: GuildPalette.neon.withValues(alpha: 0.4),
+                                blurRadius: 18,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
                         Icon(
-                          Icons.upgrade_rounded,
-                          size: 18,
+                          widget.canUpgrade && _poolReady
+                              ? Icons.upgrade_rounded
+                              : Icons.lock_outline_rounded,
+                          size: 20,
                           color: widget.canUpgrade && _poolReady
                               ? GuildPalette.void_
                               : GuildPalette.titanium,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          context.l10n.sys2_clinic_upgrade,
+                          widget.canUpgrade && _poolReady
+                              ? context.l10n.sys2_clinic_upgrade
+                              : (_poolReady
+                                  ? 'YETKİ GEREKLİ'
+                                  : 'KAYNAKLAR TOPLANIYOR (%${(_poolProgress * 100).toStringAsFixed(0)})'),
                           style: TextStyle(
                             color: widget.canUpgrade && _poolReady
                                 ? GuildPalette.void_
                                 : GuildPalette.titanium,
                             fontWeight: FontWeight.w900,
-                            fontSize: 13,
+                            fontSize: 13.5,
+                            letterSpacing: 0.4,
                           ),
                         ),
                       ],
@@ -773,13 +1189,26 @@ class _GuildClinicCardState extends ConsumerState<GuildClinicCard> {
               ),
               if (!widget.canUpgrade)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    context.l10n.sys2_clinic_upgrade_role,
-                    style: AppTextStyles.caption.copyWith(
-                      color: GuildPalette.titanium,
-                      fontSize: 10,
-                    ),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 13,
+                        color: GuildPalette.titanium,
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          context.l10n.sys2_clinic_upgrade_role,
+                          style: AppTextStyles.caption.copyWith(
+                            color: GuildPalette.titanium,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],
@@ -795,32 +1224,95 @@ class _BandChip extends StatelessWidget {
     required this.label,
     required this.active,
     required this.accent,
+    this.onTap,
   });
 
   final String label;
   final bool active;
   final Color accent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: accent.withValues(alpha: active ? 0.22 : 0.08),
-        border: Border.all(
-          color: accent.withValues(alpha: active ? 0.7 : 0.28),
-          width: active ? 1.4 : 1,
+    return GuildPressable(
+      onTap: () {
+        AppHaptics.selection();
+        onTap?.call();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: active
+                ? <Color>[
+                    accent.withValues(alpha: 0.28),
+                    accent.withValues(alpha: 0.12),
+                    GuildPalette.celestialVoid.withValues(alpha: 0.8),
+                  ]
+                : <Color>[
+                    GuildPalette.surfaceHi.withValues(alpha: 0.35),
+                    GuildPalette.celestialVoid.withValues(alpha: 0.65),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: accent.withValues(alpha: active ? 0.85 : 0.25),
+            width: active ? 1.4 : 1,
+          ),
+          boxShadow: active
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.22),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
-      ),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: active ? accent : GuildPalette.titanium,
-          fontWeight: FontWeight.w800,
-          fontSize: 10,
-          height: 1.2,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: active ? accent : GuildPalette.titanium,
+                    shape: BoxShape.circle,
+                    boxShadow: active
+                        ? <BoxShadow>[
+                            BoxShadow(
+                              color: accent,
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: active ? accent : GuildPalette.titanium,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10.5,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -833,45 +1325,106 @@ class _ServiceTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.accent,
+    this.badgeText,
+    this.onTap,
   });
 
   final String emoji;
   final String title;
   final String subtitle;
   final Color accent;
+  final String? badgeText;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: GuildPalette.obsidian.withValues(alpha: 0.5),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(emoji, style: const TextStyle(fontSize: 18)),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: TextStyle(
-              color: accent,
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
-            ),
+    return GuildPressable(
+      onTap: () {
+        AppHaptics.light();
+        onTap?.call();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(
+            colors: <Color>[
+              accent.withValues(alpha: 0.12),
+              GuildPalette.celestialSurface.withValues(alpha: 0.85),
+              GuildPalette.celestialVoid.withValues(alpha: 0.92),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: AppTextStyles.caption.copyWith(
-              color: GuildPalette.titanium,
-              fontSize: 10,
-              height: 1.25,
-            ),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.42),
+            width: 1.1,
           ),
-        ],
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: accent.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: accent.withValues(alpha: 0.16),
+                    border: Border.all(color: accent.withValues(alpha: 0.45)),
+                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 18)),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: accent.withValues(alpha: 0.15),
+                    border: Border.all(color: accent.withValues(alpha: 0.35)),
+                  ),
+                  child: Text(
+                    badgeText ?? 'AKTİF',
+                    style: TextStyle(
+                      color: accent,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 8.5,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: TextStyle(
+                color: accent,
+                fontWeight: FontWeight.w900,
+                fontSize: 12.5,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              style: AppTextStyles.caption.copyWith(
+                color: GuildPalette.titanium,
+                fontSize: 10.5,
+                height: 1.25,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -896,6 +1449,13 @@ class _PoolBar extends StatelessWidget {
   final Color accent;
   final VoidCallback? onDonate;
 
+  IconData get _kindIcon => switch (kind) {
+        MonumentResourceKind.structural => Icons.architecture_rounded,
+        MonumentResourceKind.mystical => Icons.auto_awesome_rounded,
+        MonumentResourceKind.critical => Icons.bolt_rounded,
+        MonumentResourceKind.gold => Icons.monetization_on_rounded,
+      };
+
   @override
   Widget build(BuildContext context) {
     final double progress =
@@ -906,63 +1466,181 @@ class _PoolBar extends StatelessWidget {
     final String needLabel = kind == MonumentResourceKind.gold
         ? formatCompactGold(need)
         : '$need';
-    return GuildPressable(
-      onTap: onDonate,
-      enabled: onDonate != null,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: accent.withValues(alpha: 0.35)),
-          color: GuildPalette.obsidian.withValues(alpha: 0.55),
+    final bool canDonateNow = onDonate != null && dailyLeft > 0 && owned > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          colors: <Color>[
+            accent.withValues(alpha: 0.08),
+            GuildPalette.celestialSurface.withValues(alpha: 0.85),
+            GuildPalette.celestialVoid.withValues(alpha: 0.92),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
+        border: Border.all(
+          color: accent.withValues(
+            alpha: progress >= 1.0 && need > 0 ? 0.65 : 0.35,
+          ),
+          width: 1.1,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: accent.withValues(
+              alpha: progress >= 1.0 && need > 0 ? 0.16 : 0.06,
+            ),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: accent.withValues(alpha: 0.16),
+                  border: Border.all(color: accent.withValues(alpha: 0.45)),
+                ),
+                child: Icon(_kindIcon, size: 16, color: accent),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      kind.shortLabel,
+                      style: TextStyle(
+                        color: accent,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12.5,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    Text(
+                      need > 0 ? '$currentLabel / $needLabel' : currentLabel,
+                      style: const TextStyle(
+                        color: GuildPalette.textHi,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (need > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: (progress >= 1.0 ? GuildPalette.neon : accent)
+                        .withValues(alpha: 0.16),
+                    border: Border.all(
+                      color: (progress >= 1.0 ? GuildPalette.neon : accent)
+                          .withValues(alpha: 0.45),
+                    ),
+                  ),
                   child: Text(
-                    kind.shortLabel,
+                    progress >= 1.0
+                        ? 'TAMAMLANDI'
+                        : '%${(progress * 100).toInt()}',
                     style: TextStyle(
-                      color: accent,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
+                      color: progress >= 1.0 ? GuildPalette.neon : accent,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
                     ),
                   ),
                 ),
-                Text(
-                  need > 0 ? '$currentLabel / $needLabel' : currentLabel,
-                  style: const TextStyle(
-                    color: GuildPalette.textHi,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
+            ],
+          ),
+          const SizedBox(height: 8),
+          GkkProgressBar(
+            value: progress,
+            color: accent,
+            height: 6,
+            glow: progress >= 1.0 && need > 0,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
                   context.l10n.sys2_clinic_owned_left(owned, dailyLeft),
                   style: TextStyle(
-                    color: dailyLeft > 0 && owned > 0
+                    color: canDonateNow
                         ? GuildPalette.neon
                         : GuildPalette.titanium,
-                    fontSize: 10,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 4),
-                Icon(Icons.add_circle_outline, size: 16, color: accent),
-              ],
-            ),
-            const SizedBox(height: 6),
-            GkkProgressBar(
-              value: progress,
-              color: accent,
-              height: 5,
-              glow: progress >= 1.0 && need > 0,
-            ),
-          ],
-        ),
+              ),
+              GuildPressable(
+                enabled: onDonate != null,
+                onTap: onDonate != null
+                    ? () {
+                        AppHaptics.selection();
+                        onDonate!();
+                      }
+                    : null,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: canDonateNow
+                        ? LinearGradient(
+                            colors: <Color>[
+                              accent.withValues(alpha: 0.25),
+                              accent.withValues(alpha: 0.12),
+                            ],
+                          )
+                        : null,
+                    color: canDonateNow
+                        ? null
+                        : GuildPalette.obsidian.withValues(alpha: 0.5),
+                    border: Border.all(
+                      color:
+                          accent.withValues(alpha: canDonateNow ? 0.6 : 0.25),
+                      width: 1.1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(
+                        Icons.add_circle_outline_rounded,
+                        size: 13,
+                        color: canDonateNow ? accent : GuildPalette.titanium,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'BAĞIŞ YAP',
+                        style: TextStyle(
+                          color: canDonateNow ? accent : GuildPalette.titanium,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

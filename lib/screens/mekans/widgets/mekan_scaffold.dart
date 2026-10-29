@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -101,41 +103,77 @@ class MekanBackBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: MekanPalette.void_.withValues(alpha: 0.96),
-      child: SafeArea(
-        bottom: false,
-        child: InkWell(
-          onTap: onBack,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.sm,
-            ),
-            child: Row(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: MekanPalette.aqua.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    border: Border.all(color: MekanPalette.aqua.withValues(alpha: 0.5)),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: MekanPalette.aqua,
-                  ),
+      color: Colors.transparent,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: MekanPalette.void_.withValues(alpha: 0.88),
+              border: Border(
+                bottom: BorderSide(
+                  color: MekanPalette.aqua.withValues(alpha: 0.28),
+                  width: 1.0,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: MekanPalette.aqua,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: InkWell(
+                onTap: onBack,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: MekanPalette.aqua.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          border: Border.all(
+                            color: MekanPalette.aqua.withValues(alpha: 0.65),
+                            width: 1.2,
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: MekanPalette.aqua.withValues(alpha: 0.25),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 15,
+                          color: MekanPalette.aqua,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: MekanPalette.aqua,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13.5,
+                          letterSpacing: 0.4,
+                          shadows: <Shadow>[
+                            Shadow(color: MekanPalette.aqua, blurRadius: 8),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),

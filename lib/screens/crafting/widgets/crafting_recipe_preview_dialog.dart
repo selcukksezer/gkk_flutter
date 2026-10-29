@@ -92,36 +92,43 @@ Future<void> showCraftingRecipePreviewDialog({
                       ref.watch(bankQuantitiesProvider).value ??
                           const <String, int>{};
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
-                    child: CraftingPreviewPanel(
-                      recipe: selectedRecipe,
-                      batchCount: craftState.selectedBatchCount,
-                      canCraft: canCraft,
-                      isCrafting: craftState.isCrafting,
-                      hasEnoughMaterials: hasEnoughMaterials,
-                      canAffordGold: canAffordGold,
-                      playerGold: playerGold,
-                      queueUsed: queueUsed,
-                      queueMax: queueMax,
-                      expandGemCost: expandCost,
-                      canAffordExpand: canAffordExpand,
-                      isExpandingQueue: craftState.isExpandingQueue,
-                      playerGems: playerGems,
-                      onExpandQueue: onExpandQueue,
-                      ownedQuantities: ownedQuantities,
-                      bankQuantities: bankQuantities,
-                      onCraft: () async {
-                        final bool ok = await onCraft();
-                        if (ok && dialogContext.mounted) {
-                          Navigator.of(dialogContext).pop();
-                        }
-                      },
-                      onClose: () => Navigator.of(dialogContext).pop(),
-                      onBatchDecrement: () =>
-                          ref.read(craftingProvider.notifier).setBatchCount(craftState.selectedBatchCount - 1),
-                      onBatchIncrement: () =>
-                          ref.read(craftingProvider.notifier).setBatchCount(craftState.selectedBatchCount + 1),
+                  return SafeArea(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                          child: CraftingPreviewPanel(
+                            recipe: selectedRecipe,
+                            batchCount: craftState.selectedBatchCount,
+                            canCraft: canCraft,
+                            isCrafting: craftState.isCrafting,
+                            hasEnoughMaterials: hasEnoughMaterials,
+                            canAffordGold: canAffordGold,
+                            playerGold: playerGold,
+                            queueUsed: queueUsed,
+                            queueMax: queueMax,
+                            expandGemCost: expandCost,
+                            canAffordExpand: canAffordExpand,
+                            isExpandingQueue: craftState.isExpandingQueue,
+                            playerGems: playerGems,
+                            onExpandQueue: onExpandQueue,
+                            ownedQuantities: ownedQuantities,
+                            bankQuantities: bankQuantities,
+                            onCraft: () async {
+                              final bool ok = await onCraft();
+                              if (ok && dialogContext.mounted) {
+                                Navigator.of(dialogContext).pop();
+                              }
+                            },
+                            onClose: () => Navigator.of(dialogContext).pop(),
+                            onBatchDecrement: () =>
+                                ref.read(craftingProvider.notifier).setBatchCount(craftState.selectedBatchCount - 1),
+                            onBatchIncrement: () =>
+                                ref.read(craftingProvider.notifier).setBatchCount(craftState.selectedBatchCount + 1),
+                          ),
+                        ),
+                      ),
                     ),
                   );
                 },

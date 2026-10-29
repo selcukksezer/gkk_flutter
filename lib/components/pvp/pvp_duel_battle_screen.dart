@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,19 +9,28 @@ import '../../core/services/supabase_service.dart';
 import '../../providers/pvp_invite_provider.dart';
 import '../common/item_icon_view.dart';
 import '../common/profile_avatar.dart';
+import 'colosseum_arena_lighting.dart';
+import 'pvp_combat_vfx_coordinator.dart';
+import 'pvp_combat_vfx_overlay.dart';
+import 'pvp_gladiator_3d_view.dart';
 
 // ============================================================================
-// PVP DÜELLO SAVAŞ EKRANI
+// PVP DÜELLO SAVAŞ EKRANI (2027 Aion 2 Obsidian-Glass & Arena Luminescence)
 // Davet kabul edilince: loadout yükle → VS intro → dövüş → zafer/yenilgi.
 // Sonuç backend'de zaten belli; buradaki akış sinematik sunum.
 // ============================================================================
 
-const Color _kBgTop = Color(0xFF0B0E17);
-const Color _kBgBottom = Color(0xFF141B2A);
-const Color _kRed = Color(0xFFEF4444);
-const Color _kBlue = Color(0xFF3B82F6);
-const Color _kGold = Color(0xFFF5C842);
-const Color _kGreen = Color(0xFF22C55E);
+const Color _kBgTop = Color(0xFF070A12);
+const Color _kBgBottom = Color(0xFF0F1524);
+const Color _kBattleCrimson = Color(0xFFFF3366);
+const Color _kCelestialGold = Color(0xFFE5C158);
+const Color _kRed = _kBattleCrimson;
+const Color _kBlue = Color(0xFF38BDF8);
+const Color _kGold = _kCelestialGold;
+const Color _kGreen = Color(0xFF10B981);
+const Color _kCyanAether = Color(0xFF00E5FF);
+const Color _kObsidianGlassBg = Color(0xD90B101D);
+const Color _kObsidianGlassBorder = Color(0x33FFFFFF);
 
 Color _rarityColor(String rarity) {
   switch (rarity.toLowerCase()) {
@@ -34,6 +44,66 @@ Color _rarityColor(String rarity) {
       return const Color(0xFF22C55E);
     default:
       return Colors.white38;
+  }
+}
+
+/// 2027 Aion 2 Frosted Obsidian Glass Container
+class _ObsidianGlassPanel extends StatelessWidget {
+  const _ObsidianGlassPanel({
+    super.key,
+    required this.child,
+    this.padding,
+    this.borderRadius = 16.0,
+    this.borderColor,
+    this.backgroundColor,
+    this.glowColor,
+    this.glowRadius = 16.0,
+    this.borderWidth = 1.0,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final double borderRadius;
+  final Color? borderColor;
+  final Color? backgroundColor;
+  final Color? glowColor;
+  final double glowRadius;
+  final double borderWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: glowColor != null
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: glowColor!,
+                  blurRadius: glowRadius,
+                  spreadRadius: -2,
+                ),
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: backgroundColor ?? _kObsidianGlassBg,
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: borderColor ?? _kObsidianGlassBorder,
+                width: borderWidth,
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -222,16 +292,25 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
   late final AnimationController _fxCtrl;
   late final AnimationController _shakeCtrl;
   late final AnimationController _resultCtrl;
+  late final AnimationController _countdownRingCtrl;
+  late final PvpCombatVfxCoordinator _vfx;
 
-  // Dövüş durumu
+  // Dövüş ve Telemetri Durumu
   double _hpOpponent = 1.0;
   double _hpMe = 1.0;
+  double _ghostHpOpponent = 1.0;
+  double _ghostHpMe = 1.0;
   final List<String> _log = <String>[];
   Timer? _fightTimer;
+  Timer? _battleClockTimer;
+  int _battleElapsedSeconds = 0;
+  int _countdownSeconds = 3;
   int _hitIndex = 0;
   late List<_DuelHit> _hits;
   bool _flashLeft = false;
   bool _flashRight = false;
+  GladiatorStance _meStance = GladiatorStance.idle;
+  GladiatorStance _opponentStance = GladiatorStance.idle;
 
   final math.Random _rng = math.Random();
 
@@ -265,16 +344,33 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
+    _countdownRingCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+    _vfx = PvpCombatVfxCoordinator();
+    _fxCtrl.addListener(_onVfxTick);
     _loadFighters();
+  }
+
+  void _onVfxTick() {
+    _vfx.update(0.016);
+    if (mounted && _phase == _DuelPhase.fight) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
     _fightTimer?.cancel();
+    _battleClockTimer?.cancel();
+    _fxCtrl.removeListener(_onVfxTick);
+    _vfx.dispose();
     _introCtrl.dispose();
     _fxCtrl.dispose();
     _shakeCtrl.dispose();
     _resultCtrl.dispose();
+    _countdownRingCtrl.dispose();
     super.dispose();
   }
 
@@ -324,10 +420,31 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
               losses: 0,
             );
       _phase = _DuelPhase.intro;
+      _countdownSeconds = 3;
     });
     HapticFeedback.mediumImpact();
     _introCtrl.forward();
-    await Future<void>.delayed(const Duration(milliseconds: 3400));
+
+    // Kartların sahneye oturmasını bekle
+    await Future<void>.delayed(const Duration(milliseconds: 1400));
+    if (!mounted) return;
+
+    // 2027 Aion 2 Düello Geri Sayım Halkası (3... 2... 1... SAVAŞ!)
+    for (int sec = 3; sec >= 1; sec--) {
+      if (!mounted) return;
+      setState(() {
+        _countdownSeconds = sec;
+      });
+      HapticFeedback.selectionClick();
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _countdownSeconds = 0; // 0 = SAVAŞ! / ENGAGE!
+    });
+    HapticFeedback.heavyImpact();
+    await Future<void>.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     _startFight();
   }
@@ -335,8 +452,28 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
   // ── Dövüş simülasyonu (sonuç belli, sunum rastgele) ───────────────────────
   void _startFight() {
     _hits = _buildHitScript();
-    setState(() => _phase = _DuelPhase.fight);
+    _battleElapsedSeconds = 0;
+    _hpOpponent = 1.0;
+    _hpMe = 1.0;
+    _ghostHpOpponent = 1.0;
+    _ghostHpMe = 1.0;
+    setState(() {
+      _phase = _DuelPhase.fight;
+      _meStance = GladiatorStance.combatReady;
+      _opponentStance = GladiatorStance.combatReady;
+    });
     HapticFeedback.heavyImpact();
+
+    // Savaş Zamanlayıcısı (Battle Timer)
+    _battleClockTimer?.cancel();
+    _battleClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _phase == _DuelPhase.fight) {
+        setState(() {
+          _battleElapsedSeconds++;
+        });
+      }
+    });
+
     _fightTimer = Timer.periodic(const Duration(milliseconds: 750), (_) {
       _applyNextHit();
     });
@@ -359,17 +496,27 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
       // Sıra karışık ama kaybeden daha çok yer.
       final bool hitLoser = wi >= winnerDmg.length ||
           (li < loserDmg.length && (i % 3 != 2));
+      final bool isCrit = _rng.nextDouble() < 0.28;
+      final bool isParry = !isCrit && _rng.nextDouble() < 0.20;
+      final PvpWeaponTrailType weapon = (i % 2 == 0)
+          ? PvpWeaponTrailType.greatsword
+          : PvpWeaponTrailType.dualBlades;
+
       if (hitLoser && li < loserDmg.length) {
         hits.add(_DuelHit(
           targetIsOpponent: !opponentWins,
           damage: loserDmg[li++],
-          crit: _rng.nextDouble() < 0.3,
+          crit: isCrit,
+          isParried: isParry,
+          weaponType: weapon,
         ));
       } else if (wi < winnerDmg.length) {
         hits.add(_DuelHit(
           targetIsOpponent: opponentWins,
           damage: winnerDmg[wi++],
-          crit: _rng.nextDouble() < 0.2,
+          crit: isCrit,
+          isParried: isParry,
+          weaponType: weapon,
         ));
       }
     }
@@ -387,6 +534,7 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
     if (!mounted) return;
     if (_hitIndex >= _hits.length) {
       _fightTimer?.cancel();
+      _battleClockTimer?.cancel();
       _finishFight();
       return;
     }
@@ -397,11 +545,24 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
         hit.targetIsOpponent ? (_opponent?.name ?? 'Rakip') : (_me?.name ?? 'Sen');
     final int shownDmg = (hit.damage * 900 + _rng.nextInt(80)).round();
 
+    // Tactile Haptic Feedback
+    if (hit.crit) {
+      HapticFeedback.heavyImpact();
+    } else if (hit.isParried) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
+
     setState(() {
       if (hit.targetIsOpponent) {
+        _meStance = GladiatorStance.attacking;
+        _opponentStance = GladiatorStance.hitReact;
         _hpOpponent = (_hpOpponent - hit.damage).clamp(0.0, 1.0);
         _flashLeft = true;
       } else {
+        _opponentStance = GladiatorStance.attacking;
+        _meStance = GladiatorStance.hitReact;
         _hpMe = (_hpMe - hit.damage).clamp(0.0, 1.0);
         _flashRight = true;
       }
@@ -409,32 +570,91 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
         0,
         hit.crit
             ? '💥 $attacker KRİTİK vurdu! $target -$shownDmg'
-            : '⚔️ $attacker saldırdı: $target -$shownDmg',
+            : (hit.isParried
+                ? '⚡ $target SAVUŞTURDU! -$shownDmg'
+                : '⚔️ $attacker saldırdı: $target -$shownDmg'),
       );
       if (_log.length > 5) _log.removeLast();
     });
-    HapticFeedback.selectionClick();
+
+    // Ghost Bar yakalama gecikmesi
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (mounted && _phase == _DuelPhase.fight) {
+        setState(() {
+          _ghostHpOpponent = _hpOpponent;
+          _ghostHpMe = _hpMe;
+        });
+      }
+    });
+
+    // Wire ALL 9 Combat VFX modules:
+    // Positions: opponent (left ~100, 190), player me (right ~280, 190)
+    final Offset attackerPos =
+        hit.targetIsOpponent ? const Offset(280, 190) : const Offset(100, 190);
+    final Offset defenderPos =
+        hit.targetIsOpponent ? const Offset(100, 190) : const Offset(280, 190);
+
+    // 4. Weapon Ribbon Trails
+    _vfx.triggerWeaponSwing(
+      attackerIsMe: hit.targetIsOpponent,
+      attackerPos: attackerPos,
+      defenderPos: defenderPos,
+      weaponType: hit.weaponType,
+      isHeavy: hit.crit,
+    );
+
+    // 1-3, 5-9: Camera Shake, Hit-Stop, Rim Flash, Decals, Particles, Haptics, Damage Numbers, Knockback & Stun
+    _vfx.triggerHitImpact(
+      targetIsOpponent: hit.targetIsOpponent,
+      damageValue: shownDmg.toDouble(),
+      isCritical: hit.crit,
+      impactPoint: defenderPos,
+      isParried: hit.isParried,
+      isBlocked: hit.isBlocked,
+      isStun: hit.crit && shownDmg > 350,
+    );
+
     _shakeCtrl.forward(from: 0);
-    Future<void>.delayed(const Duration(milliseconds: 260), () {
-      if (mounted) {
+    Future<void>.delayed(const Duration(milliseconds: 320), () {
+      if (mounted && _phase == _DuelPhase.fight) {
         setState(() {
           _flashLeft = false;
           _flashRight = false;
+          _meStance = GladiatorStance.combatReady;
+          _opponentStance = GladiatorStance.combatReady;
         });
       }
     });
   }
 
   Future<void> _finishFight() async {
+    _battleClockTimer?.cancel();
+    _fightTimer?.cancel();
+
     // Son darbe: kaybeden 0'a sabitlenir.
     setState(() {
       if (_iWon) {
         _hpOpponent = 0;
+        _ghostHpOpponent = 0;
+        _meStance = GladiatorStance.victory;
+        _opponentStance = GladiatorStance.defeated;
       } else {
         _hpMe = 0;
+        _ghostHpMe = 0;
+        _meStance = GladiatorStance.defeated;
+        _opponentStance = GladiatorStance.victory;
       }
       _log.insert(0, _iWon ? '🏆 Son darbe! Rakip yere düştü.' : '💀 Yere düştün...');
     });
+
+    // Lethal finisher: explosive shock shake, 50ms freeze, blood pool, lethal popup, haptics
+    final Offset fatalPos =
+        _iWon ? const Offset(100, 190) : const Offset(280, 190);
+    _vfx.triggerLethalFinisher(
+      targetIsOpponent: _iWon,
+      impactPoint: fatalPos,
+    );
+
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() => _phase = _DuelPhase.result);
@@ -458,11 +678,16 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
         child: Stack(
           fit: StackFit.expand,
           children: <Widget>[
-            // Arka plan noktalar + hareketli emberler
+            // Arka plan: Dinamik Aion 2 PvP Koloseum Işıklandırması & Gladyatör Gölgeleri
             AnimatedBuilder(
               animation: _fxCtrl,
               builder: (BuildContext ctx, Widget? child) => CustomPaint(
-                painter: _DuelBackdropPainter(t: _fxCtrl.value),
+                painter: _DuelBackdropPainter(
+                  t: _fxCtrl.value,
+                  flashLeft: _flashLeft,
+                  flashRight: _flashRight,
+                  phase: _phase,
+                ),
               ),
             ),
             SafeArea(
@@ -504,11 +729,11 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
     );
   }
 
-  // ── INTRO: VS kartları ─────────────────────────────────────────────────────
+  // ── INTRO: Obsidian-Glass VS & Duel Countdown Ring ────────────────────────
   Widget _buildIntro() {
     return AnimatedBuilder(
       key: const ValueKey<String>('intro'),
-      animation: _introCtrl,
+      animation: Listenable.merge(<Listenable>[_introCtrl, _countdownRingCtrl]),
       builder: (BuildContext context, _) {
         final double t = _introCtrl.value;
         final double slide = Curves.easeOutCubic.transform((t / 0.45).clamp(0, 1));
@@ -519,21 +744,40 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
         return Column(
           children: <Widget>[
             const SizedBox(height: 12),
-            Text(
-              widget.wager > 0
-                  ? '💰 ${widget.wager} ALTIN BAHİSLİ DÜELLO'
-                  : '🤝 DOSTLUK DÜELLOSU',
-              style: const TextStyle(
-                color: _kGold,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
+            // Obsidian-Glass Wager Capsule with Celestial Gold Luminescence
+            _ObsidianGlassPanel(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              borderRadius: 20,
+              borderColor: _kCelestialGold.withValues(alpha: 0.5),
+              glowColor: _kCelestialGold.withValues(alpha: 0.2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    widget.wager > 0 ? '💰' : '🤝',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.wager > 0
+                        ? '${widget.wager} ALTIN BAHİSLİ DÜELLO'
+                        : 'DOSTLUK DÜELLOSU',
+                    style: const TextStyle(
+                      color: _kCelestialGold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Expanded(
               child: Stack(
+                alignment: Alignment.center,
                 children: <Widget>[
+                  // Split VS Cards
                   Row(
                     children: <Widget>[
                       Expanded(
@@ -541,19 +785,19 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
                           offset: Offset(-300 * (1 - slide), 0),
                           child: _fighterCard(
                             _opponent!,
-                            accent: _kRed,
+                            accent: _kBattleCrimson,
                             statsT: statsIn,
                             alignRight: false,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 60),
+                      const SizedBox(width: 48),
                       Expanded(
                         child: Transform.translate(
                           offset: Offset(300 * (1 - slide), 0),
                           child: _fighterCard(
                             _me!,
-                            accent: _kBlue,
+                            accent: _kCelestialGold,
                             statsT: statsIn,
                             alignRight: true,
                           ),
@@ -561,34 +805,12 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
                       ),
                     ],
                   ),
-                  // VS merkez
+                  // Centered Duel Countdown Ring
                   Center(
-                    child: Transform.scale(
-                      scale: vsPop,
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _kBgTop,
-                          border: Border.all(color: _kGold, width: 2),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: _kGold.withValues(alpha: 0.5 * vsPop),
-                              blurRadius: 30,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Text(
-                          'VS',
-                          style: TextStyle(
-                            color: _kGold,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
+                    child: _DuelCountdownRing(
+                      seconds: _countdownSeconds,
+                      rotationValue: _countdownRingCtrl.value,
+                      scaleValue: vsPop,
                     ),
                   ),
                 ],
@@ -598,13 +820,17 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
               padding: const EdgeInsets.only(bottom: 24),
               child: Opacity(
                 opacity: statsIn,
-                child: const Text(
-                  'SAVAŞ BAŞLIYOR...',
+                child: Text(
+                  _countdownSeconds == 0
+                      ? '⚔️ DÜELLO BAŞLADI!'
+                      : 'ARENA PROTOKOLÜ DEVREDE • GERİ SAYIM',
                   style: TextStyle(
-                    color: Colors.white38,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 4,
+                    color: _countdownSeconds == 0
+                        ? _kBattleCrimson
+                        : Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 3,
                   ),
                 ),
               ),
@@ -623,59 +849,78 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
   }) {
     return Padding(
       padding: EdgeInsets.only(
-        left: alignRight ? 0 : 12,
-        right: alignRight ? 12 : 0,
+        left: alignRight ? 0 : 8,
+        right: alignRight ? 8 : 0,
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: accent.withValues(alpha: 0.55),
-                  blurRadius: 26,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: ProfileAvatar(size: 84, avatarUrl: f.avatarUrl),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            f.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: accent,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          Text(
-            'Lv.${f.level} · 🏆${f.rating}',
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
-          ),
-          const SizedBox(height: 10),
-          Opacity(
-            opacity: statsT,
-            child: Transform.translate(
-              offset: Offset(0, 12 * (1 - statsT)),
-              child: Column(
-                children: <Widget>[
-                  _statRow('⚡ Güç', f.power, accent, statsT),
-                  _statRow('⚔️ Saldırı', f.attack, accent, statsT),
-                  _statRow('🛡️ Savunma', f.defense, accent, statsT),
-                  _statRow('W/L', 0, accent, statsT,
-                      textOverride: '${f.wins} / ${f.losses}'),
-                  const SizedBox(height: 8),
-                  if (f.items.isNotEmpty) _itemsRow(f.items),
+      child: _ObsidianGlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        borderRadius: 18,
+        borderColor: accent.withValues(alpha: 0.45),
+        glowColor: accent.withValues(alpha: 0.18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.55),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
                 ],
               ),
+              child: ProfileAvatar(size: 74, avatarUrl: f.avatarUrl),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              f.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: accent,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(top: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Lv.${f.level} · 🏆${f.rating}',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Opacity(
+              opacity: statsT,
+              child: Transform.translate(
+                offset: Offset(0, 12 * (1 - statsT)),
+                child: Column(
+                  children: <Widget>[
+                    _statRow('⚡ Güç', f.power, accent, statsT),
+                    _statRow('⚔️ Saldırı', f.attack, accent, statsT),
+                    _statRow('🛡️ Savunma', f.defense, accent, statsT),
+                    _statRow('W/L', 0, accent, statsT,
+                        textOverride: '${f.wins} / ${f.losses}'),
+                    const SizedBox(height: 6),
+                    if (f.items.isNotEmpty) _itemsRow(f.items),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -752,87 +997,250 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
     );
   }
 
-  // ── FIGHT: HP barları + log ────────────────────────────────────────────────
+  // ── FIGHT: 2027 Aion 2 Obsidian-Glass Split VS HUD + Telemetry ───────────
   Widget _buildFight() {
-    return AnimatedBuilder(
+    return PvpCombatVfxStage(
       key: const ValueKey<String>('fight'),
-      animation: _shakeCtrl,
-      builder: (BuildContext context, Widget? child) {
-        final double s = math.sin(_shakeCtrl.value * math.pi * 5) *
-            6 *
-            (1 - _shakeCtrl.value);
-        return Transform.translate(offset: Offset(s, 0), child: child);
-      },
-      child: Column(
-        children: <Widget>[
-          const SizedBox(height: 16),
-          const Text(
-            '⚔️ SAVAŞ SÜRÜYOR',
-            style: TextStyle(
-              color: _kRed,
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 3,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: _fightSide(
-                    _opponent!,
-                    hp: _hpOpponent,
-                    accent: _kRed,
-                    flash: _flashLeft,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10),
-                  child: Text(
-                    '⚡',
-                    style: TextStyle(fontSize: 26),
-                  ),
-                ),
-                Expanded(
-                  child: _fightSide(
-                    _me!,
-                    hp: _hpMe,
-                    accent: _kBlue,
-                    flash: _flashRight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Savaş logu
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: _log
-                    .map(
-                      (String line) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Text(
-                          line,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: line == _log.first
-                                ? Colors.white
-                                : Colors.white38,
-                            fontSize: line == _log.first ? 13 : 11,
-                            fontWeight: line == _log.first
-                                ? FontWeight.w800
-                                : FontWeight.w500,
+      coordinator: _vfx,
+      child: AnimatedBuilder(
+        animation: _shakeCtrl,
+        builder: (BuildContext context, Widget? child) {
+          final double s = math.sin(_shakeCtrl.value * math.pi * 5) *
+              6 *
+              (1 - _shakeCtrl.value);
+          return Transform.translate(offset: Offset(s, 0), child: child);
+        },
+        child: Column(
+          children: <Widget>[
+            // 1. Top Split VS HUD in Obsidian Glass
+            _buildTopFightHud(),
+
+            // 2. Center 3D Gladiator Arena Stage
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: <Widget>[
+                      Expanded(
+                        child: PvpFighterVfxWrapper(
+                          reaction: _vfx.opponentReaction,
+                          rimFlashController: _vfx.opponentRimFlash,
+                          child: _fightGladiatorSide(
+                            _opponent!,
+                            accent: _kBattleCrimson,
+                            flash: _flashLeft,
+                            stance: _opponentStance,
+                            facingRight: true,
                           ),
                         ),
                       ),
-                    )
-                    .toList(growable: false),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: PvpFighterVfxWrapper(
+                          reaction: _vfx.meReaction,
+                          rimFlashController: _vfx.meRimFlash,
+                          child: _fightGladiatorSide(
+                            _me!,
+                            accent: _kCelestialGold,
+                            flash: _flashRight,
+                            stance: _meStance,
+                            facingRight: false,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
+            ),
+
+            // 3. Bottom Obsidian-Glass Combat Telemetry Console
+            _buildBottomCombatConsole(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Top Split VS HUD in Obsidian Glass with Health Telemetry & Battle Timer
+  Widget _buildTopFightHud() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: _ObsidianGlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        borderRadius: 14,
+        borderColor: Colors.white.withValues(alpha: 0.18),
+        child: Row(
+          children: <Widget>[
+            // Opponent Telemetry Module
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: _kBattleCrimson.withValues(alpha: 0.45),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: ProfileAvatar(size: 34, avatarUrl: _opponent?.avatarUrl),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          _opponent?.name ?? 'Rakip',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _kBattleCrimson,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        _buildDynamicHealthBar(
+                          currentHp: _hpOpponent,
+                          ghostHp: _ghostHpOpponent,
+                          accentColor: _kBattleCrimson,
+                          isOpponent: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Center Battle Timer Capsule
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: _buildBattleTimerCapsule(),
+            ),
+            // Player (Me) Telemetry Module
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        Text(
+                          _me?.name ?? 'Sen',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _kCelestialGold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        _buildDynamicHealthBar(
+                          currentHp: _hpMe,
+                          ghostHp: _ghostHpMe,
+                          accentColor: _kCelestialGold,
+                          isOpponent: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: _kCelestialGold.withValues(alpha: 0.45),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: ProfileAvatar(size: 34, avatarUrl: _me?.avatarUrl),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 2027 Aion 2 Battle Timer Capsule with Pulsing Combat Indicator
+  Widget _buildBattleTimerCapsule() {
+    final String formattedTime =
+        '00:${_battleElapsedSeconds.toString().padLeft(2, '0')}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _kCelestialGold.withValues(alpha: 0.4),
+          width: 1.0,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: _kCelestialGold.withValues(alpha: 0.15),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              // Pulsing live indicator dot
+              AnimatedBuilder(
+                animation: _countdownRingCtrl,
+                builder: (BuildContext context, _) => Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _kBattleCrimson.withValues(
+                      alpha: 0.4 +
+                          0.6 * math.sin(_countdownRingCtrl.value * math.pi),
+                    ),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: _kBattleCrimson,
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                formattedTime,
+                style: const TextStyle(
+                  color: _kCelestialGold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 1),
+          const Text(
+            'VS',
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              fontStyle: FontStyle.italic,
             ),
           ),
         ],
@@ -840,83 +1248,365 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
     );
   }
 
-  Widget _fightSide(
-    PvpDuelFighter f, {
-    required double hp,
-    required Color accent,
-    required bool flash,
+  /// Dynamic Health Telemetry Gauge with Numeric Readout, Lagging Ghost Bar, and Critical Alert
+  Widget _buildDynamicHealthBar({
+    required double currentHp,
+    required double ghostHp,
+    required Color accentColor,
+    required bool isOpponent,
   }) {
+    final bool isCritical = currentHp <= 0.25 && currentHp > 0.0;
     return Column(
+      crossAxisAlignment:
+          isOpponent ? CrossAxisAlignment.start : CrossAxisAlignment.end,
       children: <Widget>[
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: flash
-                    ? Colors.white.withValues(alpha: 0.85)
-                    : accent.withValues(alpha: 0.45),
-                blurRadius: flash ? 34 : 20,
-                spreadRadius: flash ? 6 : 1,
-              ),
-            ],
-          ),
-          child: ProfileAvatar(size: 64, avatarUrl: f.avatarUrl),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          f.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: accent,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 8),
-        // HP bar
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Stack(
-            children: <Widget>[
-              Container(height: 12, color: Colors.black45),
-              AnimatedFractionallySizedBox(
-                duration: const Duration(milliseconds: 450),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.centerLeft,
-                widthFactor: hp,
+        // Numeric telemetry readout with Critical Alert
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment:
+              isOpponent ? MainAxisAlignment.start : MainAxisAlignment.end,
+          children: <Widget>[
+            if (isCritical)
+              Padding(
+                padding: const EdgeInsets.only(right: 4.0),
                 child: Container(
-                  height: 12,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: <Color>[
-                        hp > 0.4 ? _kGreen : _kRed,
-                        hp > 0.4
-                            ? const Color(0xFF86EFAC)
-                            : const Color(0xFFFCA5A5),
-                      ],
+                    color: _kBattleCrimson.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: _kBattleCrimson,
+                      width: 0.6,
+                    ),
+                  ),
+                  child: const Text(
+                    '⚠️ KRİTİK',
+                    style: TextStyle(
+                      color: _kBattleCrimson,
+                      fontSize: 7.5,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            Text(
+              '${(currentHp * 1000).round()} HP',
+              style: TextStyle(
+                color: isCritical ? _kBattleCrimson : accentColor,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'monospace',
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              '${(currentHp * 100).round()}%',
+              style: TextStyle(
+                color: isCritical ? _kBattleCrimson : Colors.white70,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          '${(hp * 100).round()}%',
-          style: const TextStyle(color: Colors.white54, fontSize: 11),
+        const SizedBox(height: 2),
+        // Glassmorphic Health Bar Track with Critical Glow
+        Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isCritical
+                  ? _kBattleCrimson.withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.15),
+              width: isCritical ? 1.0 : 0.8,
+            ),
+            boxShadow: isCritical
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: _kBattleCrimson.withValues(alpha: 0.4),
+                      blurRadius: 6,
+                    ),
+                  ]
+                : null,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Stack(
+              alignment:
+                  isOpponent ? Alignment.centerLeft : Alignment.centerRight,
+              children: <Widget>[
+                // Ghost bar (lagging damage receiver)
+                AnimatedFractionallySizedBox(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  alignment:
+                      isOpponent ? Alignment.centerLeft : Alignment.centerRight,
+                  widthFactor: ghostHp.clamp(0.0, 1.0),
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.65),
+                  ),
+                ),
+                // Active HP bar
+                AnimatedFractionallySizedBox(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  alignment:
+                      isOpponent ? Alignment.centerLeft : Alignment.centerRight,
+                  widthFactor: currentHp.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: currentHp > 0.4
+                            ? <Color>[accentColor, _kGreen]
+                            : <Color>[_kBattleCrimson, const Color(0xFFFF6B8B)],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
-  // ── RESULT: zafer / yenilgi ───────────────────────────────────────────────
+  /// Bottom Obsidian-Glass Combat Telemetry Console with SafeArea protection
+  Widget _buildBottomCombatConsole() {
+    final double bottomInset = MediaQuery.paddingOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        12,
+        0,
+        12,
+        math.max(8.0, bottomInset > 0 ? bottomInset * 0.4 : 8.0),
+      ),
+      child: _ObsidianGlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        borderRadius: 14,
+        borderColor: Colors.white.withValues(alpha: 0.12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Text(
+                  '⚡ DÜELLO TELEMETRİSİ',
+                  style: TextStyle(
+                    color: _kCelestialGold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'TUR ${_hits.isNotEmpty ? _hitIndex : 0} / ${_hits.isNotEmpty ? _hits.length : 8}',
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+            const Divider(color: Colors.white12, height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 74),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: math.min(3, _log.length),
+                itemBuilder: (BuildContext context, int index) {
+                  final String line = _log[index];
+                  final bool isLatest = index == 0;
+                  final bool isCrit = line.contains('KRİTİK');
+                  final bool isParry = line.contains('SAVUŞTURDU');
+                  final Color tagColor = isCrit
+                      ? _kBattleCrimson
+                      : (isParry ? _kCyanAether : _kCelestialGold);
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: Row(
+                      children: <Widget>[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: tagColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: tagColor.withValues(alpha: 0.5),
+                              width: 0.6,
+                            ),
+                          ),
+                          child: Text(
+                            isCrit
+                                ? 'KRİTİK'
+                                : (isParry ? 'SAVUŞTUR' : 'VURUŞ'),
+                            style: TextStyle(
+                              color: tagColor,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            line,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isLatest ? Colors.white : Colors.white54,
+                              fontSize: isLatest ? 11.5 : 10.5,
+                              fontWeight:
+                                  isLatest ? FontWeight.w800 : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Backward-compatible fight side method
+  Widget _fightSide(
+    PvpDuelFighter f, {
+    required double hp,
+    required Color accent,
+    required bool flash,
+    required GladiatorStance stance,
+    required bool facingRight,
+  }) {
+    return _fightGladiatorSide(
+      f,
+      accent: accent,
+      flash: flash,
+      stance: stance,
+      facingRight: facingRight,
+    );
+  }
+
+  Widget _fightGladiatorSide(
+    PvpDuelFighter f, {
+    required Color accent,
+    required bool flash,
+    required GladiatorStance stance,
+    required bool facingRight,
+  }) {
+    // Resolve equipped weapon from items
+    GladiatorWeapon weapon = GladiatorWeapon.claymore;
+    for (final PvpDuelItem item in f.items) {
+      final String n = item.name.toLowerCase();
+      if (n.contains('balta') || n.contains('axe')) {
+        weapon = GladiatorWeapon.battleaxe;
+        break;
+      } else if (n.contains('hançer') || n.contains('dagger') || n.contains('bıçak')) {
+        weapon = GladiatorWeapon.dagger;
+        break;
+      } else if (n.contains('altın') || n.contains('gold')) {
+        weapon = GladiatorWeapon.goldenSword;
+        break;
+      } else if (n.contains('aion') || n.contains('efsun') || n.contains('dark')) {
+        weapon = GladiatorWeapon.darkSword;
+        break;
+      }
+    }
+
+    // Resolve gladiator archetype
+    GladiatorClass charClass = GladiatorClass.knight;
+    if (f.power > 3000) {
+      charClass = GladiatorClass.barbarian;
+    } else if (f.level > 15) {
+      charClass = GladiatorClass.soldier;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        SizedBox(
+          height: 180,
+          child: Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              // Genuine 3D Gladiator combatant with real .glb models & stances
+              PvpGladiator3dView(
+                gladiatorClass: charClass,
+                weapon: weapon,
+                stance: stance,
+                accentColor: accent,
+                facingRight: facingRight,
+                interactiveRotation: false,
+                size: const Size(140, 180),
+              ),
+              // Corner Player Avatar Badge
+              Positioned(
+                top: 0,
+                left: facingRight ? 4 : null,
+                right: facingRight ? null : 4,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: flash
+                            ? Colors.white.withValues(alpha: 0.85)
+                            : accent.withValues(alpha: 0.45),
+                        blurRadius: flash ? 24 : 12,
+                        spreadRadius: flash ? 4 : 1,
+                      ),
+                    ],
+                  ),
+                  child: ProfileAvatar(size: 34, avatarUrl: f.avatarUrl),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Gladiator Archetype & Telemetry Pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.black45,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.35),
+              width: 0.8,
+            ),
+          ),
+          child: Text(
+            '${charClass.name.toUpperCase()} · ATK ${f.attack}',
+            style: TextStyle(
+              color: accent.withValues(alpha: 0.9),
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── RESULT: 2027 Aion 2 Obsidian-Glass Podium & Luminescence ──────────────
   Widget _buildResult() {
     final bool won = _iWon;
-    final Color accent = won ? _kGold : _kRed;
+    final Color accent = won ? _kCelestialGold : _kBattleCrimson;
 
     return AnimatedBuilder(
       key: const ValueKey<String>('result'),
@@ -929,7 +1619,7 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
         return Stack(
           fit: StackFit.expand,
           children: <Widget>[
-            // Işınlar (zafer) / kararma (yenilgi)
+            // Celestial Gold rays on victory / Deep Crimson vignette on defeat
             if (won)
               AnimatedBuilder(
                 animation: _fxCtrl,
@@ -941,102 +1631,133 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
                 ),
               )
             else
-              Container(color: Colors.black.withValues(alpha: 0.35 * t)),
+              AnimatedBuilder(
+                animation: _fxCtrl,
+                builder: (BuildContext ctx, Widget? child) => CustomPaint(
+                  painter: _DefeatVignettePainter(
+                    t: _fxCtrl.value,
+                    intensity: t,
+                  ),
+                ),
+              ),
             Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Transform.scale(
-                    scale: pop,
-                    child: Text(
-                      won ? '🏆' : '💀',
-                      style: const TextStyle(fontSize: 72),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Transform.scale(
-                    scale: pop,
-                    child: Text(
-                      won ? 'ZAFER!' : 'YENİLGİ',
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 42,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 6,
-                        shadows: <Shadow>[
-                          Shadow(
-                            color: accent.withValues(alpha: 0.7),
-                            blurRadius: 24,
-                          ),
-                        ],
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: _ObsidianGlassPanel(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                  borderRadius: 24,
+                  borderColor: accent.withValues(alpha: 0.5),
+                  glowColor: accent.withValues(alpha: 0.25),
+                  glowRadius: 32,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Transform.scale(
+                        scale: pop,
+                        child: Text(
+                          won ? '🏆' : '💀',
+                          style: const TextStyle(fontSize: 68),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Opacity(
-                    opacity: detailsT,
-                    child: Transform.translate(
-                      offset: Offset(0, 16 * (1 - detailsT)),
-                      child: Column(
-                        children: <Widget>[
-                          Text(
-                            won
-                                ? '${widget.opponentName} karşısında kazandın!'
-                                : '${widget.opponentName} seni yendi.',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
+                      const SizedBox(height: 8),
+                      Transform.scale(
+                        scale: pop,
+                        child: Text(
+                          won ? 'ZAFER!' : 'YENİLGİ',
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 38,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 6,
+                            shadows: <Shadow>[
+                              Shadow(
+                                color: accent.withValues(alpha: 0.7),
+                                blurRadius: 24,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          if (_wager > 0)
-                            _resultChip(
-                              won ? '+$_netWin altın' : '-$_wager altın',
-                              won ? _kGold : _kRed,
-                            ),
-                          if (won && _nemesisRevengeGold > 0) ...<Widget>[
-                            const SizedBox(height: 6),
-                            _resultChip(
-                              'Nemesis intikam bonusu: +$_nemesisRevengeGold g',
-                              const Color(0xFFFFB800), // Liquid Gold
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          _resultChip(
-                            _myRatingChange >= 0
-                                ? '🏆 +$_myRatingChange rating'
-                                : '🏆 $_myRatingChange rating',
-                            _myRatingChange >= 0 ? _kGreen : _kRed,
-                          ),
-                          const SizedBox(height: 28),
-                          SizedBox(
-                            width: 200,
-                            child: FilledButton(
-                              onPressed: () =>
-                                  Navigator.of(context).pop(),
-                              style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    won ? _kGold : const Color(0xFF334155),
-                                foregroundColor:
-                                    won ? Colors.black : Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Opacity(
+                        opacity: detailsT,
+                        child: Transform.translate(
+                          offset: Offset(0, 16 * (1 - detailsT)),
+                          child: Column(
+                            children: <Widget>[
+                              Text(
+                                won
+                                    ? '${widget.opponentName} karşısında zafer kazandın!'
+                                    : '${widget.opponentName} karşısında mağlup oldun.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              child: const Text(
-                                'DEVAM ET',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 2,
+                              const SizedBox(height: 16),
+                              if (_wager > 0)
+                                _resultChip(
+                                  won ? '+$_netWin altın' : '-$_wager altın',
+                                  won ? _kCelestialGold : _kBattleCrimson,
+                                ),
+                              if (won && _nemesisRevengeGold > 0) ...<Widget>[
+                                const SizedBox(height: 6),
+                                _resultChip(
+                                  'Nemesis intikam bonusu: +$_nemesisRevengeGold g',
+                                  const Color(0xFFFFB800),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              _resultChip(
+                                _myRatingChange >= 0
+                                    ? '🏆 +$_myRatingChange rating'
+                                    : '🏆 $_myRatingChange rating',
+                                _myRatingChange >= 0 ? _kGreen : _kBattleCrimson,
+                              ),
+                              const SizedBox(height: 28),
+                              SizedBox(
+                                width: 220,
+                                child: FilledButton(
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    Navigator.of(context).pop();
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: won
+                                        ? _kCelestialGold
+                                        : const Color(0xFF334155),
+                                    foregroundColor:
+                                        won ? Colors.black : Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    elevation: won ? 8 : 2,
+                                    shadowColor: won
+                                        ? _kCelestialGold.withValues(alpha: 0.5)
+                                        : null,
+                                  ),
+                                  child: const Text(
+                                    'DEVAM ET',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 2,
+                                      fontSize: 14,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
@@ -1057,7 +1778,7 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
         text,
         style: TextStyle(
           color: color,
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -1065,57 +1786,327 @@ class _PvpDuelBattleScreenState extends State<PvpDuelBattleScreen>
   }
 }
 
+/// 2027 Aion 2 Animated Duel Countdown Ring
+class _DuelCountdownRing extends StatelessWidget {
+  const _DuelCountdownRing({
+    required this.seconds,
+    required this.rotationValue,
+    required this.scaleValue,
+  });
+
+  final int seconds;
+  final double rotationValue;
+  final double scaleValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      scale: scaleValue,
+      child: Container(
+        width: 86,
+        height: 86,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: (seconds == 0 ? _kBattleCrimson : _kCelestialGold)
+                  .withValues(alpha: 0.5),
+              blurRadius: 28,
+              spreadRadius: 3,
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _kObsidianGlassBg,
+                border: Border.all(
+                  color: (seconds == 0 ? _kBattleCrimson : _kCelestialGold)
+                      .withValues(alpha: 0.8),
+                  width: 2.0,
+                ),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  // Rotating energy arcs
+                  CustomPaint(
+                    size: const Size(82, 82),
+                    painter: _CountdownArcPainter(
+                      progress: rotationValue,
+                      isEngage: seconds == 0,
+                    ),
+                  ),
+                  // Center Content
+                  if (seconds > 0)
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      transitionBuilder: (Widget child, Animation<double> anim) =>
+                          ScaleTransition(scale: anim, child: child),
+                      child: Text(
+                        '$seconds',
+                        key: ValueKey<int>(seconds),
+                        style: const TextStyle(
+                          color: _kCelestialGold,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          shadows: <Shadow>[
+                            Shadow(
+                              color: _kCelestialGold,
+                              blurRadius: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          '⚔️',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                        Text(
+                          'DUEL',
+                          style: TextStyle(
+                            color: _kBattleCrimson,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                            shadows: <Shadow>[
+                              Shadow(
+                                color: _kBattleCrimson,
+                                blurRadius: 12,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountdownArcPainter extends CustomPainter {
+  const _CountdownArcPainter({
+    required this.progress,
+    required this.isEngage,
+  });
+
+  final double progress;
+  final bool isEngage;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    final double radius = size.width / 2 - 4;
+
+    final Paint goldArc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..color = _kCelestialGold;
+
+    final Paint crimsonArc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..color = _kBattleCrimson;
+
+    final double startAngle = progress * math.pi * 2;
+    // Draw two rotating arcs
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      math.pi * 0.7,
+      false,
+      goldArc,
+    );
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle + math.pi,
+      math.pi * 0.7,
+      false,
+      crimsonArc,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CountdownArcPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.isEngage != isEngage;
+}
+
 class _DuelHit {
   const _DuelHit({
     required this.targetIsOpponent,
     required this.damage,
     required this.crit,
+    this.isParried = false,
+    this.isBlocked = false,
+    this.isStun = false,
+    this.weaponType = PvpWeaponTrailType.dualBlades,
   });
 
   final bool targetIsOpponent;
   final double damage;
   final bool crit;
+  final bool isParried;
+  final bool isBlocked;
+  final bool isStun;
+  final PvpWeaponTrailType weaponType;
 }
 
 // ── Painters ─────────────────────────────────────────────────────────────────
 
-/// Sabit nokta deseni + yavaş yükselen emberler.
+/// Aion 2 Dynamic PvP Colosseum Arena Backdrop with sunbeams, aether crystals,
+/// directional shadow casting, and Battle Crimson / Celestial Gold luminescence.
 class _DuelBackdropPainter extends CustomPainter {
-  _DuelBackdropPainter({required this.t});
+  _DuelBackdropPainter({
+    required this.t,
+    this.flashLeft = false,
+    this.flashRight = false,
+    this.phase = _DuelPhase.fight,
+  });
 
   final double t;
+  final bool flashLeft;
+  final bool flashRight;
+  final _DuelPhase phase;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint dot = Paint()..color = Colors.white.withValues(alpha: 0.04);
-    const double gap = 26;
-    for (double x = 0; x < size.width; x += gap) {
-      for (double y = 0; y < size.height; y += gap) {
-        canvas.drawCircle(Offset(x, y), 1, dot);
+    final ArenaLightingTheme theme = ArenaLightingTheme(
+      name: 'Duel Colosseum',
+      sunAzimuth: -0.75,
+      sunElevation: 0.95,
+      sunIntensity: 0.92,
+      sunColor: _kCelestialGold,
+      ambientColor: _kBgTop,
+      crystalColor: _kCyanAether,
+      secondaryCrystalColor: _kBattleCrimson,
+      shadowColor: const Color(0xFF070A14),
+      beamCount: 6,
+      dustMoteCount: 28,
+    );
+
+    // Duelist shadow positions corresponding to the VS fighter cards & combat positions
+    final List<GladiatorShadowSlot> slots = <GladiatorShadowSlot>[
+      GladiatorShadowSlot(
+        position: const Offset(0.25, 0.46),
+        height: 75.0,
+        width: 34.0,
+        lungeOffset: Offset(
+          math.sin(t * 2 * math.pi) * 2.0,
+          math.cos(t * 2 * math.pi) * 1.0,
+        ),
+        hitShake: flashLeft ? 1.0 : 0.0,
+      ),
+      GladiatorShadowSlot(
+        position: const Offset(0.75, 0.46),
+        height: 75.0,
+        width: 34.0,
+        lungeOffset: Offset(
+          -math.sin(t * 2 * math.pi) * 2.0,
+          -math.cos(t * 2 * math.pi) * 1.0,
+        ),
+        hitShake: flashRight ? 1.0 : 0.0,
+      ),
+    ];
+
+    final ColosseumArenaPainter arenaPainter = ColosseumArenaPainter(
+      animationProgress: t,
+      theme: theme,
+      gladiatorSlots: slots,
+      showColosseumWalls: true,
+      showCrystals: true,
+      showGodrays: true,
+      showShadows: phase != _DuelPhase.loading,
+      combatFlashIntensity: (flashLeft || flashRight) ? 0.75 : 0.0,
+    );
+    arenaPainter.paint(canvas, size);
+
+    // 2027 Aion 2 Dynamic Duel Floor Arena Rune Luminescence
+    if (phase == _DuelPhase.intro || phase == _DuelPhase.fight) {
+      final Offset runeCenter = Offset(size.width * 0.5, size.height * 0.46);
+      final double runeRadius = size.width * 0.38;
+
+      // Radiant gold/crimson ground aura
+      final Paint glowPaint = Paint()
+        ..shader = ui.Gradient.radial(
+          runeCenter,
+          runeRadius * 1.2,
+          <Color>[
+            _kCelestialGold.withValues(alpha: 0.14),
+            _kBattleCrimson.withValues(alpha: 0.08),
+            Colors.transparent,
+          ],
+          <double>[0.0, 0.65, 1.0],
+        );
+      canvas.drawCircle(runeCenter, runeRadius * 1.2, glowPaint);
+
+      // Rotating inner duel rune ring
+      final Paint ringPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = _kCelestialGold.withValues(alpha: 0.35);
+
+      canvas.drawCircle(runeCenter, runeRadius * 0.9, ringPaint);
+
+      // Segmented rune tick arcs
+      final Paint arcPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..color = _kBattleCrimson.withValues(alpha: 0.4);
+
+      final double rotation = t * math.pi * 0.4;
+      for (int i = 0; i < 4; i++) {
+        final double a = rotation + (i * math.pi / 2);
+        canvas.drawArc(
+          Rect.fromCircle(center: runeCenter, radius: runeRadius * 0.95),
+          a,
+          0.35,
+          false,
+          arcPaint,
+        );
       }
     }
 
+    // Ambient floating embers in Battle Crimson and Celestial Gold
     final math.Random rng = math.Random(7);
     final Paint ember = Paint();
     for (int i = 0; i < 22; i++) {
       final double baseX = rng.nextDouble() * size.width;
       final double speed = 0.4 + rng.nextDouble() * 0.6;
-      final double phase = rng.nextDouble();
-      final double p = ((t * speed + phase) % 1.0);
+      final double p = ((t * speed + rng.nextDouble()) % 1.0);
       final double y = size.height * (1.05 - p * 1.1);
-      final double x =
-          baseX + math.sin((t * 2 + phase) * math.pi * 2) * 14;
-      final double alpha = (1 - p) * 0.35;
-      ember.color = (i.isEven ? _kGold : _kRed).withValues(alpha: alpha);
-      canvas.drawCircle(Offset(x, y), 1.4 + rng.nextDouble(), ember);
+      final double x = baseX + math.sin((t * 2 + i) * math.pi) * 12;
+      final double alpha = (1 - p) * 0.45;
+      ember.color = (i.isEven ? _kCelestialGold : _kBattleCrimson)
+          .withValues(alpha: alpha);
+      canvas.drawCircle(Offset(x, y), 1.2 + rng.nextDouble() * 1.2, ember);
     }
   }
 
   @override
-  bool shouldRepaint(_DuelBackdropPainter oldDelegate) => oldDelegate.t != t;
+  bool shouldRepaint(_DuelBackdropPainter oldDelegate) =>
+      oldDelegate.t != t ||
+      oldDelegate.flashLeft != flashLeft ||
+      oldDelegate.flashRight != flashRight ||
+      oldDelegate.phase != phase;
 }
 
-/// Zafer ekranı dönen ışınlar.
+/// Zafer ekranı dönen ışınlar (Celestial Gold).
 class _VictoryRaysPainter extends CustomPainter {
   _VictoryRaysPainter({required this.t, required this.intensity});
 
@@ -1128,7 +2119,7 @@ class _VictoryRaysPainter extends CustomPainter {
     final double maxR = size.longestSide;
     const int rays = 14;
     final Paint p = Paint()
-      ..color = _kGold.withValues(alpha: 0.08 * intensity);
+      ..color = _kCelestialGold.withValues(alpha: 0.08 * intensity);
     for (int i = 0; i < rays; i++) {
       final double a = (i / rays) * math.pi * 2 + t * math.pi * 2 * 0.15;
       final Path path = Path()
@@ -1142,5 +2133,34 @@ class _VictoryRaysPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_VictoryRaysPainter oldDelegate) =>
+      oldDelegate.t != t || oldDelegate.intensity != intensity;
+}
+
+/// Yenilgi ekranı Battle Crimson colosseum vignette.
+class _DefeatVignettePainter extends CustomPainter {
+  _DefeatVignettePainter({required this.t, required this.intensity});
+
+  final double t;
+  final double intensity;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset c = Offset(size.width / 2, size.height * 0.42);
+    final Paint p = Paint()
+      ..shader = ui.Gradient.radial(
+        c,
+        size.longestSide * 0.65,
+        <Color>[
+          Colors.transparent,
+          _kBattleCrimson.withValues(alpha: 0.18 * intensity),
+          Colors.black.withValues(alpha: 0.72 * intensity),
+        ],
+        <double>[0.0, 0.55, 1.0],
+      );
+    canvas.drawRect(Offset.zero & size, p);
+  }
+
+  @override
+  bool shouldRepaint(_DefeatVignettePainter oldDelegate) =>
       oldDelegate.t != t || oldDelegate.intensity != intensity;
 }

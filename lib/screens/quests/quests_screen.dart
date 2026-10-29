@@ -1,42 +1,34 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gkk_flutter/components/common/app_messenger.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../components/layout/game_chrome.dart';
-import '../../components/layout/game_screen_background.dart';
 import '../../components/common/gkk_tab_bar.dart';
 import '../../components/common/gkk_tab_page_shell.dart';
-import '../../l10n/l10n.dart';
+import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
+import '../../l10n/l10n.dart';
 import '../../models/quest_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_inbox_provider.dart';
 import '../../providers/player_provider.dart';
-import '../../core/tutorial/tutorial_anchor.dart';
-import '../../core/tutorial/tutorial_track.dart';
-import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
-import 'package:gkk_flutter/components/common/app_messenger.dart';
 import '../../theme/app_colors.dart';
+import 'quest_banner_shader.dart';
+import 'quest_card.dart';
+import 'quest_detail_modal.dart';
+import 'quest_logic.dart';
 
 // ── Category tabs ─────────────────────────────────────────────────────────────
 enum _QuestCategory { all, daily, weekly, main }
 
-// ── Premium color palette ─────────────────────────────────────────────────────
-class _QColors {
-  static const border = Color(0x18FFFFFF);
-  static const gold = Color(0xFFFBBF24);
-  static const accent = AppColors.cyberFuchsia;
-  static const blue = Color(0xFF3B82F6);
-  static const green = Color(0xFF22C55E);
-  static const red = Color(0xFFEF4444);
-  static const orange = Color(0xFFF97316);
-  static const text = Color(0xFFE2E8F0);
-  static const textMuted = Color(0xFF64748B);
-}
+// ── Secondary status filter pills ─────────────────────────────────────────────
+enum _StatusFilter { all, claimable, active }
 
 class QuestsScreen extends ConsumerStatefulWidget {
   const QuestsScreen({super.key});
@@ -51,10 +43,12 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
   bool _loading = true;
   String? _error;
   _QuestCategory _category = _QuestCategory.all;
+  _StatusFilter _statusFilter = _StatusFilter.all;
   bool _actionLoading = false;
   final Set<String> _knownCompletedSeasonQuests = {};
 
   late final TabController _tabCtrl;
+  Timer? _countdownTimer;
 
   @override
   void initState() {
@@ -63,13 +57,19 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
     _tabCtrl = TabController(length: 4, vsync: this);
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) return;
+      HapticFeedback.selectionClick();
       setState(() => _category = _QuestCategory.values[_tabCtrl.index]);
+    });
+    // 30-second tick to keep daily reset timer fresh
+    _countdownTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
     });
     _loadQuests();
   }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _tabCtrl.dispose();
     super.dispose();
@@ -100,15 +100,12 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           .map((e) => QuestData.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
 
-      String? redirectSeasonQuestId;
-      for (final quest in list) {
-        if (!quest.isSeasonQuest || quest.status != QuestStatus.completed)
-          continue;
-        final key = quest.bpPlayerQuestId ?? quest.questId;
-        if (!_knownCompletedSeasonQuests.contains(key)) {
-          _knownCompletedSeasonQuests.add(key);
-          redirectSeasonQuestId ??= key;
-        }
+      final redirectSeasonQuestId = QuestLogic.detectNewCompletedSeasonQuest(
+        list,
+        _knownCompletedSeasonQuests,
+      );
+      if (redirectSeasonQuestId != null) {
+        _knownCompletedSeasonQuests.add(redirectSeasonQuestId);
       }
 
       if (mounted) {
@@ -125,11 +122,12 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         unawaited(ref.read(notificationInboxProvider.notifier).refresh());
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = userFacingErrorMessage(e, fallback: 'Görevler yüklenemedi.');
         });
+      }
     }
   }
 
@@ -140,14 +138,8 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         'claim_quest_reward',
         params: {'p_quest_id': quest.questId},
       );
-      final List<String> parts = <String>[
-        if (quest.goldReward > 0) '🪙${quest.goldReward}',
-        if (quest.xpReward > 0) '✨${quest.xpReward} XP',
-        if (quest.gemReward > 0) '💎${quest.gemReward}',
-      ];
-      _snack(
-        parts.isEmpty ? '🎁 Ödül alındı!' : '🎁 Ödül alındı: ${parts.join(' + ')}',
-      );
+      HapticFeedback.heavyImpact();
+      _snack(QuestLogic.formatClaimMessage(quest));
       _quests.removeWhere((q) => q.questId == quest.questId);
       if (mounted) setState(() {});
       ref.read(playerProvider.notifier).loadProfile();
@@ -161,6 +153,61 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
     }
   }
 
+  /// One-tap batch claim for all completed non-season quests.
+  Future<void> _claimAllRewards() async {
+    if (_actionLoading) return;
+    final claimable = _quests
+        .where((q) => q.status == QuestStatus.completed && !q.isSeasonQuest)
+        .toList();
+    if (claimable.isEmpty) return;
+
+    setState(() => _actionLoading = true);
+    HapticFeedback.mediumImpact();
+
+    int claimedCount = 0;
+    int totalGold = 0;
+    int totalXp = 0;
+    int totalGems = 0;
+    final claimedIds = <String>{};
+    String? lastError;
+
+    for (final quest in claimable) {
+      try {
+        await SupabaseService.client.rpc(
+          'claim_quest_reward',
+          params: {'p_quest_id': quest.questId},
+        );
+        claimedCount++;
+        totalGold += quest.goldReward;
+        totalXp += quest.xpReward;
+        totalGems += quest.gemReward;
+        claimedIds.add(quest.questId);
+      } catch (e) {
+        lastError = userFacingErrorMessage(e, fallback: 'Bazı ödüller alınamadı.');
+      }
+    }
+
+    if (claimedCount > 0) {
+      HapticFeedback.heavyImpact();
+      _quests.removeWhere((q) => claimedIds.contains(q.questId));
+
+      final parts = <String>[];
+      if (totalGold > 0) parts.add('🪙 +$totalGold Altın');
+      if (totalXp > 0) parts.add('✨ +$totalXp XP');
+      if (totalGems > 0) parts.add('💎 +$totalGems Elmas');
+
+      final rewardText = parts.isNotEmpty ? ': ${parts.join(', ')}' : '!';
+      _snack('🎉 $claimedCount Görev Ödülü Toplandı$rewardText');
+      ref.read(playerProvider.notifier).loadProfile();
+    } else if (lastError != null) {
+      _snack(lastError, isError: true);
+    }
+
+    if (mounted) {
+      setState(() => _actionLoading = false);
+    }
+  }
+
   Future<void> _completeQuest(QuestData quest) async {
     setState(() => _actionLoading = true);
     try {
@@ -168,6 +215,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         'complete_quest',
         params: {'p_quest_id': quest.questId},
       );
+      HapticFeedback.mediumImpact();
       _snack('✅ Görev tamamlandı!');
       await _loadQuests();
       ref.read(playerProvider.notifier).loadProfile();
@@ -190,72 +238,36 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
     }
   }
 
+  List<QuestData> _questsForCategory(_QuestCategory cat) {
+    return QuestLogic.filterByCategory(
+      _quests,
+      QuestCategory.values[cat.index],
+    );
+  }
+
+  List<QuestData> get _filteredByCategory => _questsForCategory(_category);
+
   List<QuestData> get _filtered {
-    if (_category == _QuestCategory.all) return _quests;
-    // quest_id prefix encodes type: daily quests start with 'q_d_',
-    // weekly with 'q_w_', main with 'q_' (no prefix override).
-    // Also use difficulty as a proxy for dungeon/elite types.
-    return switch (_category) {
-      _QuestCategory.daily => _quests.where((q) {
-        if (q.isSeasonQuest) return q.questType == 'daily';
-        return q.questId.startsWith('q_d') ||
-            q.difficulty == QuestDifficulty.easy ||
-            q.difficulty == QuestDifficulty.medium;
-      }).toList(),
-      _QuestCategory.weekly => _quests.where((q) {
-        if (q.isSeasonQuest) return q.questType == 'weekly';
-        return q.questId.startsWith('q_w') ||
-            q.difficulty == QuestDifficulty.hard;
-      }).toList(),
-      _QuestCategory.main => _quests.where((q) {
-        if (q.isSeasonQuest) return false;
-        return q.difficulty == QuestDifficulty.elite ||
-            q.difficulty == QuestDifficulty.dungeon;
-      }).toList(),
-      _QuestCategory.all => _quests,
+    final list = _filteredByCategory;
+    return switch (_statusFilter) {
+      _StatusFilter.all => list,
+      _StatusFilter.claimable =>
+        list.where((q) => q.status == QuestStatus.completed).toList(),
+      _StatusFilter.active =>
+        list.where((q) => q.status == QuestStatus.active).toList(),
     };
   }
 
-  List<QuestData> get _sortedFiltered {
-    final list = [..._filtered];
-    list.sort((a, b) {
-      int rank(QuestData q) {
-        if (q.status == QuestStatus.completed) return 0;
-        if (q.status == QuestStatus.active) return 1;
-        return 2;
-      }
+  List<QuestData> get _sortedFiltered => QuestLogic.sortQuests(_filtered);
 
-      final cmp = rank(a).compareTo(rank(b));
-      if (cmp != 0) return cmp;
-      final aPct = a.progressMax > 0 ? a.progress / a.progressMax : 0.0;
-      final bPct = b.progressMax > 0 ? b.progress / b.progressMax : 0.0;
-      return bPct.compareTo(aPct);
-    });
-    return list;
-  }
+  double get _completionRate =>
+      QuestLogic.calculateOverallCompletionRate(_quests);
 
-  double get _completionRate {
-    if (_quests.isEmpty) return 0;
-    double sum = 0;
-    for (final QuestData q in _quests) {
-      if (q.status == QuestStatus.completed) {
-        sum += 1;
-        continue;
-      }
-      if (q.progressMax <= 0) continue;
-      sum += (q.progress / q.progressMax).clamp(0.0, 1.0);
-    }
-    return sum / _quests.length;
-  }
+  int get _completedOrReadyCount => QuestLogic.countCompletedOrReady(_quests);
 
-  int get _completedOrReadyCount {
-    return _quests.where((QuestData q) {
-      if (q.status == QuestStatus.completed) return true;
-      return q.status == QuestStatus.active &&
-          q.progressMax > 0 &&
-          q.progress >= q.progressMax;
-    }).length;
-  }
+  int get _allClaimableNonSeasonCount => _quests
+      .where((q) => q.status == QuestStatus.completed && !q.isSeasonQuest)
+      .length;
 
   Future<void> _doLogout() async {
     await ref.read(authProvider.notifier).logout();
@@ -266,6 +278,8 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
   Widget build(BuildContext context) {
     final completedCount = _completedOrReadyCount;
     final sorted = _sortedFiltered;
+    final claimableAllCount = _allClaimableNonSeasonCount;
+
     final int? claimTutorialIndex = () {
       for (int i = 0; i < sorted.length; i++) {
         if (sorted[i].status == QuestStatus.completed) return i;
@@ -273,1096 +287,656 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
       return null;
     }();
 
+    final sectionAccent = switch (_category) {
+      _QuestCategory.all => const Color(0xFF818CF8),
+      _QuestCategory.daily => const Color(0xFFFBBF24),
+      _QuestCategory.weekly => const Color(0xFF38BDF8),
+      _QuestCategory.main => const Color(0xFFA855F7),
+    };
+
+    final sectionTitle = switch (_category) {
+      _QuestCategory.all => 'Tüm Görevler',
+      _QuestCategory.daily => 'Günlük Keşifler',
+      _QuestCategory.weekly => 'Haftalık Seferler',
+      _QuestCategory.main => 'Destansı & Zindan Görevleri',
+    };
+
     return Scaffold(
-      appBar: GameTopBar(title: context.l10n.screenTitleQuests, onLogout: _doLogout),
+      appBar: GameTopBar(
+        title: context.l10n.screenTitleQuests,
+        onLogout: _doLogout,
+      ),
       extendBody: true,
       bottomNavigationBar: GameBottomBar(
         currentRoute: AppRoutes.quests,
         onLogout: _doLogout,
       ),
-      backgroundColor: AppColors.carbonVoid,
+      backgroundColor: AppColors.bgDeep,
       body: GameScreenBackground(
-        child: Column(
-        children: [
-          // ── Hero header ─────────────────────────────────────────────────
-          _buildHeader(completedCount),
+        child: SafeArea(
+          bottom: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Column(
+                children: [
+                  // ── Animated Celestial Banner Shader ─────────────────────────
+                  QuestBannerShader(
+                    completionRate: _completionRate,
+                    completedCount: completedCount,
+                    totalQuests: _quests.length,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      if (_quests.isNotEmpty) {
+                        _showDetail(_quests.first);
+                      }
+                    },
+                  ),
 
-          // ── Tabs ─────────────────────────────────────────────────────────
-          _buildTabs(),
+                  // ── Cyber-Glass Status & Reset Sub-Header ────────────────────
+                  _buildSubHeader(claimableAllCount),
 
-          const SizedBox(height: 4),
+                  // ── 2027 Aion 2 Category Tabs ────────────────────────────────
+                  _buildCategoryTabs(),
 
-          // ── Body ─────────────────────────────────────────────────────────
-          Expanded(
-            child: AnimatedBuilder(
-              animation: _tabCtrl,
-              builder: (BuildContext context, Widget? _) {
-                return GkkTabPageShell(
-                  tabIndex: _tabCtrl.index,
-                  sectionTitle: switch (_category) {
-                    _QuestCategory.all => 'Tüm Görevler',
-                    _QuestCategory.daily => 'Günlük Görevler',
-                    _QuestCategory.weekly => 'Haftalık Görevler',
-                    _QuestCategory.main => 'Ana Görevler',
-                  },
-                  sectionAccent: _QColors.accent,
-                  child: _loading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: _QColors.accent),
-                        )
-                      : _error != null
-                          ? _buildError()
-                          : sorted.isEmpty
-                              ? _buildEmpty()
-                              : RefreshIndicator(
-                                  onRefresh: _loadQuests,
-                                  color: _QColors.accent,
-                                  child: ListView.builder(
-                                    padding: GameScrollLayout.fromLTRB(
-                                      context,
-                                      left: 16,
-                                      top: 4,
-                                      right: 16,
-                                    ),
-                                    itemCount: sorted.length,
-                                    itemBuilder: (_, i) => GkkTabStaggerItem(
-                                      index: i,
-                                      child: _QuestCard(
-                                        quest: sorted[i],
-                                        actionLoading: _actionLoading,
-                                        highlightClaimAnchor: i == claimTutorialIndex,
-                                        onComplete: () => _completeQuest(sorted[i]),
-                                        onClaim: () => _claimReward(sorted[i]),
-                                        onGoToSeason: () => context.go(AppRoutes.season),
-                                        onDetail: () => _showDetail(sorted[i]),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                );
-              },
+                  // ── Secondary Quick Status Filter (Tümü / Hazır / Aktif) ─────
+                  _buildStatusFilterRow(),
+
+                  const SizedBox(height: 4),
+
+                  // ── Quests List Body ─────────────────────────────────────────
+                  Expanded(
+                    child: AnimatedBuilder(
+                      animation: _tabCtrl,
+                      builder: (context, _) {
+                        return GkkTabPageShell(
+                          tabIndex: _tabCtrl.index,
+                          sectionTitle: sectionTitle,
+                          sectionAccent: sectionAccent,
+                          child: _loading
+                              ? _buildSkeletonLoading()
+                              : _error != null
+                                  ? _buildError()
+                                  : sorted.isEmpty
+                                      ? _buildEmpty()
+                                      : RefreshIndicator(
+                                          onRefresh: _loadQuests,
+                                          color: const Color(0xFF38BDF8),
+                                          backgroundColor:
+                                              const Color(0xFF0F172A),
+                                          child: ListView.builder(
+                                            padding: GameScrollLayout.fromLTRB(
+                                              context,
+                                              left: 0,
+                                              top: 2,
+                                              right: 0,
+                                              bottomExtra:
+                                                  claimableAllCount > 0
+                                                      ? 72
+                                                      : 16,
+                                            ),
+                                            itemCount: sorted.length,
+                                            itemBuilder: (_, i) =>
+                                                GkkTabStaggerItem(
+                                              index: i,
+                                              child: QuestCard(
+                                                quest: sorted[i],
+                                                actionLoading: _actionLoading,
+                                                highlightClaimAnchor:
+                                                    i == claimTutorialIndex,
+                                                onComplete: () =>
+                                                    _completeQuest(sorted[i]),
+                                                onClaim: () =>
+                                                    _claimReward(sorted[i]),
+                                                onGoToSeason: () =>
+                                                    context.go(AppRoutes.season),
+                                                onDetail: () =>
+                                                    _showDetail(sorted[i]),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(int completedCount) {
-    final total = _quests.length;
-    final rate = _completionRate;
-    final pct = (rate * 100).round();
+  Widget _buildSubHeader(int claimableCount) {
+    final countdown = QuestLogic.formatDailyResetCountdown();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E1B4B), Color(0xFF131826)],
+        color: const Color(0xFF0F172A).withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: claimableCount > 0
+              ? const Color(0xFF10B981).withValues(alpha: 0.45)
+              : Colors.white.withValues(alpha: 0.08),
+          width: 1,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _QColors.accent.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: _QColors.accent.withValues(alpha: 0.12),
-            blurRadius: 20,
-          ),
-        ],
+        boxShadow: claimableCount > 0
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Genel Tamamlanma',
-                      style: TextStyle(
-                        color: _QColors.text,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
+          // Daily reset countdown
+          const Icon(
+            Icons.schedule_rounded,
+            size: 14,
+            color: Color(0xFF38BDF8),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'Sıfırlanma: $countdown',
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          // If claimable quests exist, prominent "Claim All" button
+          if (claimableCount > 0)
+            GestureDetector(
+              onTap: _actionLoading ? null : _claimAllRewards,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF059669), Color(0xFF10B981)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                    if (completedCount > 0) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _QColors.green.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _QColors.green.withValues(alpha: 0.4),
-                          ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_actionLoading)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: Colors.white,
                         ),
-                        child: Text(
-                          '🎁 $completedCount ödül hazır',
-                          style: const TextStyle(
-                            color: _QColors.green,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      )
+                    else ...[
+                      const Icon(
+                        Icons.card_giftcard_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Tümünü Al ($claimableCount)',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: rate,
-                    backgroundColor: Colors.white.withValues(alpha: 0.08),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      rate >= 1.0 ? _QColors.green : _QColors.accent,
-                    ),
-                    minHeight: 8,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$completedCount / $total görev · %$pct ilerleme',
-                  style: const TextStyle(
-                    color: _QColors.textMuted,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  rate >= 1.0 ? _QColors.green : _QColors.accent,
-                  _QColors.accent.withValues(alpha: 0.4),
-                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: _QColors.accent.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            )
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '%$pct',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 12,
+                  color: Color(0xFFFBBF24),
                 ),
-                const Text(
-                  'Bitti',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(width: 4),
+                Text(
+                  '${_completedOrReadyCount}/${_quests.length} Hazır',
+                  style: const TextStyle(
+                    color: Color(0xFFCBD5E1),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildTabs() {
-    const tabs = [
-      (Icons.grid_view_rounded, 'Tümü'),
-      (Icons.wb_sunny_rounded, 'Günlük'),
-      (Icons.date_range_rounded, 'Haftalık'),
-      (Icons.auto_awesome_rounded, 'Ana'),
+  Widget _buildCategoryTabs() {
+    final tabs = [
+      (Icons.grid_view_rounded, 'Tümü', _QuestCategory.all),
+      (Icons.wb_sunny_rounded, 'Günlük', _QuestCategory.daily),
+      (Icons.date_range_rounded, 'Haftalık', _QuestCategory.weekly),
+      (Icons.auto_awesome_rounded, 'Destansı', _QuestCategory.main),
     ];
 
     return GkkTabBar(
       controller: _tabCtrl,
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      tabs: tabs
-          .map(
-            (t) => GkkTabBar.labeledTab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(t.$1, size: 13),
-                  const SizedBox(width: 4),
-                  Text(t.$2),
-                ],
-              ),
-            ),
-          )
-          .toList(),
+      tabs: tabs.map((t) {
+        final catQuests = _questsForCategory(t.$3);
+        final count = catQuests.length;
+        final hasClaimable =
+            catQuests.any((q) => q.status == QuestStatus.completed);
+
+        return GkkTabBar.labeledTab(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(t.$1, size: 12.5),
+              const SizedBox(width: 4),
+              Text(t.$2),
+              if (count > 0) ...[
+                const SizedBox(width: 4.5),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: hasClaimable
+                        ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                        : Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                    border: hasClaimable
+                        ? Border.all(
+                            color: const Color(0xFF10B981)
+                                .withValues(alpha: 0.7),
+                            width: 0.8,
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasClaimable) ...[
+                        const Icon(
+                          Icons.circle,
+                          size: 5,
+                          color: Color(0xFF34D399),
+                        ),
+                        const SizedBox(width: 2.5),
+                      ],
+                      Text(
+                        '$count',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: hasClaimable
+                              ? const Color(0xFF34D399)
+                              : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildError() => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.wifi_off_rounded, color: _QColors.textMuted, size: 48),
-        const SizedBox(height: 12),
-        Text(
-          _error ?? 'Görevler yüklenemedi.',
-          style: const TextStyle(color: _QColors.textMuted),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _loadQuests,
-          icon: const Icon(Icons.refresh_rounded, size: 16),
-          label: const Text('Tekrar Dene'),
-          style: FilledButton.styleFrom(backgroundColor: _QColors.accent),
-        ),
-      ],
-    ),
-  );
+  Widget _buildStatusFilterRow() {
+    final catList = _filteredByCategory;
+    final totalInCat = catList.length;
+    final claimableInCat =
+        catList.where((q) => q.status == QuestStatus.completed).length;
+    final activeInCat =
+        catList.where((q) => q.status == QuestStatus.active).length;
 
-  Widget _buildEmpty() => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _QColors.accent.withValues(alpha: 0.1),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+      child: Row(
+        children: [
+          _buildFilterChip(
+            label: 'Tümü ($totalInCat)',
+            selected: _statusFilter == _StatusFilter.all,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _statusFilter = _StatusFilter.all);
+            },
           ),
-          child: const Icon(
-            Icons.task_alt_rounded,
-            color: _QColors.accent,
-            size: 36,
+          const SizedBox(width: 6),
+          _buildFilterChip(
+            label: 'Ödülü Hazır ($claimableInCat)',
+            selected: _statusFilter == _StatusFilter.claimable,
+            highlightBadge: claimableInCat > 0,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _statusFilter = _StatusFilter.claimable);
+            },
           ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Henüz görev yok',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Farklı bir sekmeyi dene ya da yenile.',
-          style: TextStyle(color: _QColors.textMuted, fontSize: 13),
-        ),
-        const SizedBox(height: 20),
-        OutlinedButton.icon(
-          onPressed: _loadQuests,
-          icon: const Icon(Icons.refresh_rounded, size: 14),
-          label: const Text('Yenile'),
-        ),
-      ],
-    ),
-  );
-
-  void _showDetail(QuestData quest) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => _QuestDetailSheet(
-        quest: quest,
-        actionLoading: _actionLoading,
-        onClaim: () {
-          Navigator.pop(ctx);
-          _claimReward(quest);
-        },
-        onComplete: () {
-          Navigator.pop(ctx);
-          _completeQuest(quest);
-        },
-        onGoToSeason: () {
-          Navigator.pop(ctx);
-          context.go(AppRoutes.season);
-        },
+          const SizedBox(width: 6),
+          _buildFilterChip(
+            label: 'Devam Eden ($activeInCat)',
+            selected: _statusFilter == _StatusFilter.active,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _statusFilter = _StatusFilter.active);
+            },
+          ),
+        ],
       ),
     );
   }
-}
 
-// ── Quest Card ────────────────────────────────────────────────────────────────
-
-class _QuestCard extends StatefulWidget {
-  const _QuestCard({
-    required this.quest,
-    required this.actionLoading,
-    required this.onComplete,
-    required this.onClaim,
-    required this.onGoToSeason,
-    required this.onDetail,
-    this.highlightClaimAnchor = false,
-  });
-
-  final QuestData quest;
-  final bool actionLoading;
-  final VoidCallback onComplete;
-  final VoidCallback onClaim;
-  final VoidCallback onGoToSeason;
-  final VoidCallback onDetail;
-  final bool highlightClaimAnchor;
-
-  @override
-  State<_QuestCard> createState() => _QuestCardState();
-}
-
-class _QuestCardState extends State<_QuestCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _shimmerCtrl;
-  late final Animation<double> _shimmer;
-
-  @override
-  void initState() {
-    super.initState();
-    _shimmerCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
-    _shimmer = Tween<double>(
-      begin: -1,
-      end: 2,
-    ).animate(CurvedAnimation(parent: _shimmerCtrl, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _shimmerCtrl.dispose();
-    super.dispose();
-  }
-
-  Color get _diffColor => switch (widget.quest.difficulty) {
-    QuestDifficulty.easy => _QColors.green,
-    QuestDifficulty.medium => _QColors.blue,
-    QuestDifficulty.hard => _QColors.orange,
-    QuestDifficulty.elite => _QColors.red,
-    QuestDifficulty.dungeon => _QColors.accent,
-  };
-
-  String get _diffLabel => switch (widget.quest.difficulty) {
-    QuestDifficulty.easy => 'Kolay',
-    QuestDifficulty.medium => 'Orta',
-    QuestDifficulty.hard => 'Zor',
-    QuestDifficulty.elite => 'Elite',
-    QuestDifficulty.dungeon => 'Zindan',
-  };
-
-  String get _statusEmoji => switch (widget.quest.status) {
-    QuestStatus.available => '📋',
-    QuestStatus.active => '⚡',
-    QuestStatus.completed => '✅',
-    QuestStatus.failed => '❌',
-  };
-
-  bool get _isCompleted => widget.quest.status == QuestStatus.completed;
-  bool get _isActive => widget.quest.status == QuestStatus.active;
-  bool get _canClaim => _isCompleted;
-  bool get _isSeasonQuest => widget.quest.isSeasonQuest;
-
-  bool get _needsAction =>
-      _isCompleted ||
-      (_isActive &&
-          widget.quest.progress >= widget.quest.progressMax &&
-          widget.quest.progressMax > 0);
-
-  String? _timeLeft() {
-    if (widget.quest.expiresAt == null) return null;
-    final dt = DateTime.tryParse(widget.quest.expiresAt!);
-    if (dt == null) return null;
-    final diff = dt.difference(DateTime.now());
-    if (diff.isNegative) return 'Süresi doldu';
-    if (diff.inDays > 0) return '${diff.inDays}g ${diff.inHours % 24}s';
-    if (diff.inHours > 0) return '${diff.inHours}s ${diff.inMinutes % 60}dk';
-    return '${diff.inMinutes}dk kaldı';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final progressPct = widget.quest.progressMax > 0
-        ? (widget.quest.progress / widget.quest.progressMax).clamp(0.0, 1.0)
-        : 0.0;
-
-    final timeLeft = _timeLeft();
-    final borderColor = _isCompleted
-        ? _QColors.green.withValues(alpha: 0.5)
-        : _isActive
-        ? _QColors.gold.withValues(alpha: 0.3)
-        : _QColors.border;
-
+  Widget _buildFilterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    bool highlightBadge = false,
+  }) {
     return GestureDetector(
-      onTap: widget.onDetail,
-      child: GkkTabListCard(
-        borderColor: borderColor,
-        padding: EdgeInsets.zero,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: _isCompleted
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      _QColors.green.withValues(alpha: 0.08),
-                      Colors.transparent,
-                    ],
-                  )
-                : null,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+        decoration: BoxDecoration(
+          color: selected
+              ? (highlightBadge
+                  ? const Color(0xFF10B981).withValues(alpha: 0.22)
+                  : const Color(0xFF38BDF8).withValues(alpha: 0.2))
+              : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected
+                ? (highlightBadge
+                    ? const Color(0xFF10B981).withValues(alpha: 0.6)
+                    : const Color(0xFF38BDF8).withValues(alpha: 0.6))
+                : Colors.white.withValues(alpha: 0.08),
+            width: selected ? 1.0 : 0.8,
           ),
-          child: Stack(
-            children: <Widget>[
-            // Shimmer overlay for completed quests
-            if (_isCompleted)
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: AnimatedBuilder(
-                    animation: _shimmer,
-                    builder: (_, __) => ShaderMask(
-                      blendMode: BlendMode.srcATop,
-                      shaderCallback: (bounds) => LinearGradient(
-                        begin: Alignment(_shimmer.value - 1, 0),
-                        end: Alignment(_shimmer.value, 0),
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withValues(alpha: 0.04),
-                          Colors.transparent,
-                        ],
-                      ).createShader(bounds),
-                      child: Container(color: Colors.transparent),
-                    ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+            color: selected
+                ? (highlightBadge
+                    ? const Color(0xFF34D399)
+                    : const Color(0xFF38BDF8))
+                : const Color(0xFF94A3B8),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonLoading() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF38BDF8).withValues(alpha: 0.25),
+                    const Color(0xFF6366F1).withValues(alpha: 0.15),
+                  ],
+                ),
+                border: Border.all(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Color(0xFF38BDF8),
                   ),
                 ),
               ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.quest.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: _QColors.text,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Status emoji
-                      Text(_statusEmoji, style: const TextStyle(fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Badges row
-                  Row(
-                    children: [
-                      _Badge(_diffLabel, _diffColor),
-                      const SizedBox(width: 6),
-                      if (widget.quest.requiredLevel > 1)
-                        _Badge(
-                          'Lv.${widget.quest.requiredLevel}+',
-                          Colors.white38,
-                        ),
-                      if (timeLeft != null) ...[
-                        const SizedBox(width: 6),
-                        _Badge('⏱ $timeLeft', _QColors.orange),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Description
-                  Text(
-                    widget.quest.description,
-                    style: const TextStyle(
-                      color: _QColors.textMuted,
-                      fontSize: 12.5,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Rewards row
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 6,
-                    children: [
-                      if (_isSeasonQuest && widget.quest.bppReward > 0)
-                        _RewardChip(
-                          Icons.military_tech_rounded,
-                          '${widget.quest.bppReward} BPP',
-                          _QColors.gold,
-                        ),
-                      if (!_isSeasonQuest && widget.quest.goldReward > 0)
-                        _RewardChip(
-                          Icons.paid_rounded,
-                          '${widget.quest.goldReward}',
-                          _QColors.gold,
-                        ),
-                      if (!_isSeasonQuest && widget.quest.xpReward > 0)
-                        _RewardChip(
-                          Icons.star_rounded,
-                          '${widget.quest.xpReward} XP',
-                          _QColors.blue,
-                        ),
-                      if (!_isSeasonQuest && widget.quest.gemReward > 0)
-                        _RewardChip(
-                          Icons.diamond_rounded,
-                          '${widget.quest.gemReward}',
-                          _QColors.accent,
-                        ),
-                      if (!_isSeasonQuest)
-                        _RewardChip(
-                          Icons.flash_on_rounded,
-                          '${widget.quest.energyCost}',
-                          _QColors.orange,
-                        ),
-                      if (_isSeasonQuest) _Badge('Sezon', _QColors.gold),
-                    ],
-                  ),
-
-                  if (widget.quest.progressMax > 0 && !_isCompleted) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              value: progressPct.toDouble(),
-                              minHeight: 8,
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.08,
-                              ),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                progressPct >= 1.0
-                                    ? _QColors.green
-                                    : _QColors.gold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          '${widget.quest.progress}/${widget.quest.progressMax}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: progressPct >= 1.0
-                                ? _QColors.green
-                                : _QColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-
-                  if (_needsAction) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _buildActionButton(),
-                    ),
-                  ],
-                ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Aion Parşömenleri Taranıyor...',
+              style: TextStyle(
+                color: Color(0xFFF1F5F9),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Aktif ve bekleyen görevler senkronize ediliyor',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 11.5,
               ),
             ),
           ],
         ),
       ),
-    ),
     );
   }
 
-  Widget _buildActionButton() {
-    if (widget.actionLoading) {
-      return FilledButton(
-        onPressed: null,
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.accent.withValues(alpha: 0.3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: const SizedBox(
-          height: 16,
-          width: 16,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-        ),
-      );
-    }
-
-    if (_isSeasonQuest && _isCompleted) {
-      return FilledButton.icon(
-        onPressed: widget.onGoToSeason,
-        icon: const Icon(Icons.emoji_events_rounded, size: 16),
-        label: const Text(
-          '🏆 Sezona Git — Ödül Al',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.gold,
-          foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-      );
-    }
-
-    if (_canClaim) {
-      final Widget claimButton = FilledButton.icon(
-        onPressed: widget.onClaim,
-        icon: const Icon(Icons.redeem_rounded, size: 16),
-        label: const Text(
-          '🎁 Ödülü Al',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.green,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-      );
-      return widget.highlightClaimAnchor
-          ? TutorialAnchorScope(
-              id: TutorialAnchorId.questsClaimBtn,
-              child: claimButton,
-            )
-          : claimButton;
-    }
-
-    if (_isActive &&
-        widget.quest.progress >= widget.quest.progressMax &&
-        widget.quest.progressMax > 0) {
-      return FilledButton.icon(
-        onPressed: widget.onComplete,
-        icon: const Icon(Icons.check_circle_rounded, size: 16),
-        label: const Text(
-          '✅ Tamamla',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.green,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
-}
-
-// ── Detail Sheet ──────────────────────────────────────────────────────────────
-
-class _QuestDetailSheet extends StatelessWidget {
-  const _QuestDetailSheet({
-    required this.quest,
-    required this.actionLoading,
-    required this.onClaim,
-    required this.onComplete,
-    required this.onGoToSeason,
-  });
-
-  final QuestData quest;
-  final bool actionLoading;
-  final VoidCallback onClaim;
-  final VoidCallback onComplete;
-  final VoidCallback onGoToSeason;
-
-  @override
-  Widget build(BuildContext context) {
-    final progressPct = quest.progressMax > 0
-        ? (quest.progress / quest.progressMax).clamp(0.0, 1.0)
-        : 0.0;
-
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xF0131826),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(top: BorderSide(color: _QColors.border)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
             Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Icon
-            Container(
-              width: 56,
-              height: 56,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                border: Border.all(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                color: Color(0xFFF87171),
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              _error ?? 'Görevler yüklenemedi.',
+              style: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+                  colors: [Color(0xFF38BDF8), Color(0xFF6366F1)],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _QColors.accent.withValues(alpha: 0.4),
-                    blurRadius: 16,
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                color: Colors.white,
-                size: 28,
+              child: ElevatedButton.icon(
+                onPressed: _loadQuests,
+                icon: const Icon(Icons.refresh_rounded,
+                    size: 16, color: Colors.white),
+                label: const Text(
+                  'Tekrar Dene',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    final isFiltered = _statusFilter != _StatusFilter.all;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                    const Color(0xFF6366F1).withValues(alpha: 0.1),
+                  ],
+                ),
+                border: Border.all(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                isFiltered
+                    ? Icons.filter_list_off_rounded
+                    : Icons.auto_awesome_rounded,
+                color: const Color(0xFF38BDF8),
+                size: 34,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              quest.name,
+              isFiltered
+                  ? 'Kriterlere Uygun Görev Yok'
+                  : 'Aktif Keşif Bulunamadı',
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: _QColors.text,
+                color: Color(0xFFF1F5F9),
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              quest.description,
-              style: const TextStyle(
-                color: _QColors.textMuted,
-                fontSize: 14,
-                height: 1.5,
-              ),
+              isFiltered
+                  ? 'Seçili filtrede ("${_statusFilter == _StatusFilter.claimable ? 'Ödülü Hazır' : 'Devam Eden'}") henüz görev yok.'
+                  : 'Bu sekmede henüz görev yok. Diğer sekmeleri inceleyin veya yenileyin.',
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-
-            if (quest.progressMax > 0 &&
-                quest.status != QuestStatus.completed) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: progressPct.toDouble(),
-                        minHeight: 10,
-                        backgroundColor: Colors.white.withValues(alpha: 0.08),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          progressPct >= 1.0 ? _QColors.green : _QColors.accent,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${quest.progress}/${quest.progressMax}',
-                    style: const TextStyle(
-                      color: _QColors.textMuted,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Rewards
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _QColors.border),
-              ),
-              child: Column(
-                children: [
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '🎁 ÖDÜLLER',
-                      style: TextStyle(
-                        color: _QColors.textMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  _buildRewardsRow(),
-                ],
+              style: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 12.5,
+                height: 1.4,
               ),
             ),
-            const SizedBox(height: 20),
-
-            if (_hasAction) ...[
-              SizedBox(width: double.infinity, child: _buildAction()),
-              const SizedBox(height: 10),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
+            const SizedBox(height: 18),
+            if (isFiltered)
+              ElevatedButton.icon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _statusFilter = _StatusFilter.all);
+                },
+                icon: const Icon(Icons.clear_all_rounded, size: 15),
+                label: const Text('Filtreyi Temizle'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      const Color(0xFF38BDF8).withValues(alpha: 0.18),
+                  foregroundColor: const Color(0xFF38BDF8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: _loadQuests,
+                icon: const Icon(Icons.refresh_rounded, size: 15),
+                label: const Text('Yenile'),
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF38BDF8),
+                  side: BorderSide(
+                    color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  side: const BorderSide(color: _QColors.border),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 ),
-                child: Text(context.l10n.kapat),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRewardsRow() {
-    final chips = <Widget>[
-      if (quest.isSeasonQuest && quest.bppReward > 0)
-        _BigReward(
-          Icons.military_tech_rounded,
-          '${quest.bppReward}',
-          'BPP',
-          _QColors.gold,
-        ),
-      if (quest.goldReward > 0)
-        _BigReward(
-          Icons.paid_rounded,
-          '${quest.goldReward}',
-          'Altın',
-          _QColors.gold,
-        ),
-      if (quest.xpReward > 0)
-        _BigReward(
-          Icons.star_rounded,
-          '${quest.xpReward}',
-          'XP',
-          _QColors.blue,
-        ),
-      if (quest.gemReward > 0)
-        _BigReward(
-          Icons.diamond_rounded,
-          '${quest.gemReward}',
-          'Elmas',
-          _QColors.accent,
-        ),
-    ];
-
-    if (chips.isEmpty) {
-      return const Text(
-        'Ödül tanımlı değil.',
-        style: TextStyle(color: _QColors.textMuted, fontSize: 13),
-        textAlign: TextAlign.center,
-      );
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: chips,
+  void _showDetail(QuestData quest) {
+    showQuestDetailModal(
+      context: context,
+      quest: quest,
+      actionLoading: _actionLoading,
+      onClaim: () => _claimReward(quest),
+      onComplete: () => _completeQuest(quest),
+      onGoToSeason: () => context.go(AppRoutes.season),
     );
   }
-
-  bool get _hasAction {
-    if (quest.isSeasonQuest && quest.status == QuestStatus.completed)
-      return true;
-    if (quest.status == QuestStatus.completed) return true;
-    if (quest.status == QuestStatus.active &&
-        quest.progress >= quest.progressMax &&
-        quest.progressMax > 0) {
-      return true;
-    }
-    return false;
-  }
-
-  Widget _buildAction() {
-    if (actionLoading) {
-      return FilledButton(
-        onPressed: null,
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.accent.withValues(alpha: 0.3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-        child: const SizedBox(
-          height: 18,
-          width: 18,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-        ),
-      );
-    }
-    if (quest.isSeasonQuest && quest.status == QuestStatus.completed) {
-      return FilledButton.icon(
-        onPressed: onGoToSeason,
-        icon: const Icon(Icons.emoji_events_rounded),
-        label: const Text(
-          '🏆 Sezona Git — Ödül Al',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.gold,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
-    if (quest.status == QuestStatus.completed) {
-      return FilledButton.icon(
-        onPressed: onClaim,
-        icon: const Icon(Icons.redeem_rounded),
-        label: const Text(
-          '🎁 Ödülü Al',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.green,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
-    if (quest.status == QuestStatus.active &&
-        quest.progress >= quest.progressMax &&
-        quest.progressMax > 0) {
-      return FilledButton.icon(
-        onPressed: onComplete,
-        icon: const Icon(Icons.check_circle_rounded),
-        label: const Text(
-          '✅ Tamamla',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: _QColors.green,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
-    return const SizedBox.shrink();
-  }
-}
-
-// ── Small helpers ─────────────────────────────────────────────────────────────
-
-class _Badge extends StatelessWidget {
-  const _Badge(this.label, this.color);
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.35)),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
-    ),
-  );
-}
-
-class _RewardChip extends StatelessWidget {
-  const _RewardChip(this.icon, this.value, this.color);
-  final IconData icon;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 12, color: color),
-      const SizedBox(width: 3),
-      Text(
-        value,
-        style: TextStyle(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ],
-  );
-}
-
-class _BigReward extends StatelessWidget {
-  const _BigReward(this.icon, this.value, this.label, this.color);
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Icon(icon, color: color, size: 22),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        value,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
-      ),
-      Text(
-        label,
-        style: const TextStyle(fontSize: 10, color: _QColors.textMuted),
-      ),
-    ],
-  );
 }

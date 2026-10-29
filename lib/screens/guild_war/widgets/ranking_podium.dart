@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/guild_war_model.dart';
 import '../../../theme/app_colors.dart';
+import 'faction_crest_painter.dart';
 import 'guild_war_design.dart';
 
 class RankingPodium extends StatelessWidget {
@@ -98,7 +99,19 @@ class _PodiumSlot extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: <Widget>[
-          Text(medal, style: const TextStyle(fontSize: 22)),
+          GuildCustomCrestWidget(
+            symbol: medal == '🥇'
+                ? GuildCrestSymbol.dragon
+                : (medal == '🥈' ? GuildCrestSymbol.blade : GuildCrestSymbol.lion),
+            primaryColor: _glowColor,
+            secondaryColor: const Color(0xFF1B1B2A),
+            frame: medal == '🥇'
+                ? GuildHeraldicFrame.goldFiligree
+                : (medal == '🥈' ? GuildHeraldicFrame.celestialSilver : GuildHeraldicFrame.bloodIron),
+            size: medal == '🥇' ? 36 : 30,
+          ),
+          const SizedBox(height: 2),
+          Text(medal, style: const TextStyle(fontSize: 16)),
           const SizedBox(height: 2),
           Text(
             entry.guildName,
@@ -178,7 +191,15 @@ class _RankingRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
+          GuildCustomCrestWidget(
+            symbol: GuildCrestSymbol.values[entry.rank % GuildCrestSymbol.values.length],
+            primaryColor: isHighlighted ? WarPalette.gold : AppColors.liquidGold,
+            secondaryColor: const Color(0xFF1B1B2A),
+            frame: isHighlighted ? GuildHeraldicFrame.goldFiligree : GuildHeraldicFrame.obsidianRune,
+            size: 26,
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

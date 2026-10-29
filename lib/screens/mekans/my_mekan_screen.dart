@@ -106,16 +106,16 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
     final Color accent = MekanPalette.accent(mekan?.typeKey);
 
     return MekanSubScaffold(
-      title: 'Benim Mekanim',
+      title: 'Benim Mekanım',
       body: _loading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: MekanPalette.aqua))
           : mekan == null
               ? MekanEmpty(
                   icon: Icons.add_business_outlined,
-                  title: 'Mekanin yok',
-                  message: 'Han ticareti icin once bir mekan ac.',
+                  title: 'Mekanın yok',
+                  message: 'Han ticareti için önce bir mekan aç.',
                   action: NeonButton(
-                    label: 'Mekan Ac',
+                    label: 'Mekan Aç',
                     icon: Icons.add_business_rounded,
                     onPressed: () => context.go(AppRoutes.mekanCreate),
                     expand: false,
@@ -155,7 +155,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                             children: <Widget>[
                               Icon(Icons.insights_rounded, size: 16),
                               SizedBox(width: 6),
-                              Text('Istatistik'),
+                              Text('İstatistik'),
                             ],
                           ),
                         ),
@@ -165,7 +165,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                             children: <Widget>[
                               Icon(Icons.upgrade_rounded, size: 16),
                               SizedBox(width: 6),
-                              Text('Yukseltme'),
+                              Text('Yükseltme'),
                             ],
                           ),
                         ),
@@ -215,7 +215,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                 const Icon(Icons.paid_rounded, color: MekanPalette.gold, size: 26),
                 const SizedBox(width: 8),
                 Text(
-                  '$revenue',
+                  formatMekanGold(revenue),
                   style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: MekanPalette.gold, letterSpacing: 0.5),
                 ),
               ],
@@ -226,7 +226,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
               children: <Widget>[
                 Expanded(
                   child: NeonButton(
-                    label: mekan.isOpen ? 'Kapat' : 'Ac',
+                    label: mekan.isOpen ? 'Kapat' : 'Aç',
                     icon: mekan.isOpen ? Icons.lock_rounded : Icons.lock_open_rounded,
                     filled: false,
                     accent: mekan.isOpen ? MekanPalette.ruby : MekanPalette.neon,
@@ -234,7 +234,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                     onPressed: mekan.raidClosed
                         ? null
                         : () => _run(() => _repo.toggleStatus(mekanId: mekan.id, isOpen: !mekan.isOpen),
-                            success: mekan.isOpen ? 'Mekan kapatildi' : 'Mekan acildi'),
+                            success: mekan.isOpen ? 'Mekan kapatıldı' : 'Mekan açıldı'),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -314,7 +314,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                   runSpacing: 8,
                   children: <Widget>[
                     GlowChip(icon: Icons.military_tech_rounded, label: 'Lv ${mekan.level}', color: accent),
-                    GlowChip(icon: Icons.star_rounded, label: '${mekan.fame} sohret', color: MekanPalette.gold),
+                    GlowChip(icon: Icons.star_rounded, label: '${mekan.fame} şöhret', color: MekanPalette.gold),
                     GlowChip(
                       icon: Icons.inventory_2_rounded,
                       label: '${s?.usedCapacity ?? '?'}/${s?.capacity ?? '?'} kapasite',
@@ -332,7 +332,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
           if (mekan.happyHourActive) ...<Widget>[
             const SizedBox(height: 12),
             HappyHourBanner(
-              until: DateTime.parse(mekan.happyHourUntil!),
+              until: DateTime.tryParse(mekan.happyHourUntil ?? '') ?? DateTime.now(),
               title: context.l10n.party_live,
               subtitle: context.l10n.party_live_subtitle,
             ),
@@ -341,11 +341,11 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
           _rentCard(mekan, s),
           const SizedBox(height: 12),
           NeonButton(
-            label: 'Vitrini Goruntule',
+            label: 'Vitrini Görüntüle',
             icon: Icons.visibility_rounded,
             filled: false,
             accent: accent,
-            onPressed: () => context.go('/mekans/${mekan.id}'),
+            onPressed: () => context.go(AppRoutes.mekanDetail(mekan.id)),
           ),
           if (mekanSupportsPvp(mekan.typeKey)) ...<Widget>[
             const SizedBox(height: 10),
@@ -353,7 +353,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
               label: 'PvP Arena',
               icon: Icons.sports_mma_rounded,
               accent: MekanPalette.ruby,
-              onPressed: mekan.isOpen ? () => context.go('/mekans/${mekan.id}/arena') : null,
+              onPressed: mekan.isOpen ? () => context.go(AppRoutes.mekanArena(mekan.id)) : null,
             ),
           ],
         ],
@@ -374,9 +374,9 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text('Aylik Kira', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: MekanPalette.textHi)),
+                const Text('Aylık Kira', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: MekanPalette.textHi)),
                 Text(
-                  overdue ? 'Gecikmis! Mekan kapanabilir.' : 'Odeme guncel',
+                  overdue ? 'Gecikmiş! Mekan kapanabilir.' : 'Ödeme güncel',
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
@@ -387,12 +387,12 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
             ),
           ),
           NeonButton(
-            label: rent > 0 ? formatMekanGold(rent) : 'Ode',
+            label: rent > 0 ? formatMekanGold(rent) : 'Öde',
             icon: Icons.paid_rounded,
             accent: MekanPalette.gold,
             expand: false,
             busy: _busy,
-            onPressed: () => _run(() => _repo.payRent(mekan.id), success: 'Kira odendi'),
+            onPressed: () => _run(() => _repo.payRent(mekan.id), success: 'Kira ödendi'),
           ),
         ],
       ),
@@ -415,7 +415,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
         physics: const AlwaysScrollableScrollPhysics(),
         children: <Widget>[
           NeonButton(
-            label: 'Stok Ekle / Guncelle',
+            label: 'Stok Ekle / Güncelle',
             icon: Icons.add_circle_rounded,
             accent: accent,
             onPressed: _inventory.isEmpty ? null : () => _openStockSheet(mekan),
@@ -423,19 +423,19 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
           if (_inventory.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 10),
-              child: Text('Uygun envanter yok — iksir veya Han itemi gerekli.',
+              child: Text('Uygun envanter yok — iksir veya Han eşyası gerekli.',
                   style: TextStyle(fontSize: 12, color: MekanPalette.textLow)),
             ),
           const SizedBox(height: 16),
-          NeonSectionHeader(title: 'Mevcut Stok', subtitle: '${_stock.length} urun', accent: accent),
+          NeonSectionHeader(title: 'Mevcut Stok', subtitle: '${_stock.length} ürün', accent: accent),
           const SizedBox(height: 10),
           if (_stock.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: MekanEmpty(
                 icon: Icons.inventory_2_outlined,
-                title: 'Stok bos',
-                message: 'Yukaridan urun ekleyerek satisa basla.',
+                title: 'Stok boş',
+                message: 'Yukarıdan ürün ekleyerek satışa başla.',
               ),
             )
           else
@@ -479,6 +479,9 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
           await ref.read(playerProvider.notifier).loadProfile();
           ref.read(mekanHubRefreshProvider.notifier).touch();
           await _load(silent: true);
+          if (mounted) {
+            AppMessenger.showSuccess(context, 'Stok güncellendi');
+          }
         },
       ),
     );
@@ -490,8 +493,8 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
     if (s == null) {
       return const MekanEmpty(
         icon: Icons.insights_rounded,
-        title: 'Istatistik yok',
-        message: 'Veri henuz hazir degil. Birkac satistan sonra tekrar bak.',
+        title: 'İstatistik yok',
+        message: 'Veri henüz hazır değil. Birkaç satıştan sonra tekrar bakın.',
       );
     }
     return RefreshIndicator(
@@ -514,10 +517,10 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
             itemBuilder: (BuildContext context, int index) {
               final List<Widget> boxes = <Widget>[
                 _statBox(Icons.paid_rounded, 'Toplam Gelir', formatMekanGold(s.totalRevenue), MekanPalette.gold),
-                _statBox(Icons.shopping_cart_rounded, 'Toplam Satis', '${s.totalSales}', MekanPalette.aqua),
-                _statBox(Icons.today_rounded, 'Bugun Gelir', formatMekanGold(s.todayRevenue), MekanPalette.neon),
-                _statBox(Icons.people_rounded, 'Haftalik Musteri', '${s.weekCustomers}', MekanPalette.amethyst),
-                _statBox(Icons.sports_mma_rounded, 'PvP Mac', '${s.pvpMatchCount}', MekanPalette.ruby),
+                _statBox(Icons.shopping_cart_rounded, 'Toplam Satış', '${s.totalSales}', MekanPalette.aqua),
+                _statBox(Icons.today_rounded, 'Bugün Gelir', formatMekanGold(s.todayRevenue), MekanPalette.neon),
+                _statBox(Icons.people_rounded, 'Haftalık Müşteri', '${s.weekCustomers}', MekanPalette.amethyst),
+                _statBox(Icons.sports_mma_rounded, 'PvP Maç', '${s.pvpMatchCount}', MekanPalette.ruby),
                 _statBox(Icons.inventory_rounded, 'Kapasite', '${s.usedCapacity}/${s.capacity}', MekanPalette.coral),
               ];
               return boxes[index];
@@ -535,7 +538,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text('En Cok Satan',
+                        const Text('En Çok Satan',
                             style: TextStyle(fontSize: 12, color: MekanPalette.textMid, fontWeight: FontWeight.w700)),
                         Text(s.topItem!,
                             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: MekanPalette.textHi)),
@@ -621,7 +624,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
               ),
               const SizedBox(height: 16),
               if (maxed)
-                const Text('Maksimum seviyeye ulasildi!',
+                const Text('Maksimum seviyeye ulaşıldı!',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: MekanPalette.gold))
               else ...<Widget>[
                 Row(
@@ -631,12 +634,12 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
                     const SizedBox(width: 8),
                     GlowChip(icon: Icons.inventory_2_rounded, label: '+kapasite', color: MekanPalette.aqua),
                     const SizedBox(width: 8),
-                    GlowChip(icon: Icons.trending_up_rounded, label: '+kar', color: MekanPalette.gold),
+                    GlowChip(icon: Icons.trending_up_rounded, label: '+kâr', color: MekanPalette.gold),
                   ],
                 ),
                 const SizedBox(height: 18),
                 NeonButton(
-                  label: cost != null ? 'Yukselt - ${formatMekanGold(cost)}' : 'Yukselt',
+                  label: cost != null ? 'Yükselt - ${formatMekanGold(cost)}' : 'Yükselt',
                   icon: Icons.upgrade_rounded,
                   accent: MekanPalette.gold,
                   busy: _busy,
@@ -647,7 +650,7 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
           ),
         ),
         const SizedBox(height: 16),
-        const NeonSectionHeader(title: 'Yukseltme Avantajlari', accent: MekanPalette.gold),
+        const NeonSectionHeader(title: 'Yükseltme Avantajları', accent: MekanPalette.gold),
         const SizedBox(height: 10),
         NeonPanel(
           accent: MekanPalette.titanium,
@@ -656,9 +659,9 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
             children: <Widget>[
               _UpgradeBenefit(icon: Icons.inventory_2_rounded, text: 'Daha fazla stok kapasitesi'),
               SizedBox(height: 10),
-              _UpgradeBenefit(icon: Icons.trending_up_rounded, text: 'Satislardan daha yuksek kar bonusu'),
+              _UpgradeBenefit(icon: Icons.trending_up_rounded, text: 'Satışlardan daha yüksek kâr bonusu'),
               SizedBox(height: 10),
-              _UpgradeBenefit(icon: Icons.star_rounded, text: 'Yukseltme basina +100 sohret'),
+              _UpgradeBenefit(icon: Icons.star_rounded, text: 'Yükseltme başına +100 şöhret'),
             ],
           ),
         ),
@@ -671,19 +674,19 @@ class _MyMekanScreenState extends ConsumerState<MyMekanScreen> with SingleTicker
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
         backgroundColor: MekanPalette.surfaceHi,
-        title: const Text('Mekani Yukselt', style: TextStyle(color: MekanPalette.textHi, fontWeight: FontWeight.w900)),
+        title: const Text('Mekanı Yükselt', style: TextStyle(color: MekanPalette.textHi, fontWeight: FontWeight.w900)),
         content: Text(
-          'Seviye ${mekan.level + 1} icin ${cost != null ? formatMekanGold(cost) : '?'} altin harcanacak.',
+          'Seviye ${mekan.level + 1} için ${cost != null ? formatMekanGold(cost) : '?'} altın harcanacak.',
           style: const TextStyle(color: MekanPalette.textMid),
         ),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgec')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yukselt')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yükselt')),
         ],
       ),
     );
     if (ok == true) {
-      await _run(() => _repo.upgrade(mekan.id), success: 'Mekan yukseltildi!');
+      await _run(() => _repo.upgrade(mekan.id), success: 'Mekan yükseltildi!');
     }
   }
 }
@@ -776,7 +779,8 @@ class _StockSheetState extends State<_StockSheet> {
   @override
   void initState() {
     super.initState();
-    _itemId = widget.initialSelected?.itemId;
+    _itemId = widget.initialSelected?.itemId ??
+        (widget.inventory.isNotEmpty ? widget.inventory.first.itemId : null);
     _qty = TextEditingController(text: '${widget.existing?.quantity ?? 1}');
     _price = TextEditingController(text: '${widget.existing?.sellPrice ?? _suggestedPrice(_itemId)}');
   }
@@ -799,8 +803,18 @@ class _StockSheetState extends State<_StockSheet> {
     final int qty = int.tryParse(_qty.text) ?? -1;
     final int price = int.tryParse(_price.text) ?? -1;
     if (qty < 0 || price < 0) {
-      AppMessenger.show(context, 'Adet ve fiyat 0+ olmali');
+      AppMessenger.show(context, 'Adet ve fiyat 0 veya daha büyük olmalı');
       return;
+    }
+    final bool editing = widget.existing != null;
+    if (!editing) {
+      final MekanInventoryEntry? inv = widget.inventory
+          .where((MekanInventoryEntry e) => e.itemId == _itemId)
+          .firstOrNull;
+      if (inv != null && qty > inv.quantity) {
+        AppMessenger.show(context, 'Envanterinizde sadece ${inv.quantity} adet var');
+        return;
+      }
     }
     setState(() => _busy = true);
     try {
@@ -808,11 +822,12 @@ class _StockSheetState extends State<_StockSheet> {
       if (mounted) {
         Navigator.pop(context);
         await widget.onDone();
-        if (context.mounted) AppMessenger.showSuccess(context, 'Stok guncellendi');
       }
     } catch (e) {
-      setState(() => _busy = false);
-      if (mounted) AppMessenger.showError(context, '$e');
+      if (mounted) {
+        setState(() => _busy = false);
+        AppMessenger.showError(context, '$e');
+      }
     }
   }
 
@@ -841,21 +856,32 @@ class _StockSheetState extends State<_StockSheet> {
             child: Container(width: 44, height: 4, decoration: BoxDecoration(color: MekanPalette.textLow, borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
-          Text(editing ? 'Stogu Guncelle' : 'Stok Ekle',
+          Text(editing ? 'Stoğu Güncelle' : 'Stok Ekle',
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: MekanPalette.textHi)),
           const SizedBox(height: 16),
           if (!editing)
             DropdownButtonFormField<String>(
-              initialValue: _itemId,
+              isExpanded: true,
+              value: (widget.inventory.any((MekanInventoryEntry e) => e.itemId == _itemId))
+                  ? _itemId
+                  : null,
               dropdownColor: MekanPalette.surfaceHi,
-              decoration: _dec('Urun sec', Icons.shopping_bag_outlined),
+              decoration: _dec('Ürün seç', Icons.shopping_bag_outlined),
+              hint: const Text('Ürün seçiniz...',
+                  style: TextStyle(color: MekanPalette.textMid, fontSize: 14)),
               style: const TextStyle(color: MekanPalette.textHi, fontSize: 14),
-              items: widget.inventory
-                  .map((MekanInventoryEntry e) => DropdownMenuItem<String>(
-                        value: e.itemId,
-                        child: Text('${e.name} (${e.quantity})', overflow: TextOverflow.ellipsis),
-                      ))
-                  .toList(),
+              items: () {
+                final Map<String, MekanInventoryEntry> unique = <String, MekanInventoryEntry>{};
+                for (final MekanInventoryEntry e in widget.inventory) {
+                  unique.putIfAbsent(e.itemId, () => e);
+                }
+                return unique.values
+                    .map((MekanInventoryEntry e) => DropdownMenuItem<String>(
+                          value: e.itemId,
+                          child: Text('${e.name} (${e.quantity})', overflow: TextOverflow.ellipsis),
+                        ))
+                    .toList();
+              }(),
               onChanged: (String? v) => setState(() {
                 _itemId = v;
                 _price.text = '${_suggestedPrice(v)}';
@@ -898,7 +924,7 @@ class _StockSheetState extends State<_StockSheet> {
           ),
           if (band != null) ...<Widget>[
             const SizedBox(height: 8),
-            Text('Fiyat araligi: ${formatMekanGold(band.min)} - ${formatMekanGold(band.max)}',
+            Text('Fiyat aralığı: ${formatMekanGold(band.min)} - ${formatMekanGold(band.max)}',
                 style: const TextStyle(fontSize: 11.5, color: MekanPalette.textMid, fontWeight: FontWeight.w600)),
           ],
           if (contraband) ...<Widget>[
@@ -908,14 +934,14 @@ class _StockSheetState extends State<_StockSheet> {
                 Icon(Icons.warning_amber_rounded, size: 14, color: MekanPalette.neon),
                 SizedBox(width: 6),
                 Expanded(
-                  child: Text('Kacak madde — sadece Yeralti, polis baskini riski.',
+                  child: Text('Kaçak madde — sadece Yeraltı, polis baskını riski.',
                       style: TextStyle(fontSize: 11.5, color: MekanPalette.neon, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
           ],
           const SizedBox(height: 8),
-          const Text('Stogu kaldirmak icin adeti 0 yap.',
+          const Text('Stoğu kaldırmak için adeti 0 yapın.',
               style: TextStyle(fontSize: 11, color: MekanPalette.textLow)),
           const SizedBox(height: 16),
           NeonButton(

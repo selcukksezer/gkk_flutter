@@ -7,6 +7,10 @@ import '../../../components/layout/game_screen_background.dart';
 import '../../mekans/widgets/mekan_design.dart';
 
 export '../../mekans/widgets/mekan_design.dart' show MekanPalette, PressableScale, GlowChip, NeonPanel;
+export 'faction_emblem_shader.dart';
+export 'faction_standing_card.dart';
+export 'faction_standing_model.dart';
+export 'faction_standings_hub.dart';
 
 /// Section title with gold accent bar — Han/Mekan style.
 class ReputationSectionTitle extends StatelessWidget {
@@ -365,14 +369,15 @@ class ReputationTabBar extends StatelessWidget {
     super.key,
     required this.index,
     required this.onChanged,
+    this.labels = const <String>['Birlikler', 'Kazan', 'Harca', 'Geçmiş'],
   });
 
   final int index;
   final ValueChanged<int> onChanged;
+  final List<String> labels;
 
   @override
   Widget build(BuildContext context) {
-    const List<String> labels = <String>['Kazan', 'Harca', 'Geçmiş'];
     return GkkSegmentedTabBar(
       labels: labels,
       activeIndex: index,

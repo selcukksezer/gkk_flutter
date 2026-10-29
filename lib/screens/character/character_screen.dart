@@ -1,54 +1,48 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../components/character/badge_showcase_panel.dart';
-import '../../components/character/character_combat_stats_panel.dart';
-import '../../components/character/character_health_panel.dart';
-import '../../core/tutorial/tutorial_anchor.dart';
-import '../../core/tutorial/tutorial_anchor_registry.dart';
-import '../../core/tutorial/tutorial_track.dart';
-import '../../components/character/stat_allocation_panel.dart';
+import '../../components/common/app_messenger.dart';
+import '../../components/common/item_icon_view.dart';
 import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
-import '../../l10n/l10n.dart';
 import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
-import '../../core/utils/character_class_abilities.dart';
-import '../../core/utils/cosmetic_title.dart';
-import '../../core/utils/effective_luck.dart';
-import '../../core/utils/reputation_tier.dart';
-import '../../core/utils/xp_formula.dart';
+import '../../core/tutorial/tutorial_anchor_registry.dart';
+import '../../core/tutorial/tutorial_controller.dart';
+import '../../core/tutorial/tutorial_track.dart';
+import '../../core/tutorial/tutorial_triggers.dart';
+import '../../l10n/l10n.dart';
+import '../../models/inventory_model.dart';
 import '../../models/player_model.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_badges_provider.dart';
 import '../../providers/player_provider.dart';
-import '../../core/tutorial/tutorial_controller.dart';
-import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
-import '../../components/common/app_messenger.dart';
-import '../../components/common/cosmetic_title_badge.dart';
 import '../../utils/logout_helper.dart';
+import 'widgets/character_glass_overlay.dart';
+import 'widgets/character_turntable_viewport.dart';
+import 'widgets/equipment_socket_dock.dart';
 
-// ─── Constants & Helpers ───────────────────────────────────────────────────
+export 'widgets/character_glass_overlay.dart';
+export 'widgets/character_turntable_viewport.dart';
+export 'widgets/equipment_socket_dock.dart';
 
-const _xpBarGradient = LinearGradient(
-  colors: <Color>[AppColors.liquidGold, AppColors.warningSolar],
-);
-
-String _fmtCompact(num n) {
-  if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-  return n.toInt().toString();
-}
-
-// ─── Screen ─────────────────────────────────────────────────────────────────
-
+/// Overhauled Mobile Character Profile & Equipment Screen
+/// Standardized for 2027 Aion 2 mobile visuals:
+/// - 3D Character Turntable Viewport (azimuth rotation, pitch tilt, reset)
+/// - Ethereal Wings with motes, Runic Pedestal & Iridescent Armor Sheen
+/// - Glowing Gear Sockets with Mobile Haptic Feedback on tap / equip / unequip
+/// - Non-blocking Glassmorphic Stat Overlay (minimizes for full 3D view)
+/// - Fluid mobile tab transitions between Stats, Equipment, Titles, and Codex
+/// - Mobile SafeArea ergonomics optimized for 390x844 viewports
 class CharacterScreen extends ConsumerStatefulWidget {
   const CharacterScreen({super.key});
 
@@ -58,14 +52,10 @@ class CharacterScreen extends ConsumerStatefulWidget {
 
 class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   bool _claimingDetox = false;
+  bool _statsExpanded = false;
+  CharacterTab _currentTab = CharacterTab.stats;
   final GlobalKey _classAbilitiesSectionKey = GlobalKey();
   int _classAbilitiesScrollGeneration = 0;
-
-  bool _isFuture(String? dateStr) {
-    if (dateStr == null) return false;
-    final DateTime? date = DateTime.tryParse(dateStr);
-    return date != null && date.isAfter(DateTime.now());
-  }
 
   @override
   void initState() {
@@ -115,8 +105,19 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
       if (!mounted || generation != _classAbilitiesScrollGeneration) return;
       if (ref.read(playerProvider).status != PlayerStatus.ready) continue;
 
+      // Expand stats if collapsed so abilities section is mounted
+      if (!_statsExpanded) {
+        setState(() {
+          _statsExpanded = true;
+          _currentTab = CharacterTab.stats;
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        if (!mounted) return;
+      }
+
       final BuildContext? target = _classAbilitiesSectionKey.currentContext;
-      if (target == null) continue;
+      if (target == null || !target.mounted) continue;
+      if (!mounted) return;
 
       await Scrollable.ensureVisible(
         target,
@@ -124,6 +125,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
         curve: Curves.easeOutCubic,
         alignment: 0.12,
       );
+      if (!mounted) return;
       TutorialAnchorRegistry.instance.scheduleRefresh();
       return;
     }
@@ -153,7 +155,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
           );
         }
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         AppMessenger.showError(context, '❌ İşlem başarısız');
       }
@@ -162,210 +164,231 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final playerState = ref.watch(playerProvider);
-    final profile = playerState.profile;
+  Future<void> _handleSlotTap(EquipmentSlotDef def, InventoryItem? item) async {
+    HapticFeedback.selectionClick();
+    if (item != null) {
+      // Equipped slot: open detail modal with unequip option
+      await showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (BuildContext ctx) => EquipmentDetailModal(
+          slotDef: def,
+          item: item,
+          onUnequip: () async {
+            await _handleUnequip(def.slotKey);
+          },
+        ),
+      );
+    } else {
+      // Empty slot: open quick equip selector
+      await _showEquipPickerForSlot(def);
+    }
+  }
 
-    Future<void> logout() async {
-      await performLogout(ref);
-}
+  Future<void> _handleUnequip(String slotKey) async {
+    if (!ref.read(inventoryProvider.notifier).canDirectUnequip()) {
+      AppMessenger.show(context, 'Envanter dolu — eşyayı çıkaramazsın.');
+      return;
+    }
+    HapticFeedback.mediumImpact();
+    final bool ok =
+        await ref.read(inventoryProvider.notifier).unequipItem(slot: slotKey);
+    if (ok && mounted) {
+      AppMessenger.showSuccess(context, 'Kuşan çıkarıldı.');
+    }
+  }
 
-    return Scaffold(
-      appBar: GameTopBar(title: context.l10n.screenTitleCharacter, onLogout: logout),
-      extendBody: true,
-      bottomNavigationBar: GameBottomBar(
-        currentRoute: AppRoutes.character,
-        onLogout: logout,
+  Future<void> _showEquipPickerForSlot(EquipmentSlotDef def) async {
+    final InventoryState invState = ref.read(inventoryProvider);
+    final List<InventoryItem> available = invState.items.where((InventoryItem it) {
+      return it.equipSlot == def.equipSlot && !it.isEquipped;
+    }).toList();
+
+    if (available.isEmpty) {
+      AppMessenger.show(
+        context,
+        '${def.name} yuvası için çantanda uygun eşya bulunmuyor.',
+      );
+      return;
+    }
+
+    final int playerLevel = ref.read(playerProvider).profile?.level ?? 1;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.darkObsidian,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXxl)),
+        side: BorderSide(
+          color: AppColors.liquidGold.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
       ),
-      body: switch (playerState.status) {
-        PlayerStatus.initial || PlayerStatus.loading => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        PlayerStatus.error => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                playerState.errorMessage ?? 'Hata',
-                style: const TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () =>
-                    ref.read(playerProvider.notifier).loadProfile(),
-                child: const Text('Tekrar Dene'),
-              ),
-            ],
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.base,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.borderBright.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusXs),
+                    ),
+                  ),
+                ),
+                Text(
+                  '${def.name} Kuşan',
+                  style: AppTextStyles.h3.copyWith(
+                    color: AppColors.textPrimary,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(ctx).height * 0.45,
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: available.length,
+                    separatorBuilder: (BuildContext context, int index) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (BuildContext context, int index) {
+                      final InventoryItem it = available[index];
+                      final Color rarityColor =
+                          AppColors.forRarity(it.rarity.name);
+                      final bool canEquip = playerLevel >= it.requiredLevel;
+
+                      return ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                          side: BorderSide(
+                            color: rarityColor.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        tileColor: AppColors.bgSurface.withValues(alpha: 0.6),
+                        leading: ItemIconView(
+                          iconValue: it.icon,
+                          itemId: it.itemId,
+                          itemType: it.itemType,
+                          size: 32,
+                        ),
+                        title: Text(
+                          it.name,
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: rarityColor,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Güç: ${it.power} · Lvl ${it.requiredLevel}',
+                          style: AppTextStyles.caption.copyWith(
+                            color: canEquip ? AppColors.textSecondary : AppColors.danger,
+                          ),
+                        ),
+                        trailing: FilledButton.tonal(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: canEquip
+                                ? AppColors.liquidGold.withValues(alpha: 0.2)
+                                : AppColors.bgCard,
+                            foregroundColor:
+                                canEquip ? AppColors.liquidGold : AppColors.textDisabled,
+                          ),
+                          onPressed: canEquip
+                              ? () async {
+                                  Navigator.pop(ctx);
+                                  HapticFeedback.mediumImpact();
+                                  final bool ok = await ref
+                                      .read(inventoryProvider.notifier)
+                                      .equipItem(
+                                        rowId: it.rowId,
+                                        slot: def.slotKey,
+                                      );
+                                  if (ok && mounted) {
+                                    AppMessenger.showSuccess(
+                                      this.context,
+                                      '${it.name} kuşandı!',
+                                    );
+                                  }
+                                }
+                              : null,
+                          child: Text(
+                            'Kuşan',
+                            style: AppTextStyles.label.copyWith(
+                              color: canEquip ? AppColors.liquidGold : AppColors.textDisabled,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        PlayerStatus.ready => _buildBody(profile),
+        );
       },
     );
   }
 
-  Widget _buildBody(PlayerProfile? profile) {
-    final profileLevel = profile?.level ?? 1;
-    final xp = profile?.xp ?? 0;
-    final xpProgress = buildXpProgress(level: profileLevel, totalXp: xp);
-    final level = xpProgress.level;
-
-    final int reputation = (profile?.reputation ?? 0).clamp(0, 999999999);
-    final bool highlightPowerTutorial =
-        ref.watch(tutorialProvider).activeStep?.id == 'character_check_power';
-    final bool statTutorialStep =
-        ref.watch(tutorialProvider).activeStep?.id == 'character_stat_panel';
-
-    return GameScreenBackground(
-      child: ListView(
-        padding: GameScrollLayout.pagePadding(context),
-        children: <Widget>[
-          GameScrollSection(
-            leadingGap: false,
-            child: _buildIdentityCard(profile, level, xpProgress, reputation),
-          ),
-          const GameScrollSection(child: BadgeShowcasePanel()),
-          GameScrollSection(
-            child: _buildCodexLink(context),
-          ),
-          GameScrollSection(
-            child: _buildQuickResources(
-              profile,
-              highlightPowerTutorial: highlightPowerTutorial,
-            ),
-          ),
-          if (statTutorialStep && (profile?.statPoints ?? 0) <= 0)
-            GameScrollSection(child: _buildStatTutorialIntro()),
-          if ((profile?.statPoints ?? 0) > 0)
-            GameScrollSection(
-              child: TutorialAnchorScope(
-                id: TutorialAnchorId.characterStatPanel,
-                child: StatAllocationPanel(
-                  availablePoints: profile!.statPoints,
-                ),
-              ),
-            ),
-          if (profile != null && profile.maxHealth > 0)
-            GameScrollSection(
-              child: CharacterHealthPanel(
-                profile: profile,
-                inHospital: _isFuture(profile.hospitalUntil),
-                inPrison: _isFuture(profile.prisonUntil),
-              ),
-            ),
-          GameScrollSection(child: _buildCombatStats(profile, level, reputation)),
-          GameScrollSection(child: _buildClassDetails(profile)),
-          GameScrollSection(
-            key: _classAbilitiesSectionKey,
-            child: _buildExtraInfo(profile),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _card({required Widget child, EdgeInsetsGeometry? padding}) {
-    return DottedPanel(padding: padding, child: child);
-  }
-
-  Widget _buildCodexLink(BuildContext context) {
-    return TutorialAnchorScope(
-      id: TutorialAnchorId.characterCodexTile,
-      child: _card(
-        child: InkWell(
-          onTap: () {
-            unawaited(
-              TutorialTriggers.onAnchorTap(ref, TutorialAnchorId.characterCodexTile),
-            );
-            context.push(AppRoutes.codex);
-          },
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.liquidGold.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.35)),
-                  ),
-                  child: const Icon(Icons.menu_book_rounded, color: AppColors.liquidGold),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Koleksiyon Kodex',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Eşya, boss ve zindan keşiflerini topla.',
-                        style: TextStyle(color: AppColors.mutedTitanium, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.mutedTitanium),
-              ],
-            ),
-          ),
+  Future<void> _showAvatarPicker() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.darkObsidian,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXxl)),
+        side: BorderSide(
+          color: AppColors.liquidGold.withValues(alpha: 0.35),
+          width: 1.2,
         ),
       ),
-    );
-  }
-
-  Future<void> _showAvatarPicker() async {
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.spaceNavy,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
+      builder: (BuildContext sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+              children: <Widget>[
+                Text(
                   'Profil Fotoğrafı Seç',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.base),
                 Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
                   children: ProfilePhotoCatalog.selectablePhotos.map((path) {
                     return Semantics(
                       button: true,
                       label: 'Profil fotoğrafı seç',
                       child: GestureDetector(
                         onTap: () async {
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                           try {
                             await SupabaseService.client
                                 .from('users')
-                                .update({'avatar_url': path})
+                                .update(<String, Object?>{'avatar_url': path})
                                 .eq(
                                   'auth_id',
                                   SupabaseService.client.auth.currentUser!.id,
                                 );
-                            ref.read(playerProvider.notifier).loadProfile();
+                            if (mounted) {
+                              ref.read(playerProvider.notifier).loadProfile();
+                            }
                           } catch (e) {
                             if (mounted) {
                               AppMessenger.show(
@@ -381,7 +404,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
                         child: ProfileAvatar(
                           size: 64,
                           avatarUrl: path,
-                          border: Border.all(color: Colors.white24, width: 2),
+                          border: Border.all(color: AppColors.borderBright, width: 2),
                         ),
                       ),
                     );
@@ -396,6 +419,7 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   }
 
   Future<void> _showFramePicker() async {
+    if (!mounted) return;
     bool codexFrameUnlocked = false;
     try {
       final dynamic dashRaw =
@@ -422,51 +446,57 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
         <String, Object?>{'id': 'codex', 'name': '📖 Kodex Kaşifi Çerçevesi'},
     ];
 
-    await showModalBottomSheet(
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.spaceNavy,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: AppColors.darkObsidian,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXxl)),
+        side: BorderSide(
+          color: AppColors.liquidGold.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
       ),
-      builder: (context) {
+      builder: (BuildContext sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+              children: <Widget>[
+                Text(
                   'Çerçeve Seç',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.base),
                 Column(
                   children: frames.map((frameData) {
                     return ListTile(
                       title: Text(
                         frameData['name'] as String,
-                        style: const TextStyle(color: Colors.white),
+                        style: AppTextStyles.bodyBold.copyWith(color: AppColors.textPrimary),
                       ),
                       trailing: const Icon(
                         Icons.chevron_right,
-                        color: Colors.white54,
+                        color: AppColors.textSecondary,
                       ),
                       onTap: () async {
-                        Navigator.pop(context);
+                        Navigator.pop(sheetContext);
                         try {
                           await SupabaseService.client
-                              .from('users')
-                              .update({'avatar_frame': frameData['id']})
-                              .eq(
-                                'auth_id',
-                                SupabaseService.client.auth.currentUser!.id,
-                              );
-                          ref.read(playerProvider.notifier).loadProfile();
+                                .from('users')
+                                .update(<String, Object?>{
+                                  'avatar_frame': frameData['id'],
+                                })
+                                .eq(
+                                  'auth_id',
+                                  SupabaseService.client.auth.currentUser!.id,
+                                );
+                          if (mounted) {
+                            ref.read(playerProvider.notifier).loadProfile();
+                          }
                         } catch (e) {
                           if (mounted) {
                             AppMessenger.show(
@@ -491,56 +521,57 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
   }
 
   Future<void> _showCustomizationPicker() async {
-    await showModalBottomSheet(
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.spaceNavy,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: AppColors.darkObsidian,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXxl)),
+        side: BorderSide(
+          color: AppColors.liquidGold.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
       ),
-      builder: (context) {
+      builder: (BuildContext sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+              children: <Widget>[
+                Text(
                   'Profili Düzenle',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.base),
                 ListTile(
                   leading: const Icon(Icons.person, color: AppColors.liquidGold),
-                  title: const Text(
+                  title: Text(
                     'Profil Fotoğrafını Değiştir',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.bodyBold.copyWith(color: AppColors.textPrimary),
                   ),
                   trailing: const Icon(
                     Icons.chevron_right,
-                    color: Colors.white54,
+                    color: AppColors.textSecondary,
                   ),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
                     _showAvatarPicker();
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.stars, color: Colors.amber),
-                  title: const Text(
+                  leading: const Icon(Icons.stars, color: AppColors.gold),
+                  title: Text(
                     'Çerçeveyi Değiştir',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.bodyBold.copyWith(color: AppColors.textPrimary),
                   ),
                   trailing: const Icon(
                     Icons.chevron_right,
-                    color: Colors.white54,
+                    color: AppColors.textSecondary,
                   ),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
                     _showFramePicker();
                   },
                 ),
@@ -552,598 +583,548 @@ class _CharacterScreenState extends ConsumerState<CharacterScreen> {
     );
   }
 
-  Widget _buildIdentityCard(
-    PlayerProfile? profile,
-    int level,
-    XpProgress xpProgress,
-    int reputation,
-  ) {
-    final ReputationTier tier = reputationTierFor(reputation);
-    final ReputationTierProgress tierProgress =
-        reputationTierProgressFor(reputation);
-    final int tierProgressPct =
-        (tierProgress.progress.clamp(0.0, 1.0) * 100).round();
-    final name = profile?.displayName ?? profile?.username ?? 'Oyuncu';
-    final guild = (profile?.guildName != null && profile!.guildName!.isNotEmpty)
-        ? '🏰 ${profile.guildName}'
-        : 'Lonca Yok';
+  @override
+  Widget build(BuildContext context) {
+    final PlayerState playerState = ref.watch(playerProvider);
+    final InventoryState inventoryState = ref.watch(inventoryProvider);
+    final PlayerProfile? profile = playerState.profile;
 
-    final charClass = profile?.characterClass;
-    final className = charClass == CharacterClass.warrior
-        ? '🗡️ Savaşçı'
-        : charClass == CharacterClass.alchemist
-        ? '⚗️ Simyacı'
-        : charClass == CharacterClass.shadow
-        ? '🌑 Gölge'
-        : 'Sınıf Seçilmedi';
+    Future<void> logout() async {
+      await performLogout(ref);
+    }
 
-    return _card(
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _showCustomizationPicker,
-            child: Stack(
-              children: [
-                ProfileAvatar(
-                  size: 64,
-                  avatarUrl: profile?.avatarUrl,
-                  backgroundColor: GameScreenBackground.spaceNavy,
-                  glowFrame: profile?.avatarFrame == 'glow',
-                  codexFrame: profile?.avatarFrame == 'codex',
+    return Scaffold(
+      appBar: GameTopBar(
+        title: context.l10n.screenTitleCharacter,
+        onLogout: logout,
+      ),
+      extendBody: true,
+      bottomNavigationBar: GameBottomBar(
+        currentRoute: AppRoutes.character,
+        onLogout: logout,
+      ),
+      body: switch (playerState.status) {
+        PlayerStatus.initial || PlayerStatus.loading => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        PlayerStatus.error => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.danger,
+                size: 40,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                playerState.errorMessage ?? 'Hata',
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textSecondary,
                 ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: AppColors.spaceNavy,
-                      shape: BoxShape.circle,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.liquidGold.withValues(alpha: 0.22),
+                  foregroundColor: AppColors.liquidGold,
+                  side: BorderSide(
+                    color: AppColors.liquidGold.withValues(alpha: 0.55),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  ),
+                ),
+                onPressed: () =>
+                    ref.read(playerProvider.notifier).loadProfile(),
+                child: Text(
+                  'Tekrar Dene',
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.liquidGold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        PlayerStatus.ready => _buildMobileCharacterStage(
+          profile,
+          inventoryState.equippedItems,
+        ),
+      },
+    );
+  }
+
+  Widget _buildEtherealAuraStage(
+    CharacterClass? characterClass,
+    Widget child,
+  ) {
+    final (Color primaryGlow, Color secondaryGlow) = switch (characterClass) {
+      CharacterClass.warrior => (
+          AppColors.liquidGold.withValues(alpha: 0.16),
+          AppColors.coralFlare.withValues(alpha: 0.06),
+        ),
+      CharacterClass.alchemist => (
+          AppColors.accentCyan.withValues(alpha: 0.18),
+          AppColors.accentTeal.withValues(alpha: 0.07),
+        ),
+      CharacterClass.shadow => (
+          AppColors.accentPurple.withValues(alpha: 0.20),
+          AppColors.cyberFuchsia.withValues(alpha: 0.07),
+        ),
+      null => (
+          AppColors.liquidGold.withValues(alpha: 0.14),
+          AppColors.accentBlue.withValues(alpha: 0.06),
+        ),
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: const Alignment(0, -0.05),
+          radius: 0.85,
+          colors: <Color>[
+            primaryGlow,
+            secondaryGlow,
+            Colors.transparent,
+          ],
+          stops: const <double>[0.0, 0.48, 1.0],
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildMobileCharacterStage(
+    PlayerProfile? profile,
+    Map<String, InventoryItem?> equippedItems,
+  ) {
+    final bool highlightPowerTutorial =
+        ref.watch(tutorialProvider).activeStep?.id == 'character_check_power';
+    final bool statTutorialStep =
+        ref.watch(tutorialProvider).activeStep?.id == 'character_stat_panel';
+
+    return GameScreenBackground(
+      child: SafeArea(
+        // Ensure layout respects notches and Dynamic Island
+        top: false,
+        bottom: true,
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            // 1. Scrollable 3D Hero Viewport & Floating Gear Sockets
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 96),
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: <Widget>[
+                  const SizedBox(height: AppSpacing.xs),
+                  // Turntable and Equipment Sockets Stack with Ethereal Aura Lighting
+                  _buildEtherealAuraStage(
+                    profile?.characterClass,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: <Widget>[
+                          // Interactive 3D Turntable Viewport (Aion 2 aesthetic)
+                          CharacterTurntableViewport(
+                            characterClass: profile?.characterClass,
+                            equippedCount: equippedItems.length,
+                            height: 380,
+                            onTap: () {
+                              if (_statsExpanded) {
+                                setState(() => _statsExpanded = false);
+                              }
+                            },
+                          ),
+
+                          // Glowing Gear Sockets (Thumb Reachable)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              ignoring: false,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xs,
+                                ),
+                                child: EquipmentSocketDock(
+                                  equippedItems: equippedItems,
+                                  onSlotTap: _handleSlotTap,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    padding: const EdgeInsets.all(2),
-                    child: const Icon(
-                      Icons.edit,
-                      size: 12,
-                      color: Colors.white70,
+                  ),
+
+                  const SizedBox(height: AppSpacing.sm),
+
+                  // Hero Attributes Summary Ribbon (HP, MP, Attack, Defense, Crit, CP)
+                  _HeroAttributesRibbon(
+                    profile: profile,
+                    isExpanded: _statsExpanded,
+                    onTap: () {
+                      setState(() => _statsExpanded = !_statsExpanded);
+                    },
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // If stats are expanded, show full glassmorphic content inline
+                  if (_statsExpanded)
+                    CharacterGlassOverlay(
+                      profile: profile,
+                      isExpanded: true,
+                      initialTab: _currentTab,
+                      equippedItems: equippedItems,
+                      onSlotTap: _handleSlotTap,
+                      onTabChanged: (CharacterTab tab) {
+                        setState(() => _currentTab = tab);
+                      },
+                      onToggleExpanded: () {
+                        setState(() => _statsExpanded = false);
+                      },
+                      onOpenCodex: () {
+                        unawaited(
+                          TutorialTriggers.onAnchorTap(
+                            ref,
+                            TutorialAnchorId.characterCodexTile,
+                          ),
+                        );
+                        context.push(AppRoutes.codex);
+                      },
+                      onOpenReputation: () => context.push(AppRoutes.reputation),
+                      onCustomizeProfile: _showCustomizationPicker,
+                      highlightPowerTutorial: highlightPowerTutorial,
+                      statTutorialStep: statTutorialStep,
+                      claimingDetox: _claimingDetox,
+                      onClaimDetox: _claimAlchemistDetox,
+                      classAbilitiesKey: _classAbilitiesSectionKey,
                     ),
+                ],
+              ),
+            ),
+
+            // 2. Floating Bottom Glassmorphic HUD (Visible when stats collapsed)
+            if (!_statsExpanded)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: CharacterGlassOverlay(
+                  profile: profile,
+                  isExpanded: false,
+                  initialTab: _currentTab,
+                  equippedItems: equippedItems,
+                  onSlotTap: _handleSlotTap,
+                  onTabChanged: (CharacterTab tab) {
+                    setState(() {
+                      _currentTab = tab;
+                      _statsExpanded = true;
+                    });
+                  },
+                  onToggleExpanded: () {
+                    setState(() => _statsExpanded = true);
+                  },
+                  onOpenCodex: () {
+                    unawaited(
+                      TutorialTriggers.onAnchorTap(
+                        ref,
+                        TutorialAnchorId.characterCodexTile,
+                      ),
+                    );
+                    context.push(AppRoutes.codex);
+                  },
+                  onOpenReputation: () => context.push(AppRoutes.reputation),
+                  onCustomizeProfile: _showCustomizationPicker,
+                  highlightPowerTutorial: highlightPowerTutorial,
+                  statTutorialStep: statTutorialStep,
+                  claimingDetox: _claimingDetox,
+                  onClaimDetox: _claimAlchemistDetox,
+                  classAbilitiesKey: _classAbilitiesSectionKey,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Glassmorphic Hero Attributes Quick Ribbon showing vital combat attributes:
+/// HP, MP/Energy, Attack, Defense, Crit Strike, and Combat Power (CP).
+class _HeroAttributesRibbon extends StatelessWidget {
+  const _HeroAttributesRibbon({
+    required this.profile,
+    required this.isExpanded,
+    required this.onTap,
+  });
+
+  final PlayerProfile? profile;
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  String _fmt(num n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return n.toInt().toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int hp = profile?.health ?? 0;
+    final int maxHp = (profile?.maxHealth ?? 100).clamp(1, 9999999);
+    final double hpRatio = (hp / maxHp).clamp(0.0, 1.0);
+
+    final int energy = profile?.energy ?? 0;
+    final int maxEnergy = (profile?.maxEnergy ?? 100).clamp(1, 9999999);
+    final double energyRatio = (energy / maxEnergy).clamp(0.0, 1.0);
+
+    final int attack = profile?.attack ?? 0;
+    final int defense = profile?.defense ?? 0;
+    final int luck = profile?.luck ?? 0;
+    final int crit = (luck * 2.2).round();
+
+    return Semantics(
+      button: true,
+      label: 'Kahraman Nitelikleri: HP $hp, MP $energy, Saldırı $attack, Savunma $defense, Kritik $crit',
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.spaceNavy.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            border: Border.all(
+              color: AppColors.liquidGold.withValues(alpha: 0.35),
+              width: 1.2,
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: AppColors.bgDeep.withValues(alpha: 0.55),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: AppColors.liquidGold.withValues(alpha: 0.08),
+                blurRadius: 10,
+                spreadRadius: -1,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              // Top Vitals: HP and MP/Energy Bars
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _buildBarIndicator(
+                      label: 'HP',
+                      value: '$hp / $maxHp',
+                      ratio: hpRatio,
+                      barColor: hpRatio > 0.35 ? AppColors.success : AppColors.danger,
+                      icon: Icons.favorite_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: _buildBarIndicator(
+                      label: 'MP',
+                      value: '$energy / $maxEnergy',
+                      ratio: energyRatio,
+                      barColor: AppColors.accentCyan,
+                      icon: Icons.bolt_rounded,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              // Bottom Attributes Grid: Attack, Defense, Crit, Power
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: <Widget>[
+                  _buildAttributeItem(
+                    label: 'Saldırı',
+                    value: _fmt(attack),
+                    icon: Icons.flash_on_rounded,
+                    color: AppColors.coralFlare,
+                  ),
+                  _buildVerticalDivider(),
+                  _buildAttributeItem(
+                    label: 'Savunma',
+                    value: _fmt(defense),
+                    icon: Icons.shield_rounded,
+                    color: AppColors.accentCyan,
+                  ),
+                  _buildVerticalDivider(),
+                  _buildAttributeItem(
+                    label: 'Kritik',
+                    value: _fmt(crit),
+                    icon: Icons.crisis_alert_rounded,
+                    color: AppColors.warningSolar,
+                  ),
+                  _buildVerticalDivider(),
+                  _buildAttributeItem(
+                    label: 'Savaş Gücü',
+                    value: _fmt(profile?.power ?? 0),
+                    icon: Icons.workspace_premium_rounded,
+                    color: AppColors.liquidGold,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              // Hint row to toggle detailed stats
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    isExpanded ? 'Modeli İncele (Statları Gizle)' : 'Tüm Statları & Ayrıntıları Göster',
+                    style: AppTextStyles.micro.copyWith(
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Icon(
+                    isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                    size: 14,
+                    color: AppColors.liquidGold,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBarIndicator({
+    required String label,
+    required String value,
+    required double ratio,
+    required Color barColor,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(icon, size: 12, color: barColor),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  label,
+                  style: AppTextStyles.micro.copyWith(
+                    color: barColor,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Text(
-                        className,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+            Text(
+              value,
+              style: AppTextStyles.micro.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 9,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusXs),
+          child: SizedBox(
+            height: 5,
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                ColoredBox(
+                  color: AppColors.textPrimary.withValues(alpha: 0.08),
                 ),
-                if (hasCosmeticTitle(profile?.cosmeticTitle)) ...<Widget>[
-                  const SizedBox(height: 6),
-                  CosmeticTitleBadge(titleKey: profile!.cosmeticTitle),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  'Seviye $level • $guild',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: () => context.push(AppRoutes.reputation),
-                  behavior: HitTestBehavior.opaque,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      const Icon(
-                        Icons.military_tech_rounded,
-                        size: 12,
-                        color: AppColors.liquidGold,
+                FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: ratio,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          barColor,
+                          barColor.withValues(alpha: 0.8),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${tier.title} · %$tierProgressPct',
-                        style: const TextStyle(
-                          color: AppColors.liquidGold,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: SizedBox(
-                    height: 6,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: <Widget>[
-                        ColoredBox(color: Colors.white.withValues(alpha: 0.1)),
-                        FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: xpProgress.percent.clamp(0.0, 1.0),
-                          child: const DecoratedBox(
-                            decoration: BoxDecoration(gradient: _xpBarGradient),
-                          ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: barColor.withValues(alpha: 0.4),
+                          blurRadius: 4,
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'XP: ${_fmtCompact(xpProgress.xpInLevel)} / ${_fmtCompact(xpProgress.xpNeededInLevel)}',
-                  style: const TextStyle(color: Colors.white38, fontSize: 10),
-                ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickResources(
-    PlayerProfile? profile, {
-    required bool highlightPowerTutorial,
-  }) {
-    Widget powerCard = _miniResource(
-      '⚔️ Güç',
-      _fmtCompact(profile?.power ?? 0),
-      AppColors.liquidGold,
-    );
-    if (highlightPowerTutorial) {
-      powerCard = TutorialAnchorScope(
-        id: TutorialAnchorId.characterPowerStat,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => TutorialTriggers.onAnchorTap(
-            ref,
-            TutorialAnchorId.characterPowerStat,
-          ),
-          child: powerCard,
         ),
-      );
-    }
-
-    final List<Widget> cards = <Widget>[
-      powerCard,
-      _miniResource(
-        '⚡ Enerji',
-        '${profile?.energy ?? 0}/${profile?.maxEnergy ?? 100}',
-        AppColors.cyberFuchsia,
-      ),
-      _miniResource(
-        '⚖️ Tolerans',
-        '${profile?.tolerance ?? 0}%',
-        AppColors.toxicNeon,
-      ),
-    ];
-
-    return Row(
-      children: <Widget>[
-        for (int i = 0; i < cards.length; i++) ...<Widget>[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(child: cards[i]),
-        ],
       ],
     );
   }
 
-  Widget _buildStatTutorialIntro() {
-    return TutorialAnchorScope(
-      id: TutorialAnchorId.characterStatPanel,
-      child: _card(
-        child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.cyberFuchsia.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.cyberFuchsia.withValues(alpha: 0.35),
-              ),
-            ),
-            child: const Icon(
-              Icons.auto_graph_rounded,
-              color: AppColors.cyberFuchsia,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Stat puanları',
-                  style: AppTextStyles.bodyBold.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Level atladıkça Güç, Çeviklik ve Dayanıklılık puanı kazanırsın. '
-                  'Şu an puanın yok — zindanda level atlayınca bu panel açılır.',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.mutedTitanium,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-    );
-  }
-
-  Widget _miniResource(String label, String value, Color color) {
-    return DottedPanel(
-      borderRadius: 10,
-      borderColor: color.withValues(alpha: 0.25),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      child: SizedBox(
-        width: double.infinity,
-        child: Column(
+  Widget _buildAttributeItem({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: AppSpacing.xs),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Text(
               value,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
+              style: AppTextStyles.captionBold.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+                letterSpacing: 0.2,
               ),
             ),
-            const SizedBox(height: 2),
             Text(
               label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: AppColors.mutedTitanium, fontSize: 11),
+              style: AppTextStyles.micro.copyWith(
+                color: AppColors.textTertiary,
+                fontSize: 9,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildCombatStats(PlayerProfile? profile, int level, int reputation) {
-    final winRate = (profile?.pvpWins ?? 0) + (profile?.pvpLosses ?? 0) > 0
-        ? (((profile?.pvpWins ?? 0) /
-                      ((profile?.pvpWins ?? 0) + (profile?.pvpLosses ?? 0))) *
-                  100)
-              .round()
-        : 0;
-    return _card(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-      child: CharacterCombatStatsPanel(
-        power: _fmtCompact(profile?.power ?? 0),
-        health: profile?.health ?? 0,
-        maxHealth: profile?.maxHealth ?? 0,
-        attack: '${profile?.attack ?? 0}',
-        defense: '${profile?.defense ?? 0}',
-        luck: profile == null
-            ? '0'
-            : '${effectivePlayerLuckFromProfile(profile)}',
-        luckSubtitle: profile == null || profile.equipBonusLuck <= 0
-            ? null
-            : 'baz ${profile.luck ?? 0}',
-        pvpWinRate: '%$winRate',
-        pvpRating: '${profile?.pvpRating ?? 0}',
-        reputation: reputation,
-      ),
-    );
-  }
-
-  Widget _buildClassDetails(PlayerProfile? profile) {
-    final charClass = profile?.characterClass;
-    final isAlchemist = charClass == CharacterClass.alchemist;
-
-    if (charClass == null) {
-      return const SizedBox.shrink();
-    }
-
-    final title = charClass == CharacterClass.warrior
-        ? 'Savaşçı'
-        : charClass == CharacterClass.alchemist
-        ? 'Simyacı'
-        : 'Gölge';
-    final desc = charClass == CharacterClass.warrior
-        ? 'Yakın dövüşte uzmanlaşmış bir sınıf. PvP galibiyetlerinden sonra 30 dk boyunca saldınırı %10 (üst üste 3 kazanımda %20) artırarak "Kan Hırsı" durumuna geçer.'
-        : charClass == CharacterClass.alchemist
-        ? 'Biyolojik toleransları daha iyidir ve her gün ücretsiz Minor Detox Drink (Toksin Atıcı) üretebilir. Craft odaklı karakterdir.'
-        : 'Şüpheli faaliyetlerde ustalaşmış, gizlilik ve kaçınma oranları yüksek bir sınıftır. Rüşvet maliyetleri %25 daha düşüktür.';
-
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '🎭 Sınıf Özellikleri: $title',
-            style: AppTextStyles.title.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            desc,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textTertiary,
-              height: 1.4,
-            ),
-          ),
-          if (isAlchemist) ...<Widget>[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.tonal(
-                onPressed: _claimingDetox ? null : _claimAlchemistDetox,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.coralFlare.withValues(alpha: 0.14),
-                  foregroundColor: AppColors.coralFlare,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  side: BorderSide(
-                    color: AppColors.coralFlare.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: _claimingDetox
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.coralFlare,
-                        ),
-                      )
-                    : Text(
-                        'Günlük Detox Al',
-                        style: AppTextStyles.captionBold.copyWith(
-                          color: AppColors.coralFlare,
-                        ),
-                      ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExtraInfo(PlayerProfile? profile) {
-    final CharacterClass? charClass = profile?.characterClass;
-    final List<CharacterAbilityDef> abilities = abilitiesForClass(charClass);
-    final Color accent = accentForClass(charClass);
-    final bool bloodlustActive = isWarriorBloodlustActive(profile);
-
-    return _card(
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          initiallyExpanded: true,
-          title: Text(
-            'Yetenekler & Adli Sicil',
-            style: AppTextStyles.title.copyWith(color: AppColors.textSecondary),
-          ),
-          iconColor: AppColors.liquidGold,
-          collapsedIconColor: AppColors.mutedTitanium,
-          children: <Widget>[
-            if (charClass != null && abilities.isNotEmpty) ...<Widget>[
-              // Spotlight only class passives — full ExpansionTile was too tall
-              // and pushed the coach Devam button under the fold.
-              TutorialAnchorScope(
-                id: TutorialAnchorId.characterClassAbilities,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Text(
-                      '${_classTitle(charClass)} — Sınıf Yetenekleri',
-                      style: AppTextStyles.captionBold.copyWith(color: accent),
-                    ),
-                    const SizedBox(height: 10),
-                    ...abilities.map((CharacterAbilityDef ability) {
-                      final bool isSignature =
-                          ability.kind == CharacterAbilityKind.signature;
-                      final bool isActive =
-                          ability.name == 'Kan Hırsı' && bloodlustActive;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _abilityTile(
-                          ability: ability,
-                          accent: accent,
-                          isSignature: isSignature,
-                          isActive: isActive,
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Divider(color: AppColors.mutedTitanium.withValues(alpha: 0.15)),
-              const SizedBox(height: 8),
-            ],
-            Text(
-              'Adli Sicil',
-              style: AppTextStyles.captionBold.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _infoRow(
-              'Şüphe Seviyesi',
-              '${effectiveSuspicionLevel(profile)}%'
-              '${profile?.characterClass == CharacterClass.shadow ? ' (tavan 80)' : ''}',
-            ),
-            _infoRow(
-              'Bağımlılık Seviyesi',
-              'Lvl ${profile?.addictionLevel ?? 0}',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _classTitle(CharacterClass charClass) {
-    return switch (charClass) {
-      CharacterClass.warrior => 'Savaşçı',
-      CharacterClass.alchemist => 'Simyacı',
-      CharacterClass.shadow => 'Gölge',
-    };
-  }
-
-  Widget _abilityTile({
-    required CharacterAbilityDef ability,
-    required Color accent,
-    required bool isSignature,
-    required bool isActive,
-  }) {
-    final Color borderColor = isActive
-        ? AppColors.toxicNeon
-        : isSignature
-        ? AppColors.liquidGold.withValues(alpha: 0.45)
-        : accent.withValues(alpha: 0.28);
-    final Color bgColor = isActive
-        ? AppColors.toxicNeon.withValues(alpha: 0.08)
-        : isSignature
-        ? AppColors.liquidGold.withValues(alpha: 0.06)
-        : AppColors.darkObsidian.withValues(alpha: 0.55);
-
+  Widget _buildVerticalDivider() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(ability.icon, style: const TextStyle(fontSize: 18)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        ability.name,
-                        style: AppTextStyles.captionBold.copyWith(
-                          color: isActive
-                              ? AppColors.toxicNeon
-                              : AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    if (isSignature)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.liquidGold.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.liquidGold.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Text(
-                          isActive ? 'AKTİF' : 'ÖZEL',
-                          style: AppTextStyles.micro.copyWith(
-                            color: isActive
-                                ? AppColors.toxicNeon
-                                : AppColors.liquidGold,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                      ),
-                    if (ability.system != null && !isSignature) ...<Widget>[
-                      const SizedBox(width: 6),
-                      Text(
-                        ability.system!,
-                        style: AppTextStyles.micro.copyWith(
-                          color: AppColors.mutedTitanium,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  ability.effect,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textTertiary,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(color: AppColors.textTertiary),
-          ),
-          Text(
-            value,
-            style: AppTextStyles.captionBold,
-          ),
-        ],
-      ),
+      width: 1,
+      height: 20,
+      color: AppColors.borderBright.withValues(alpha: 0.35),
     );
   }
 }

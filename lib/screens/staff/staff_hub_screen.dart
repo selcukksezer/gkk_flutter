@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/debug/staff_hub_debug_log.dart';
+import '../../core/engine/adaptive_quality_scaler.dart';
+import '../../core/engine/zero_jank_preloader.dart';
 import '../../core/utils/staff_audit_labels.dart';
 import '../../components/common/app_messenger.dart';
 import '../../core/services/supabase_service.dart';
@@ -21,6 +24,7 @@ import '../../repositories/staff_repository.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_text_styles.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../settings/graphics_settings_provider.dart';
 import '../support/widgets/support_design.dart';
 import '../support/widgets/support_screen_shell.dart';
 import 'widgets/staff_design.dart';
@@ -228,6 +232,7 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
   }
 
   void _openAuditTab({String? actorQuery}) {
+    HapticFeedback.lightImpact();
     if (actorQuery != null && actorQuery.isNotEmpty) {
       _auditActorSearch.text = actorQuery;
     }
@@ -244,24 +249,54 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
     return showModalBottomSheet<StaffPlayerBrief>(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (BuildContext ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: SettingsGlassCard(
-            accent: SettingsPalette.neon,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text('Oyuncu seç', style: AppTextStyles.bodyBold.copyWith(color: SettingsPalette.textHi)),
-                const SizedBox(height: 8),
-                ...players.map(
-                  (StaffPlayerBrief p) => ListTile(
-                    title: Text(p.displayName ?? p.username, style: supportBodyStyle),
-                    subtitle: Text('@${p.username}', style: supportCaptionStyle),
-                    onTap: () => Navigator.pop(ctx, p),
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: SettingsGlassCard(
+              accent: SettingsPalette.neon,
+              glow: true,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(ctx).height * 0.7,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          const Icon(Icons.people_outline_rounded, size: 20, color: SettingsPalette.neon),
+                          const SizedBox(width: 8),
+                          Text('Oyuncu seç', style: AppTextStyles.bodyBold.copyWith(color: SettingsPalette.textHi)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...players.map(
+                        (StaffPlayerBrief p) => ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          leading: CircleAvatar(
+                            backgroundColor: SettingsPalette.neon.withValues(alpha: 0.15),
+                            child: Text(
+                              (p.displayName ?? p.username).characters.first.toUpperCase(),
+                              style: AppTextStyles.captionBold.copyWith(color: SettingsPalette.neon),
+                            ),
+                          ),
+                          title: Text(p.displayName ?? p.username, style: supportBodyStyle),
+                          subtitle: Text('@${p.username}', style: supportCaptionStyle),
+                          trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pop(ctx, p);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -432,6 +467,7 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
   }
 
   Future<void> _toggleGmPermission(String key, bool value) async {
+    HapticFeedback.selectionClick();
     if (value) {
       PermissionCatalogItem? meta;
       for (final PermissionCatalogItem p in _permCatalog) {
@@ -533,7 +569,8 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
 
   Future<void> _openBugDetail(BugReportSummary b) async {
     final BugReportDetail? detail = await ref.read(supportProvider.notifier).loadBugDetail(b.id);
-    if (!mounted || detail == null) {
+    if (!mounted) return;
+    if (detail == null) {
       AppMessenger.showError(context, 'Bug detayı yüklenemedi.');
       return;
     }
@@ -752,6 +789,7 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
   @override
   Widget build(BuildContext context) {
     final StaffState staff = ref.watch(staffProvider);
+    final ScalerTelemetry telemetry = ref.watch(scalerTelemetryProvider);
     // #region agent log
     StaffHubDebugLog.log(
       'H0',
@@ -765,9 +803,47 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
     );
     // #endregion
     if (!staff.profile.isStaff) {
-      return const SupportScreenShell(
+      return SupportScreenShell(
         title: 'Staff',
-        body: Center(child: Text('Yetkisiz', style: TextStyle(color: SettingsPalette.textMid))),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SettingsGlassCard(
+              accent: SettingsPalette.ruby,
+              glow: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Icon(Icons.gpp_bad_rounded, size: 48, color: SettingsPalette.ruby),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Yetkisiz Erişim',
+                    style: AppTextStyles.bodyBold.copyWith(color: SettingsPalette.textHi, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Bu yönetim konsoluna erişim için Staff yetkisi gerekmektedir.',
+                    textAlign: TextAlign.center,
+                    style: supportBodyStyle.copyWith(color: SettingsPalette.textMid),
+                  ),
+                  const SizedBox(height: 16),
+                  StaffActionButton(
+                    label: 'Geri Dön',
+                    outlined: true,
+                    accent: SettingsPalette.ruby,
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go(AppRoutes.home);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
     }
 
@@ -775,53 +851,68 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
 
     return SupportScreenShell(
       title: staff.profile.isAdmin ? 'ADMIN Hub' : 'GM Hub',
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          if (staff.error != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: SettingsGlassCard(
-                accent: SettingsPalette.ruby,
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(staff.error!, style: supportCaptionStyle.copyWith(color: SettingsPalette.ruby)),
-                    ),
-                    TextButton(
-                      onPressed: () => unawaited(_refreshAll()),
-                      child: const Text('Yenile'),
-                    ),
-                  ],
+      body: ZeroJankTouchScope(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (staff.error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: SettingsGlassCard(
+                  accent: SettingsPalette.ruby,
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(staff.error!, style: supportCaptionStyle.copyWith(color: SettingsPalette.ruby)),
+                      ),
+                      TextButton(
+                        onPressed: () => unawaited(_refreshAll()),
+                        child: const Text('Yenile'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            StaffTabStrip(
+              tabs: StaffDesign.hubTabs,
+              selectedIndex: _tabs.index,
+              accent: staff.profile.isAdmin ? SettingsPalette.gold : SettingsPalette.neon,
+              onSelected: (int i) {
+                HapticFeedback.selectionClick();
+                _tabs.animateTo(i);
+              },
+              tabBadges: <int, int>{
+                2: dash?.openTickets ?? 0,
+                3: dash?.pendingBugs ?? 0,
+                4: dash?.openChatReports ?? 0,
+              },
             ),
-          StaffTabStrip(
-            tabs: StaffDesign.hubTabs,
-            selectedIndex: _tabs.index,
-            accent: staff.profile.isAdmin ? SettingsPalette.gold : SettingsPalette.neon,
-            onSelected: (int i) => _tabs.animateTo(i),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabs,
-              children: <Widget>[
-                _dashboardTab(dash, staff.profile.isAdmin, staff.profile),
-                _playersTab(staff),
-                _ticketsTab(staff),
-                _bugsTab(staff),
-                _chatTab(staff),
-                _auditTab(staff),
-                _gmTab(staff),
-              ],
+            Expanded(
+              child: TabBarView(
+                controller: _tabs,
+                children: <Widget>[
+                  _dashboardTab(dash, staff.profile.isAdmin, staff.profile, telemetry),
+                  _playersTab(staff),
+                  _ticketsTab(staff),
+                  _bugsTab(staff),
+                  _chatTab(staff),
+                  _auditTab(staff),
+                  _gmTab(staff),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _dashboardTab(StaffDashboard? dash, bool isAdmin, StaffProfile profile) {
+  Widget _dashboardTab(
+    StaffDashboard? dash,
+    bool isAdmin,
+    StaffProfile profile,
+    ScalerTelemetry telemetry,
+  ) {
     if (!profile.has('staff.view_hub')) {
       return ListView(
         padding: GameScrollLayout.padding(context),
@@ -833,110 +924,277 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
         ],
       );
     }
+    final StaffRoleTier roleTier = profile.isAdmin
+        ? StaffRoleTier.administrator
+        : profile.has('staff.manage_gm')
+            ? StaffRoleTier.gm
+            : StaffRoleTier.support;
+
     return RefreshIndicator(
       color: SettingsPalette.gold,
       onRefresh: _refreshAll,
       child: ListView(
-      padding: GameScrollLayout.padding(context),
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: <Widget>[
-        StaffHeroBanner(
-          isAdmin: isAdmin,
-          openTickets: dash?.openTickets ?? 0,
-          pendingBugs: dash?.pendingBugs ?? 0,
-          openChatReports: dash?.openChatReports ?? 0,
-        ),
-        if (profile.isAdmin) ...<Widget>[
+        padding: GameScrollLayout.padding(context),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: <Widget>[
+          StaffHeroBanner(
+            isAdmin: isAdmin,
+            roleTier: roleTier,
+            openTickets: dash?.openTickets ?? 0,
+            pendingBugs: dash?.pendingBugs ?? 0,
+            openChatReports: dash?.openChatReports ?? 0,
+            onTicketsTap: () {
+              HapticFeedback.selectionClick();
+              _tabs.animateTo(2);
+            },
+            onBugsTap: () {
+              HapticFeedback.selectionClick();
+              _tabs.animateTo(3);
+            },
+            onChatReportsTap: () {
+              HapticFeedback.selectionClick();
+              _tabs.animateTo(4);
+            },
+          ),
           const SizedBox(height: 12),
           SettingsGlassCard(
-            accent: SettingsPalette.gold,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            accent: telemetry.throttleLevel > 0 ? SettingsPalette.gold : SettingsPalette.neon,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
               children: <Widget>[
-                const SettingsSectionHeader(
-                  icon: Icons.diamond_outlined,
-                  title: 'Elmas Ödülü Onay Talepleri',
-                  subtitle: 'GM önerisi → admin onayı · geçmiş kayıtlar',
-                  accent: SettingsPalette.gold,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (telemetry.throttleLevel > 0 ? SettingsPalette.gold : SettingsPalette.neon).withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: (telemetry.throttleLevel > 0 ? SettingsPalette.gold : SettingsPalette.neon).withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.speed_rounded,
+                    color: telemetry.throttleLevel > 0 ? SettingsPalette.gold : SettingsPalette.neon,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                StaffActionButton(
-                  label: dash != null && dash.pendingGemRewards > 0
-                      ? 'Onay kuyruğu (${dash.pendingGemRewards})'
-                      : 'Onay kuyruğu',
-                  accent: SettingsPalette.gold,
-                  onPressed: () => context.push(AppRoutes.staffGemRewards),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Text(
+                            'MOTOR & TELEMETRİ RADARI',
+                            style: AppTextStyles.captionBold.copyWith(
+                              color: SettingsPalette.textHi,
+                              fontSize: 11,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: SettingsPalette.obsidian,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: SettingsPalette.titanium.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              'TIER: ${telemetry.tier.name.toUpperCase()}',
+                              style: AppTextStyles.captionBold.copyWith(
+                                color: SettingsPalette.gold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${telemetry.rollingFps.toStringAsFixed(1)} FPS · ${telemetry.rollingAvgFrameTimeMs.toStringAsFixed(1)}ms · Scale: ${telemetry.resolutionScale.toStringAsFixed(2)}x · ZeroJank Preloader Aktif',
+                        style: supportCaptionStyle.copyWith(
+                          color: SettingsPalette.textMid,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          SettingsGlassCard(
-            accent: SettingsPalette.fuchsia,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const SettingsSectionHeader(
-                  icon: Icons.tune_rounded,
-                  title: 'LiveOps',
-                  subtitle: 'BP/GW tarih · gece pazarı aç/kapa · ödüller',
-                  accent: SettingsPalette.fuchsia,
-                ),
-                const SizedBox(height: 8),
-                StaffActionButton(
-                  label: 'LiveOps konsolu',
-                  accent: SettingsPalette.fuchsia,
-                  onPressed: () => context.push(AppRoutes.staffLiveOps),
-                ),
-              ],
-            ),
+          const SizedBox(height: 16),
+          const SettingsSectionHeader(
+            icon: Icons.terminal_rounded,
+            title: 'Komuta Matrisi & Hızlı Erişim',
+            subtitle: 'Aion 2 idari yönetim konsolu eylemleri',
+            accent: SettingsPalette.neon,
           ),
-        ],
-        const SizedBox(height: 16),
-        const SettingsSectionHeader(
-          icon: Icons.history_rounded,
-          title: 'Son işlemler',
-          accent: SettingsPalette.titanium,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: TextField(
-                controller: _dashboardAuditSearch,
-                style: supportBodyStyle,
-                decoration: supportInputDecoration(label: 'Staff / oyuncu ara', hint: 'kullanıcı adı'),
-                onSubmitted: (_) => _openAuditTab(actorQuery: _dashboardAuditSearch.text.trim()),
-              ),
-            ),
-            const SizedBox(width: 8),
-            StaffActionButton(
-              label: 'Audit',
-              onPressed: () => _openAuditTab(actorQuery: _dashboardAuditSearch.text.trim()),
+          const SizedBox(height: 10),
+          if (profile.isAdmin) ...<Widget>[
+            StaffCommandActionTile(
+              title: 'Elmas Ödülü Onay Talepleri',
+              subtitle: 'GM önerisi → admin mutabakatı & onay geçmişi',
+              icon: Icons.diamond_outlined,
               accent: SettingsPalette.gold,
+              badgeText: dash != null && dash.pendingGemRewards > 0
+                  ? '${dash.pendingGemRewards} BEKLEYEN'
+                  : null,
+              badgeColor: SettingsPalette.gold,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                context.push(AppRoutes.staffGemRewards);
+              },
             ),
+            const SizedBox(height: 8),
+            StaffCommandActionTile(
+              title: 'LiveOps Konsolu',
+              subtitle: 'Savaş Bileti, Lonca Savaşı & Gece Pazarı telemetrisi',
+              icon: Icons.tune_rounded,
+              accent: SettingsPalette.fuchsia,
+              badgeText: 'CANLI',
+              badgeColor: SettingsPalette.fuchsia,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                context.push(AppRoutes.staffLiveOps);
+              },
+            ),
+            const SizedBox(height: 8),
           ],
-        ),
-        const SizedBox(height: 8),
-        if ((dash?.recentAudit ?? const <StaffAuditBrief>[]).isEmpty)
-          const StaffEmptyState(
-            icon: Icons.inbox_outlined,
-            message: 'Henüz audit kaydı yok.',
-          )
-        else
-          ...(dash?.recentAudit ?? const <StaffAuditBrief>[]).map(
-            (StaffAuditBrief a) => SupportListTileCard(
-              title: StaffAuditLabels.actionTitle(a.action),
-              subtitle: StaffAuditLabels.buildSubtitle(
-                actorUsername: a.actorUsername,
-                targetType: a.targetType,
-                createdAt: a.createdAt,
-              ),
-              accent: SettingsPalette.gold,
-              onTap: () => _openAuditTab(actorQuery: a.actorUsername),
-            ),
+          StaffCommandActionTile(
+            title: 'Oyuncu Sorgu Terminali',
+            subtitle: 'Profil, ceza geçmişi ve moderasyon işlem fişi',
+            icon: Icons.person_search_rounded,
+            accent: SettingsPalette.neon,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _tabs.animateTo(1);
+            },
           ),
-      ],
+          const SizedBox(height: 8),
+          if (profile.has('ticket.view_all')) ...<Widget>[
+            StaffCommandActionTile(
+              title: 'Destek Biletleri Masası',
+              subtitle: 'Oyuncu yardım talepleri ve yanıt kuyruğu',
+              icon: Icons.headset_mic_rounded,
+              accent: SettingsPalette.gold,
+              badgeText: dash != null && dash.openTickets > 0
+                  ? '${dash.openTickets} AÇIK'
+                  : null,
+              badgeColor: SettingsPalette.gold,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _tabs.animateTo(2);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (profile.has('bug.view')) ...<Widget>[
+            StaffCommandActionTile(
+              title: 'Hata Triage & Ödül Merkezi',
+              subtitle: 'Bug raporları, doğrulama ve elmas ödülü önerileri',
+              icon: Icons.bug_report_rounded,
+              accent: SettingsPalette.coral,
+              badgeText: dash != null && dash.pendingBugs > 0
+                  ? '${dash.pendingBugs} BEKLEYEN'
+                  : null,
+              badgeColor: SettingsPalette.coral,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _tabs.animateTo(3);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+          StaffCommandActionTile(
+            title: 'Sohbet Güvenlik Radarı',
+            subtitle: 'Canlı bildirimler, otomatik filtreler ve mesaj silme',
+            icon: Icons.shield_moon_rounded,
+            accent: SettingsPalette.coral,
+            badgeText: dash != null && dash.openChatReports > 0
+                ? '${dash.openChatReports} RAPOR'
+                : null,
+            badgeColor: SettingsPalette.coral,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _tabs.animateTo(4);
+            },
+          ),
+          const SizedBox(height: 8),
+          if (profile.has('staff.view_audit')) ...<Widget>[
+            StaffCommandActionTile(
+              title: 'İdari Denetim Günlüğü',
+              subtitle: 'Staff işlem izleri, ceza fişleri ve güvenlik kayıtları',
+              icon: Icons.manage_search_rounded,
+              accent: SettingsPalette.titanium,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _tabs.animateTo(5);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (profile.has('staff.manage_gm')) ...<Widget>[
+            StaffCommandActionTile(
+              title: 'GM Yetki Matrisi & Roster',
+              subtitle: 'Game Master kadrosu ve izin delegasyonu',
+              icon: Icons.security_rounded,
+              accent: SettingsPalette.gold,
+              badgeText: '${_gmRoster.length} AKTİF',
+              badgeColor: SettingsPalette.neon,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _tabs.animateTo(6);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 18),
+          const SettingsSectionHeader(
+            icon: Icons.history_rounded,
+            title: 'Son işlemler',
+            accent: SettingsPalette.titanium,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: TextField(
+                  controller: _dashboardAuditSearch,
+                  style: supportBodyStyle,
+                  decoration: supportInputDecoration(label: 'Staff / oyuncu ara', hint: 'kullanıcı adı'),
+                  onSubmitted: (_) => _openAuditTab(actorQuery: _dashboardAuditSearch.text.trim()),
+                ),
+              ),
+              const SizedBox(width: 8),
+              StaffActionButton(
+                label: 'Audit',
+                onPressed: () => _openAuditTab(actorQuery: _dashboardAuditSearch.text.trim()),
+                accent: SettingsPalette.gold,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if ((dash?.recentAudit ?? const <StaffAuditBrief>[]).isEmpty)
+            const StaffEmptyState(
+              icon: Icons.inbox_outlined,
+              message: 'Henüz audit kaydı yok.',
+            )
+          else
+            ...(dash?.recentAudit ?? const <StaffAuditBrief>[]).map(
+              (StaffAuditBrief a) => SupportListTileCard(
+                title: StaffAuditLabels.actionTitle(a.action),
+                subtitle: StaffAuditLabels.buildSubtitle(
+                  actorUsername: a.actorUsername,
+                  targetType: a.targetType,
+                  createdAt: a.createdAt,
+                ),
+                accent: SettingsPalette.gold,
+                onTap: () => _openAuditTab(actorQuery: a.actorUsername),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1006,6 +1264,14 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
+                    if (p.staffBadge != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: StaffRoleBadge(
+                          tier: StaffRoleTier.fromString(p.staffBadge),
+                          compact: true,
+                        ),
+                      ),
                     if (p.isBanned)
                       const Padding(
                         padding: EdgeInsets.only(right: 6),
@@ -1520,6 +1786,7 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
               permCount: gm.permissions.length,
               selected: _editingGmAuthId == gm.authId,
               onTap: () {
+                HapticFeedback.selectionClick();
                 setState(() {
                   _editingGmAuthId = gm.authId;
                   _selectedPerms
@@ -1554,16 +1821,40 @@ class _StaffHubScreenState extends ConsumerState<StaffHubScreen>
         ],
         if (_selectedPerms.isNotEmpty) ...<Widget>[
           const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text(
+                'Seçili İzinler (${_selectedPerms.length})',
+                style: AppTextStyles.captionBold.copyWith(color: SettingsPalette.gold),
+              ),
+              TextButton(
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedPerms.clear());
+                },
+                child: Text('Temizle', style: supportCaptionStyle.copyWith(color: SettingsPalette.ruby)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: _selectedPerms.map((String k) {
               return Chip(
                 label: Text(k, style: supportCaptionStyle.copyWith(color: SettingsPalette.textHi)),
-                backgroundColor: SettingsPalette.obsidian.withValues(alpha: 0.7),
+                backgroundColor: SettingsPalette.obsidian.withValues(alpha: 0.75),
                 side: BorderSide(color: SettingsPalette.gold.withValues(alpha: 0.4)),
                 deleteIconColor: SettingsPalette.gold,
-                onDeleted: () => setState(() => _selectedPerms.remove(k)),
+                deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                onDeleted: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedPerms.remove(k));
+                },
               );
             }).toList(),
           ),

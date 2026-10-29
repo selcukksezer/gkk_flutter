@@ -1,13 +1,16 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/common/app_messenger.dart';
 import '../../components/common/inline_error_retry.dart';
+import '../../components/common/item_icon_view.dart';
 import '../../components/common/profile_avatar.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
-import '../../components/common/item_icon_view.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/presence_service.dart';
 import '../../core/tutorial/tutorial_anchor.dart';
@@ -20,6 +23,7 @@ import '../../providers/mekan_detail_provider.dart';
 import '../../providers/mekan_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
+import 'widgets/mekan_3d_viewport.dart';
 import 'widgets/mekan_design.dart';
 import 'widgets/mekan_scaffold.dart';
 import 'widgets/mekan_theme.dart';
@@ -51,11 +55,15 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
   Future<void> _reload({bool silent = false}) async {
     if (silent && mounted) setState(() => _refreshing = true);
     invalidateMekanDetail(ref, widget.mekanId);
-    await ref.read(mekanDetailProvider(widget.mekanId).future);
+    try {
+      await ref.read(mekanDetailProvider(widget.mekanId).future);
+    } catch (_) {
+      // Handled by AsyncValue in UI
+    }
     if (mounted) setState(() => _refreshing = false);
   }
 
-  Future<void> _openBuySheet(Mekan mekan, MekanStockEntry item) async {
+  Future<void> _openBuySheet(Mekan mekan, MekanStockEntry item, Color accent) async {
     if (!mekan.isOpen || mekan.raidClosed) {
       AppMessenger.showError(context, 'Mekan kapalı');
       return;
@@ -67,6 +75,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
       builder: (_) => _BuySheet(
         item: item,
         happyHour: mekan.happyHourActive,
+        accent: accent,
         onConfirm: (int qty) => _buy(mekan, item, qty),
       ),
     );
@@ -80,6 +89,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
             mekanId: widget.mekanId,
             itemId: item.itemId,
           );
+      if (!mounted) return;
       await ref.read(playerProvider.notifier).loadProfile();
       if (!mounted) return;
       await _showRefillResult(result);
@@ -105,108 +115,114 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (BuildContext ctx) {
-        return Container(
-          padding: EdgeInsets.fromLTRB(18, 16, 18, MediaQuery.viewInsetsOf(ctx).bottom + 24),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(top: BorderSide(color: MekanPalette.aqua, width: 1.5)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(color: MekanPalette.textLow, borderRadius: BorderRadius.circular(2)),
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
+            child: Container(
+              padding: EdgeInsets.fromLTRB(18, 16, 18, MediaQuery.viewInsetsOf(ctx).bottom + 24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
                 ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(top: BorderSide(color: accent, width: 1.5)),
               ),
-              const SizedBox(height: 14),
-              Text(
-                l10n.nightlife_result,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: MekanPalette.textMid,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: accent),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                result.message,
-                style: const TextStyle(fontSize: 14, color: MekanPalette.textHi, height: 1.35),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  GlowChip(
-                    icon: Icons.bolt_rounded,
-                    label: '${l10n.nightlife_energy_cost} ${result.energyBefore}→${result.energyAfter}',
-                    color: MekanPalette.aqua,
-                  ),
-                  GlowChip(
-                    icon: Icons.confirmation_number_rounded,
-                    label: '${l10n.nightlife_tickets} ${result.ticketsLeft}',
-                    color: MekanPalette.solar,
-                  ),
-                  GlowChip(
-                    icon: Icons.monetization_on_rounded,
-                    label: 'Gold -${result.goldPaid}',
-                    color: MekanPalette.gold,
-                  ),
-                  GlowChip(
-                    icon: Icons.medication_liquid_rounded,
-                    label: '${l10n.nightlife_addiction} ${result.addictionLevel} · ${result.tolerance}%',
-                    color: MekanPalette.fuchsia,
-                  ),
-                  if (result.odNextWarning)
-                    GlowChip(
-                      icon: Icons.warning_amber_rounded,
-                      label: l10n.nightlife_od_warning,
-                      color: MekanPalette.ruby,
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(color: MekanPalette.textLow, borderRadius: BorderRadius.circular(2)),
                     ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    l10n.nightlife_result,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: MekanPalette.textMid,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    title,
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: accent),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    result.message,
+                    style: const TextStyle(fontSize: 14, color: MekanPalette.textHi, height: 1.35),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <Widget>[
+                      GlowChip(
+                        icon: Icons.bolt_rounded,
+                        label: '${l10n.nightlife_energy_cost} ${result.energyBefore}→${result.energyAfter}',
+                        color: MekanPalette.aqua,
+                      ),
+                      GlowChip(
+                        icon: Icons.confirmation_number_rounded,
+                        label: '${l10n.nightlife_tickets} ${result.ticketsLeft}',
+                        color: MekanPalette.solar,
+                      ),
+                      GlowChip(
+                        icon: Icons.monetization_on_rounded,
+                        label: 'Gold -${result.goldPaid}',
+                        color: MekanPalette.gold,
+                      ),
+                      GlowChip(
+                        icon: Icons.medication_liquid_rounded,
+                        label: '${l10n.nightlife_addiction} ${result.addictionLevel} · ${result.tolerance}%',
+                        color: MekanPalette.fuchsia,
+                      ),
+                      if (result.odNextWarning)
+                        GlowChip(
+                          icon: Icons.warning_amber_rounded,
+                          label: l10n.nightlife_od_warning,
+                          color: MekanPalette.ruby,
+                        ),
+                    ],
+                  ),
+                  if (result.hospital) ...<Widget>[
+                    const SizedBox(height: 14),
+                    NeonButton(
+                      label: l10n.nightlife_hospital_cta,
+                      icon: Icons.local_hospital_rounded,
+                      accent: MekanPalette.ruby,
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        context.go(AppRoutes.hospital);
+                      },
+                    ),
+                  ] else ...<Widget>[
+                    const SizedBox(height: 14),
+                    NeonButton(
+                      label: 'Tamam',
+                      accent: accent,
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
                 ],
               ),
-              if (result.hospital) ...<Widget>[
-                const SizedBox(height: 14),
-                NeonButton(
-                  label: l10n.nightlife_hospital_cta,
-                  icon: Icons.local_hospital_rounded,
-                  accent: MekanPalette.ruby,
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    context.go(AppRoutes.hospital);
-                  },
-                ),
-              ] else ...<Widget>[
-                const SizedBox(height: 14),
-                NeonButton(
-                  label: 'OK',
-                  accent: accent,
-                  onPressed: () => Navigator.of(ctx).pop(),
-                ),
-              ],
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Future<void> _openRefillSheet(Mekan mekan, List<MekanStockEntry> refillStock) async {
+  Future<void> _openRefillSheet(Mekan mekan, List<MekanStockEntry> refillStock, Color accent) async {
     final l10n = context.l10n;
     if (refillStock.isEmpty) {
       AppMessenger.showError(context, l10n.nightlife_no_refill_stock);
@@ -217,71 +233,205 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext ctx) {
-        return Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.7),
-          padding: EdgeInsets.fromLTRB(16, 14, 16, MediaQuery.viewInsetsOf(ctx).bottom + 20),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(top: BorderSide(color: MekanPalette.aqua, width: 1.5)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text(
-                l10n.nightlife_buy_drink,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: MekanPalette.textHi),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.nightlife_enter_free,
-                style: const TextStyle(fontSize: 12, color: MekanPalette.textMid),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: refillStock.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (BuildContext context, int i) {
-                    final MekanStockEntry s = refillStock[i];
-                    final bool own = ref.read(playerProvider).profile?.authId == mekan.ownerId;
-                    final String priceLabel = own ? '1 ${l10n.nightlife_tickets}' : '${s.sellPrice}g + 1 ${l10n.nightlife_tickets}';
-                    return ListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: MekanPalette.aqua, width: 0.6),
-                      ),
-                      leading: ItemIconView(iconValue: s.icon, size: 36),
-                      title: Text(s.name, style: const TextStyle(color: MekanPalette.textHi, fontWeight: FontWeight.w800)),
-                      subtitle: Text(
-                        'x${s.quantity} · $priceLabel',
-                        style: const TextStyle(color: MekanPalette.textMid, fontSize: 12),
-                      ),
-                      trailing: NeonButton(
-                        label: l10n.nightlife_refill,
-                        accent: MekanPalette.neon,
-                        expand: false,
-                        busy: _nightlifeBusy,
-                        onPressed: _nightlifeBusy
-                            ? null
-                            : () async {
-                                Navigator.of(ctx).pop();
-                                await _refill(s);
-                              },
-                      ),
-                    );
-                  },
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
+            child: Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.72),
+              padding: EdgeInsets.fromLTRB(16, 14, 16, MediaQuery.viewInsetsOf(ctx).bottom + 20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
                 ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(top: BorderSide(color: accent, width: 1.5)),
               ),
-            ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(color: MekanPalette.textLow, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    l10n.nightlife_buy_drink,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: MekanPalette.textHi),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.nightlife_enter_free,
+                    style: const TextStyle(fontSize: 12, color: MekanPalette.textMid),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: refillStock.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (BuildContext context, int i) {
+                        final MekanStockEntry s = refillStock[i];
+                        final bool own = ref.read(playerProvider).profile?.authId == mekan.ownerId;
+                        final String priceLabel = own
+                            ? '1 ${l10n.nightlife_tickets}'
+                            : '${s.sellPrice}g + 1 ${l10n.nightlife_tickets}';
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: MekanPalette.surface.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: accent.withValues(alpha: 0.35), width: 0.8),
+                          ),
+                          child: ListTile(
+                            leading: ItemIconView(iconValue: s.icon, size: 36),
+                            title: Text(s.name, style: const TextStyle(color: MekanPalette.textHi, fontWeight: FontWeight.w800)),
+                            subtitle: Text(
+                              'x${s.quantity} · $priceLabel',
+                              style: const TextStyle(color: MekanPalette.textMid, fontSize: 12),
+                            ),
+                            trailing: NeonButton(
+                              label: l10n.nightlife_refill,
+                              accent: MekanPalette.neon,
+                              expand: false,
+                              busy: _nightlifeBusy,
+                              onPressed: _nightlifeBusy
+                                  ? null
+                                  : () async {
+                                      Navigator.of(ctx).pop();
+                                      await _refill(s);
+                                    },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
     );
+  }
+
+  Future<void> _confirmUpgrade(Mekan mekan) async {
+    final int nextLevel = mekan.level + 1;
+    final int cost = mekan.level * 2500000;
+    final profile = ref.read(playerProvider).profile;
+    final int currentGold = profile?.gold ?? 0;
+    final bool canAfford = currentGold >= cost;
+
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: MekanPalette.surfaceHi,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: MekanPalette.gold, width: 1.2),
+        ),
+        title: const Row(
+          children: <Widget>[
+            Icon(Icons.upgrade_rounded, color: MekanPalette.gold, size: 24),
+            SizedBox(width: 8),
+            Text(
+              'Mekanı Yükselt',
+              style: TextStyle(color: MekanPalette.textHi, fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Seviye ${mekan.level} → Seviye $nextLevel',
+              style: const TextStyle(color: MekanPalette.textHi, fontWeight: FontWeight.w800, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Yükseltme Ücreti: ${formatMekanGold(cost)} Altın',
+              style: const TextStyle(color: MekanPalette.gold, fontWeight: FontWeight.w700),
+            ),
+            Text(
+              'Mevcut Bakiyeniz: ${formatMekanGold(currentGold)} Altın',
+              style: TextStyle(
+                color: canAfford ? MekanPalette.textMid : MekanPalette.ruby,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Yükseltme Avantajları:\n• +100 Stok kapasitesi\n• Daha yüksek kâr marjı bonusu\n• +100 Şöhret puanı',
+              style: TextStyle(color: MekanPalette.textMid, fontSize: 12.5, height: 1.4),
+            ),
+            if (!canAfford) ...<Widget>[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: MekanPalette.ruby.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: MekanPalette.ruby.withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  children: <Widget>[
+                    Icon(Icons.warning_amber_rounded, size: 16, color: MekanPalette.ruby),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Yetersiz altın! Yükseltme yapılamaz.',
+                        style: TextStyle(color: MekanPalette.ruby, fontSize: 11.5, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç', style: TextStyle(color: MekanPalette.textMid)),
+          ),
+          FilledButton(
+            onPressed: canAfford ? () => Navigator.pop(ctx, true) : null,
+            style: FilledButton.styleFrom(
+              backgroundColor: MekanPalette.gold,
+              foregroundColor: const Color(0xFF2A1E00),
+            ),
+            child: const Text('Yükselt', style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true && mounted) {
+      setState(() => _nightlifeBusy = true);
+      try {
+        await ref.read(mekanRepositoryProvider).upgrade(mekan.id);
+        if (!mounted) return;
+        await ref.read(playerProvider.notifier).loadProfile();
+        if (!mounted) return;
+        AppMessenger.showSuccess(context, 'Mekan Seviye $nextLevel\'e yükseltildi! 🎉');
+        await _reload(silent: true);
+      } catch (e) {
+        if (mounted) {
+          AppMessenger.showError(
+            context,
+            userFacingErrorMessage(e, fallback: 'Yükseltme başarısız oldu.'),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _nightlifeBusy = false);
+      }
+    }
   }
 
   Future<bool> _buy(Mekan mekan, MekanStockEntry item, int qty) async {
@@ -290,7 +440,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
     final double mult = mekan.happyHourActive ? 0.8 : 1.0;
     final int cost = (item.sellPrice * qty * mult).floor();
     if (profile.gold < cost) {
-      AppMessenger.showError(context, 'Yetersiz altın');
+      if (mounted) AppMessenger.showError(context, 'Yetersiz altın');
       return false;
     }
 
@@ -304,7 +454,9 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
       final Map<String, dynamic> res = await ref
           .read(mekanRepositoryProvider)
           .buy(mekanId: widget.mekanId, itemId: item.itemId, quantity: qty);
+      if (!mounted) return false;
       await ref.read(playerProvider.notifier).loadProfile();
+      if (!mounted) return false;
       await ref.read(inventoryProvider.notifier).loadInventory(silent: true);
       if (mounted) {
         if (res['police_raid'] == true) {
@@ -359,7 +511,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
           }
 
           final bool isOwner = profile?.authId == mekan.ownerId;
-          final String? typeKey = mekan.typeKey;
+          final String typeKey = mekan.typeKey;
           final Color accent = MekanPalette.accent(typeKey);
           final List<MekanStockEntry> vitrinStock = mekanVitrinStock(mekan, detail.stock);
           final List<MekanStockEntry> refillStock =
@@ -367,6 +519,10 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
           final String vitrinSubtitle = !mekan.isOpen || mekan.raidClosed
               ? (mekan.raidClosed ? 'Polis baskını — satış kapalı' : 'Mekan kapalı')
               : '${vitrinStock.length} ürün satışta';
+
+          final DateTime? partyUntil = mekan.happyHourActive
+              ? DateTime.tryParse(mekan.happyHourUntil ?? '')
+              : null;
 
           return Stack(
             children: <Widget>[
@@ -377,20 +533,41 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: <Widget>[
+                    SliverToBoxAdapter(
+                      child: Mekan3DViewport(
+                        selectedLocationType: typeKey,
+                        height: 250,
+                        showPoiPins: false,
+                        showDungeonCard: true,
+                        onEnterDungeon: (_, _) {
+                          if (mekanSupportsPvp(typeKey)) {
+                            context.go(AppRoutes.mekanArena(widget.mekanId));
+                          } else {
+                            context.go(AppRoutes.dungeon);
+                          }
+                        },
+                      ),
+                    ),
                     SliverToBoxAdapter(child: _header(mekan, accent, isOwner, typeKey)),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _upgradesPanel(mekan, accent, isOwner),
+                      ),
+                    ),
                     if (detail.presence.isNotEmpty)
                       SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                         sliver: SliverToBoxAdapter(
                           child: _presencePanel(detail.presence, accent),
                         ),
                       ),
-                    if (mekan.happyHourActive)
+                    if (mekan.happyHourActive && partyUntil != null)
                       SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                         sliver: SliverToBoxAdapter(
                           child: HappyHourBanner(
-                            until: DateTime.parse(mekan.happyHourUntil!),
+                            until: partyUntil,
                             title: context.l10n.party_live,
                             subtitle: context.l10n.party_live_subtitle,
                           ),
@@ -404,7 +581,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                         ),
                       ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
                       sliver: SliverToBoxAdapter(
                         child: NeonSectionHeader(
                           title: 'Vitrin',
@@ -472,7 +649,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                                 discounted: mekan.happyHourActive,
                                 onTap: canRefillHere
                                     ? () => _refill(s)
-                                    : (canBuy ? () => _openBuySheet(mekan, s) : null),
+                                    : (canBuy ? () => _openBuySheet(mekan, s, accent) : null),
                                 trailing: canRefillHere
                                     ? NeonButton(
                                         label: context.l10n.nightlife_refill,
@@ -483,7 +660,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                                         ? NeonButton(
                                             label: 'Satın Al',
                                             accent: MekanPalette.gold,
-                                            onPressed: () => _openBuySheet(mekan, s),
+                                            onPressed: () => _openBuySheet(mekan, s, accent),
                                           )
                                         : null,
                               );
@@ -511,6 +688,174 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _upgradesPanel(Mekan mekan, Color accent, bool isOwner) {
+    const int maxLevel = 10;
+    final bool isMaxed = mekan.level >= maxLevel;
+    final int nextCost = mekan.level * 2500000;
+    final double progress = (mekan.level / maxLevel).clamp(0.0, 1.0);
+
+    String tierName;
+    String tierPerk;
+    if (mekan.level <= 2) {
+      tierName = 'Başlangıç Hanı';
+      tierPerk = 'Temel vitrin & menü servisi (100 kapasite)';
+    } else if (mekan.level <= 5) {
+      tierName = 'Popüler Mekan';
+      tierPerk = 'Genişletilmiş kapasite, +%15 kâr marjı';
+    } else if (mekan.level <= 9) {
+      tierName = 'Elit Salon';
+      tierPerk = 'VIP müşteri akışı, +%30 kâr bonusu, +500 şöhret';
+    } else {
+      tierName = 'Efsanevi Han İmparatorluğu';
+      tierPerk = 'Maksimum kapasite & şehir çapında itibar';
+    }
+
+    return NeonPanel(
+      accent: MekanPalette.gold,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 4,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: MekanPalette.gold,
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(color: MekanPalette.gold.withValues(alpha: 0.6), blurRadius: 8),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'MEKAN KADEMESİ & GELİŞTİRME',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                    color: MekanPalette.textHi,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              GlowChip(
+                icon: Icons.military_tech_rounded,
+                label: 'Lv ${mekan.level}/$maxLevel',
+                color: isMaxed ? MekanPalette.solar : MekanPalette.gold,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Icon(Icons.workspace_premium_rounded, size: 16, color: accent),
+              const SizedBox(width: 6),
+              Text(
+                tierName,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: accent,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '%${(progress * 100).toInt()}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: MekanPalette.textMid,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: MekanPalette.obsidian,
+              color: MekanPalette.gold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Icon(Icons.check_circle_outline_rounded, size: 14, color: MekanPalette.neon),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  tierPerk,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: MekanPalette.textMid,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!isMaxed) ...<Widget>[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: MekanPalette.surfaceHi.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.arrow_upward_rounded, size: 14, color: MekanPalette.solar),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Seviye ${mekan.level + 1} gereksinimi: ${formatMekanGold(nextCost)} Altın',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: MekanPalette.textHi,
+                      ),
+                    ),
+                  ),
+                  const GlowChip(
+                    icon: Icons.star_rounded,
+                    label: '+100 Şöhret',
+                    color: MekanPalette.gold,
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (isOwner && !isMaxed) ...<Widget>[
+            const SizedBox(height: 12),
+            NeonButton(
+              label: 'Mekanı Yükselt (${formatMekanGold(nextCost)})',
+              icon: Icons.upgrade_rounded,
+              accent: MekanPalette.gold,
+              busy: _nightlifeBusy,
+              onPressed: _nightlifeBusy ? null : () => _confirmUpgrade(mekan),
+            ),
+          ] else if (isOwner && isMaxed) ...<Widget>[
+            const SizedBox(height: 10),
+            const Center(
+              child: GlowChip(
+                icon: Icons.emoji_events_rounded,
+                label: 'Maksimum Seviyeye Ulaşıldı (Lv 10)',
+                color: MekanPalette.solar,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -572,7 +917,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
             icon: Icons.local_bar_rounded,
             accent: MekanPalette.aqua,
             busy: _nightlifeBusy,
-            onPressed: _nightlifeBusy ? null : () => _openRefillSheet(mekan, refillStock),
+            onPressed: _nightlifeBusy ? null : () => _openRefillSheet(mekan, refillStock, accent),
           ),
           if (isOwner) ...<Widget>[
             const SizedBox(height: 10),
@@ -588,6 +933,7 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
                       setState(() => _nightlifeBusy = true);
                       try {
                         await ref.read(mekanRepositoryProvider).startParty(mekanId: mekan.id);
+                        if (!mounted) return;
                         await ref.read(playerProvider.notifier).loadProfile();
                         if (mounted) {
                           AppMessenger.showSuccess(context, l10n.party_live);
@@ -632,18 +978,21 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF35E08C),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF35E08C),
                   shape: BoxShape.circle,
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(color: const Color(0xFF35E08C).withValues(alpha: 0.8), blurRadius: 6),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 '${who.toUpperCase()} (${presence.length})',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  color: MekanPalette.textMid,
+                  color: accent,
                   letterSpacing: 1,
                 ),
               ),
@@ -651,34 +1000,47 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 58,
+            height: 64,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: presence.length,
-              separatorBuilder: (_, int i) => const SizedBox(width: 10),
+              separatorBuilder: (_, int i) => const SizedBox(width: 12),
               itemBuilder: (BuildContext context, int i) {
                 final Map<String, dynamic> p = presence[i];
                 final String name =
                     ((p['display_name'] ?? '').toString().isNotEmpty ? p['display_name'] : p['username'] ?? '?')
                         .toString();
+                final String avatarUrl = (p['avatar_url'] ?? '').toString();
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    ProfileAvatar(
-                      size: 36,
-                      avatarUrl: (p['avatar_url'] ?? '').toString(),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: accent.withValues(alpha: 0.5), width: 1.2),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: ProfileAvatar(
+                        size: 38,
+                        avatarUrl: avatarUrl,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
-                      width: 56,
+                      width: 60,
                       child: Text(
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 9,
-                          color: MekanPalette.textMid,
+                          fontSize: 9.5,
+                          color: MekanPalette.textHi,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -690,6 +1052,77 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _statCounters(Mekan mekan, Color accent) {
+    final bool hasPvp = mekanSupportsPvp(mekan.typeKey);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: MekanPalette.void_.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: _StatColumn(
+              icon: Icons.military_tech_rounded,
+              label: 'Seviye',
+              value: 'Lv ${mekan.level}',
+              color: accent,
+            ),
+          ),
+          _statDivider(),
+          Expanded(
+            child: _StatColumn(
+              icon: Icons.star_rounded,
+              label: 'Şöhret',
+              value: '${mekan.fame}',
+              color: MekanPalette.gold,
+            ),
+          ),
+          _statDivider(),
+          Expanded(
+            child: _StatColumn(
+              icon: Icons.shopping_bag_outlined,
+              label: 'Satış',
+              value: '${mekan.totalSales}',
+              color: MekanPalette.aqua,
+            ),
+          ),
+          _statDivider(),
+          Expanded(
+            child: _StatColumn(
+              icon: Icons.paid_rounded,
+              label: 'Hacim',
+              value: formatMekanGold(mekan.totalRevenue),
+              color: MekanPalette.solar,
+            ),
+          ),
+          if (hasPvp) ...<Widget>[
+            _statDivider(),
+            Expanded(
+              child: _StatColumn(
+                icon: Icons.sports_mma_rounded,
+                label: 'PvP',
+                value: '${mekan.pvpMatchCount}',
+                color: MekanPalette.ruby,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statDivider() {
+    return Container(
+      width: 1,
+      height: 32,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      color: Colors.white.withValues(alpha: 0.1),
     );
   }
 
@@ -733,20 +1166,11 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
               ],
             ),
             const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                GlowChip(icon: Icons.military_tech_rounded, label: 'Seviye ${mekan.level}', color: accent),
-                GlowChip(icon: Icons.star_rounded, label: '${mekan.fame} şöhret', color: MekanPalette.gold),
-                if (mekan.suspicion > 40)
-                  GlowChip(
-                    icon: Icons.visibility_rounded,
-                    label: 'Şüphe ${mekan.suspicion}',
-                    color: mekan.suspicion > 60 ? MekanPalette.ruby : MekanPalette.solar,
-                  ),
-              ],
-            ),
+            _statCounters(mekan, accent),
+            if (mekan.suspicion > 0) ...<Widget>[
+              const SizedBox(height: 12),
+              SuspicionMeter(value: mekan.suspicion),
+            ],
             if (mekan.raidClosed) ...<Widget>[
               const SizedBox(height: 12),
               Container(
@@ -772,11 +1196,55 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
             ],
             const SizedBox(height: 14),
             if (isOwner)
-              NeonButton(
-                label: 'Mekanı Yönet',
-                icon: Icons.tune_rounded,
-                accent: accent,
-                onPressed: () => context.go(AppRoutes.myMekan),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: NeonButton(
+                      label: 'Mekanı Yönet',
+                      icon: Icons.tune_rounded,
+                      accent: accent,
+                      onPressed: () => context.go(AppRoutes.myMekan),
+                    ),
+                  ),
+                  if (!mekan.raidClosed) ...<Widget>[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: NeonButton(
+                        label: mekan.isOpen ? 'Kapat' : 'Aç',
+                        icon: mekan.isOpen ? Icons.lock_rounded : Icons.lock_open_rounded,
+                        filled: false,
+                        accent: mekan.isOpen ? MekanPalette.ruby : MekanPalette.neon,
+                        busy: _nightlifeBusy,
+                        onPressed: _nightlifeBusy
+                            ? null
+                            : () async {
+                                setState(() => _nightlifeBusy = true);
+                                try {
+                                  await ref.read(mekanRepositoryProvider).toggleStatus(
+                                        mekanId: mekan.id,
+                                        isOpen: !mekan.isOpen,
+                                      );
+                                  if (!mounted) return;
+                                  AppMessenger.showSuccess(
+                                    context,
+                                    mekan.isOpen ? 'Mekan kapatıldı' : 'Mekan açıldı',
+                                  );
+                                  await _reload(silent: true);
+                                } catch (e) {
+                                  if (mounted) {
+                                    AppMessenger.showError(
+                                      context,
+                                      userFacingErrorMessage(e, fallback: 'İşlem başarısız.'),
+                                    );
+                                  }
+                                } finally {
+                                  if (mounted) setState(() => _nightlifeBusy = false);
+                                }
+                              },
+                      ),
+                    ),
+                  ],
+                ],
               )
             else if (mekanSupportsPvp(typeKey) && !mekan.raidClosed)
               TutorialAnchorScope(
@@ -801,22 +1269,69 @@ class _MekanDetailScreenState extends ConsumerState<MekanDetailScreen> {
   }
 }
 
-class _BuySheet extends StatefulWidget {
+class _StatColumn extends StatelessWidget {
+  const _StatColumn({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, size: 16, color: color),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w900,
+            color: MekanPalette.textHi,
+            letterSpacing: 0.2,
+          ),
+        ),
+        Text(
+          label,
+          maxLines: 1,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: MekanPalette.textLow,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BuySheet extends ConsumerStatefulWidget {
   const _BuySheet({
     required this.item,
     required this.happyHour,
+    required this.accent,
     required this.onConfirm,
   });
 
   final MekanStockEntry item;
   final bool happyHour;
+  final Color accent;
   final Future<bool> Function(int qty) onConfirm;
 
   @override
-  State<_BuySheet> createState() => _BuySheetState();
+  ConsumerState<_BuySheet> createState() => _BuySheetState();
 }
 
-class _BuySheetState extends State<_BuySheet> {
+class _BuySheetState extends ConsumerState<_BuySheet> {
   int _qty = 1;
   bool _busy = false;
 
@@ -824,94 +1339,178 @@ class _BuySheetState extends State<_BuySheet> {
   int get _total => _unit * _qty;
 
   @override
+  void initState() {
+    super.initState();
+    _qty = widget.item.quantity > 0 ? 1 : 0;
+  }
+
+  void _setQty(int val) {
+    final int max = math.max(1, widget.item.quantity);
+    setState(() {
+      _qty = val.clamp(1, max);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final int max = widget.item.quantity;
-    return Container(
-      padding: EdgeInsets.fromLTRB(18, 16, 18, MediaQuery.viewInsetsOf(context).bottom + 24),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
-        ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: MekanPalette.aqua, width: 1.5)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 44,
-            height: 4,
-            decoration: BoxDecoration(color: MekanPalette.textLow, borderRadius: BorderRadius.circular(2)),
+    final int max = math.max(0, widget.item.quantity);
+    final profile = ref.watch(playerProvider).profile;
+    final int gold = profile?.gold ?? 0;
+    final bool canAfford = gold >= _total;
+    final bool inStock = max > 0;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(18, 16, 18, MediaQuery.viewInsetsOf(context).bottom + 24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[MekanPalette.surfaceHi, MekanPalette.void_],
+            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: widget.accent, width: 1.5)),
           ),
-          const SizedBox(height: 16),
-          Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: <BoxShadow>[BoxShadow(color: MekanPalette.aqua.withValues(alpha: 0.3), blurRadius: 16)],
-                ),
-                child: ItemIconView(iconValue: widget.item.icon, itemId: widget.item.itemId, size: 52, fallback: '🧪'),
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(color: MekanPalette.textLow, borderRadius: BorderRadius.circular(2)),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      widget.item.name,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: MekanPalette.textHi),
+              const SizedBox(height: 16),
+              Row(
+                children: <Widget>[
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(color: widget.accent.withValues(alpha: 0.35), blurRadius: 16),
+                      ],
                     ),
-                    Text('Stok: $max', style: const TextStyle(fontSize: 12, color: MekanPalette.textMid)),
+                    child: ItemIconView(iconValue: widget.item.icon, itemId: widget.item.itemId, size: 52, fallback: '🧪'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          widget.item.name,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: MekanPalette.textHi),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: <Widget>[
+                            Text('Stok: $max', style: const TextStyle(fontSize: 12, color: MekanPalette.textMid)),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Bakiyeniz: ${formatMekanGold(gold)}g',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: canAfford ? MekanPalette.gold : MekanPalette.ruby,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  GoldPriceBadge(amount: _unit, discounted: widget.happyHour),
+                ],
+              ),
+              const SizedBox(height: 18),
+              if (inStock) ...<Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    _stepBtn(Icons.remove_rounded, () => _setQty(_qty - 1)),
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        '$_qty',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: MekanPalette.textHi),
+                      ),
+                    ),
+                    _stepBtn(Icons.add_rounded, () => _setQty(_qty + 1)),
                   ],
                 ),
-              ),
-              GoldPriceBadge(amount: _unit, discounted: widget.happyHour),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              _stepBtn(Icons.remove_rounded, () => setState(() => _qty = (_qty - 1).clamp(1, max))),
-              SizedBox(
-                width: 80,
-                child: Text(
-                  '$_qty',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: MekanPalette.textHi),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  children: <Widget>[
+                    _quickQtyChip('+1', () => _setQty(_qty + 1)),
+                    if (max >= 5) _quickQtyChip('+5', () => _setQty(_qty + 5)),
+                    if (max >= 10) _quickQtyChip('+10', () => _setQty(_qty + 10)),
+                    _quickQtyChip('MAX ($max)', () => _setQty(max)),
+                  ],
                 ),
+              ] else
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'Bu ürün tükendi!',
+                    style: TextStyle(color: MekanPalette.ruby, fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  const Text('Toplam Tutar', style: TextStyle(fontSize: 14, color: MekanPalette.textMid, fontWeight: FontWeight.w700)),
+                  GoldPriceBadge(amount: _total, discounted: widget.happyHour),
+                ],
               ),
-              _stepBtn(Icons.add_rounded, () => setState(() => _qty = (_qty + 1).clamp(1, max))),
+              if (!canAfford && inStock) ...<Widget>[
+                const SizedBox(height: 8),
+                Text(
+                  'Yetersiz altın! (${formatMekanGold(_total - gold)} eksik)',
+                  style: const TextStyle(fontSize: 12, color: MekanPalette.ruby, fontWeight: FontWeight.w700),
+                ),
+              ],
+              const SizedBox(height: 16),
+              NeonButton(
+                label: inStock ? (canAfford ? 'Satın Al' : 'Yetersiz Altın') : 'Tükendi',
+                icon: Icons.shopping_bag_rounded,
+                accent: canAfford && inStock ? MekanPalette.gold : MekanPalette.obsidian,
+                busy: _busy,
+                onPressed: (_busy || !canAfford || !inStock)
+                    ? null
+                    : () async {
+                        setState(() => _busy = true);
+                        final bool ok = await widget.onConfirm(_qty);
+                        if (!context.mounted) return;
+                        setState(() => _busy = false);
+                        if (ok) Navigator.of(context).pop();
+                      },
+              ),
             ],
           ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              const Text('Toplam', style: TextStyle(fontSize: 14, color: MekanPalette.textMid, fontWeight: FontWeight.w700)),
-              GoldPriceBadge(amount: _total, discounted: widget.happyHour),
-            ],
-          ),
-          const SizedBox(height: 16),
-          NeonButton(
-            label: 'Satın Al',
-            icon: Icons.shopping_bag_rounded,
-            accent: MekanPalette.gold,
-            busy: _busy,
-            onPressed: _busy
-                ? null
-                : () async {
-                    setState(() => _busy = true);
-                    final bool ok = await widget.onConfirm(_qty);
-                    if (!context.mounted) return;
-                    setState(() => _busy = false);
-                    if (ok) Navigator.of(context).pop();
-                  },
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickQtyChip(String label, VoidCallback onTap) {
+    return PressableScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: widget.accent.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: widget.accent.withValues(alpha: 0.4), width: 1),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: widget.accent),
+        ),
       ),
     );
   }
@@ -923,11 +1522,11 @@ class _BuySheetState extends State<_BuySheet> {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: MekanPalette.aqua.withValues(alpha: 0.14),
+          color: widget.accent.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: MekanPalette.aqua.withValues(alpha: 0.5)),
+          border: Border.all(color: widget.accent.withValues(alpha: 0.5)),
         ),
-        child: Icon(icon, color: MekanPalette.aqua, size: 24),
+        child: Icon(icon, color: widget.accent, size: 24),
       ),
     );
   }

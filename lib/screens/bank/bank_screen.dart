@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,7 @@ import '../../core/utils/bank_tutorial.dart';
 import '../../l10n/l10n.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/inventory_model.dart';
+import '../../models/item_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
@@ -20,13 +22,15 @@ import '../../core/tutorial/tutorial_track.dart';
 import '../../core/tutorial/tutorial_triggers.dart';
 import '../../routing/app_router.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';
+import 'widgets/bank_crystal_tabs.dart';
 import 'widgets/bank_design.dart';
-import 'widgets/bank_quantity_dialog.dart';
 import 'widgets/bank_drag_hint.dart';
 import 'widgets/bank_drag_scroll.dart';
+import 'widgets/bank_quantity_dialog.dart';
 import 'widgets/bank_section_header.dart';
 import 'widgets/bank_slot_grid.dart';
 import 'widgets/bank_stats_card.dart';
+import 'widgets/bank_unlock_modal.dart';
 
 class BankScreen extends ConsumerStatefulWidget {
   const BankScreen({super.key});
@@ -44,6 +48,9 @@ class _BankScreenState extends ConsumerState<BankScreen> {
 
   int _bankPage = 1;
   int _inventoryPage = 1;
+
+  BankViewMode _viewMode = BankViewMode.transfer;
+  String _selectedCategory = 'all';
 
   final Set<String> _selectedBankIds = <String>{};
   final Set<String> _selectedInventoryRowIds = <String>{};
@@ -68,10 +75,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       InventoryState next,
     ) {
       if (!mounted || next.status != InventoryStatus.ready) return;
-      final int itemCount = next.items
-          .where((InventoryItem item) => !item.isEquipped)
-          .where((InventoryItem item) => item.quantity > 0)
-          .length;
+      final int itemCount = _filterInventoryItems(next.items).length;
       final int totalPages =
           (itemCount / bankInventoryPerPage).ceil().clamp(1, 9999);
       if (_inventoryPage > totalPages) {
@@ -196,6 +200,31 @@ class _BankScreenState extends ConsumerState<BankScreen> {
           .read(inventoryProvider.notifier)
           .loadInventory(silent: silentInventory),
     ]);
+  }
+
+  List<InventoryItem> _filterInventoryItems(List<InventoryItem> items) {
+    return items
+        .where((InventoryItem item) => !item.isEquipped)
+        .where((InventoryItem item) => item.quantity > 0)
+        .where((InventoryItem item) {
+          if (_selectedCategory == 'all') return true;
+          if (_selectedCategory == 'equipment') {
+            return item.itemType == ItemType.weapon ||
+                item.itemType == ItemType.armor;
+          }
+          if (_selectedCategory == 'material') {
+            return item.itemType == ItemType.material ||
+                item.itemType == ItemType.recipe ||
+                item.itemType == ItemType.rune;
+          }
+          if (_selectedCategory == 'consumable') {
+            return item.itemType == ItemType.potion ||
+                item.itemType == ItemType.consumable ||
+                item.itemType == ItemType.scroll;
+          }
+          return true;
+        })
+        .toList();
   }
 
   Map<String, dynamic>? _findBankItemAtSlot(int slotIndex) {
@@ -395,7 +424,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         title: 'Bankaya Aktar',
         subtitle: 'Envanterde: ${item.quantity} adet',
         maxQuantity: item.quantity,
-        accent: const Color(0xFFFBBF24),
+        accent: BankDesign.deposit,
       );
       if (picked == null) return;
       qty = picked;
@@ -494,7 +523,7 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         title: 'Bankadan Çek',
         subtitle: 'Bankada: $maxQty adet',
         maxQuantity: maxQty,
-        accent: Colors.greenAccent,
+        accent: BankDesign.withdraw,
       );
       if (picked == null) return;
       qty = picked;
@@ -652,39 +681,11 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     if (_actionInProgress) return;
 
     final int nextSlot = bankNextSlotIndex(_totalSlots);
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2030),
-        title: const Text(
-          'Banka Slotu Aç',
-          style: TextStyle(color: Color(0xFFFBBF24)),
-        ),
-        content: Text(
-          'Slot $nextSlot açılacak.\n\n'
-          '$bankSlotUnlockCost 💎 harcanır '
-          '($_totalSlots → $nextSlot).\n\n'
-          'Kilitli slota dokunarak da açabilirsin.',
-          style: const TextStyle(color: Colors.white70, height: 1.45),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('İptal', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFBBF24),
-              foregroundColor: Colors.black,
-            ),
-            child: Text(
-              '$bankSlotUnlockCost 💎 · Slot $nextSlot',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+    final bool? confirmed = await BankUnlockModal.show(
+      context,
+      currentSlots: _totalSlots,
+      nextSlots: nextSlot,
+      gemCost: bankSlotUnlockCost,
     );
 
     if (confirmed != true) return;
@@ -731,14 +732,11 @@ class _BankScreenState extends ConsumerState<BankScreen> {
     }
   }
 
-  Widget _buildInventoryArea() {
+  Widget _buildInventoryArea({EdgeInsetsGeometry? margin}) {
     final InventoryState inventoryState = ref.watch(inventoryProvider);
     final bool bankSelectCoach =
         ref.watch(tutorialProvider).activeStep?.id == 'bank_select_item';
-    final List<InventoryItem> items = inventoryState.items
-        .where((InventoryItem item) => !item.isEquipped)
-        .where((InventoryItem item) => item.quantity > 0)
-        .toList();
+    final List<InventoryItem> items = _filterInventoryItems(inventoryState.items);
 
     final int totalPages = (items.length / bankInventoryPerPage).ceil().clamp(
       1,
@@ -755,230 +753,522 @@ class _BankScreenState extends ConsumerState<BankScreen> {
         ? items.first.rowId
         : null;
 
-    return DottedPanel(
-      padding: EdgeInsets.zero,
-      borderColor: BankDesign.deposit.withValues(alpha: 0.2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          TutorialAnchorScope(
-            id: TutorialAnchorId.bankDepositBtn,
-            child: BankSectionHeader(
-              title: 'Envanter',
-              actionText: 'Yatır (${_selectedInventoryRowIds.length})',
-              actionColor: BankDesign.deposit,
-              enabled: _selectedInventoryRowIds.isNotEmpty,
-              loading: _depositing,
-              onAction: () async {
-                await TutorialTriggers.onAnchorTap(
-                  ref,
-                  TutorialAnchorId.bankDepositBtn,
-                );
-                await _depositBatch();
-              },
-              selectedCount: _selectedInventoryRowIds.length,
-              onClear: () => setState(_selectedInventoryRowIds.clear),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
-            child: BankFixedSlotGrid(
-              itemCount: bankInventoryPerPage,
-              itemBuilder: (BuildContext context, int index) {
-                final int globalSlotIndex = pageStart + index;
-                final InventoryItem? item = pageSlots[index];
-                final String? targetId = item?.rowId;
-                final bool selected =
-                    item != null && _selectedInventoryRowIds.contains(item.rowId);
+    final EdgeInsetsGeometry effectiveMargin =
+        margin ?? const EdgeInsets.symmetric(horizontal: 12);
 
-                return DragTarget<BankDragPayload>(
-                  onWillAcceptWithDetails:
-                      (DragTargetDetails<BankDragPayload> details) {
-                        if (_actionInProgress) return false;
-                        if (details.data.sourceType ==
-                                BankDragSourceType.inventory &&
-                            details.data.sourceId == targetId) {
-                          return false;
-                        }
-                        return true;
-                      },
-                  onAcceptWithDetails:
-                      (DragTargetDetails<BankDragPayload> details) {
-                        unawaited(
-                          _handleDrop(
-                            payload: details.data,
-                            targetType: BankDragSourceType.inventory,
-                            targetSlot: globalSlotIndex,
-                            targetId: targetId,
-                            targetLocked: false,
-                          ),
-                        );
-                      },
-                  builder:
-                      (
-                        BuildContext context,
-                        List<BankDragPayload?> candidateData,
-                        List<dynamic> rejectedData,
-                      ) {
-                        return BankInventorySlot(
-                          item: item,
-                          globalSlotIndex: globalSlotIndex,
-                          isDragTargetActive: candidateData.isNotEmpty,
-                          isSelected: selected,
-                          onDragStarted: _dragScrollCoordinator.handleDragStarted,
-                          onDragUpdate: _dragScrollCoordinator.handleDragUpdate,
-                          onDragEnd: _dragScrollCoordinator.handleDragEnd,
-                          onTap: item == null
-                              ? null
-                              : () async {
-                                  if (bankSelectCoach &&
-                                      item.rowId != tutorialItemRowId) {
-                                    ref
-                                        .read(tutorialProvider.notifier)
-                                        .registerWrongTap();
-                                    return;
-                                  }
-                                  setState(() {
-                                    if (selected) {
-                                      _selectedInventoryRowIds.remove(item.rowId);
-                                    } else {
-                                      _selectedInventoryRowIds.add(item.rowId);
+    return Padding(
+      padding: effectiveMargin,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  const Color(0xFF162332).withValues(alpha: 0.94),
+                  const Color(0xFF0E1624).withValues(alpha: 0.96),
+                  const Color(0xFF080D14).withValues(alpha: 0.98),
+                ],
+                stops: const <double>[0.0, 0.45, 1.0],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: BankDesign.deposit.withValues(alpha: 0.38),
+                width: 1.2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: BankDesign.deposit.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: <Widget>[
+                // Specular top highlight
+                Positioned(
+                  top: 0,
+                  left: 20,
+                  right: 20,
+                  height: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          Colors.transparent,
+                          BankDesign.deposit.withValues(alpha: 0.45),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                TutorialAnchorScope(
+                  id: TutorialAnchorId.bankDepositBtn,
+                  child: BankSectionHeader(
+                    title: 'Maceracı Çantası',
+                    actionText: 'Yatır (${_selectedInventoryRowIds.length})',
+                    actionColor: BankDesign.deposit,
+                    enabled: _selectedInventoryRowIds.isNotEmpty,
+                    loading: _depositing,
+                    icon: Icons.backpack_rounded,
+                    onAction: () async {
+                      await TutorialTriggers.onAnchorTap(
+                        ref,
+                        TutorialAnchorId.bankDepositBtn,
+                      );
+                      await _depositBatch();
+                    },
+                    selectedCount: _selectedInventoryRowIds.length,
+                    onClear: () => setState(_selectedInventoryRowIds.clear),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                  child: BankFixedSlotGrid(
+                    itemCount: bankInventoryPerPage,
+                    itemBuilder: (BuildContext context, int index) {
+                      final int globalSlotIndex = pageStart + index;
+                      final InventoryItem? item = pageSlots[index];
+                      final String? targetId = item?.rowId;
+                      final bool selected = item != null &&
+                          _selectedInventoryRowIds.contains(item.rowId);
+
+                      return DragTarget<BankDragPayload>(
+                        onWillAcceptWithDetails:
+                            (DragTargetDetails<BankDragPayload> details) {
+                          if (_actionInProgress) return false;
+                          if (details.data.sourceType ==
+                                  BankDragSourceType.inventory &&
+                              details.data.sourceId == targetId) {
+                            return false;
+                          }
+                          return true;
+                        },
+                        onAcceptWithDetails:
+                            (DragTargetDetails<BankDragPayload> details) {
+                          unawaited(
+                            _handleDrop(
+                              payload: details.data,
+                              targetType: BankDragSourceType.inventory,
+                              targetSlot: globalSlotIndex,
+                              targetId: targetId,
+                              targetLocked: false,
+                            ),
+                          );
+                        },
+                        builder:
+                            (
+                              BuildContext context,
+                              List<BankDragPayload?> candidateData,
+                              List<dynamic> rejectedData,
+                            ) {
+                          return BankInventorySlot(
+                            item: item,
+                            globalSlotIndex: globalSlotIndex,
+                            isDragTargetActive: candidateData.isNotEmpty,
+                            isSelected: selected,
+                            onDragStarted:
+                                _dragScrollCoordinator.handleDragStarted,
+                            onDragUpdate:
+                                _dragScrollCoordinator.handleDragUpdate,
+                            onDragEnd: _dragScrollCoordinator.handleDragEnd,
+                            onTap: item == null
+                                ? null
+                                : () async {
+                                    if (bankSelectCoach &&
+                                        item.rowId != tutorialItemRowId) {
+                                      ref
+                                          .read(tutorialProvider.notifier)
+                                          .registerWrongTap();
+                                      return;
                                     }
-                                  });
-                                  if (item.rowId == tutorialItemRowId) {
-                                    await TutorialTriggers.onAnchorTap(
-                                      ref,
-                                      TutorialAnchorId.bankInventoryItem,
-                                    );
-                                  }
-                                },
-                          onLongPress:
-                              item == null ? null : () => _depositSingle(item),
-                          tutorialAnchorId:
-                              item != null && item.rowId == tutorialItemRowId
-                              ? TutorialAnchorId.bankInventoryItem
-                              : null,
-                        );
-                      },
-                );
-              },
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedInventoryRowIds.remove(
+                                          item.rowId,
+                                        );
+                                      } else {
+                                        _selectedInventoryRowIds.add(
+                                          item.rowId,
+                                        );
+                                      }
+                                    });
+                                    if (item.rowId == tutorialItemRowId) {
+                                      await TutorialTriggers.onAnchorTap(
+                                        ref,
+                                        TutorialAnchorId.bankInventoryItem,
+                                      );
+                                    }
+                                  },
+                            onLongPress: item == null
+                                ? null
+                                : () => _depositSingle(item),
+                            tutorialAnchorId: item != null &&
+                                    item.rowId == tutorialItemRowId
+                                ? TutorialAnchorId.bankInventoryItem
+                                : null,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                BankPageControls(
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                  onPageChanged: (int page) => setState(() => _inventoryPage = page),
+                ),
+                  ],
+                ),
+              ],
             ),
           ),
-          BankPageControls(
-            currentPage: currentPage,
-            totalPages: totalPages,
-            onPageChanged: (int page) => setState(() => _inventoryPage = page),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildBankArea() {
+  Widget _buildBankArea({EdgeInsetsGeometry? margin}) {
     final int bankTotalPages = (bankMaxSlots / bankSlotsPerPage).ceil();
     final int currentPage = _bankPage.clamp(1, bankTotalPages);
     final int bankStartIndex = (currentPage - 1) * bankSlotsPerPage;
 
-    return DottedPanel(
-      padding: EdgeInsets.zero,
-      borderColor: BankDesign.withdraw.withValues(alpha: 0.2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          BankSectionHeader(
-            title: 'Banka Kasası',
-            actionText: 'Çek (${_selectedBankIds.length})',
-            actionColor: BankDesign.withdraw,
-            enabled: _selectedBankIds.isNotEmpty,
-            loading: _withdrawing,
-            onAction: _withdrawBatch,
-            selectedCount: _selectedBankIds.length,
-            onClear: () => setState(_selectedBankIds.clear),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
-            child: BankFixedSlotGrid(
-              itemCount: bankSlotsPerPage,
-              itemBuilder: (BuildContext context, int index) {
-                final int globalSlotIndex = bankStartIndex + index;
-                final bool isLocked = globalSlotIndex >= _totalSlots;
-                final Map<String, dynamic>? item = _findBankItemAtSlot(
-                  globalSlotIndex,
-                );
-                final String? targetId = item?['id']?.toString();
-                final bool selected = item != null &&
-                    _selectedBankIds.contains(item['id']?.toString() ?? '');
-                final int unlockCost = bankSlotUnlockCost;
+    final EdgeInsetsGeometry effectiveMargin =
+        margin ?? const EdgeInsets.symmetric(horizontal: 12);
 
-                return DragTarget<BankDragPayload>(
-                  onWillAcceptWithDetails:
-                      (DragTargetDetails<BankDragPayload> details) {
-                        if (_actionInProgress || isLocked) return false;
-                        if (details.data.sourceType == BankDragSourceType.bank &&
-                            details.data.sourceId == targetId) {
-                          return false;
-                        }
-                        return true;
-                      },
-                  onAcceptWithDetails:
-                      (DragTargetDetails<BankDragPayload> details) {
-                        unawaited(
-                          _handleDrop(
-                            payload: details.data,
-                            targetType: BankDragSourceType.bank,
-                            targetSlot: globalSlotIndex,
-                            targetId: targetId,
-                            targetLocked: isLocked,
+    return Padding(
+      padding: effectiveMargin,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  const Color(0xFF241A2E).withValues(alpha: 0.94),
+                  const Color(0xFF150F1E).withValues(alpha: 0.96),
+                  const Color(0xFF0A0710).withValues(alpha: 0.98),
+                ],
+                stops: const <double>[0.0, 0.45, 1.0],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: BankDesign.royalGoldFiligree.withValues(alpha: 0.42),
+                width: 1.2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: BankDesign.gold.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: <Widget>[
+                // Specular top highlight
+                Positioned(
+                  top: 0,
+                  left: 20,
+                  right: 20,
+                  height: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          Colors.transparent,
+                          BankDesign.royalGoldGlint.withValues(alpha: 0.55),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                BankSectionHeader(
+                  title: 'Kraliyet Kasası',
+                  actionText: 'Çek (${_selectedBankIds.length})',
+                  actionColor: BankDesign.withdraw,
+                  enabled: _selectedBankIds.isNotEmpty,
+                  loading: _withdrawing,
+                  icon: Icons.shield_rounded,
+                  onAction: _withdrawBatch,
+                  selectedCount: _selectedBankIds.length,
+                  onClear: () => setState(_selectedBankIds.clear),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                  child: BankFixedSlotGrid(
+                    itemCount: bankSlotsPerPage,
+                    itemBuilder: (BuildContext context, int index) {
+                      final int globalSlotIndex = bankStartIndex + index;
+                      final bool isLocked = globalSlotIndex >= _totalSlots;
+                      final Map<String, dynamic>? item = _findBankItemAtSlot(
+                        globalSlotIndex,
+                      );
+                      final String? targetId = item?['id']?.toString();
+                      final bool selected = item != null &&
+                          _selectedBankIds.contains(item['id']?.toString() ?? '');
+                      final int unlockCost = bankSlotUnlockCost;
+
+                      return DragTarget<BankDragPayload>(
+                        onWillAcceptWithDetails:
+                            (DragTargetDetails<BankDragPayload> details) {
+                          if (_actionInProgress || isLocked) return false;
+                          if (details.data.sourceType == BankDragSourceType.bank &&
+                              details.data.sourceId == targetId) {
+                            return false;
+                          }
+                          return true;
+                        },
+                        onAcceptWithDetails:
+                            (DragTargetDetails<BankDragPayload> details) {
+                          unawaited(
+                            _handleDrop(
+                              payload: details.data,
+                              targetType: BankDragSourceType.bank,
+                              targetSlot: globalSlotIndex,
+                              targetId: targetId,
+                              targetLocked: isLocked,
+                            ),
+                          );
+                        },
+                        builder:
+                            (
+                              BuildContext context,
+                              List<BankDragPayload?> candidateData,
+                              List<dynamic> rejectedData,
+                            ) {
+                          return BankStorageSlot(
+                            item: item,
+                            globalSlotIndex: globalSlotIndex,
+                            isLocked: isLocked,
+                            isDragTargetActive: candidateData.isNotEmpty,
+                            isSelected: selected,
+                            unlockGemCost: isLocked ? unlockCost : null,
+                            onDragStarted:
+                                _dragScrollCoordinator.handleDragStarted,
+                            onDragUpdate:
+                                _dragScrollCoordinator.handleDragUpdate,
+                            onDragEnd: _dragScrollCoordinator.handleDragEnd,
+                            onTap: isLocked
+                                ? (_expanding || _actionInProgress
+                                      ? null
+                                      : _unlockNextBankSlot)
+                                : item == null
+                                ? null
+                                : () {
+                                    final String id =
+                                        item['id']?.toString() ?? '';
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedBankIds.remove(id);
+                                      } else {
+                                        _selectedBankIds.add(id);
+                                      }
+                                    });
+                                  },
+                            onLongPress: (item == null || isLocked)
+                                ? null
+                                : () => _withdrawSingle(item),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                BankPageControls(
+                  currentPage: currentPage,
+                  totalPages: bankTotalPages,
+                  onPageChanged: (int page) => setState(() => _bankPage = page),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+);
+  }
+
+  Widget _buildActionProgressIndicator() {
+    final String label = _depositing
+        ? 'Eşyalar Bankaya Yatırılıyor...'
+        : _withdrawing
+        ? 'Eşyalar Çantaya Taşınıyor...'
+        : 'Slot Genişletiliyor...';
+    final Color accent = _depositing
+        ? BankDesign.deposit
+        : _withdrawing
+        ? BankDesign.withdraw
+        : BankDesign.gold;
+
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: BankDesign.royalObsidian.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.5),
+            width: 1.0,
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: accent.withValues(alpha: 0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: accent,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: accent,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    Color(0xFF1E2638),
+                    Color(0xFF111724),
+                    Color(0xFF090D15),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: BankDesign.royalGoldFiligree.withValues(alpha: 0.35),
+                  width: 1.2,
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: BankDesign.gold.withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      SizedBox(
+                        width: 52,
+                        height: 52,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            BankDesign.gold,
                           ),
-                        );
-                      },
-                  builder:
-                      (
-                        BuildContext context,
-                        List<BankDragPayload?> candidateData,
-                        List<dynamic> rejectedData,
-                      ) {
-                        return BankStorageSlot(
-                          item: item,
-                          globalSlotIndex: globalSlotIndex,
-                          isLocked: isLocked,
-                          isDragTargetActive: candidateData.isNotEmpty,
-                          isSelected: selected,
-                          unlockGemCost: isLocked ? unlockCost : null,
-                          onDragStarted: _dragScrollCoordinator.handleDragStarted,
-                          onDragUpdate: _dragScrollCoordinator.handleDragUpdate,
-                          onDragEnd: _dragScrollCoordinator.handleDragEnd,
-                          onTap: isLocked
-                              ? (_expanding || _actionInProgress
-                                    ? null
-                                    : _unlockNextBankSlot)
-                              : item == null
-                              ? null
-                              : () {
-                                  final String id = item['id']?.toString() ?? '';
-                                  setState(() {
-                                    if (selected) {
-                                      _selectedBankIds.remove(id);
-                                    } else {
-                                      _selectedBankIds.add(id);
-                                    }
-                                  });
-                                },
-                          onLongPress: (item == null || isLocked)
-                              ? null
-                              : () => _withdrawSingle(item),
-                        );
-                      },
-                );
-              },
+                          backgroundColor: BankDesign.gold.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: BankDesign.royalObsidian.withValues(alpha: 0.7),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_rounded,
+                          size: 22,
+                          color: BankDesign.gold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'KRALİYET KASASI',
+                    style: TextStyle(
+                      color: BankDesign.gold,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Kadim mühürler doğrulanıyor...',
+                    style: TextStyle(
+                      color: BankDesign.goldLight.withValues(alpha: 0.7),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          BankPageControls(
-            currentPage: currentPage,
-            totalPages: bankTotalPages,
-            onPageChanged: (int page) => setState(() => _bankPage = page),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -990,43 +1280,129 @@ class _BankScreenState extends ConsumerState<BankScreen> {
       ref.read(playerProvider.notifier).clear();
     }
 
+    final InventoryState inventoryState = ref.watch(inventoryProvider);
+    final int inventoryCount = _filterInventoryItems(inventoryState.items).length;
+
     return Scaffold(
-      appBar: GameTopBar(title: context.l10n.screenTitleBank, onLogout: logoutHandler),
+      appBar: GameTopBar(
+        title: context.l10n.screenTitleBank,
+        onLogout: logoutHandler,
+      ),
       extendBody: true,
-      bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.bank, onLogout: logoutHandler),
+      bottomNavigationBar: GameBottomBar(
+        currentRoute: AppRoutes.bank,
+        onLogout: logoutHandler,
+      ),
       body: GameScreenBackground(
         child: SafeArea(
           bottom: false,
           child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(color: BankDesign.gold),
-                )
+              ? _buildLoadingView()
               : _loadError != null
-              ? InlineErrorRetry(message: _loadError!, onRetry: _loadData)
-              : SingleChildScrollView(
-                  controller: _scrollController,
-                  padding: EdgeInsets.only(
-                    bottom: gameBottomBarClearance(context),
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: InlineErrorRetry(
+                      message: _loadError!,
+                      onRetry: _loadData,
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      BankStatsCard(
-                        totalSlots: _totalSlots,
-                        usedSlots: _usedSlots,
-                        maxSlots: bankMaxSlots,
-                        expanding: _expanding,
-                        actionInProgress: _actionInProgress,
-                        onExpand: _unlockNextBankSlot,
+                )
+              : LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final bool isDualColumn = constraints.maxWidth >= 768;
+
+                    return SingleChildScrollView(
+                      controller: _scrollController,
+                      padding: EdgeInsets.only(
+                        bottom: gameBottomBarClearance(context),
                       ),
-                      const BankDragHint(),
-                      const SizedBox(height: 10),
-                      _buildInventoryArea(),
-                      const SizedBox(height: 12),
-                      _buildBankArea(),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: isDualColumn ? 1120 : 640,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              BankStatsCard(
+                                totalSlots: _totalSlots,
+                                usedSlots: _usedSlots,
+                                maxSlots: bankMaxSlots,
+                                expanding: _expanding,
+                                actionInProgress: _actionInProgress,
+                                onExpand: _unlockNextBankSlot,
+                              ),
+                              BankCrystalTabs(
+                                currentMode: _viewMode,
+                                onModeChanged: (BankViewMode mode) {
+                                  setState(() => _viewMode = mode);
+                                },
+                                vaultItemCount: _usedSlots,
+                                vaultTotalSlots: _totalSlots,
+                                inventoryItemCount: inventoryCount,
+                                selectedCategory: _selectedCategory,
+                                onCategoryChanged: (String cat) {
+                                  setState(() {
+                                    _selectedCategory = cat;
+                                    _inventoryPage = 1;
+                                  });
+                                },
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: const BankDragHint(),
+                                ),
+                              ),
+                              if (_actionInProgress) ...<Widget>[
+                                const SizedBox(height: 6),
+                                _buildActionProgressIndicator(),
+                              ],
+                              const SizedBox(height: 8),
+                              if (_viewMode == BankViewMode.transfer) ...<Widget>[
+                                if (isDualColumn)
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: _buildInventoryArea(
+                                          margin: const EdgeInsets.only(
+                                            left: 12,
+                                            right: 6,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: _buildBankArea(
+                                          margin: const EdgeInsets.only(
+                                            left: 6,
+                                            right: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else ...<Widget>[
+                                  _buildInventoryArea(),
+                                  const SizedBox(height: 14),
+                                  _buildBankArea(),
+                                ],
+                              ] else if (_viewMode == BankViewMode.vault) ...<Widget>[
+                                _buildBankArea(),
+                              ] else ...<Widget>[
+                                _buildInventoryArea(),
+                              ],
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
         ),
       ),

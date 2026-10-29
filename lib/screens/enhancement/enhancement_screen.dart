@@ -11,6 +11,7 @@ import '../../components/common/app_messenger.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
 import '../../components/layout/game_screen_background.dart';
+import '../../core/services/app_haptics.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/enhancement_stats.dart';
 import '../../models/enhancement_config_model.dart';
@@ -28,6 +29,8 @@ import '../../core/tutorial/tutorial_triggers.dart';
 import '../../l10n/l10n.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_text_styles.dart';
 import '../../utils/logout_helper.dart';
 import 'enhancement_design.dart';
 import 'widgets/enhancement_forge_effects.dart';
@@ -132,9 +135,9 @@ Color _successColor(int chance) {
   return AppColors.mysticRuby;
 }
 
-// KO hissi: bronz/altın çerçeve tonu
-const Color _kFrameGold = Color(0xFFB08D4A);
-const Color _kSlotBg = Color(0xFF10141F);
+// KO & Aion 2 ilahî ocak tasarım tonları
+const Color _kFrameGold = AionForgeTokens.divineBrass;
+const Color _kSlotBg = AionForgeTokens.pedestalDark;
 const Duration _kForgeEnhancingMin = Duration(seconds: 6);
 const Duration _kForgeResultHold = Duration(seconds: 4);
 
@@ -158,11 +161,14 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
   EnhancementConfig _config = EnhancementConfig.fallback;
   _ForgeVisualPhase _forgePhase = _ForgeVisualPhase.idle;
   int? _enhanceBaseLevel;
+  Timer? _strikeTimer;
 
   /// Güçlendirme nabzı + sonuç sarsıntısı/pop'u.
   late final AnimationController _pulseCtrl;
   late final AnimationController _resultCtrl;
   late final AnimationController _borderGlowCtrl;
+  late final AnimationController _pedestalRotationCtrl;
+  late final EnhancementForgeVfxController _vfxCtrl;
   _EnhanceResultType? _animType;
 
   @override
@@ -180,6 +186,11 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     );
+    _pedestalRotationCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14),
+    )..repeat();
+    _vfxCtrl = EnhancementForgeVfxController(vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ref.read(inventoryProvider.notifier).loadInventory();
       await ref.read(playerProvider.notifier).loadProfile();
@@ -250,9 +261,12 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
 
   @override
   void dispose() {
+    _strikeTimer?.cancel();
     _pulseCtrl.dispose();
     _resultCtrl.dispose();
     _borderGlowCtrl.dispose();
+    _pedestalRotationCtrl.dispose();
+    _vfxCtrl.dispose();
     super.dispose();
   }
 
@@ -302,6 +316,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
     _borderGlowCtrl.stop();
     _borderGlowCtrl.value = 0;
     _resultCtrl.reset();
+    _vfxCtrl.reset();
   }
 
   _EnhanceResultType _resolveResultType({
@@ -355,7 +370,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       return;
     }
 
-    HapticFeedback.mediumImpact();
+    AppHaptics.medium();
     setState(() {
       _isEnhancing = true;
       _forgePhase = _ForgeVisualPhase.enhancing;
@@ -364,6 +379,18 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
     });
     _pulseCtrl.repeat();
     _borderGlowCtrl.repeat();
+    _vfxCtrl.triggerAnvilStrike();
+
+    // Çoklu örs çekiç vuruşu ve kıvılcım patlamaları
+    _strikeTimer?.cancel();
+    _strikeTimer = Timer.periodic(const Duration(milliseconds: 950), (Timer t) {
+      if (!mounted || !_isEnhancing) {
+        t.cancel();
+        return;
+      }
+      _vfxCtrl.triggerAnvilStrike();
+      AppHaptics.medium();
+    });
 
     try {
       final List<dynamic> waited = await Future.wait<dynamic>(<Future<dynamic>>[
@@ -447,17 +474,22 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       }
 
       if (mounted) {
+        _strikeTimer?.cancel();
+        _strikeTimer = null;
         _pulseCtrl.stop();
         _pulseCtrl.value = 0;
         _borderGlowCtrl.stop();
         _borderGlowCtrl.value = 0;
         switch (resultType) {
           case _EnhanceResultType.success:
-            HapticFeedback.heavyImpact();
+            AppHaptics.heavy();
+            _vfxCtrl.triggerSuccess(newLevel: newLevel);
           case _EnhanceResultType.failure:
-            HapticFeedback.vibrate();
+            AppHaptics.vibrate();
+            _vfxCtrl.triggerFailure(isDestroyed: false);
           case _EnhanceResultType.destroyed:
-            HapticFeedback.heavyImpact();
+            AppHaptics.heavy();
+            _vfxCtrl.triggerFailure(isDestroyed: true);
         }
         setState(() {
           _isEnhancing = false;
@@ -478,11 +510,14 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
     } catch (e) {
       if (mounted) _showSnack('Hata: $e');
     } finally {
+      _strikeTimer?.cancel();
+      _strikeTimer = null;
       if (mounted && _forgePhase == _ForgeVisualPhase.enhancing) {
         _pulseCtrl.stop();
         _pulseCtrl.value = 0;
         _borderGlowCtrl.stop();
         _borderGlowCtrl.value = 0;
+        _vfxCtrl.reset();
         setState(() {
           _isEnhancing = false;
           _forgePhase = _ForgeVisualPhase.idle;
@@ -618,9 +653,9 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         body: GameScreenBackground(
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final double anvilMaxH = constraints.maxHeight * 0.48;
+              final double anvilMaxH = constraints.maxHeight * 0.54;
               return Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -637,7 +672,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.sm + 2),
                     Expanded(child: _buildInventoryPanel()),
                   ],
                 ),
@@ -661,7 +696,6 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
     final Color accent = _selectedItem != null
         ? _rarityColor(_selectedItem!.rarity)
         : _kFrameGold;
-    final Color chanceC = _successColor(successChance);
     final InventoryItem? runeItem = _selectedRuneItem();
     final bool scrollOk = _compatibleScroll() != null;
     final Color resultAccent = _resultSlotAccent() ?? AppColors.toxicNeon.withValues(alpha: 0.7);
@@ -674,278 +708,345 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       _ForgeVisualPhase.destroyed => _enhanceBaseLevel ?? previewLevel,
     };
 
+    // Rün ve koruma durumu çözümlemesi
+    final EnhancementRuneCatalogEntry? activeRune =
+        _selectedRune != 'none' ? kEnhancementRuneCatalog[_selectedRune] : null;
+    final int runeBonus = activeRune?.successBonusPercent ?? 0;
+    final int effectiveSuccessChance = (successChance + runeBonus).clamp(0, 100);
+
+    final bool hasAegisProtection = _selectedRune == 'protection';
+    final bool hasBlessedProtection = _selectedRune == 'blessed';
+    final bool hasPartialProtection =
+        _selectedRune == 'superior' || _selectedRune == 'legendary';
+
+    final (IconData protIcon, Color protColor, String protBadge, String protTooltip) = () {
+      if (hasAegisProtection) {
+        return (
+          Icons.shield_rounded,
+          AppColors.danger,
+          'AEGIS KORUMA',
+          'Aegis Koruma Mührü aktif: Başarısızlıkta eşya kesinlikle kırılmaz!',
+        );
+      }
+      if (hasBlessedProtection) {
+        return (
+          Icons.verified_user_rounded,
+          AppColors.gold,
+          'SEVİYE KORUMA',
+          'Kutsal Işık aktif: Başarısızlık halinde eşyanın seviyesi düşmez!',
+        );
+      }
+      if (hasPartialProtection) {
+        final int shieldPct = _selectedRune == 'legendary' ? 75 : 50;
+        return (
+          Icons.shield_moon_rounded,
+          AppColors.accentPurple,
+          '%$shieldPct KALKAN',
+          'Kadim rün koruma kalkanı aktif: Yıkım riski %$shieldPct azaltılmıştır.',
+        );
+      }
+      if (currentLevel < 4) {
+        return (
+          Icons.verified_user_rounded,
+          AionForgeTokens.emeraldSafe,
+          'GÜVENLİ',
+          'Seviye +0..+3 güvenli bölge: Kırılma veya seviye düşüşü riski yoktur.',
+        );
+      }
+      if (currentLevel >= 6) {
+        return (
+          Icons.gpp_maybe_rounded,
+          AionForgeTokens.crimsonBreak,
+          'YOK OLMA',
+          'Kritik Seviye (+6..+10): Koruma rünü olmadan başarısızlıkta eşya parçalanır!',
+        );
+      }
+      return (
+        Icons.shield_moon_outlined,
+        AionForgeTokens.amberWarning,
+        'DÜŞME',
+        'Seviye +4..+5: Başarısızlık halinde eşya -1 seviye geriler.',
+      );
+    }();
+
     Widget panel = Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm + 2, AppSpacing.md, AppSpacing.md),
       decoration: BoxDecoration(
-        color: _kSlotBg.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(14),
+        color: AionForgeTokens.pedestalDark.withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         border: Border.all(
           color: _forgePhase == _ForgeVisualPhase.idle
-              ? _kFrameGold.withValues(alpha: 0.45)
-              : _forgeGlowColor().withValues(alpha: 0.35),
+              ? AionForgeTokens.divineBrass.withValues(alpha: 0.55)
+              : _forgeGlowColor().withValues(alpha: 0.65),
+          width: 1.2,
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.65),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
           if (_forgePhase != _ForgeVisualPhase.idle)
             BoxShadow(
-              color: _forgeGlowColor().withValues(alpha: 0.22),
-              blurRadius: 22,
-              spreadRadius: -2,
+              color: _forgeGlowColor().withValues(alpha: 0.3),
+              blurRadius: 26,
+              spreadRadius: -1,
             ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // Başlık
+          // 1. Divine Forge Header
           Row(
             children: <Widget>[
-              const Text('⚒️', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 6),
-              const Expanded(
+              const Text('⚡', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
                 child: Text(
-                  'GÜÇLENDİRME OCAĞI',
-                  style: TextStyle(
-                    fontSize: 11,
+                  'AİON İLAHÎ OCAĞI',
+                  style: AppTextStyles.label.copyWith(
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                    color: _kFrameGold,
+                    letterSpacing: 2.2,
+                    color: AionForgeTokens.celestialGold,
                   ),
                 ),
               ),
               EnhIconChipButton(
                 icon: Icons.table_chart_outlined,
-                label: 'Tablo',
+                label: 'Oran Tablosu',
                 onTap: _openUpgradeTable,
+                accent: AionForgeTokens.celestialGold,
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          // Yuvalar: eşya + parşömen + rune → önizleme
+          const SizedBox(height: AppSpacing.sm + 2),
+
+          // 2. Central Mystical Sanctuary: Left Slots + Central Anvil Pedestal + Right Slots
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              _anvilSlot(
-                size: 66,
-                label: 'Eşya',
-                  accent: _selectedItem != null ? accent : null,
-                  onClear: _selectedItem != null && !_isEnhancing
-                      ? () => setState(() => _selectedItem = null)
-                      : null,
-                  child: _selectedItem != null
-                    ? AnimatedBuilder(
-                        animation: Listenable.merge(<Listenable>[
-                          _pulseCtrl,
-                          _resultCtrl,
-                        ]),
-                        builder: (BuildContext context, Widget? child) {
-                          final (double scale, Offset offset) =
-                              _heroTransform();
-                          return Transform.translate(
-                            offset: offset,
-                            child: Transform.scale(scale: scale, child: child),
-                          );
-                        },
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: <Widget>[
-                            Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: ItemIconView(
-                                iconValue: _selectedItem!.icon,
-                                itemId: _selectedItem!.itemId,
-                                itemType: _selectedItem!.itemType,
-                                size: 50,
-                                expand: true,
-                                fallback: '⚔️',
-                              ),
+              // Sol Yuvalar (Geliştirme Taşı & Tamamlayıcı Tılsım)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  ForgeSlotContainer(
+                    slotKey: const Key('enhancement_scroll_slot'),
+                    size: 54,
+                    label: 'Geliştirme Taşı',
+                    icon: Icons.auto_awesome,
+                    accentColor: _selectedScroll != null
+                        ? (scrollOk ? AionForgeTokens.celestialGold : AionForgeTokens.crimsonBreak)
+                        : AionForgeTokens.divineBrass,
+                    badgeText: _selectedScroll != null && _selectedScroll!.quantity > 1
+                        ? 'x${_selectedScroll!.quantity}'
+                        : null,
+                    onTap: _isEnhancing ? null : _openScrollPicker,
+                    onClear: _selectedScroll != null && !_isEnhancing
+                        ? () => setState(() => _selectedScroll = null)
+                        : null,
+                    child: _selectedScroll != null
+                        ? Padding(
+                            padding: const EdgeInsets.all(AppSpacing.xs),
+                            child: ItemIconView(
+                              iconValue: _selectedScroll!.icon,
+                              itemId: _selectedScroll!.itemId,
+                              itemType: _selectedScroll!.itemType,
+                              size: 40,
+                              expand: true,
+                              fallback: '📜',
                             ),
-                            Positioned(
-                              left: 3,
-                              top: 3,
-                              child: _levelBadge('+$currentLevel'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : null,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: AppSpacing.xs + 2),
+                  ForgeSlotContainer(
+                    size: 54,
+                    label: 'Tılsım / Rune',
+                    icon: Icons.flare_rounded,
+                    accentColor: _selectedRune != 'none'
+                        ? (activeRune?.glowColor ?? AionForgeTokens.arcaneViolet)
+                        : AionForgeTokens.divineBrass,
+                    badgeText: _selectedRune != 'none' ? _selectedRune.toUpperCase() : null,
+                    onTap: _isEnhancing ? null : _openRunePicker,
+                    onClear: _selectedRune != 'none' && !_isEnhancing
+                        ? () => setState(() => _selectedRune = 'none')
+                        : null,
+                    child: _selectedRune != 'none'
+                        ? (runeItem != null
+                            ? Padding(
+                                padding: const EdgeInsets.all(AppSpacing.xs),
+                                child: ItemIconView(
+                                  iconValue: runeItem.icon,
+                                  itemId: runeItem.itemId,
+                                  itemType: runeItem.itemType,
+                                  size: 40,
+                                  expand: true,
+                                  fallback: '🔮',
+                                ),
+                              )
+                            : const Center(
+                                child: Text('🔮', style: TextStyle(fontSize: 20)),
+                              ))
+                        : null,
+                  ),
+                ],
               ),
-              _anvilPlus(),
-              _anvilSlot(
-                size: 54,
-                label: 'Parşömen',
-                accent: _selectedScroll != null
-                    ? (scrollOk ? AppColors.liquidGold : AppColors.mysticRuby)
-                    : null,
-                onTap: _isEnhancing ? null : _openScrollPicker,
-                onClear: _selectedScroll != null && !_isEnhancing
-                    ? () => setState(() => _selectedScroll = null)
-                    : null,
-                child: _selectedScroll != null
-                    ? Padding(
-                        padding: const EdgeInsets.all(5),
-                        child: ItemIconView(
-                          iconValue: _selectedScroll!.icon,
-                          itemId: _selectedScroll!.itemId,
-                          itemType: _selectedScroll!.itemType,
-                          size: 40,
-                          expand: true,
-                          fallback: '📜',
-                        ),
-                      )
-                    : null,
-              ),
-              _anvilPlus(),
-              _anvilSlot(
-                size: 54,
-                label: 'Rune',
-                accent: _selectedRune != 'none' ? AppColors.accentPurple : null,
-                onTap: _isEnhancing ? null : _openRunePicker,
-                onClear: _selectedRune != 'none' && !_isEnhancing
-                    ? () => setState(() => _selectedRune = 'none')
-                    : null,
-                child: _selectedRune != 'none'
-                    ? (runeItem != null
-                          ? Padding(
-                              padding: const EdgeInsets.all(5),
-                              child: ItemIconView(
-                                iconValue: runeItem.icon,
-                                itemId: runeItem.itemId,
-                                itemType: runeItem.itemType,
-                                size: 40,
-                                expand: true,
-                                fallback: '🔮',
-                              ),
-                            )
-                          : const Center(
-                              child: Text('🔮', style: TextStyle(fontSize: 20)),
-                            ))
-                    : null,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 16,
-                  color: _kFrameGold.withValues(alpha: 0.7),
-                ),
-              ),
-              _anvilSlot(
-                size: 66,
-                label: 'Sonuç',
-                accent: _selectedItem != null ? resultAccent : null,
-                child: _selectedItem != null
-                    ? AnimatedBuilder(
-                        animation: _borderGlowCtrl,
-                        builder: (BuildContext context, Widget? child) => child!,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: <Widget>[
-                            Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: Opacity(
-                                opacity: _forgePhase == _ForgeVisualPhase.destroyed
-                                    ? 0.35
-                                    : (_forgePhase == _ForgeVisualPhase.idle ? 0.85 : 1),
+
+              // Merkez İlahî Örs Kaidesi
+              AnimatedBuilder(
+                animation: Listenable.merge(<Listenable>[
+                  _pulseCtrl,
+                  _resultCtrl,
+                  _pedestalRotationCtrl,
+                ]),
+                builder: (BuildContext context, Widget? _) {
+                  final (double heroScale, Offset heroOffset) = _heroTransform();
+
+                  return AionForgePedestal(
+                    rotation: _pedestalRotationCtrl.value,
+                    pulse: _pulseCtrl.value,
+                    size: 88,
+                    accentColor: accent,
+                    primaryRuneColor: _forgeGlowColor(),
+                    badgeText: _selectedItem != null ? '+$currentLevel' : null,
+                    badgeColor: accent,
+                    isEnhancing: _isEnhancing,
+                    onTap: () {
+                      if (_selectedItem == null && !_isEnhancing) {
+                        setState(() => _invTab = _InvTab.gear);
+                      }
+                    },
+                    onClear: _selectedItem != null && !_isEnhancing
+                        ? () => setState(() => _selectedItem = null)
+                        : null,
+                    child: _selectedItem != null
+                        ? Transform.translate(
+                            offset: heroOffset,
+                            child: Transform.scale(
+                              scale: heroScale,
+                              child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.xs + 2),
                                 child: ItemIconView(
                                   iconValue: _selectedItem!.icon,
                                   itemId: _selectedItem!.itemId,
                                   itemType: _selectedItem!.itemType,
-                                  size: 50,
+                                  size: 64,
                                   expand: true,
                                   fallback: '⚔️',
                                 ),
                               ),
                             ),
-                            if (_forgePhase == _ForgeVisualPhase.destroyed)
-                              Positioned.fill(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(6),
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(6),
-                                      color: Colors.black.withValues(alpha: 0.5),
-                                    ),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.close_rounded,
-                                        size: 34,
-                                        color: AppColors.mysticRuby,
-                                        weight: 700,
-                                      ),
+                          )
+                        : null,
+                  );
+                },
+              ),
+
+              // Sağ Yuvalar (Koruma Tılsımı & Kehanet / Sonuç)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  ForgeSlotContainer(
+                    size: 54,
+                    label: 'Koruma Tılsımı',
+                    icon: protIcon,
+                    accentColor: protColor,
+                    badgeText: protBadge,
+                    onTap: () => _showFailSafeInfoDialog(
+                      currentLevel: currentLevel,
+                      selectedRune: _selectedRune,
+                      activeRune: activeRune,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        protIcon,
+                        size: 24,
+                        color: protColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs + 2),
+                  ForgeSlotContainer(
+                    size: 54,
+                    label: 'Kehanet / Sonuç',
+                    icon: Icons.visibility_outlined,
+                    accentColor: resultAccent,
+                    badgeText: resultLevel != null
+                        ? '+$resultLevel'
+                        : (_forgePhase == _ForgeVisualPhase.destroyed ? 'KIRILDI' : null),
+                    child: _selectedItem != null
+                        ? AnimatedBuilder(
+                            animation: _borderGlowCtrl,
+                            builder: (BuildContext context, Widget? child) => child!,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.all(AppSpacing.xs),
+                                  child: Opacity(
+                                    opacity: _forgePhase == _ForgeVisualPhase.destroyed
+                                        ? 0.35
+                                        : (_forgePhase == _ForgeVisualPhase.idle ? 0.85 : 1),
+                                    child: ItemIconView(
+                                      iconValue: _selectedItem!.icon,
+                                      itemId: _selectedItem!.itemId,
+                                      itemType: _selectedItem!.itemType,
+                                      size: 40,
+                                      expand: true,
+                                      fallback: '⚔️',
                                     ),
                                   ),
                                 ),
-                              )
-                            else if (resultLevel != null)
-                              Positioned(
-                                left: 3,
-                                top: 3,
-                                child: _levelBadge('+$resultLevel', color: resultAccent),
-                              ),
-                          ],
-                        ),
-                      )
-                    : null,
+                                if (_forgePhase == _ForgeVisualPhase.destroyed)
+                                  Positioned.fill(
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        size: 32,
+                                        color: AionForgeTokens.crimsonBreak,
+                                        weight: 800,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          )
+                        : null,
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Seçili eşya adı / yönlendirme
+          const SizedBox(height: AppSpacing.sm),
+
+          // 3. Seçili Eşya Başlığı ve Stat Önizlemesi
           Text(
             _selectedItem != null
                 ? '${_selectedItem!.name}  ·  ${getRarityLabel(_selectedItem!.rarity)}'
-                : 'Envanterden eşya seç — gerekli parşömen otomatik önerilir.',
+                : 'Envanterden eşya seç — kadim ilahî örste güçlendir.',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTextStyles.captionBold.copyWith(
               fontSize: 11,
-              fontWeight: FontWeight.w700,
               color: _selectedItem != null ? accent : AppColors.mutedTitanium,
             ),
           ),
           if (_selectedItem != null) ...<Widget>[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             _enhancementStatPreview(_selectedItem!, previewLevel),
           ],
-          const SizedBox(height: 8),
-          // Bilgi şeridi — tek satır
-          Row(
-            children: <Widget>[
-              Expanded(child: _statChip('Şans', '%$successChance', chanceC)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _statChip(
-                  'Maliyet',
-                  _formatGold(nextCost),
-                  gold >= nextCost
-                      ? AppColors.liquidGold
-                      : AppColors.mysticRuby,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _statChip(
-                  'Risk',
-                  _riskLabel(currentLevel),
-                  _riskColor(currentLevel),
-                ),
-              ),
-            ],
-          ),
           if (config.goldDiscountPct > 0 && _selectedItem != null)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
                 'Lonca anıtı Lv${config.monumentLevel} — maliyet %${config.goldDiscountPct} indirimli: ${_formatGold(nextCost)}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 10,
+                style: AppTextStyles.micro.copyWith(
+                  fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   color: AppColors.toxicNeon,
                 ),
@@ -953,38 +1054,131 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
             ),
           if (_selectedItem != null && _selectedScroll != null && !scrollOk)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
                 'Parşömen uyumsuz — gereken: ${_scrollLabelForRarity(_selectedItem!.rarity)}',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.mysticRuby,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.micro.copyWith(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: AionForgeTokens.crimsonBreak,
                 ),
               ),
             ),
-          const SizedBox(height: 10),
-          // CTA
+
+          // Aktif Koruma & Rün Rozetleri
+          if (_selectedItem != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.xs + 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: protColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: protColor.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(protIcon, size: 11, color: protColor),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            protBadge,
+                            style: AppTextStyles.micro.copyWith(
+                              color: protColor,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (runeBonus > 0 && activeRune != null) ...<Widget>[
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: activeRune.glowColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: activeRune.glowColor.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(Icons.auto_awesome, size: 11, color: activeRune.glowColor),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '+%$runeBonus Şans',
+                              style: AppTextStyles.micro.copyWith(
+                                color: activeRune.glowColor,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+
+          // 4. Success Rate Gauge (Risk-o-Meter)
+          AnimatedBuilder(
+            animation: _pulseCtrl,
+            builder: (BuildContext context, Widget? child) {
+              return RiskMeterGauge(
+                successChance: effectiveSuccessChance,
+                currentLevel: currentLevel,
+                pulse: _pulseCtrl.value,
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // 5. Dramatik CTA Buton Alanı
           Row(
             children: <Widget>[
               SizedBox(
-                width: 84,
+                width: 76,
                 child: EnhGhostButton(
-                  label: 'İptal',
+                  label: 'Vazgeç',
                   onTap: _isEnhancing || _forgePhase != _ForgeVisualPhase.idle
                       ? null
                       : _resetSelection,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: TutorialAnchorScope(
                   id: TutorialAnchorId.enhanceForgeBtn,
-                  child: EnhGoldButton(
-                    label: _isEnhancing ? 'Güçlendiriliyor...' : 'GÜÇLENDİR',
-                    icon: Icons.auto_fix_high_rounded,
+                  child: DivineForgeStrikeButton(
+                    label: _isEnhancing
+                        ? 'DÖVÜLÜYOR...'
+                        : (_selectedItem == null
+                            ? 'EŞYA SEÇ'
+                            : (_compatibleScroll() == null
+                                ? 'PARŞÖMEN SEÇ'
+                                : (gold < nextCost ? 'YETERSİZ ALTIN' : 'İLAHÎ ÇEKİÇ VUR'))),
+                    costText: _selectedItem != null
+                        ? 'Maliyet: ${_formatGold(nextCost)} Altın  (Mevcut: ${_formatGold(gold)})'
+                        : 'Güçlendirmek için eşya ve parşömen yerleştirin',
                     enabled: canEnhance,
                     loading: _isEnhancing,
-                    onTap: canEnhance
+                    onTrigger: canEnhance
                         ? () async {
                             await TutorialTriggers.onAnchorTap(
                               ref,
@@ -1002,10 +1196,17 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       ),
     );
 
-    if (_forgePhase == _ForgeVisualPhase.idle) return panel;
+    final ForgeVfxState vfxState = switch (_forgePhase) {
+      _ForgeVisualPhase.idle => ForgeVfxState.idle,
+      _ForgeVisualPhase.enhancing => ForgeVfxState.striking,
+      _ForgeVisualPhase.success => ForgeVfxState.success,
+      _ForgeVisualPhase.failure => ForgeVfxState.failure,
+      _ForgeVisualPhase.destroyed => ForgeVfxState.destroyed,
+    };
 
+    Widget decoratedPanel = panel;
     if (_forgePhase == _ForgeVisualPhase.enhancing) {
-      return AnimatedBuilder(
+      decoratedPanel = AnimatedBuilder(
         animation: _borderGlowCtrl,
         builder: (BuildContext context, Widget? child) {
           return ForgeRotatingBorderGlow(
@@ -1017,115 +1218,197 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
         },
         child: panel,
       );
+    } else if (_forgePhase != _ForgeVisualPhase.idle) {
+      decoratedPanel = ForgeStaticBorderGlow(
+        color: _forgeGlowColor(),
+        borderRadius: 14,
+        child: panel,
+      );
     }
 
-    return ForgeStaticBorderGlow(
-      color: _forgeGlowColor(),
-      borderRadius: 14,
-      child: panel,
+    return AnimatedBuilder(
+      animation: Listenable.merge(<Listenable>[_pulseCtrl, _resultCtrl]),
+      builder: (BuildContext context, Widget? child) {
+        return EnhancementForgeEffectsLayer(
+          vfxState: vfxState,
+          strikeProgress: _forgePhase == _ForgeVisualPhase.enhancing ? _pulseCtrl.value : 0.0,
+          resultProgress: (_forgePhase == _ForgeVisualPhase.success ||
+                  _forgePhase == _ForgeVisualPhase.failure ||
+                  _forgePhase == _ForgeVisualPhase.destroyed)
+              ? _resultCtrl.value
+              : 0.0,
+          surgeLevel: _selectedItem?.enhancementLevel ?? 1,
+          child: child,
+        );
+      },
+      child: decoratedPanel,
     );
   }
 
-  Widget _anvilPlus() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Icon(
-        Icons.add_rounded,
-        size: 13,
-        color: AppColors.mutedTitanium.withValues(alpha: 0.5),
+  /// Koruma ve risk seviyesi bilgilendirme modali.
+  void _showFailSafeInfoDialog({
+    required int currentLevel,
+    required String selectedRune,
+    required EnhancementRuneCatalogEntry? activeRune,
+  }) {
+    showEnhBlurDialog<void>(
+      context: context,
+      accent: currentLevel < 4
+          ? AionForgeTokens.emeraldSafe
+          : (currentLevel >= 6
+              ? AionForgeTokens.crimsonBreak
+              : AionForgeTokens.amberWarning),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Icon(Icons.shield_outlined, color: AionForgeTokens.celestialGold, size: 20),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'KORUMA & RİSK SİSTEMİ',
+                  style: AppTextStyles.titleBold.copyWith(
+                    color: AionForgeTokens.celestialGold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildRiskTierRow(
+            levelRange: '+0 → +3',
+            title: 'Doğal Güvenli Bölge',
+            description: 'Başarısızlık durumunda eşya korunur. Kırılma veya seviye düşüşü yaşanmaz.',
+            color: AionForgeTokens.emeraldSafe,
+            isCurrent: currentLevel < 4,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _buildRiskTierRow(
+            levelRange: '+4 → +5',
+            title: 'Seviye Gerileme Riski',
+            description: 'Başarısızlık halinde eşya 1 seviye geriler (Örn: +4 → +3). Parçalanmaz.',
+            color: AionForgeTokens.amberWarning,
+            isCurrent: currentLevel >= 4 && currentLevel < 6,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _buildRiskTierRow(
+            levelRange: '+6 → +10',
+            title: 'Kritik Yıkım (Kırılma) Tehlikesi',
+            description: 'Başarısızlık durumunda eşya tamamen yok olur! Aegis Koruma Mührü önerilir.',
+            color: AionForgeTokens.crimsonBreak,
+            isCurrent: currentLevel >= 6,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.bgSurface.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              border: Border.all(color: AionForgeTokens.divineBrass.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: <Widget>[
+                const Text('💡', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    selectedRune == 'protection'
+                        ? 'Şu anda Aegis Koruma Mührü aktif: Eşya parçalanmaya karşı mühürlüdür.'
+                        : 'Sol paneldeki Tılsım / Rune yuvasından Aegis Mührü seçerek eşyanızı kırılmaya karşı koruyabilirsiniz.',
+                    style: AppTextStyles.micro.copyWith(
+                      color: AppColors.mutedTitanium,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          EnhGhostButton(
+            label: 'Anladım',
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ],
       ),
     );
   }
 
-  /// KO stili kare yuva: koyu iç, ince bronz çerçeve, altında minik etiket.
-  Widget _anvilSlot({
-    required double size,
-    required String label,
-    Widget? child,
-    Color? accent,
-    VoidCallback? onTap,
-    VoidCallback? onClear,
+  Widget _buildRiskTierRow({
+    required String levelRange,
+    required String title,
+    required String description,
+    required Color color,
+    required bool isCurrent,
   }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Stack(
-          clipBehavior: Clip.none,
-          children: <Widget>[
-            GestureDetector(
-              key: label == 'Parşömen'
-                  ? const Key('enhancement_scroll_slot')
-                  : null,
-              onTap: onTap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: size,
-                height: size,
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isCurrent ? 0.15 : 0.05),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        border: Border.all(
+          color: color.withValues(alpha: isCurrent ? 0.7 : 0.2),
+          width: isCurrent ? 1.4 : 0.8,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _kSlotBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: (accent ?? _kFrameGold).withValues(
-                      alpha: accent != null ? 0.8 : 0.35,
-                    ),
-                    width: accent != null ? 1.6 : 1,
-                  ),
-                  boxShadow: accent != null
-                      ? <BoxShadow>[
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.25),
-                            blurRadius: 10,
-                            spreadRadius: -2,
-                          ),
-                        ]
-                      : null,
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                child:
-                    child ??
-                    Center(
-                      child: Icon(
-                        onTap != null ? Icons.touch_app_outlined : Icons.add,
-                        size: 16,
-                        color: AppColors.mutedTitanium.withValues(alpha: 0.35),
-                      ),
-                    ),
+                child: Text(
+                  levelRange,
+                  style: AppTextStyles.micro.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
-            ),
-            if (onClear != null)
-              Positioned(
-                right: -4,
-                top: -4,
-                child: GestureDetector(
-                  onTap: onClear,
-                  child: Container(
-                    padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
+              const SizedBox(width: AppSpacing.xs + 2),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.captionBold.copyWith(
+                    color: color,
+                  ),
+                ),
+              ),
+              if (isCurrent)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'ŞU ANKİ',
+                    style: AppTextStyles.micro.copyWith(
                       color: AppColors.carbonVoid,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      size: 9,
-                      color: AppColors.mutedTitanium,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 8.5,
-            fontWeight: FontWeight.w700,
-            color: AppColors.mutedTitanium,
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            description,
+            style: AppTextStyles.micro.copyWith(
+              color: AppColors.mutedTitanium,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1139,7 +1422,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       ),
       child: Text(
         text,
-        style: TextStyle(
+        style: AppTextStyles.micro.copyWith(
           fontSize: 9,
           fontWeight: FontWeight.w900,
           color: color,
@@ -1163,7 +1446,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              style: TextStyle(
+              style: AppTextStyles.captionBold.copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 color: color,
@@ -1172,7 +1455,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
           ),
           Text(
             label,
-            style: const TextStyle(
+            style: AppTextStyles.micro.copyWith(
               fontSize: 7.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -1217,7 +1500,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
-      style: TextStyle(
+      style: AppTextStyles.micro.copyWith(
         fontSize: 10,
         fontWeight: FontWeight.w800,
         color: AppColors.toxicNeon.withValues(alpha: 0.9),
@@ -1261,10 +1544,10 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
     final double bottomPad = GameScrollLayout.bottomInset(context);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.sm + 2, AppSpacing.sm, AppSpacing.sm + 2, 0),
       decoration: BoxDecoration(
         color: _kSlotBg.withValues(alpha: 0.7),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusMd)),
         border: Border.all(color: _kFrameGold.withValues(alpha: 0.3)),
       ),
       child: Column(
@@ -1273,11 +1556,11 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
           Row(
             children: <Widget>[
               const Text('🎒', style: TextStyle(fontSize: 12)),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpacing.xs + 2),
               Expanded(
                 child: Text(
                   'ENVANTER (${allItems.length})',
-                  style: const TextStyle(
+                  style: AppTextStyles.label.copyWith(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.5,
@@ -1287,9 +1570,9 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _buildInvTabs(allItems),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: items.isEmpty
                 ? Center(
@@ -1298,9 +1581,9 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                             strokeWidth: 2,
                             color: AppColors.liquidGold,
                           )
-                        : const Text(
+                        : Text(
                             'Bu kategoride eşya yok.',
-                            style: TextStyle(
+                            style: AppTextStyles.caption.copyWith(
                               fontSize: 11,
                               color: AppColors.mutedTitanium,
                             ),
@@ -1440,7 +1723,7 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                   ),
                   child: Text(
                     'x${item.quantity}',
-                    style: TextStyle(
+                    style: AppTextStyles.micro.copyWith(
                       fontSize: 7.5,
                       fontWeight: FontWeight.w900,
                       color: rarityC,

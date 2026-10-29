@@ -1,9 +1,15 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../../components/layout/game_screen_background.dart';
 import '../../../theme/app_colors.dart';
 import '../horse_race_provider.dart';
 import '../horse_race_utils.dart';
+
+export '../../../components/layout/game_screen_background.dart'
+    show DotGridPainter;
 
 /// At Yarışı — /tasarim: Carbon Void, dot doku, Liquid Gold, Cyber Fuchsia.
 abstract final class HorseRaceDesign {
@@ -841,6 +847,539 @@ class HorseRaceMyBetTicket extends StatelessWidget {
             color: accent.withValues(alpha: 0.8),
             size: 22,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Accent speed line streak for headers, cards, and sprint badges.
+class SpeedLineAccent extends StatelessWidget {
+  const SpeedLineAccent({
+    super.key,
+    this.color = HorseRaceDesign.gold,
+    this.height = 3.0,
+    this.width = 60.0,
+    this.reverse = false,
+  });
+
+  final Color color;
+  final double height;
+  final double width;
+  final bool reverse;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(height * 0.5),
+        gradient: LinearGradient(
+          begin: reverse ? Alignment.centerRight : Alignment.centerLeft,
+          end: reverse ? Alignment.centerLeft : Alignment.centerRight,
+          colors: <Color>[
+            color,
+            color.withValues(alpha: 0.35),
+            Colors.transparent,
+          ],
+          stops: const <double>[0.0, 0.65, 1.0],
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: color.withValues(alpha: 0.4),
+            blurRadius: 6,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Dynamic speed lines overlay simulating rushing air and velocity streaks.
+class HorseRaceSpeedLines extends StatelessWidget {
+  const HorseRaceSpeedLines({
+    super.key,
+    required this.progress,
+    this.intensity = 1.0,
+    this.accent = HorseRaceDesign.gold,
+    this.lineCount = 18,
+  });
+
+  final double progress;
+  final double intensity;
+  final Color accent;
+  final int lineCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _HorseRaceSpeedLinesPainter(
+          progress: progress,
+          intensity: intensity,
+          accent: accent,
+          lineCount: lineCount,
+        ),
+        size: Size.infinite,
+      ),
+    );
+  }
+}
+
+class _HorseRaceSpeedLinesPainter extends CustomPainter {
+  const _HorseRaceSpeedLinesPainter({
+    required this.progress,
+    required this.intensity,
+    required this.accent,
+    required this.lineCount,
+  });
+
+  final double progress;
+  final double intensity;
+  final Color accent;
+  final int lineCount;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (intensity <= 0.01) return;
+
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    for (int i = 0; i < lineCount; i++) {
+      // Deterministic pseudo-random seed per line index
+      final double seed = (i * 137.5) % 1.0;
+      final double seed2 = (i * 92.3) % 1.0;
+      final double x = size.width * (0.05 + 0.90 * seed);
+
+      // Fast streaming vertical motion
+      final double speedMultiplier = 1.2 + seed2 * 1.8;
+      final double streamOffset =
+          (progress * 18.0 * speedMultiplier + seed2) % 1.0;
+      final double startY = size.height * streamOffset;
+      final double lineLen = 35.0 + seed * 65.0 * intensity;
+      final double endY = startY + lineLen;
+
+      final double alpha = (math.sin(streamOffset * math.pi) * 0.45 * intensity)
+          .clamp(0.0, 0.85);
+      if (alpha <= 0.01) continue;
+
+      paint.strokeWidth = 1.0 + seed2 * 1.8;
+      final Color lineColor = (i % 3 == 0)
+          ? accent
+          : (i % 3 == 1 ? HorseRaceDesign.cyan : Colors.white);
+
+      paint.shader = ui.Gradient.linear(
+        Offset(x, startY),
+        Offset(x, endY),
+        <Color>[
+          lineColor.withValues(alpha: 0.0),
+          lineColor.withValues(alpha: alpha),
+          lineColor.withValues(alpha: 0.0),
+        ],
+        <double>[0.0, 0.45, 1.0],
+      );
+
+      canvas.drawLine(Offset(x, startY), Offset(x, endY), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HorseRaceSpeedLinesPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.intensity != intensity ||
+        oldDelegate.accent != accent;
+  }
+}
+
+/// Motion trail painter that renders glowing aerodynamic slipstream ribbons behind horses.
+class HorseMotionTrailPainter extends CustomPainter {
+  HorseMotionTrailPainter({
+    required this.laneColor,
+    required this.speed,
+    required this.progress,
+    required this.isLeader,
+    required this.isSprinting,
+    this.trailLength = 48.0,
+    this.ribbonWidth = 14.0,
+  });
+
+  final Color laneColor;
+  final double speed;
+  final double progress;
+  final bool isLeader;
+  final bool isSprinting;
+  final double trailLength;
+  final double ribbonWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double effectiveLength =
+        trailLength * (0.7 + speed * 0.45) * (isSprinting ? 1.4 : 1.0);
+    final double effectiveWidth =
+        ribbonWidth * (0.8 + speed * 0.3) * (isLeader ? 1.25 : 1.0);
+
+    final Offset head = Offset(size.width * 0.5, 0);
+    final Offset tail = Offset(size.width * 0.5, effectiveLength);
+
+    // Multi-segmented trailing ribbon
+    final List<Offset> ribbonPoints = <Offset>[];
+    const int segments = 6;
+    for (int s = 0; s <= segments; s++) {
+      final double t = s / segments;
+      final double y = t * effectiveLength;
+      // Slight lateral oscillation for fluid motion trail
+      final double wobble =
+          math.sin((progress * 30.0) + (s * 0.8)) * (2.2 * (1.0 - t));
+      ribbonPoints.add(Offset(size.width * 0.5 + wobble, y));
+    }
+
+    final Path ribbon = HorseMotionTrailUtils.createRibbonPath(
+      points: ribbonPoints,
+      startWidth: effectiveWidth,
+      endWidth: 2.0,
+    );
+
+    final Color coreColor = isLeader
+        ? HorseRaceDesign.gold
+        : (isSprinting ? HorseRaceDesign.fuchsia : laneColor);
+
+    // Outer glow ribbon
+    final Paint outerGlow = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = ui.Gradient.linear(
+        head,
+        tail,
+        <Color>[
+          coreColor.withValues(alpha: isSprinting ? 0.65 : 0.42),
+          laneColor.withValues(alpha: isSprinting ? 0.35 : 0.20),
+          Colors.transparent,
+        ],
+        <double>[0.0, 0.55, 1.0],
+      )
+      ..blendMode = BlendMode.screen;
+    canvas.drawPath(ribbon, outerGlow);
+
+    // Inner razor-sharp core beam
+    final Path coreRibbon = HorseMotionTrailUtils.createRibbonPath(
+      points: ribbonPoints,
+      startWidth: effectiveWidth * 0.38,
+      endWidth: 1.0,
+    );
+    final Paint corePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = ui.Gradient.linear(
+        head,
+        tail,
+        <Color>[
+          Colors.white.withValues(alpha: 0.9),
+          coreColor.withValues(alpha: 0.7),
+          Colors.transparent,
+        ],
+        <double>[0.0, 0.35, 1.0],
+      );
+    canvas.drawPath(coreRibbon, corePaint);
+
+    // Speed spark embers floating along the wake
+    final math.Random rng =
+        math.Random(((progress * 100).floor() + speed * 10).toInt());
+    final Paint sparkPaint = Paint()..style = PaintingStyle.fill;
+    final int sparks = isSprinting ? 4 : 2;
+    for (int i = 0; i < sparks; i++) {
+      final double sy = rng.nextDouble() * effectiveLength;
+      final double sx =
+          size.width * 0.5 + (rng.nextDouble() - 0.5) * effectiveWidth * 1.2;
+      final double r = 1.0 + rng.nextDouble() * 1.5;
+      sparkPaint.color =
+          coreColor.withValues(alpha: 0.4 + rng.nextDouble() * 0.5);
+      canvas.drawCircle(Offset(sx, sy), r, sparkPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant HorseMotionTrailPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.speed != speed ||
+        oldDelegate.isLeader != isLeader ||
+        oldDelegate.isSprinting != isSprinting ||
+        oldDelegate.laneColor != laneColor;
+  }
+}
+
+/// Dynamic race sprint acceleration indicator badge.
+class HorseSprintAccelerationBadge extends StatelessWidget {
+  const HorseSprintAccelerationBadge({
+    super.key,
+    required this.tier,
+    this.speedMultiplier,
+    this.compact = false,
+  });
+
+  final HorseSprintAccelerationTier tier;
+  final double? speedMultiplier;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = tier.color;
+    final String chevrons = '>' * tier.chevrons;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 6 : 9,
+        vertical: compact ? 2 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: HorseRaceDesign.void_.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: color.withValues(alpha: 0.75),
+          width: 1.2,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: color.withValues(alpha: 0.35),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            chevrons,
+            style: TextStyle(
+              color: color,
+              fontSize: compact ? 9 : 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1.0,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            tier.label,
+            style: TextStyle(
+              color: color,
+              fontSize: compact ? 8 : 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.6,
+            ),
+          ),
+          if (speedMultiplier != null && !compact) ...<Widget>[
+            const SizedBox(width: 4),
+            Text(
+              '${speedMultiplier!.toStringAsFixed(1)}x',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Mini speed gauge bar showing relative velocity.
+class HorseSpeedGaugeBar extends StatelessWidget {
+  const HorseSpeedGaugeBar({
+    super.key,
+    required this.speed,
+    this.accent = HorseRaceDesign.gold,
+    this.width = 44.0,
+    this.height = 4.0,
+  });
+
+  final double speed;
+  final Color accent;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    // Normal race pace is ~1.0; top sprint is ~1.5
+    final double normalized = ((speed - 0.7) / 0.8).clamp(0.0, 1.0);
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: HorseRaceDesign.obsidian.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(height * 0.5),
+        border: Border.all(
+          color: accent.withValues(alpha: 0.3),
+          width: 0.5,
+        ),
+      ),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: normalized,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(height * 0.5),
+            gradient: LinearGradient(
+              colors: <Color>[
+                accent.withValues(alpha: 0.7),
+                speed >= 1.25 ? HorseRaceDesign.fuchsia : accent,
+              ],
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: accent.withValues(alpha: 0.5),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Climax camera shake and surge transform container.
+///
+/// Applies dynamic multi-harmonic directional micro-vibrations and camera zoom surge
+/// during the final sprint stretch and climax finish of the horse race.
+class HorseRaceCameraShake extends StatefulWidget {
+  const HorseRaceCameraShake({
+    super.key,
+    required this.child,
+    required this.progress,
+    required this.active,
+    this.maxIntensity = 5.0,
+  });
+
+  final Widget child;
+  final double progress;
+  final bool active;
+  final double maxIntensity;
+
+  @override
+  State<HorseRaceCameraShake> createState() => _HorseRaceCameraShakeState();
+}
+
+class _HorseRaceCameraShakeState extends State<HorseRaceCameraShake>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ticker;
+  double _elapsedSeconds = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+    _ticker.addListener(_onTick);
+  }
+
+  void _onTick() {
+    if (widget.active && mounted) {
+      setState(() {
+        _elapsedSeconds += 0.016;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker.removeListener(_onTick);
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active) return widget.child;
+
+    final Offset shake = computeCameraShakeOffset(
+      progress: widget.progress,
+      timeSeconds: _elapsedSeconds,
+      maxIntensity: widget.maxIntensity,
+    );
+
+    final double surgeScale = computeClimaxCameraSurgeScale(
+      progress: widget.progress,
+      baseScale: 1.0,
+      peakSurge: 1.035,
+    );
+
+    return Transform.translate(
+      offset: shake,
+      child: Transform.scale(
+        scale: surgeScale,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Dramatic visual overlay during the race climax (final stretch, surge, finish crossover).
+class HorseRaceClimaxSurgeOverlay extends StatelessWidget {
+  const HorseRaceClimaxSurgeOverlay({
+    super.key,
+    required this.progress,
+    required this.active,
+    this.isFinalStretch = false,
+  });
+
+  final double progress;
+  final bool active;
+  final bool isFinalStretch;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!active || progress < 0.72) return const SizedBox.shrink();
+
+    final double surge = computeClimaxSurgeFactor(progress);
+    final double finishFlash =
+        progress >= 0.98 ? ((progress - 0.98) / 0.02) : 0.0;
+
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          // 1. Golden peripheral climax vignette
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.center,
+                radius: 1.1,
+                colors: <Color>[
+                  Colors.transparent,
+                  HorseRaceDesign.gold.withValues(
+                    alpha: (surge * 0.16).clamp(0.0, 0.25),
+                  ),
+                  HorseRaceDesign.ruby.withValues(
+                    alpha: (surge * 0.22).clamp(0.0, 0.35),
+                  ),
+                ],
+                stops: const <double>[0.60, 0.88, 1.0],
+              ),
+            ),
+          ),
+          // 2. High-speed racing lines during final stretch
+          if (isFinalStretch)
+            HorseRaceSpeedLines(
+              progress: progress,
+              intensity: surge,
+              accent: HorseRaceDesign.gold,
+              lineCount: 16,
+            ),
+          // 3. Finish crossing radiant bloom flash
+          if (finishFlash > 0.01)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(
+                  alpha: (finishFlash * 0.45).clamp(0.0, 0.5),
+                ),
+              ),
+            ),
         ],
       ),
     );
