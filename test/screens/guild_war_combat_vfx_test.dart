@@ -1,11 +1,11 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:gkk_flutter/screens/guild_war/widgets/siege_combat_vfx_coordinator.dart';
 import 'package:gkk_flutter/screens/guild_war/widgets/siege_combat_viewport.dart';
 import 'package:gkk_flutter/models/guild_war_model.dart';
-import 'package:gkk_flutter/screens/guild_war/battle_result_screen.dart';
+import 'package:gkk_flutter/screens/guild_war/guild_war_battle_result_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

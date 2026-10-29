@@ -56,7 +56,7 @@ void main() {
 
       expect(vfxController.hitStopManager.activeCount, equals(1));
       expect(vfxController.hitStopManager.isAnyFrozen, isTrue);
-      expect(vfxController.hitStopManager.globalTimeScale, equals(0.0));
+      expect(vfxController.hitStopManager.getTimeScale(TimeDilationChannel.attacker), equals(0.0));
 
       // Advance 15ms (still frozen)
       vfxController.update(0.015);
@@ -64,14 +64,14 @@ void main() {
 
       // Advance past 55ms (resumed)
       vfxController.update(0.045);
-      expect(vfxController.hitStopManager.globalTimeScale, greaterThan(0.0));
+      expect(vfxController.hitStopManager.getTimeScale(TimeDilationChannel.attacker), greaterThan(0.0));
     });
 
     test('2. Hit-Stop: critical strike triggers 50ms peak freeze with ease-out ramp', () {
       vfxController.triggerPlayerStrike(damage: 150, isCritical: true);
 
       expect(vfxController.hitStopManager.activeCount, equals(1));
-      expect(vfxController.hitStopManager.globalTimeScale, equals(0.0));
+      expect(vfxController.hitStopManager.getTimeScale(TimeDilationChannel.attacker), equals(0.0));
     });
 
     // =========================================================================
@@ -151,7 +151,7 @@ void main() {
     test('6. GPU Particles: strikes emit spark streaks and incandescent flash bursts', () {
       vfxController.triggerPlayerStrike(damage: 75, isCritical: true);
 
-      expect(vfxController.particleSystem.totalActiveParticles, greaterThan(0));
+      expect(vfxController.particleSystem.activeParticleCount, greaterThan(0));
     });
 
     // =========================================================================

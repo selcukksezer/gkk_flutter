@@ -14,6 +14,7 @@ class GkkBadge extends StatelessWidget {
     required this.text,
     required this.color,
     this.small = false,
+    this.maxWidth,
   });
 
   final String text;
@@ -22,9 +23,13 @@ class GkkBadge extends StatelessWidget {
   /// When true, renders a more compact variant.
   final bool small;
 
+  /// Optional maximum badge width constraint to prevent horizontal overflows.
+  final double? maxWidth;
+
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: maxWidth != null ? BoxConstraints(maxWidth: maxWidth!) : null,
       padding: EdgeInsets.symmetric(
         horizontal: small ? AppSpacing.sm : 10,
         vertical: small ? 2 : AppSpacing.xs,
@@ -34,11 +39,16 @@ class GkkBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.16),
         border: Border.all(color: color.withValues(alpha: 0.45)),
       ),
-      child: Text(
-        text,
-        style: (small ? AppTextStyles.micro : AppTextStyles.caption).copyWith(
-          color: color.withValues(alpha: 0.9),
-          fontWeight: FontWeight.w700,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: (small ? AppTextStyles.micro : AppTextStyles.caption).copyWith(
+            color: color.withValues(alpha: 0.9),
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

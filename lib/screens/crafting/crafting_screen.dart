@@ -852,34 +852,61 @@ class _CraftingEmptyAltar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            // Glowing Altar Emblem Pedestal
+            // Glowing Forge Anvil Altar Centerpiece
             Container(
-              width: 72,
-              height: 72,
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: <Color>[
-                    AppColors.liquidGold.withValues(alpha: 0.22),
-                    const Color(0xFF0D1424).withValues(alpha: 0.9),
+                    AppColors.warningSolar.withValues(alpha: 0.35),
+                    const Color(0xFF140D09).withValues(alpha: 0.95),
                   ],
                 ),
                 border: Border.all(
-                  color: AppColors.liquidGold.withValues(alpha: 0.45),
-                  width: 1.2,
+                  color: AppColors.liquidGold.withValues(alpha: 0.65),
+                  width: 1.5,
                 ),
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: AppColors.liquidGold.withValues(alpha: 0.15),
-                    blurRadius: 18,
-                    spreadRadius: 2,
+                    color: AppColors.warningSolar.withValues(alpha: 0.25),
+                    blurRadius: 24,
+                    spreadRadius: 3,
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.fireplace_rounded,
-                size: 34,
-                color: AppColors.liquidGold,
+              child: ClipOval(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    // Brazier Iron Embers base
+                    Positioned.fill(
+                      child: Image.asset(
+                        'assets/renders/props/Brazier_IronEmbers_beauty.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox(),
+                      ),
+                    ),
+                    // Atmospheric ember glow overlay
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.20),
+                    ),
+                    // Double War Hammer Render
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Image.asset(
+                        'assets/renders/weapons/Hammer_Double_beauty.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.fireplace_rounded,
+                          size: 34,
+                          color: AppColors.liquidGold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),

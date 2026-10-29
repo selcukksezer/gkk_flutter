@@ -922,7 +922,31 @@ class _PvpGladiator3dViewState extends State<PvpGladiator3dView>
             child: SizedBox(
               width: effectiveSize.width,
               height: effectiveSize.height,
-              child: content,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  Positioned.fill(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 14.0, bottom: 22.0),
+                        child: Image.asset(
+                          'assets/images/portraits/elyos/elyos_gladiator.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => Image.asset(
+                            'assets/images/portraits/asmodian/asmodian_assassin.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => Image.asset(
+                              'assets/renders/characters/Knight_beauty.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(child: content),
+                ],
+              ),
             ),
           );
         }
@@ -966,6 +990,27 @@ class _PvpGladiator3dViewState extends State<PvpGladiator3dView>
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
+                    // Real dark fantasy gladiator warrior portrait asset behind particle ring
+                    Positioned.fill(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 20.0, bottom: 30.0),
+                          child: Image.asset(
+                            'assets/images/portraits/elyos/elyos_gladiator.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => Image.asset(
+                              'assets/images/portraits/asmodian/asmodian_assassin.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => Image.asset(
+                                'assets/renders/characters/Knight_beauty.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
                     // 3D Viewport canvas
                     Positioned.fill(child: content),
 

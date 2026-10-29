@@ -1452,18 +1452,19 @@ class _GameBottomBarState extends ConsumerState<GameBottomBar>
                   ),
                 ),
               ),
-              if (leadingOverlay != null && !hideFabOverlays)
-                Positioned(
-                  left: 6,
-                  bottom: kGameChatFabStackBottom,
-                  child: leadingOverlay,
-                ),
-              if (!hideFabOverlays)
-                const Positioned(
-                  right: 6,
-                  bottom: kGameChatFabStackBottom,
-                  child: GameChatFab(),
-                ),
+            ),
+            if (leadingOverlay != null && !hideFabOverlays)
+              Positioned(
+                left: 6,
+                bottom: kGameChatFabStackBottom,
+                child: leadingOverlay,
+              ),
+            if (!hideFabOverlays)
+              const Positioned(
+                right: 6,
+                bottom: kGameChatFabStackBottom,
+                child: GameChatFab(),
+              ),
           ],
         ),
       ),

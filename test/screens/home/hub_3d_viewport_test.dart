@@ -1,8 +1,6 @@
 import 'dart:io' as io;
-import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,7 +11,6 @@ import 'package:gkk_flutter/providers/inventory_provider.dart';
 import 'package:gkk_flutter/screens/home/widgets/hero_showcase.dart';
 import 'package:gkk_flutter/screens/home/widgets/hub_3d_viewport.dart';
 import 'package:gkk_flutter/screens/home/widgets/hub_environment_layer.dart';
-import 'package:gkk_flutter/screens/home/widgets/hub_scene_viewport.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -247,19 +244,54 @@ void main() {
     ) async {
       const PlayerProfile profile = PlayerProfile(
         id: 'test_hero_id',
+        authId: 'auth_test_hero',
         username: 'AionChampion',
+        email: 'champion@aion2.com',
+        displayName: 'Aion Champion',
+        avatarUrl: null,
+        avatarFrame: null,
         characterClass: CharacterClass.warrior,
         level: 42,
-        power: 125000,
-        reputation: 9800,
+        xp: 250000,
+        gold: 1000000,
+        gems: 500.0,
         energy: 85,
         maxEnergy: 100,
+        attack: 4200,
+        defense: 3800,
         health: 5400,
         maxHealth: 5400,
+        power: 125000,
+        isOnline: true,
+        isBanned: false,
+        tutorialCompleted: true,
+        guildId: null,
+        guildRole: null,
+        referralCode: null,
+        referredBy: null,
+        pvpRating: 1500,
+        pvpWins: 50,
+        pvpLosses: 10,
+        addictionLevel: 0,
+        tolerance: 0,
+        lastPotionUsedAt: null,
+        warriorBloodlustUntil: null,
+        hospitalUntil: null,
+        prisonUntil: null,
+        prisonReason: null,
+        globalSuspicionLevel: 0,
+        lastBribeAt: null,
+        lastLoginAt: null,
+        lastLogin: null,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-10-29T00:00:00Z',
+        reputation: 9800,
       );
 
-      const InventoryState inventory = InventoryState(
-        equippedItems: <String, InventoryItem>{},
+      final InventoryState inventory = InventoryState(
+        status: InventoryStatus.ready,
+        items: const <InventoryItem>[],
+        equippedItems: const <String, InventoryItem?>{},
       );
 
       String? tappedSlot;

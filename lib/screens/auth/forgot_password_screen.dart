@@ -359,23 +359,33 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                               width: 0.8,
                             ),
                           ),
-                          child: Text(
-                            'GÜVENLİ KURTARMA PROTOKOLÜ // 256-BIT SSL',
-                            style: GoogleFonts.urbanist(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.1,
-                              color: AuthDesign.gold,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'GÜVENLİ KURTARMA PROTOKOLÜ // 256-BIT SSL',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.urbanist(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1,
+                                color: AuthDesign.gold,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          'Aion Muhafız Güvenlik Hattı',
-                          style: GoogleFonts.urbanist(
-                            color: AuthDesign.textHi,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Aion Muhafız Güvenlik Hattı',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.urbanist(
+                              color: AuthDesign.textHi,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
@@ -513,20 +523,27 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.base),
-              Text(
-                'Kurtarma Bağlantısı İletildi',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.urbanist(
-                  color: AuthDesign.textHi,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Kurtarma Bağlantısı İletildi',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.urbanist(
+                    color: AuthDesign.textHi,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Şifre sıfırlama talimatları belirtilen adrese başarıyla gönderildi:',
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.urbanist(
                   color: AuthDesign.textMid,
                   fontSize: 13,
@@ -564,6 +581,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     Flexible(
                       child: Text(
                         _sentToEmail,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.urbanist(
                           color: AuthDesign.gold,
@@ -622,16 +640,21 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   onPressed: (_resendCooldownSeconds == 0 && !isLoading)
                       ? _resend
                       : null,
-                  child: Text(
-                    _resendCooldownSeconds > 0
-                        ? 'Tekrar Gönder ($_resendCooldownSeconds sn)'
-                        : 'E-postayı Tekrar Gönder',
-                    style: GoogleFonts.urbanist(
-                      color: _resendCooldownSeconds > 0
-                          ? AuthDesign.textLow
-                          : AuthDesign.gold,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _resendCooldownSeconds > 0
+                          ? 'Tekrar Gönder ($_resendCooldownSeconds sn)'
+                          : 'E-postayı Tekrar Gönder',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.urbanist(
+                        color: _resendCooldownSeconds > 0
+                            ? AuthDesign.textLow
+                            : AuthDesign.gold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -639,13 +662,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               Center(
                 child: TextButton(
                   onPressed: _resetFormForRetry,
-                  child: Text(
-                    'Farklı bir e-posta adresi dene',
-                    style: GoogleFonts.urbanist(
-                      color: AuthDesign.textMid,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Farklı bir e-posta adresi dene',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.urbanist(
+                        color: AuthDesign.textMid,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ),

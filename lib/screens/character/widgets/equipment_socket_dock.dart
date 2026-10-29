@@ -96,6 +96,7 @@ class EquipmentSlotDef {
     this.maxGemSockets = 3,
     this.isLocked = false,
     this.unlockLevel,
+    this.watermarkAsset,
   });
 
   final String slotKey;
@@ -107,6 +108,7 @@ class EquipmentSlotDef {
   final int maxGemSockets;
   final bool isLocked;
   final int? unlockLevel;
+  final String? watermarkAsset;
 }
 
 /// 6 Left Flank Slots in Aion 2 radial layout:
@@ -120,6 +122,7 @@ const List<EquipmentSlotDef> kLeftEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.head,
     category: EquipmentSlotCategory.armor,
     maxGemSockets: 3,
+    watermarkAsset: 'assets/images/icons/armor/armor_abyssal_dread_helm.png',
   ),
   EquipmentSlotDef(
     slotKey: 'pauldrons',
@@ -129,6 +132,7 @@ const List<EquipmentSlotDef> kLeftEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.none,
     category: EquipmentSlotCategory.armor,
     maxGemSockets: 3,
+    watermarkAsset: 'assets/images/icons/armor/armor_dragon_scale_pauldron.png',
   ),
   EquipmentSlotDef(
     slotKey: 'chest',
@@ -138,6 +142,7 @@ const List<EquipmentSlotDef> kLeftEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.chest,
     category: EquipmentSlotCategory.armor,
     maxGemSockets: 4,
+    watermarkAsset: 'assets/images/icons/armor/armor_empyrean_plate_chest.png',
   ),
   EquipmentSlotDef(
     slotKey: 'gloves',
@@ -147,6 +152,7 @@ const List<EquipmentSlotDef> kLeftEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.gloves,
     category: EquipmentSlotCategory.armor,
     maxGemSockets: 3,
+    watermarkAsset: 'assets/images/icons/armor/armor_draconic_gauntlets.png',
   ),
   EquipmentSlotDef(
     slotKey: 'legs',
@@ -156,6 +162,7 @@ const List<EquipmentSlotDef> kLeftEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.legs,
     category: EquipmentSlotCategory.armor,
     maxGemSockets: 4,
+    watermarkAsset: 'assets/images/icons/armor/armor_paladin_greaves.png',
   ),
   EquipmentSlotDef(
     slotKey: 'wings',
@@ -165,6 +172,7 @@ const List<EquipmentSlotDef> kLeftEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.none,
     category: EquipmentSlotCategory.celestial,
     maxGemSockets: 4,
+    watermarkAsset: 'assets/images/icons/armor/armor_archdaeva_wings_icon.png',
   ),
 ];
 
@@ -180,6 +188,7 @@ const List<EquipmentSlotDef> kRightEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.weapon,
     category: EquipmentSlotCategory.weapon,
     maxGemSockets: 5,
+    watermarkAsset: 'assets/images/icons/weapons/weapon_sun_blade.png',
   ),
   EquipmentSlotDef(
     slotKey: 'off_hand',
@@ -189,6 +198,7 @@ const List<EquipmentSlotDef> kRightEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.none,
     category: EquipmentSlotCategory.weapon,
     maxGemSockets: 3,
+    watermarkAsset: 'assets/images/icons/weapons/weapon_kallida_shield.png',
   ),
   EquipmentSlotDef(
     slotKey: 'boots',
@@ -198,6 +208,7 @@ const List<EquipmentSlotDef> kRightEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.boots,
     category: EquipmentSlotCategory.armor,
     maxGemSockets: 3,
+    watermarkAsset: 'assets/images/icons/armor/armor_boots_of_wind.png',
   ),
   EquipmentSlotDef(
     slotKey: 'necklace',
@@ -207,6 +218,7 @@ const List<EquipmentSlotDef> kRightEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.necklace,
     category: EquipmentSlotCategory.accessory,
     maxGemSockets: 2,
+    watermarkAsset: 'assets/images/icons/armor/armor_tiamat_blood_necklace.png',
   ),
   EquipmentSlotDef(
     slotKey: 'earring',
@@ -216,6 +228,7 @@ const List<EquipmentSlotDef> kRightEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.none,
     category: EquipmentSlotCategory.accessory,
     maxGemSockets: 2,
+    watermarkAsset: 'assets/images/icons/armor/armor_abyss_earring.png',
   ),
   EquipmentSlotDef(
     slotKey: 'ring',
@@ -225,6 +238,7 @@ const List<EquipmentSlotDef> kRightEquipmentSlots = <EquipmentSlotDef>[
     equipSlot: EquipSlot.ring,
     category: EquipmentSlotCategory.accessory,
     maxGemSockets: 2,
+    watermarkAsset: 'assets/images/icons/armor/armor_godstone_ring.png',
   ),
 ];
 
@@ -542,12 +556,26 @@ class _EquipmentSocketButtonState extends State<_EquipmentSocketButton>
                         )
                       else if (!isEquipped)
                         Opacity(
-                          opacity: 0.35 + (_pulseController.value * 0.15),
-                          child: Icon(
-                            widget.slotDef.icon,
-                            size: widget.size * 0.44,
-                            color: Colors.white70,
-                          ),
+                          opacity: 0.40 + (_pulseController.value * 0.15),
+                          child: widget.slotDef.watermarkAsset != null
+                              ? Image.asset(
+                                  widget.slotDef.watermarkAsset!,
+                                  width: widget.size * 0.58,
+                                  height: widget.size * 0.58,
+                                  fit: BoxFit.contain,
+                                  color: Colors.white.withValues(alpha: 0.70),
+                                  colorBlendMode: BlendMode.srcIn,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    widget.slotDef.icon,
+                                    size: widget.size * 0.44,
+                                    color: Colors.white70,
+                                  ),
+                                )
+                              : Icon(
+                                  widget.slotDef.icon,
+                                  size: widget.size * 0.44,
+                                  color: Colors.white70,
+                                ),
                         )
                       else
                         Padding(
@@ -583,21 +611,29 @@ class _EquipmentSocketButtonState extends State<_EquipmentSocketButton>
                       // 4. Slot name badge at bottom
                       Positioned(
                         bottom: 2,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(AppSpacing.xs),
-                          ),
-                          child: Text(
-                            widget.isLocked ? 'Kilitli' : widget.slotDef.name,
-                            style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              color: widget.isLocked
-                                  ? AppColors.textTertiary
-                                  : (isEquipped ? rarityColor : Colors.white38),
-                              letterSpacing: 0.2,
+                        left: 2,
+                        right: 2,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(AppSpacing.xs),
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                widget.isLocked ? 'Kilitli' : widget.slotDef.name,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget.isLocked
+                                      ? AppColors.textTertiary
+                                      : (isEquipped ? rarityColor : Colors.white38),
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
                             ),
                           ),
                         ),

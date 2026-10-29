@@ -140,6 +140,7 @@ void main() {
         'item_skipped': true,
         'warning': 'Envanter dolu olduğu için eşya ödülü verilemedi.',
         'rewards_granted': <String, dynamic>{
+          'cycle_day': 7,
           'gold': 10000,
           'gems': 100,
           'xp': 2500,
@@ -152,8 +153,8 @@ void main() {
       expect(resultWithWarning.streakLength, 7);
       expect(resultWithWarning.itemSkipped, isTrue);
       expect(resultWithWarning.warning, contains('Envanter dolu'));
-      expect(resultWithWarning.rewardsGranted?['gold'], 10000);
-      expect(resultWithWarning.rewardsGranted?['gems'], 100);
+      expect(resultWithWarning.rewardsGranted?.gold, 10000);
+      expect(resultWithWarning.rewardsGranted?.gems, 100);
     });
 
     test('DailyRewardState tracks session auto-prompting and prevents repetitive dialog pops', () {

@@ -9,6 +9,13 @@ import 'package:gkk_flutter/screens/horse_race/widgets/horse_result_overlay.dart
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  const HorseRaceScript defaultScript = HorseRaceScript(
+    durationMs: 8000,
+    finishOrder: <String>['horse_1', 'horse_2'],
+    winnerId: 'horse_1',
+    keyframes: <HorseRaceKeyframe>[],
+  );
+
   final List<HorseRaceEntry> testHorses = <HorseRaceEntry>[
     const HorseRaceEntry(
       horseId: 'horse_1',
@@ -18,10 +25,7 @@ void main() {
       goldMultiplier: 2.50,
       gemMultiplier: 2.50,
       winChancePct: 40.0,
-      baseSpeed: 1.0,
-      stamina: 1.0,
-      acceleration: 1.0,
-      description: 'Efsanevi safkan',
+      sortOrder: 1,
     ),
     const HorseRaceEntry(
       horseId: 'horse_2',
@@ -31,10 +35,7 @@ void main() {
       goldMultiplier: 3.80,
       gemMultiplier: 3.80,
       winChancePct: 26.0,
-      baseSpeed: 1.0,
-      stamina: 1.0,
-      acceleration: 1.0,
-      description: 'Gece koşucusu',
+      sortOrder: 2,
     ),
   ];
 
@@ -44,14 +45,12 @@ void main() {
       winnerHorseId: 'horse_1',
       winnerName: 'Gök Fırtınası',
       winnerEmoji: '⚡',
-      createdAt: '2026-10-28T21:00:00Z',
     ),
     const HorseRaceRecentWinner(
       roundId: 'round_99',
       winnerHorseId: 'horse_2',
       winnerName: 'Karanlık Gölge',
       winnerEmoji: '🌑',
-      createdAt: '2026-10-28T20:55:00Z',
     ),
   ];
 
@@ -68,12 +67,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Son Kazananlar'), findsOneWidget);
+      expect(find.textContaining('Son Kazananlar'), findsOneWidget);
       expect(find.text('Gök Fırtınası'), findsOneWidget);
       expect(find.text('Karanlık Gölge'), findsOneWidget);
-      expect(find.text('#1'), findsOneWidget);
+      expect(find.text('1. KÜRSÜ'), findsOneWidget);
       expect(find.text('#2'), findsOneWidget);
-      expect(find.text('ŞAMPİYON'), findsOneWidget);
+      expect(find.textContaining('ŞAMPİYON'), findsWidgets);
     });
   });
 
@@ -88,14 +87,13 @@ void main() {
         horses: testHorses,
         round: const HorseRaceRound(
           id: 'round_101',
-          roundNumber: 101,
           phase: HorseRacePhase.finished,
           secondsLeft: 0,
           winnerHorseId: 'horse_1',
+          raceScript: defaultScript,
         ),
         uiPhase: HorseRaceUiPhase.result,
         myBet: const HorseRaceBet(
-          roundId: 'round_101',
           horseId: 'horse_1',
           currencyType: 'gold',
           betAmount: 50000,
@@ -107,8 +105,8 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: <Override>[
-            horseRaceProvider.overrideWith((_) => _MockHorseRaceNotifier(state)),
+          overrides: [
+            horseRaceProvider.overrideWith(() => _MockHorseRaceNotifier(state)),
           ],
           child: MaterialApp(
             home: Scaffold(
@@ -142,9 +140,10 @@ void main() {
         horses: testHorses,
         round: const HorseRaceRound(
           id: 'round_102',
-          roundNumber: 102,
           phase: HorseRacePhase.betting,
           secondsLeft: 60,
+          winnerHorseId: null,
+          raceScript: defaultScript,
         ),
         uiPhase: HorseRaceUiPhase.bettingBoard,
         settings: const HorseRaceSettings(
@@ -152,8 +151,8 @@ void main() {
           goldMaxBet: 5000000,
           gemMinBet: 1,
           gemMaxBet: 50,
-          goldMaxMultiplier: 12,
-          gemMaxMultiplier: 12,
+          goldMaxMultiplier: 12.0,
+          gemMaxMultiplier: 12.0,
           bettingSeconds: 90,
           racingSeconds: 8,
           finishedSeconds: 10,
@@ -162,8 +161,8 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: <Override>[
-            horseRaceProvider.overrideWith((_) => _MockHorseRaceNotifier(state)),
+          overrides: [
+            horseRaceProvider.overrideWith(() => _MockHorseRaceNotifier(state)),
           ],
           child: MaterialApp(
             home: Scaffold(
@@ -194,7 +193,13 @@ void main() {
 }
 
 class _MockHorseRaceNotifier extends HorseRaceNotifier {
-  _MockHorseRaceNotifier(HorseRaceState initial) {
-    state = initial;
-  }
+  _MockHorseRaceNotifier(this._initial);
+
+  final HorseRaceState _initial;
+
+  @override
+  HorseRaceState build() => _initial;
+
+  @override
+  Future<void> refresh({bool silent = false}) async {}
 }

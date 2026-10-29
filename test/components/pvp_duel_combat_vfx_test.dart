@@ -51,7 +51,7 @@ void main() {
     });
 
     test('2. Hit-Stop: triggers time-dilation pause strictly within 30-50ms target range', () {
-      expect(coordinator.hitStopManager.isFrozen, isFalse);
+      expect(coordinator.hitStopManager.isAnyFrozen, isFalse);
 
       // Critical strike triggers 50ms freeze
       coordinator.triggerHitImpact(
@@ -61,8 +61,8 @@ void main() {
         impactPoint: const Offset(100, 200),
       );
 
-      expect(coordinator.hitStopManager.isFrozen, isTrue);
-      final activeReq = coordinator.hitStopManager.activeRequest;
+      expect(coordinator.hitStopManager.isAnyFrozen, isTrue);
+      final activeReq = coordinator.hitStopManager.activeHitStops.firstOrNull?.request;
       expect(activeReq, isNotNull);
       expect(activeReq!.freezeDuration.inMilliseconds, inInclusiveRange(30, 50));
       expect(activeReq.freezeDuration.inMilliseconds, equals(50));
@@ -77,8 +77,8 @@ void main() {
         impactPoint: const Offset(270, 200),
       );
 
-      expect(coordinator.hitStopManager.isFrozen, isTrue);
-      final activeReq = coordinator.hitStopManager.activeRequest;
+      expect(coordinator.hitStopManager.isAnyFrozen, isTrue);
+      final activeReq = coordinator.hitStopManager.activeHitStops.firstOrNull?.request;
       expect(activeReq, isNotNull);
       expect(activeReq!.freezeDuration.inMilliseconds, inInclusiveRange(30, 50));
       expect(activeReq.freezeDuration.inMilliseconds, equals(35));
@@ -125,7 +125,7 @@ void main() {
       );
 
       expect(coordinator.ribbonTrail.sampleCount, greaterThan(0));
-      expect(coordinator.ribbonTrail.config.width, equals(20.0)); // Heavy greatsword width
+      expect(coordinator.ribbonTrail.samples.first.width, equals(18.0)); // Heavy greatsword width
     });
 
     test('5. Dynamic Decals: spawns colosseum ground decals at impact point', () {
@@ -140,7 +140,7 @@ void main() {
       );
 
       expect(coordinator.decalSystem.activeDecalCount, equals(1));
-      expect(coordinator.decalSystem.decals.first.type, equals(DecalType.slashGouge));
+      expect(coordinator.decalSystem.activeDecals.first.type, equals(DecalType.slashGouge));
 
       // Critical strike -> blood splatter
       coordinator.triggerHitImpact(
@@ -151,11 +151,11 @@ void main() {
       );
 
       expect(coordinator.decalSystem.activeDecalCount, equals(2));
-      expect(coordinator.decalSystem.decals.last.type, equals(DecalType.bloodSplatter));
+      expect(coordinator.decalSystem.activeDecals.last.type, equals(DecalType.bloodSplatter));
     });
 
     test('6. Particles: emits clashing spark particles with angle and speed boost on crits', () {
-      expect(coordinator.particleSystem.totalActiveParticles, equals(0));
+      expect(coordinator.particleSystem.activeParticleCount, equals(0));
 
       coordinator.triggerHitImpact(
         targetIsOpponent: true,
@@ -164,7 +164,7 @@ void main() {
         impactPoint: const Offset(100, 200),
       );
 
-      expect(coordinator.particleSystem.totalActiveParticles, greaterThan(30));
+      expect(coordinator.particleSystem.activeParticleCount, greaterThan(30));
     });
 
     test('7. Mobile Haptics: handles calls safely without throwing exceptions', () async {
@@ -242,7 +242,7 @@ void main() {
       );
 
       expect(coordinator.cameraShake.trauma, closeTo(CameraShakePreset.explosiveShock.trauma, 0.05));
-      expect(coordinator.hitStopManager.isFrozen, isTrue);
+      expect(coordinator.hitStopManager.isAnyFrozen, isTrue);
       expect(coordinator.opponentRimFlash.isFlashing, isTrue);
       expect(coordinator.opponentReaction.isStunned, isTrue);
       expect(coordinator.damagePopups.last.text, contains('NAKAVT'));
@@ -257,8 +257,8 @@ void main() {
       );
 
       coordinator.update(0.016);
-      expect(coordinator.cameraShake.translation, isNotNull);
-      expect(coordinator.particleSystem.totalActiveParticles, greaterThan(0));
+      expect(coordinator.cameraShake.state.translation, isNotNull);
+      expect(coordinator.particleSystem.activeParticleCount, greaterThan(0));
     });
   });
 

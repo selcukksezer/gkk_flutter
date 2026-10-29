@@ -1064,9 +1064,10 @@ class DungeonLightSystem {
     return buffer;
   }
 
-  /// Sets all 109 uniform floats and optional texture sampler onto a Flutter [FragmentShader] instance.
+  /// Sets all 109 uniform floats and optional texture sampler onto a Flutter [FragmentShader]
+  /// or uniform target instance.
   void applyToShader(
-    FragmentShader shader, {
+    dynamic shader, {
     required Size resolution,
     required Vector3D cameraPos,
     double time = 0.0,

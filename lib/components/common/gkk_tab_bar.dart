@@ -231,14 +231,19 @@ class GkkTabBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-          color: textColor,
-          height: 1.05,
-          letterSpacing: -0.2,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+            color: textColor,
+            height: 1.05,
+            letterSpacing: -0.2,
+          ),
         ),
       ),
     );
@@ -270,13 +275,26 @@ class _GkkTabPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          Flexible(child: child),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: child,
+            ),
+          ),
           const SizedBox(width: 4),
-          GkkTabBadge(
-            count: badgeCount,
-            label: badgeLabel,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: GkkTabBadge(
+              count: badgeCount,
+              label: badgeLabel,
+            ),
           ),
         ],
+      );
+    } else {
+      tabBody = FittedBox(
+        fit: BoxFit.scaleDown,
+        child: child,
       );
     }
 
@@ -287,7 +305,7 @@ class _GkkTabPill extends StatelessWidget {
         child: AnimatedContainer(
           duration: GkkTabBarTheme.animationDuration,
           curve: GkkTabBarTheme.animationCurve,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: active
               ? GkkTabBarTheme.selectedPillDecoration()
               : GkkTabBarTheme.unselectedPillDecoration(),
@@ -311,11 +329,11 @@ class _GkkTabPill extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
-        pill,
+        Flexible(child: pill),
         AnimatedContainer(
           duration: GkkTabBarTheme.animationDuration,
           curve: GkkTabBarTheme.animationCurve,
-          margin: const EdgeInsets.only(top: 3),
+          margin: const EdgeInsets.only(top: 2),
           width: active ? 18 : 0,
           height: active ? 2.5 : 0,
           decoration: BoxDecoration(
@@ -556,7 +574,11 @@ class GkkTabBar extends StatelessWidget {
     return List<Widget>.generate(labels.length, (int i) {
       final int? count = (badgeCounts != null && i < badgeCounts.length) ? badgeCounts[i] : null;
       final String? label = (badgeLabels != null && i < badgeLabels.length) ? badgeLabels[i] : null;
-      final Widget textWidget = Text(labels[i]);
+      final Widget textWidget = Text(
+        labels[i],
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
       if (count != null || label != null) {
         return labeledTab(
           child: badge(
@@ -664,7 +686,12 @@ class GkkTabBar extends StatelessWidget {
               return Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(left: index > 0 ? 4 : 0),
-                  child: Center(child: pill),
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: pill,
+                    ),
+                  ),
                 ),
               );
             });
@@ -773,6 +800,8 @@ class GkkSegmentedTabBar extends StatelessWidget {
         child: Text(
           labels[index],
           textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       );
 
@@ -787,7 +816,12 @@ class GkkSegmentedTabBar extends StatelessWidget {
       return Expanded(
         child: Padding(
           padding: EdgeInsets.only(left: index > 0 ? 4 : 0),
-          child: Center(child: pill),
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: pill,
+            ),
+          ),
         ),
       );
     });

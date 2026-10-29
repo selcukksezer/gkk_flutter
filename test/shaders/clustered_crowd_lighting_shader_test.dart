@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/core/crowd/gpu_instancing_batcher.dart';
 import 'package:gkk_flutter/core/lighting/clustered_light_manager.dart';
+import 'package:gkk_flutter/core/shaders/shader_pipeline.dart';
 
 // =============================================================================
 // Helper Test Widgets & Painters for Clustered Lighting UI / Widget Verification
@@ -1268,6 +1270,273 @@ void main() {
       expect(manager.getLightsForCluster(-1), isEmpty);
       expect(manager.getLightsForCluster(8), isEmpty);
       expect(manager.getLightsForCluster(9999), isEmpty);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 12. Dart 3 Base Class Compliance & Shader Uniform Target Buffering
+  // ---------------------------------------------------------------------------
+  group('Dart 3 Base Class Compliance & Shader Uniform Target Buffering', () {
+    late ClusteredLightManager manager;
+
+    setUp(() {
+      manager = ClusteredLightManager(
+        bounds: ClusterGridBounds(
+          minX: -80.0,
+          minY: -10.0,
+          minZ: -80.0,
+          maxX: 80.0,
+          maxY: 30.0,
+          maxZ: 80.0,
+          dimX: 8,
+          dimY: 4,
+          dimZ: 8,
+          zNear: 0.5,
+          zFar: 200.0,
+        ),
+        maxLights: 16,
+        maxLightsPerCluster: 8,
+        ambientR: 0.05,
+        ambientG: 0.06,
+        ambientB: 0.09,
+        ambientIntensity: 1.2,
+      );
+    });
+
+    test('Uniform buffer feeds directly into BufferUniformTarget without FragmentShader subclassing', () {
+      final uniformBuffer = manager.buildShaderUniforms(
+        viewportWidth: 1080.0,
+        viewportHeight: 2400.0,
+        clusterMode: 1.0,
+        cameraX: 0.0,
+        cameraY: 15.0,
+        cameraZ: -30.0,
+        roughness: 0.45,
+        lightTextureWidth: 256.0,
+        clusterTextureWidth: 256.0,
+      );
+
+      expect(uniformBuffer.length, equals(27));
+
+      // In Dart 3, FragmentShader is a 'base class', so classes cannot use 'implements FragmentShader'.
+      // ShaderUniformTarget & BufferUniformTarget provide safe, headless uniform verification.
+      final target = BufferUniformTarget();
+      for (int i = 0; i < uniformBuffer.length; i++) {
+        target.setFloat(i, uniformBuffer[i]);
+      }
+
+      expect(target.floatCount, equals(27));
+      expect(target.getFloat(0), equals(1080.0));
+      expect(target.getFloat(1), equals(2400.0));
+      expect(target.getFloat(2), equals(8.0)); // dimX
+      expect(target.getFloat(3), equals(4.0)); // dimY
+      expect(target.getFloat(4), equals(8.0)); // dimZ
+      expect(target.getFloat(15), equals(1.0)); // clusterMode
+      expect(target.getFloat(16), equals(8.0)); // maxLightsPerCluster
+      expect(target.getFloat(24), closeTo(0.45, 1e-5)); // roughness
+      expect(target.getFloat(25), equals(256.0)); // lightTextureWidth
+      expect(target.getFloat(26), equals(256.0)); // clusterTextureWidth
+
+      final exportedFloats = target.toFloatList(minLength: 27);
+      for (int i = 0; i < 27; i++) {
+        expect(exportedFloats[i], equals(uniformBuffer[i]));
+      }
+    });
+
+    test('ShaderUniformTarget verifies float bounds and partial buffer updates', () {
+      final target = BufferUniformTarget();
+      target.setFloat(0, 1920.0);
+      target.setFloat(1, 1080.0);
+      target.setFloat(15, 0.0); // Screen-space mode
+
+      expect(target.getFloat(0), equals(1920.0));
+      expect(target.getFloat(1), equals(1080.0));
+      expect(target.getFloat(15), equals(0.0));
+      expect(target.getFloat(2), isNull); // Unset float slot returns null
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 13. GpuInstancingBatcher & Clustered Crowd Lighting Integration (R4 Architecture)
+  // ---------------------------------------------------------------------------
+  group('GpuInstancingBatcher & Clustered Crowd Lighting Integration (R4 Architecture)', () {
+    late ClusteredLightManager lightManager;
+    late GpuInstancingBatcher batcher;
+
+    setUp(() {
+      lightManager = ClusteredLightManager(
+        bounds: ClusterGridBounds(
+          minX: -100.0,
+          minY: -10.0,
+          minZ: -100.0,
+          maxX: 100.0,
+          maxY: 30.0,
+          maxZ: 100.0,
+          dimX: 10,
+          dimY: 4,
+          dimZ: 10,
+        ),
+        maxLights: 16,
+        maxLightsPerCluster: 8,
+        ambientR: 0.1,
+        ambientG: 0.1,
+        ambientB: 0.15,
+        ambientIntensity: 1.0,
+      );
+
+      // Register an environmental scene light (e.g. dungeon torch at origin)
+      lightManager.createSceneLight(
+        x: 0.0,
+        y: 5.0,
+        z: 0.0,
+        radius: 30.0,
+        r: 1.0,
+        g: 0.8,
+        b: 0.4,
+        intensity: 2.0,
+      );
+
+      batcher = GpuInstancingBatcher(maxInstancesPerBatch: 512);
+    });
+
+    tearDown(() {
+      batcher.dispose();
+    });
+
+    test('Batched LOD2Entity crowd entities strictly comply with zero dynamic point lights', () {
+      final entities = List<LOD2Entity>.generate(
+        50,
+        (i) => LOD2Entity.fromTransform(
+          entityId: 1000 + i,
+          meshId: 1,
+          materialKey: 101,
+          tx: (i % 10 - 5) * 6.0,
+          ty: 0.0,
+          tz: (i ~/ 10 - 2) * 6.0,
+        ),
+      );
+
+      // Requirement R4: Entities must not contain individual point lights
+      final entityMaps = entities.map((e) => {
+        'id': e.entityId,
+        'meshId': e.meshId,
+        'materialKey': e.materialKey,
+      }).toList();
+
+      expect(
+        () => ClusteredLightManager.assertZeroEntityPointLights(entityMaps),
+        returnsNormally,
+      );
+
+      // Prohibited attachment check
+      expect(
+        () => ClusteredLightManager.prohibitEntityDynamicPointLight(entities.first.entityId, 'LOD2CrowdWarrior'),
+        throwsA(isA<DynamicPointLightViolationException>()),
+      );
+    });
+
+    test('Batcher packs crowd entities and lighting is evaluated from packed transform matrices', () {
+      final entities = <LOD2Entity>[
+        LOD2Entity.fromTransform(
+          entityId: 1,
+          meshId: 1,
+          materialKey: 200,
+          tx: 0.0,
+          ty: 0.0,
+          tz: 0.0, // Directly below torch (x=0, y=5, z=0) -> lit
+        ),
+        LOD2Entity.fromTransform(
+          entityId: 2,
+          meshId: 1,
+          materialKey: 200,
+          tx: 80.0,
+          ty: 0.0,
+          tz: 80.0, // Far from torch -> ambient only
+        ),
+      ];
+
+      final batches = batcher.batchAndPack(entities);
+      expect(batches.length, equals(1));
+      final batch = batches.first;
+      expect(batch.instanceCount, equals(2));
+      expect(GpuInstancingBatcher.verifyBufferAlignment(batch), isTrue);
+
+      // Extract entity positions from packed 16-float column-major transform matrices
+      // In InstanceBufferLayout:
+      // Instance 0 base = 0 * 24 = 0 -> tx = buffer[12], ty = buffer[13], tz = buffer[14]
+      // Instance 1 base = 1 * 24 = 24 -> tx = buffer[36], ty = buffer[37], tz = buffer[38]
+      final tx0 = batch.buffer[0 + 12];
+      final ty0 = batch.buffer[0 + 13];
+      final tz0 = batch.buffer[0 + 14];
+
+      final tx1 = batch.buffer[24 + 12];
+      final ty1 = batch.buffer[24 + 13];
+      final tz1 = batch.buffer[24 + 14];
+
+      expect(tx0, equals(0.0));
+      expect(ty0, equals(0.0));
+      expect(tz0, equals(0.0));
+
+      expect(tx1, equals(80.0));
+      expect(ty1, equals(0.0));
+      expect(tz1, equals(80.0));
+
+      // Evaluate lighting using ClusteredLightManager O(1) cluster lookup
+      final (rLit, gLit, bLit) = lightManager.sampleLightingAt(
+        x: tx0,
+        y: ty0,
+        z: tz0,
+        normalX: 0.0,
+        normalY: 1.0,
+        normalZ: 0.0,
+      );
+
+      final (rAmb, gAmb, bAmb) = lightManager.sampleLightingAt(
+        x: tx1,
+        y: ty1,
+        z: tz1,
+        normalX: 0.0,
+        normalY: 1.0,
+        normalZ: 0.0,
+      );
+
+      // Lit entity receives direct light + ambient
+      expect(rLit, greaterThan(rAmb));
+      expect(gLit, greaterThan(gAmb));
+
+      // Far entity receives ambient baseline only
+      expect(rAmb, closeTo(lightManager.ambientR * lightManager.ambientIntensity, 1e-4));
+      expect(gAmb, closeTo(lightManager.ambientG * lightManager.ambientIntensity, 1e-4));
+      expect(bAmb, closeTo(lightManager.ambientB * lightManager.ambientIntensity, 1e-4));
+    });
+
+    test('evaluateCrowdLighting processes batched entity positions with zero allocation', () {
+      const int instanceCount = 100;
+      final positions = Float32List(instanceCount * 3);
+      final normals = Float32List(instanceCount * 3);
+      final outColors = Float32List(instanceCount * 3);
+
+      for (int i = 0; i < instanceCount; i++) {
+        positions[i * 3 + 0] = (i - 50) * 1.5;
+        positions[i * 3 + 1] = 0.0;
+        positions[i * 3 + 2] = (i - 50) * 1.5;
+
+        normals[i * 3 + 0] = 0.0;
+        normals[i * 3 + 1] = 1.0;
+        normals[i * 3 + 2] = 0.0;
+      }
+
+      final elapsedMs = lightManager.evaluateCrowdLighting(
+        crowdPositions: positions,
+        crowdNormals: normals,
+        outColors: outColors,
+        entityCount: instanceCount,
+      );
+
+      expect(elapsedMs, greaterThanOrEqualTo(0.0));
+      for (int i = 0; i < instanceCount * 3; i++) {
+        expect(outColors[i], greaterThan(0.0));
+      }
     });
   });
 }

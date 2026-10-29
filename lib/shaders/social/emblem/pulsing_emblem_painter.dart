@@ -54,6 +54,9 @@ enum EmblemFaction {
 /// Supports hardware-accelerated Impeller rendering via [shader] (`emblem_aura.frag`)
 /// as well as pure Canvas 2D fallback rendering.
 class PulsingEmblemPainter extends CustomPainter {
+  /// Number of uniform floats passed to `emblem_aura.frag`.
+  static const int kEmblemAuraUniformFloatCount = 14;
+
   const PulsingEmblemPainter({
     required this.progress,
     this.faction = EmblemFaction.elyos,

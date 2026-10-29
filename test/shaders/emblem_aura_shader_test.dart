@@ -14,19 +14,26 @@ import 'package:gkk_flutter/shaders/social/emblem/pulsing_emblem_painter.dart';
 import 'package:gkk_flutter/shaders/social/emblem/pulsing_emblem_widget.dart';
 import 'package:gkk_flutter/shaders/social/theme/social_theme_tokens.dart';
 
-/// Test uniform recorder capturing [setFloat] invocations.
+/// Test uniform recorder capturing [setFloat] and [setImageSampler] invocations
+/// without violating Dart 3's `base class` restriction on `ui.FragmentShader`.
 class RecordingUniformTarget {
   final Map<int, double> floats = <int, double>{};
   final List<(int, double)> history = <(int, double)>[];
+  final Map<int, ui.Image> samplers = <int, ui.Image>{};
 
   void setFloat(int index, double value) {
     floats[index] = value;
     history.add((index, value));
   }
 
+  void setImageSampler(int index, ui.Image image) {
+    samplers[index] = image;
+  }
+
   void reset() {
     floats.clear();
     history.clear();
+    samplers.clear();
   }
 }
 
@@ -1042,7 +1049,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Change duration on internal controller
-      final dynamic state = tester.state(find.byType(_DynamicControllerHost));
+      final _DynamicControllerHostState state =
+          tester.state<_DynamicControllerHostState>(find.byType(_DynamicControllerHost));
       state.updateDuration(const Duration(seconds: 4));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));

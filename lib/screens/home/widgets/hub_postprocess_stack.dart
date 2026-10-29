@@ -15,7 +15,7 @@ import '../../../rendering/postprocess/ssao_kernel.dart';
 // =============================================================================
 
 /// Quality tiers for post-processing overhead control on mobile TBDR architectures.
-enum PostProcessQualityTier {
+enum PostProcessQualityTier implements Comparable<PostProcessQualityTier> {
   /// Eco-tier: Minimal fill-rate overhead for ultra-budget / Android Go devices.
   /// Bypasses heavy blur passes, simple single-pass contrast tint.
   eco,
@@ -31,7 +31,22 @@ enum PostProcessQualityTier {
 
   /// Ultra-tier: 2027 AAA Aion 2 standard: Dual-tier bloom (specular + celestial haze),
   /// high-precision ACES curve, optical vignette with cosine roll-off, film grain micro-dither.
-  ultra,
+  ultra;
+
+  /// Whether this quality tier is greater than or equal to [other].
+  bool operator >=(PostProcessQualityTier other) => index >= other.index;
+
+  /// Whether this quality tier is greater than [other].
+  bool operator >(PostProcessQualityTier other) => index > other.index;
+
+  /// Whether this quality tier is less than or equal to [other].
+  bool operator <=(PostProcessQualityTier other) => index <= other.index;
+
+  /// Whether this quality tier is less than [other].
+  bool operator <(PostProcessQualityTier other) => index < other.index;
+
+  @override
+  int compareTo(PostProcessQualityTier other) => index.compareTo(other.index);
 }
 
 /// Parameters for cinematic 3-way color grading, color temperature, and filmic dither.

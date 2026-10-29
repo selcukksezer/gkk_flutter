@@ -386,10 +386,39 @@ class _NightMarketTabState extends ConsumerState<NightMarketTab>
                         ),
                       ],
                     ),
-                    child: Icon(
-                      Icons.nights_stay_rounded,
-                      color: AppColors.warningSolar.withValues(alpha: 0.7 + pulse * 0.3),
-                      size: 32,
+                    child: ClipOval(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: <Widget>[
+                          // Shadow Altar Stone Render
+                          Image.asset(
+                            'assets/renders/environment/altar-stone_beauty.png',
+                            width: 58,
+                            height: 58,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const SizedBox(),
+                          ),
+                          // Dark mystical overlay
+                          Container(
+                            color: Colors.black.withValues(alpha: 0.28),
+                          ),
+                          // Asmodian Shadow Merchant/Assassin Portrait
+                          Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Image.asset(
+                              'assets/images/portraits/asmodian/asmodian_assassin.png',
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.nights_stay_rounded,
+                                color: AppColors.warningSolar.withValues(alpha: 0.7 + pulse * 0.3),
+                                size: 30,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

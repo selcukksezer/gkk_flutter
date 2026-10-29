@@ -422,10 +422,10 @@ class _PvpCombatVfxStageState extends State<PvpCombatVfxStage> {
 
     // 1. Directional Camera Shake Transform
     final Offset shakeOffset = widget.coordinator.enableCameraShake
-        ? widget.coordinator.cameraShake.translation
+        ? widget.coordinator.cameraShake.state.translation
         : Offset.zero;
     final double shakeRoll = widget.coordinator.enableCameraShake
-        ? widget.coordinator.cameraShake.roll
+        ? widget.coordinator.cameraShake.state.roll
         : 0.0;
 
     final DateTime now = DateTime.now();

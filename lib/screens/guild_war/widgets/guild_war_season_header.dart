@@ -38,14 +38,186 @@ class GuildWarSeasonHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // High-Res Aion-2 Fortress Siege Cinematic Header Illustration
-          const FortressSiegeIllustration(
-            fortressName: 'Uçurum Bastionu',
-            faction: FactionType.elyos,
-            shieldIntegrity: 0.92,
-            isUnderSiege: true,
+          // Epic Aion-2 Abyss Core Warzone & Lord of War Cinematic Header
+          Container(
             height: 165,
-            showTitle: false,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              border: Border.all(
+                color: WarPalette.ruby.withValues(alpha: 0.65),
+                width: 1.2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: WarPalette.ruby.withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd - 1.2),
+              child: Stack(
+                children: <Widget>[
+                  // 1. Authentic Abyss Core Warzone illustration
+                  Positioned.fill(
+                    child: Image.asset(
+                      'assets/images/backgrounds/dungeons/bg_abyss_core_warzone.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox(),
+                    ),
+                  ),
+                  // 2. Procedural fortress HUD overlay at subtle blending opacity
+                  const Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.35,
+                      child: FortressSiegeIllustration(
+                        fortressName: 'Uçurum Bastionu',
+                        faction: FactionType.elyos,
+                        shieldIntegrity: 0.92,
+                        isUnderSiege: true,
+                        height: 165,
+                        showTitle: false,
+                      ),
+                    ),
+                  ),
+                  // 3. Cinematic Vignette
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[
+                            Colors.black.withValues(alpha: 0.40),
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.88),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 4. Top-left battle status tag
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusXs),
+                        border: Border.all(color: WarPalette.ruby.withValues(alpha: 0.7)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: WarPalette.ruby,
+                              shape: BoxShape.circle,
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(color: WarPalette.ruby, blurRadius: 6),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'UÇURUM BASTİONU • KUŞATMA DEVAM EDİYOR',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // 5. Lord of War Zikel Portrait Inset
+                  Positioned(
+                    left: 12,
+                    bottom: 10,
+                    child: Row(
+                      children: <Widget>[
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: WarPalette.gold, width: 1.5),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: WarPalette.gold.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/images/portraits/npcs/lord_zikel.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.military_tech_rounded,
+                                color: WarPalette.gold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: const <Widget>[
+                            Text(
+                              'SAVAŞ LORDU ZİKEL',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.6,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              'Uçurum Yüksek Komutanlığı',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                color: WarPalette.titanium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 6. Shield integrity status pill
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusXs),
+                        border: Border.all(color: WarPalette.gold.withValues(alpha: 0.5)),
+                      ),
+                      child: const Text(
+                        'KALKAN: %92',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: WarPalette.gold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           WarHeroBanner(

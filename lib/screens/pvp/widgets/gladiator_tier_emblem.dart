@@ -594,12 +594,16 @@ class GladiatorTierProgressCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          '· Kazanma: %$winRate ($pvpWins G / $pvpLosses M)',
-                          style: const TextStyle(
-                            color: Colors.white60,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            '· Kazanma: %$winRate ($pvpWins G / $pvpLosses M)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],

@@ -433,10 +433,27 @@ class _VipPassHeroPanelState extends State<_VipPassHeroPanel> {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.workspace_premium_rounded,
-                  color: AppColors.liquidGold,
-                  size: 28,
+                child: ClipOval(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Image.asset(
+                      'assets/renders/aion2/aion2_ethereal_wings_beauty.png',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Image.asset(
+                        'assets/images/icons/armor/armor_crown_of_light.png',
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.workspace_premium_rounded,
+                          color: AppColors.liquidGold,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),

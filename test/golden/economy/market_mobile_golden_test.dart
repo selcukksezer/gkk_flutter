@@ -403,12 +403,10 @@ Widget buildMarketMobileTestHarness({
   final FakeKingdomMarketBlessingNotifier blessingNotifier = FakeKingdomMarketBlessingNotifier(
     initialStatus: blessingStatus ??
         KingdomMarketBlessingStatus(
-          isActive: true,
+          active: true,
           expiresAt: DateTime.now().add(const Duration(hours: 4)),
-          serverNow: DateTime.now(),
-          discountPercent: 10,
-          bonusPercent: 5,
-          locationLabel: 'Pazar',
+          goldDiscountPct: 10,
+          gemDiscountPct: 5,
         ),
   );
 
@@ -669,7 +667,7 @@ void main() {
                     decoration: BoxDecoration(
                       color: AppColors.bgCard,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.goldOutline),
+                      border: Border.all(color: AppColors.gold),
                     ),
                     child: const Column(
                       mainAxisSize: MainAxisSize.min,

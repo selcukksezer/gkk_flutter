@@ -753,7 +753,7 @@ class _InventoryItemDetailPanelState extends State<InventoryItemDetailPanel>
         onTutorialTap: primaryAction == null
             ? null
             : () async {
-                await primaryAction.call();
+                await primaryAction?.call();
               },
         child: primaryButton,
       );

@@ -282,9 +282,13 @@ class AuthBadge extends StatelessWidget {
           BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 10),
         ],
       ),
-      child: Text(
-        label.toUpperCase(),
-        style: AuthDesign.sectionCaps(color: accent),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          label.toUpperCase(),
+          maxLines: 1,
+          style: AuthDesign.sectionCaps(color: accent),
+        ),
       ),
     );
   }
@@ -336,7 +340,9 @@ class AuthHeroHeader extends StatelessWidget {
               child: Icon(icon, color: accent, size: 28),
             ),
             const SizedBox(width: AppSpacing.base),
-            AuthBadge(label: badge, accent: accent),
+            Flexible(
+              child: AuthBadge(label: badge, accent: accent),
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.base),
@@ -362,7 +368,14 @@ class AuthHeroHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text(sectionLabel.toUpperCase(), style: AuthDesign.sectionCaps(color: AuthDesign.textMid)),
+            Flexible(
+              child: Text(
+                sectionLabel.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AuthDesign.sectionCaps(color: AuthDesign.textMid),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.base),
@@ -437,6 +450,8 @@ class _AuthFieldState extends State<AuthField> {
           padding: const EdgeInsets.only(left: 2, bottom: 6),
           child: Text(
             widget.label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AuthDesign.sectionCaps(color: AuthDesign.textLow),
           ),
         ),
@@ -538,6 +553,7 @@ class AuthGoldButton extends StatelessWidget {
         child: Container(
           width: double.infinity,
           height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: enabled ? AuthDesign.goldGradient : null,
@@ -568,13 +584,19 @@ class AuthGoldButton extends StatelessWidget {
               else
                 Icon(icon, color: AuthDesign.void_, size: 20),
               const SizedBox(width: 10),
-              Text(
-                label.toUpperCase(),
-                style: GoogleFonts.urbanist(
-                  color: AuthDesign.void_,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.1,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label.toUpperCase(),
+                    maxLines: 1,
+                    style: GoogleFonts.urbanist(
+                      color: AuthDesign.void_,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -611,15 +633,20 @@ class AuthGhostLink extends StatelessWidget {
           border: Border.all(color: accent.withValues(alpha: 0.35)),
           color: accent.withValues(alpha: 0.06),
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.urbanist(
-            color: accent.withValues(alpha: enabled ? 1 : 0.45),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            decoration: TextDecoration.underline,
-            decorationColor: accent.withValues(alpha: 0.55),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.urbanist(
+              color: accent.withValues(alpha: enabled ? 1 : 0.45),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.underline,
+              decorationColor: accent.withValues(alpha: 0.55),
+            ),
           ),
         ),
       ),

@@ -1248,6 +1248,8 @@ class DynamicSkyboxController extends ChangeNotifier {
         shadowCascadeCount: 2,
         lodDistanceMultiplier: 1.0,
         bloomEnabled: true,
+        crowdDensityCap: 2000,
+        targetFps: 60.0,
       );
     }
   }

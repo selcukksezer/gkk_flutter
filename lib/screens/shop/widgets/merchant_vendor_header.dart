@@ -133,10 +133,18 @@ class _MerchantVendorHeaderState extends State<MerchantVendorHeader>
                           width: 1.5,
                         ),
                       ),
-                      child: const Center(
-                        child: Text(
-                          '🧙‍♂️',
-                          style: TextStyle(fontSize: 26),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/portraits/elyos/elyos_sorcerer.png',
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Image.asset(
+                            'assets/images/portraits/npcs/lord_ariel.png',
+                            width: 52,
+                            height: 52,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),

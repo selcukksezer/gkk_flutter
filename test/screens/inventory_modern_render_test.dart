@@ -89,7 +89,7 @@ PlayerProfile _sampleProfile({
   int level = 25,
   int power = 280,
   int gold = 15000,
-  int gems = 250,
+  double gems = 250.0,
 }) {
   return PlayerProfile(
     id: 'usr_1',

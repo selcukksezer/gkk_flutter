@@ -668,7 +668,7 @@ class _SupportTicketListScreenState extends ConsumerState<SupportTicketListScree
         icon: const Icon(Icons.add_rounded),
         label: Text(
           'Yeni Ticket',
-          style: AppTextStyles.button.copyWith(
+          style: AppTextStyles.bodyBold.copyWith(
             color: SettingsPalette.void_,
             fontWeight: FontWeight.bold,
           ),
@@ -1287,7 +1287,7 @@ class _MyBugReportsScreenState extends ConsumerState<MyBugReportsScreen> {
         icon: const Icon(Icons.add_rounded),
         label: Text(
           'Yeni Rapor',
-          style: AppTextStyles.button.copyWith(
+          style: AppTextStyles.bodyBold.copyWith(
             color: SettingsPalette.void_,
             fontWeight: FontWeight.bold,
           ),

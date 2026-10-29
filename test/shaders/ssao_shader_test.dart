@@ -2,6 +2,7 @@
 // Comprehensive SSAO (Screen Space Ambient Occlusion) Shader & Wrapper Test Suite
 // Verifying GLSL 460 Uniform Packing, SsaoPass Architecture, Device Tiers & Fallbacks
 // 2027 Cinematic AAA Graphics Pipeline (R5 Standards)
+// Dart 3 Base Class Compliant: Uses BufferUniformTarget & ShaderUniformTarget (Zero illegal FragmentShader mocks)
 // =============================================================================
 
 import 'dart:math' as math;

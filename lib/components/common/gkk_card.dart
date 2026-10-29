@@ -18,6 +18,7 @@ class GkkCard extends StatelessWidget {
     this.onTap,
     this.gradient,
     this.borderRadius,
+    this.clipBehavior = Clip.antiAlias,
   });
 
   final Widget child;
@@ -35,6 +36,9 @@ class GkkCard extends StatelessWidget {
   final Gradient? gradient;
 
   final double? borderRadius;
+
+  /// Clip behavior applied to card bounds (defaults to [Clip.antiAlias]).
+  final Clip clipBehavior;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +65,7 @@ class GkkCard extends StatelessWidget {
     final Widget inner = Container(
       padding: padding ?? AppSpacing.cardPadding,
       decoration: decoration,
+      clipBehavior: clipBehavior,
       child: child,
     );
 
@@ -69,7 +74,7 @@ class GkkCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(radius),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: clipBehavior,
       child: InkWell(
         onTap: onTap,
         splashColor: (accentColor ?? AppColors.accentBlue).withValues(alpha: 0.1),

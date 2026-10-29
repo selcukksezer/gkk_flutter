@@ -368,7 +368,7 @@ Widget buildMarketTestHarness({
   Widget? overrideChild,
 }) {
   return ProviderScope(
-    overrides: <Override>[
+    overrides: [
       marketProvider.overrideWith(() => FakeMarketNotifier(initialState: marketState)),
       kingdomMarketBlessingProvider.overrideWith(
         () => FakeKingdomMarketBlessingNotifier(

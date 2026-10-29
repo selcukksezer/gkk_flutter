@@ -189,9 +189,9 @@ void main() {
     testWidgets('shows unauthorized view when staff profile has no liveops access', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: <Override>[
+          overrides: [
             staffProvider.overrideWith(
-              (ref) => _FakeStaffNotifier(
+              () => _FakeStaffNotifier(
                 const StaffProfile(isStaff: false, role: 'user'),
               ),
             ),
@@ -209,9 +209,9 @@ void main() {
     testWidgets('renders LiveOps console when profile is admin with telemetry and portraits', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: <Override>[
+          overrides: [
             staffProvider.overrideWith(
-              (ref) => _FakeStaffNotifier(
+              () => _FakeStaffNotifier(
                 const StaffProfile(
                   isStaff: true,
                   role: 'admin',
@@ -261,8 +261,10 @@ class _FakeStaffNotifier extends StaffNotifier {
   StaffState build() {
     return StaffState(
       profile: _initialProfile,
-      loading: false,
-      loaded: true,
+      isLoading: false,
     );
   }
+
+  @override
+  Future<void> load({bool silent = false}) async {}
 }

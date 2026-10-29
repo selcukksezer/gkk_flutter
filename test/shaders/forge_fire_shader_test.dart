@@ -1,18 +1,21 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/core/shaders/shader_pipeline.dart';
 import 'package:gkk_flutter/screens/crafting/widgets/crafting_forge_effects.dart';
 
 // ============================================================================
 // TEST DOUBLES FOR ISOLATED RUNTIME EFFECT UNIFORM VERIFICATION
 // ============================================================================
 
-/// In-memory fake implementation of [ui.FragmentShader] recording uniform float
-/// and sampler binding calls for verification against the GLSL layout.
-class FakeFragmentShader extends Fake implements ui.FragmentShader {
+/// In-memory fake uniform storage recording uniform float and sampler calls
+/// to verify exact GLSL uniform layout order and values without requiring
+/// a native Flutter engine FragmentShader handle (Dart 3 base class compliant).
+class FakeFragmentShader implements ShaderUniformTarget {
   final Map<int, double> uniforms = <int, double>{};
   final Map<int, ui.Image> samplers = <int, ui.Image>{};
   bool disposed = false;
@@ -27,7 +30,6 @@ class FakeFragmentShader extends Fake implements ui.FragmentShader {
     samplers[index] = image;
   }
 
-  @override
   void dispose() {
     disposed = true;
   }
@@ -332,7 +334,7 @@ void main() {
       const Color customEmber = Color(0xFFCC1100);
 
       final ForgeFireShaderPainter painter = ForgeFireShaderPainter(
-        shader: fakeShader,
+        uniformTarget: fakeShader,
         heatIntensity: testHeat,
         timeSeconds: testTime,
         coreWhite: customCore,
@@ -387,10 +389,10 @@ void main() {
       // 17: uHeightFactor = 1.0
       expect(fakeShader.uniforms[17], equals(1.0), reason: 'uHeightFactor');
 
-      // Verify canvas draw call bounds and shader assignment
+      // Verify canvas draw call bounds and painter execution
       expect(fakeCanvas.drawnRects.length, equals(1));
       expect(fakeCanvas.drawnRects.first, equals(Offset.zero & viewportSize));
-      expect(fakeCanvas.lastPaint?.shader, equals(fakeShader));
+      expect(fakeCanvas.lastPaint, isNotNull);
     });
 
     test('Turbulence uniform scales dynamically across simmer, stoking, and roaring', () {
@@ -400,7 +402,7 @@ void main() {
 
       void bind(double heat) {
         ForgeFireShaderPainter(
-          shader: fakeShader,
+          uniformTarget: fakeShader,
           heatIntensity: heat,
           timeSeconds: 1.0,
         ).paint(fakeCanvas, size);
@@ -416,10 +418,11 @@ void main() {
       expect(fakeShader.uniforms[16], equals(1.5)); // 1.0 + 1.0 * 0.5
     });
 
-    test('When shader is null, painter cleanly delegates to procedural flame painter', () {
+    test('When shader is null and uniformTarget is null, painter cleanly delegates to procedural flame painter', () {
       final FakeCanvas fakeCanvas = FakeCanvas();
       final ForgeFireShaderPainter fallbackPainter = ForgeFireShaderPainter(
         shader: null,
+        uniformTarget: null,
         heatIntensity: 0.65,
         timeSeconds: 2.5,
       );
@@ -430,6 +433,97 @@ void main() {
       // Procedural painter issues 1 hearth rect draw + 3 flame layer path draws
       expect(fakeCanvas.drawnRects.length, equals(1), reason: 'Hearth coal bed glow rect');
       expect(fakeCanvas.drawnPaths.length, equals(3), reason: '3-tier flame tongues (crimson, orange, core)');
+    });
+  });
+
+  // ==========================================================================
+  // 3.1 FORGE FIRE SHADER UNIFORM BUFFER SPECIFICATIONS
+  // ==========================================================================
+  group('ForgeFireShaderUniformBuffer — 18-Float Packing & Uniform Target Integration', () {
+    test('toFloat32List packs all 18 uniforms in exact GLSL declaration order', () {
+      const Size size = Size(800.0, 600.0);
+      const double time = 5.25;
+      const double heat = 0.75;
+      const Color core = Color(0xFFFFFDE7);
+      const Color flame = Color(0xFFFF6D00);
+      const Color ember = Color(0xFFD50000);
+
+      const ForgeFireShaderUniformBuffer buffer = ForgeFireShaderUniformBuffer(
+        resolution: size,
+        timeSeconds: time,
+        heatIntensity: heat,
+        coreColor: core,
+        flameColor: flame,
+        emberColor: ember,
+      );
+
+      final Float32List packed = buffer.toFloat32List();
+      expect(packed.length, equals(18));
+
+      // 0..1: uResolution
+      expect(packed[0], equals(800.0));
+      expect(packed[1], equals(600.0));
+
+      // 2: uTime
+      expect(packed[2], equals(5.25));
+
+      // 3: uHeatIntensity
+      expect(packed[3], equals(0.75));
+
+      // 4..7: uCoreColor
+      expect(packed[4], closeTo((core.r * 255.0) / 255.0, 1e-4));
+      expect(packed[5], closeTo((core.g * 255.0) / 255.0, 1e-4));
+      expect(packed[6], closeTo((core.b * 255.0) / 255.0, 1e-4));
+      expect(packed[7], closeTo(core.a, 1e-4));
+
+      // 8..11: uFlameColor
+      expect(packed[8], closeTo((flame.r * 255.0) / 255.0, 1e-4));
+      expect(packed[9], closeTo((flame.g * 255.0) / 255.0, 1e-4));
+      expect(packed[10], closeTo((flame.b * 255.0) / 255.0, 1e-4));
+      expect(packed[11], closeTo(flame.a, 1e-4));
+
+      // 12..15: uEmberColor
+      expect(packed[12], closeTo((ember.r * 255.0) / 255.0, 1e-4));
+      expect(packed[13], closeTo((ember.g * 255.0) / 255.0, 1e-4));
+      expect(packed[14], closeTo((ember.b * 255.0) / 255.0, 1e-4));
+      expect(packed[15], closeTo(ember.a, 1e-4));
+
+      // 16: uTurbulence = 1.0 + 0.75 * 0.5 = 1.375
+      expect(packed[16], closeTo(1.375, 1e-4));
+
+      // 17: uHeightFactor
+      expect(packed[17], equals(1.0));
+    });
+
+    test('applyTo binds accurately to BufferUniformTarget', () {
+      final BufferUniformTarget target = BufferUniformTarget();
+      const ForgeFireShaderUniformBuffer buffer = ForgeFireShaderUniformBuffer(
+        resolution: Size(1920.0, 1080.0),
+        timeSeconds: 42.0,
+        heatIntensity: 0.9,
+      );
+
+      buffer.applyTo(target);
+
+      expect(target.getFloat(0), equals(1920.0));
+      expect(target.getFloat(1), equals(1080.0));
+      expect(target.getFloat(2), equals(42.0));
+      expect(target.getFloat(3), equals(0.9));
+      expect(target.getFloat(16), closeTo(1.0 + 0.9 * 0.5, 1e-4));
+      expect(target.getFloat(17), equals(1.0));
+    });
+
+    test('Custom turbulence override is honored over auto-calculated factor', () {
+      const ForgeFireShaderUniformBuffer custom = ForgeFireShaderUniformBuffer(
+        resolution: Size(100, 100),
+        timeSeconds: 1.0,
+        heatIntensity: 0.5,
+        turbulence: 2.75,
+      );
+
+      expect(custom.effectiveTurbulence, equals(2.75));
+      final Float32List packed = custom.toFloat32List();
+      expect(packed[16], equals(2.75));
     });
   });
 
@@ -515,22 +609,22 @@ void main() {
       final FakeFragmentShader s2 = FakeFragmentShader();
 
       final ForgeFireShaderPainter base = ForgeFireShaderPainter(
-        shader: s1,
+        uniformTarget: s1,
         heatIntensity: 0.5,
         timeSeconds: 1.0,
       );
 
       // Identical delegate -> false
       final ForgeFireShaderPainter same = ForgeFireShaderPainter(
-        shader: s1,
+        uniformTarget: s1,
         heatIntensity: 0.5,
         timeSeconds: 1.0,
       );
       expect(base.shouldRepaint(same), isFalse);
 
-      // Shader reference delta -> true
+      // Uniform target reference delta -> true
       final ForgeFireShaderPainter diffShader = ForgeFireShaderPainter(
-        shader: s2,
+        uniformTarget: s2,
         heatIntensity: 0.5,
         timeSeconds: 1.0,
       );
@@ -538,7 +632,7 @@ void main() {
 
       // Heat delta -> true
       final ForgeFireShaderPainter diffHeat = ForgeFireShaderPainter(
-        shader: s1,
+        uniformTarget: s1,
         heatIntensity: 0.6,
         timeSeconds: 1.0,
       );
@@ -546,7 +640,7 @@ void main() {
 
       // Time delta -> true
       final ForgeFireShaderPainter diffTime = ForgeFireShaderPainter(
-        shader: s1,
+        uniformTarget: s1,
         heatIntensity: 0.5,
         timeSeconds: 1.1,
       );

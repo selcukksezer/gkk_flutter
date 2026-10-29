@@ -587,72 +587,82 @@ class _CharacterSelectScreenState extends ConsumerState<CharacterSelectScreen>
             ],
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          'REALM: ELYSEA-01 // ONLINE',
-          style: GoogleFonts.urbanist(
-            color: const Color(0xFFB0BAC9),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.6,
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            'REALM: ELYSEA-01 // ONLINE',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.urbanist(
+              color: const Color(0xFFB0BAC9),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
-        const Spacer(),
-        // Adaptive Quality Scaler Hardware Tier Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(
-                Icons.speed_rounded,
-                size: 11,
-                color: telemetry.rollingFps >= 50
-                    ? const Color(0xFF00E676)
-                    : const Color(0xFFFFB300),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${hardwareTier.name.toUpperCase()} // ${telemetry.rollingFps.toStringAsFixed(0)} FPS',
-                style: GoogleFonts.jetBrainsMono(
-                  color: const Color(0xFFE2E8F0),
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
+        const SizedBox(width: 6),
+        // Adaptive Quality Scaler Hardware Tier Badge (Wrapped in FittedBox)
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.speed_rounded,
+                  size: 11,
+                  color: telemetry.rollingFps >= 50
+                      ? const Color(0xFF00E676)
+                      : const Color(0xFFFFB300),
                 ),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Text(
+                  '${hardwareTier.name.toUpperCase()} // ${telemetry.rollingFps.toStringAsFixed(0)} FPS',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: const Color(0xFFE2E8F0),
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        // Elemental Affinity Pill Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: affinity.primaryColor.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: affinity.primaryColor.withValues(alpha: 0.38)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(affinity.insigniaIcon, size: 12, color: affinity.primaryColor),
-              const SizedBox(width: 4),
-              Text(
-                affinity.name.toUpperCase(),
-                style: GoogleFonts.urbanist(
-                  color: affinity.primaryColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
+        const SizedBox(width: 6),
+        // Elemental Affinity Pill Badge (Wrapped in FittedBox)
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: affinity.primaryColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: affinity.primaryColor.withValues(alpha: 0.38)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(affinity.insigniaIcon, size: 12, color: affinity.primaryColor),
+                const SizedBox(width: 4),
+                Text(
+                  affinity.name.toUpperCase(),
+                  style: GoogleFonts.urbanist(
+                    color: affinity.primaryColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -1020,37 +1030,43 @@ class _CharacterSelectScreenState extends ConsumerState<CharacterSelectScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Text(
-          activeClass.name.toUpperCase(),
-          style: GoogleFonts.urbanist(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2.0,
-            shadows: const <Shadow>[
-              Shadow(
-                color: Colors.black,
-                blurRadius: 10,
-                offset: Offset(0, 2),
-              ),
-            ],
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            activeClass.name.toUpperCase(),
+            style: GoogleFonts.urbanist(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+              shadows: const <Shadow>[
+                Shadow(
+                  color: Colors.black,
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 3),
-        Text(
-          activeClass.titleLine,
-          style: GoogleFonts.urbanist(
-            color: affinity.primaryColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.0,
-            shadows: const <Shadow>[
-              Shadow(
-                color: Colors.black,
-                blurRadius: 6,
-                offset: Offset(0, 1),
-              ),
-            ],
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            activeClass.titleLine,
+            style: GoogleFonts.urbanist(
+              color: affinity.primaryColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+              shadows: const <Shadow>[
+                Shadow(
+                  color: Colors.black,
+                  blurRadius: 6,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -1247,6 +1263,7 @@ class _CharacterSelectScreenState extends ConsumerState<CharacterSelectScreen>
                               Text(
                                 cardAffinity.name,
                                 maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.urbanist(
                                   color: isSelected ? cardAffinity.primaryColor : Colors.white38,
                                   fontSize: 9.5,

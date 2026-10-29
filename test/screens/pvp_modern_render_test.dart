@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gkk_flutter/core/matchmaking/matchmaking_offer.dart';
 import 'package:gkk_flutter/models/guild_war_model.dart';
 import 'package:gkk_flutter/models/nemesis_model.dart';
-import 'package:gkk_flutter/screens/guild_war/battle_result_screen.dart';
+import 'package:gkk_flutter/screens/guild_war/guild_war_battle_result_screen.dart';
 import 'package:gkk_flutter/screens/guild_war/widgets/faction_crest_painter.dart';
 import 'package:gkk_flutter/screens/guild_war/widgets/faction_war_banner.dart';
 import 'package:gkk_flutter/screens/guild_war/widgets/territory_map_view.dart';

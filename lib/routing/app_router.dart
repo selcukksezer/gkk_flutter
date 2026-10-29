@@ -34,7 +34,7 @@ import '../screens/guild_war/guild_war_attack_screen.dart';
 import '../screens/guild_war/territory_detail_screen.dart';
 import '../screens/guild/guild_vault_screen.dart';
 import '../screens/announcements/announcements_screen.dart';
-import '../screens/guild_war/battle_result_screen.dart';
+import '../screens/guild_war/guild_war_battle_result_screen.dart';
 import '../screens/guild_war/war_logs_screen.dart';
 import '../models/guild_war_model.dart';
 import '../screens/guild/guild_monument_screen.dart';

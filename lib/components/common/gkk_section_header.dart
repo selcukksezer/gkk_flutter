@@ -158,7 +158,10 @@ class GkkSectionHeader extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
           ],
           if (icon != null) ...<Widget>[
-            Text(icon!, style: const TextStyle(fontSize: 16)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(icon!, style: const TextStyle(fontSize: 16)),
+            ),
             const SizedBox(width: AppSpacing.sm),
           ],
           Expanded(
@@ -204,7 +207,14 @@ class GkkSectionHeader extends StatelessWidget {
         leadingAndTitle,
         if (effectiveTrailing != null) ...<Widget>[
           const SizedBox(width: AppSpacing.sm),
-          effectiveTrailing,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 160),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: effectiveTrailing,
+            ),
+          ),
         ],
       ],
     );
@@ -341,6 +351,7 @@ class _Aion2ActionButton extends StatelessWidget {
         splashColor: accentColor.withValues(alpha: 0.25),
         highlightColor: labelColor.withValues(alpha: 0.15),
         child: Container(
+          constraints: const BoxConstraints(maxWidth: 160),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm + 2,
             vertical: AppSpacing.xs + 1,
@@ -370,12 +381,19 @@ class _Aion2ActionButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(
-                label,
-                style: AppTextStyles.captionBold.copyWith(
-                  color: labelColor,
-                  fontSize: 11.5,
-                  letterSpacing: 0.3,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: AppTextStyles.captionBold.copyWith(
+                      color: labelColor,
+                      fontSize: 11.5,
+                      letterSpacing: 0.3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),

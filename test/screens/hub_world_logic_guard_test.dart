@@ -6,6 +6,7 @@ import 'package:gkk_flutter/core/utils/character_class_abilities.dart';
 import 'package:gkk_flutter/core/utils/player_health.dart';
 import 'package:gkk_flutter/core/utils/power_formula.dart';
 import 'package:gkk_flutter/models/facility_model.dart';
+import 'package:gkk_flutter/models/item_model.dart';
 import 'package:gkk_flutter/models/kingdom_market_blessing_model.dart';
 import 'package:gkk_flutter/models/mekan_model.dart';
 import 'package:gkk_flutter/models/player_model.dart';
@@ -79,7 +80,7 @@ void main() {
         defense: 120,
         health: 500,
         maxHealth: 500,
-        power: 1000,
+        power: 0,
         isOnline: true,
         isBanned: false,
         tutorialCompleted: true,
@@ -96,6 +97,7 @@ void main() {
         warriorBloodlustUntil: '',
         hospitalUntil: '',
         prisonUntil: '',
+        prisonReason: null,
         globalSuspicionLevel: 0,
         lastBribeAt: '',
         lastLoginAt: '',
@@ -105,30 +107,80 @@ void main() {
         characterClass: CharacterClass.warrior,
       );
 
-      final InventoryItem weapon = InventoryItem(
-        id: 'w1',
+      const InventoryItem weapon = InventoryItem(
+        rowId: 'w1',
         itemId: 'legendary_blade',
-        name: 'Legendary Blade',
-        itemType: 'weapon',
-        rarity: 'legendary',
         quantity: 1,
+        slotPosition: 0,
         isEquipped: true,
-        slot: 'weapon',
-        attackBonus: 80,
-        defenseBonus: 10,
+        equippedSlot: 'weapon',
+        enhancementLevel: 0,
+        isFavorite: false,
+        pendingSync: false,
+        name: 'Legendary Blade',
+        description: 'A legendary blade.',
+        icon: 'weapon_blade',
+        itemType: ItemType.weapon,
+        rarity: Rarity.legendary,
+        basePrice: 100,
+        vendorSellPrice: 50,
+        attack: 80,
+        defense: 10,
+        health: 0,
+        power: 90,
+        luck: 0,
+        mana: 0,
+        equipSlot: EquipSlot.weapon,
+        weaponType: WeaponType.sword,
+        armorType: ArmorType.none,
+        requiredLevel: 1,
+        canEnhance: true,
+        maxEnhancement: 10,
+        isStackable: false,
+        maxStack: 1,
+        isTradeable: true,
+        potionType: PotionType.none,
+        energyRestore: 0,
+        healthRestore: 0,
+        toleranceIncrease: 0,
       );
 
-      final InventoryItem armor = InventoryItem(
-        id: 'a1',
+      const InventoryItem armor = InventoryItem(
+        rowId: 'a1',
         itemId: 'dragon_plate',
-        name: 'Dragon Plate',
-        itemType: 'armor',
-        rarity: 'epic',
         quantity: 1,
+        slotPosition: 1,
         isEquipped: true,
-        slot: 'chest',
-        attackBonus: 15,
-        defenseBonus: 95,
+        equippedSlot: 'chest',
+        enhancementLevel: 0,
+        isFavorite: false,
+        pendingSync: false,
+        name: 'Dragon Plate',
+        description: 'A dragon plate.',
+        icon: 'armor_plate',
+        itemType: ItemType.armor,
+        rarity: Rarity.epic,
+        basePrice: 100,
+        vendorSellPrice: 50,
+        attack: 15,
+        defense: 95,
+        health: 0,
+        power: 110,
+        luck: 0,
+        mana: 0,
+        equipSlot: EquipSlot.chest,
+        weaponType: WeaponType.none,
+        armorType: ArmorType.plate,
+        requiredLevel: 1,
+        canEnhance: true,
+        maxEnhancement: 10,
+        isStackable: false,
+        maxStack: 1,
+        isTradeable: true,
+        potionType: PotionType.none,
+        energyRestore: 0,
+        healthRestore: 0,
+        toleranceIncrease: 0,
       );
 
       final int basePower = resolveDungeonCombatPower(
@@ -269,6 +321,7 @@ void main() {
         warriorBloodlustUntil: '',
         hospitalUntil: '',
         prisonUntil: '',
+        prisonReason: null,
         globalSuspicionLevel: 95,
         lastBribeAt: '',
         lastLoginAt: '',
@@ -313,6 +366,7 @@ void main() {
         warriorBloodlustUntil: '',
         hospitalUntil: '',
         prisonUntil: '',
+        prisonReason: null,
         globalSuspicionLevel: 95,
         lastBribeAt: '',
         lastLoginAt: '',
@@ -347,9 +401,30 @@ void main() {
 
     test('Queue item summation is exact across batches', () {
       final List<FacilityQueueItem> queue = <FacilityQueueItem>[
-        const FacilityQueueItem(id: 'q1', itemId: 'ore_1', rarity: 'common', quantity: 25),
-        const FacilityQueueItem(id: 'q2', itemId: 'ore_2', rarity: 'rare', quantity: 10),
-        const FacilityQueueItem(id: 'q3', itemId: 'ore_3', rarity: 'legendary', quantity: 2),
+        const FacilityQueueItem(
+          id: 'q1',
+          quantity: 25,
+          rarity: 'common',
+          startedAt: '',
+          completesAt: '',
+          isCompleted: false,
+        ),
+        const FacilityQueueItem(
+          id: 'q2',
+          quantity: 10,
+          rarity: 'rare',
+          startedAt: '',
+          completesAt: '',
+          isCompleted: false,
+        ),
+        const FacilityQueueItem(
+          id: 'q3',
+          quantity: 2,
+          rarity: 'legendary',
+          startedAt: '',
+          completesAt: '',
+          isCompleted: false,
+        ),
       ];
       expect(sumFacilityQueueQuantity(queue), 37);
       expect(sumFacilityQueueQuantity(const <FacilityQueueItem>[]), 0);

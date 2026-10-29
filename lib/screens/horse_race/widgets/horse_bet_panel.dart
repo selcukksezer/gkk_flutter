@@ -96,7 +96,7 @@ class HorseBetPanelState extends ConsumerState<HorseBetPanel> {
 
   int _getPlayerBalance(PlayerProfile? profile) {
     if (profile == null) return 0;
-    return _currency == 'gems' ? profile.gems : profile.gold;
+    return _currency == 'gems' ? profile.gems.toInt() : profile.gold;
   }
 
   bool _isBalanceInsufficient(PlayerProfile? profile) {

@@ -517,6 +517,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           accentEmissive: _selectedTab == 0
               ? const Color(0xFFFFD700)
               : AppColors.cyberFuchsia,
+          citadelBackgroundAsset: _selectedTab == 0
+              ? 'assets/images/backgrounds/elysea/bg_sanctum_citadel.png'
+              : 'assets/images/backgrounds/asmodae/bg_pandaemonium_capital.png',
           child: SafeArea(
             // Mobile safe area for 390x844 viewport (notch & gesture insets)
             child: Center(
@@ -601,10 +604,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       children: <Widget>[
         // Glowing celestial crest
         Container(
-          width: 58,
-          height: 58,
+          width: 72,
+          height: 72,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(22),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -614,20 +618,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ],
             ),
             border: Border.all(
-              color: emblemAccent.withValues(alpha: 0.55),
-              width: 1.4,
+              color: emblemAccent.withValues(alpha: 0.65),
+              width: 1.5,
             ),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: emblemAccent.withValues(alpha: 0.28),
-                blurRadius: 20,
+                color: emblemAccent.withValues(alpha: 0.38),
+                blurRadius: 24,
+                spreadRadius: 1,
               ),
             ],
           ),
-          child: Icon(
-            _selectedTab == 0 ? Icons.castle_rounded : Icons.person_add_alt_1_rounded,
-            color: emblemAccent,
-            size: 30,
+          child: Image.asset(
+            _selectedTab == 0
+                ? 'assets/renders/aion2/aion2_ethereal_wings_beauty.png'
+                : 'assets/images/portraits/npcs/lord_ariel.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(
+              _selectedTab == 0 ? Icons.castle_rounded : Icons.person_add_alt_1_rounded,
+              color: emblemAccent,
+              size: 32,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -774,33 +785,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         },
                 ),
               ),
-              GestureDetector(
-                onTap: isLoading
-                    ? null
-                    : () {
-                        AppHaptics.selection();
-                        setState(() => _rememberMe = !_rememberMe);
-                      },
-                child: Text(
-                  'Beni Hatırla',
-                  style: GoogleFonts.urbanist(
-                    color: const Color(0xFFCBD5E1),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
+              Flexible(
+                child: GestureDetector(
+                  onTap: isLoading
+                      ? null
+                      : () {
+                          AppHaptics.selection();
+                          setState(() => _rememberMe = !_rememberMe);
+                        },
+                  child: Text(
+                    'Beni Hatırla',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.urbanist(
+                      color: const Color(0xFFCBD5E1),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-              const Spacer(),
-              AuthGhostLink(
-                label: l10n.auth_forgot_password_link,
-                enabled: !isLoading,
-                onPressed: isLoading
-                    ? null
-                    : () {
-                        AppHaptics.light();
-                        context.push(AppRoutes.forgotPassword);
-                      },
-                accent: AuthDesign.titanium,
+              const SizedBox(width: 6),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: AuthGhostLink(
+                    label: l10n.auth_forgot_password_link,
+                    enabled: !isLoading,
+                    onPressed: isLoading
+                        ? null
+                        : () {
+                            AppHaptics.light();
+                            context.push(AppRoutes.forgotPassword);
+                          },
+                    accent: AuthDesign.titanium,
+                  ),
+                ),
               ),
             ],
           ),

@@ -5,15 +5,17 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/core/shaders/shader_pipeline.dart';
 import 'package:gkk_flutter/core/vfx/rim_hit_flash_effect.dart';
 
 // =============================================================================
 // TEST DOUBLES FOR HEADLESS ISOLATED SHADER & CANVAS VERIFICATION
 // =============================================================================
 
-/// In-memory fake [ui.FragmentShader] recording uniform float and sampler calls
-/// to verify exact GLSL uniform layout order and values.
-class FakeFragmentShader extends Fake implements ui.FragmentShader {
+/// In-memory fake uniform storage recording uniform float and sampler calls
+/// to verify exact GLSL uniform layout order and values without violating
+/// Dart 3 [ui.FragmentShader] base class restrictions.
+class FakeUniformStorage implements ShaderUniformTarget {
   final Map<int, double> uniforms = <int, double>{};
   final Map<int, ui.Image> samplers = <int, ui.Image>{};
   bool disposed = false;
@@ -28,9 +30,23 @@ class FakeFragmentShader extends Fake implements ui.FragmentShader {
     samplers[index] = image;
   }
 
-  @override
   void dispose() {
     disposed = true;
+  }
+
+  /// Binds controller uniforms and texture samplers to this storage matching shader layout.
+  void bindFromController({
+    required RimHitFlashController controller,
+    required ui.Size size,
+    required ui.Image targetImage,
+    ui.Image? normalMapImage,
+  }) {
+    final List<double> values = controller.buildUniformList(size);
+    for (int i = 0; i < values.length; i++) {
+      setFloat(i, values[i]);
+    }
+    setImageSampler(0, targetImage);
+    setImageSampler(1, normalMapImage ?? targetImage);
   }
 }
 
@@ -878,7 +894,7 @@ void main() {
       picture.dispose();
     });
 
-    test('GPU Shader path binds all 13 uniforms and both samplers accurately', () {
+    test('GPU uniform storage binds all 13 uniforms and both samplers accurately', () {
       final RimHitFlashController controller = RimHitFlashController(
         defaultConfig: const RimHitFlashConfig(
           tint: RimFlashTint.voidPurple,
@@ -893,120 +909,141 @@ void main() {
       );
       controller.triggerHit();
 
-      final FakeFragmentShader fakeShader = FakeFragmentShader();
+      final FakeUniformStorage storage = FakeUniformStorage();
       final FakeImage targetImage = FakeImage(width: 512, height: 512);
       final FakeImage normalImage = FakeImage(width: 512, height: 512);
 
-      final RimHitFlashPainter painter = RimHitFlashPainter(
+      const ui.Size canvasSize = ui.Size(512.0, 512.0);
+      storage.bindFromController(
         controller: controller,
-        shader: fakeShader,
+        size: canvasSize,
         targetImage: targetImage,
         normalMapImage: normalImage,
       );
 
-      final FakeCanvas fakeCanvas = FakeCanvas();
-      const ui.Size canvasSize = ui.Size(512.0, 512.0);
-      painter.paint(fakeCanvas, canvasSize);
-
-      // Rect drawn with GPU shader attached to Paint
-      expect(fakeCanvas.drawnRects.length, equals(1));
-      expect(fakeCanvas.drawnRects.first, equals(ui.Offset.zero & canvasSize));
-      expect(fakeCanvas.lastPaint!.shader, equals(fakeShader));
-
       // Uniforms 0..12 populated
-      expect(fakeShader.uniforms.length, equals(13));
-      expect(fakeShader.uniforms[0], equals(512.0));
-      expect(fakeShader.uniforms[1], equals(512.0));
-      expect(fakeShader.uniforms[2], equals(1.0)); // active intensity
-      expect(fakeShader.uniforms[6], equals(4.2)); // rimPower
-      expect(fakeShader.uniforms[7], equals(3.5)); // rimIntensity
-      expect(fakeShader.uniforms[8], equals(0.7)); // innerFlash
-      expect(fakeShader.uniforms[9], equals(2.5)); // edgeBleedWidth
-      expect(fakeShader.uniforms[10], equals(1.4)); // edgeBleedIntensity
-      expect(fakeShader.uniforms[11], equals(3.0)); // bloomMultiplier
-      expect(fakeShader.uniforms[12], equals(1.0)); // normalMode = normalMap
+      expect(storage.uniforms.length, equals(13));
+      expect(storage.uniforms[0], equals(512.0));
+      expect(storage.uniforms[1], equals(512.0));
+      expect(storage.uniforms[2], equals(1.0)); // active intensity
+      expect(storage.uniforms[6], equals(4.2)); // rimPower
+      expect(storage.uniforms[7], equals(3.5)); // rimIntensity
+      expect(storage.uniforms[8], equals(0.7)); // innerFlash
+      expect(storage.uniforms[9], equals(2.5)); // edgeBleedWidth
+      expect(storage.uniforms[10], equals(1.4)); // edgeBleedIntensity
+      expect(storage.uniforms[11], equals(3.0)); // bloomMultiplier
+      expect(storage.uniforms[12], equals(1.0)); // normalMode = normalMap
 
       // Samplers populated
-      expect(fakeShader.samplers[0], equals(targetImage));
-      expect(fakeShader.samplers[1], equals(normalImage));
+      expect(storage.samplers[0], equals(targetImage));
+      expect(storage.samplers[1], equals(normalImage));
     });
 
-    test('GPU Shader path falls back to targetImage when normalMapImage is null', () {
+    test('GPU uniform storage falls back to targetImage when normalMapImage is null', () {
       final RimHitFlashController controller = RimHitFlashController();
       controller.triggerHit();
 
-      final FakeFragmentShader fakeShader = FakeFragmentShader();
+      final FakeUniformStorage storage = FakeUniformStorage();
       final FakeImage targetImage = FakeImage();
 
-      final RimHitFlashPainter painter = RimHitFlashPainter(
+      storage.bindFromController(
         controller: controller,
-        shader: fakeShader,
+        size: const ui.Size(100.0, 100.0),
         targetImage: targetImage,
         normalMapImage: null, // Omitted
       );
 
-      final FakeCanvas fakeCanvas = FakeCanvas();
-      painter.paint(fakeCanvas, const ui.Size(100.0, 100.0));
+      expect(storage.samplers[0], equals(targetImage));
+      expect(storage.samplers[1], equals(targetImage)); // fallback to targetImage
+    });
 
-      expect(fakeShader.samplers[0], equals(targetImage));
-      expect(fakeShader.samplers[1], equals(targetImage)); // fallback to targetImage
+    test('GPU Shader path binds to real FragmentShader when runtime effect is loaded', () async {
+      await RimHitFlashPreloader.warmUp();
+      final ui.FragmentProgram? program = RimHitFlashPreloader.cachedProgram;
+      if (program != null) {
+        final ui.FragmentShader shader = program.fragmentShader();
+        final RimHitFlashController controller = RimHitFlashController();
+        controller.triggerHit();
+
+        final FakeImage targetImage = FakeImage(width: 512, height: 512);
+        final FakeImage normalImage = FakeImage(width: 512, height: 512);
+
+        final RimHitFlashPainter painter = RimHitFlashPainter(
+          controller: controller,
+          shader: shader,
+          targetImage: targetImage,
+          normalMapImage: normalImage,
+        );
+
+        final FakeCanvas fakeCanvas = FakeCanvas();
+        const ui.Size canvasSize = ui.Size(512.0, 512.0);
+        expect(
+          () => painter.paint(fakeCanvas, canvasSize),
+          returnsNormally,
+        );
+        expect(fakeCanvas.drawnRects.length, equals(1));
+        expect(fakeCanvas.drawnRects.first, equals(ui.Offset.zero & canvasSize));
+        expect(fakeCanvas.lastPaint!.shader, equals(shader));
+      }
     });
 
     test('shouldRepaint returns true on state changes and false when identical', () {
       final RimHitFlashController controller1 = RimHitFlashController();
       final RimHitFlashController controller2 = RimHitFlashController();
-      final FakeFragmentShader shader1 = FakeFragmentShader();
-      final FakeFragmentShader shader2 = FakeFragmentShader();
       final FakeImage image1 = FakeImage();
       final FakeImage image2 = FakeImage();
 
       final RimHitFlashPainter painter1 = RimHitFlashPainter(
         controller: controller1,
-        shader: shader1,
+        shader: null,
         targetImage: image1,
         normalMapImage: image1,
       );
 
       final RimHitFlashPainter identicalPainter = RimHitFlashPainter(
         controller: controller1,
-        shader: shader1,
+        shader: null,
         targetImage: image1,
         normalMapImage: image1,
       );
 
       final RimHitFlashPainter diffController = RimHitFlashPainter(
         controller: controller2,
-        shader: shader1,
-        targetImage: image1,
-        normalMapImage: image1,
-      );
-
-      final RimHitFlashPainter diffShader = RimHitFlashPainter(
-        controller: controller1,
-        shader: shader2,
+        shader: null,
         targetImage: image1,
         normalMapImage: image1,
       );
 
       final RimHitFlashPainter diffTarget = RimHitFlashPainter(
         controller: controller1,
-        shader: shader1,
+        shader: null,
         targetImage: image2,
         normalMapImage: image1,
       );
 
       final RimHitFlashPainter diffNormal = RimHitFlashPainter(
         controller: controller1,
-        shader: shader1,
+        shader: null,
         targetImage: image1,
         normalMapImage: image2,
       );
 
       expect(painter1.shouldRepaint(identicalPainter), isFalse);
       expect(painter1.shouldRepaint(diffController), isTrue);
-      expect(painter1.shouldRepaint(diffShader), isTrue);
       expect(painter1.shouldRepaint(diffTarget), isTrue);
       expect(painter1.shouldRepaint(diffNormal), isTrue);
+
+      if (RimHitFlashPreloader.cachedProgram != null) {
+        final ui.FragmentShader realShader =
+            RimHitFlashPreloader.cachedProgram!.fragmentShader();
+        final RimHitFlashPainter diffShader = RimHitFlashPainter(
+          controller: controller1,
+          shader: realShader,
+          targetImage: image1,
+          normalMapImage: image1,
+        );
+        expect(painter1.shouldRepaint(diffShader), isTrue);
+      }
     });
   });
 

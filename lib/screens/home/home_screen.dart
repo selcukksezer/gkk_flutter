@@ -244,6 +244,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: <Widget>[
+          // ── Real Dark-Fantasy Aion-2 Capital City Background ──────
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/backgrounds/asmodae/bg_pandaemonium_capital.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Image.asset(
+                'assets/images/backgrounds/elysea/bg_sanctum_citadel.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
           // ── 2027 AAA Visual Architecture Scene Viewport ───────────
           Positioned.fill(
             child: HubSceneViewport(
@@ -347,7 +359,10 @@ class _HomeErrorView extends StatelessWidget {
                         onRetry();
                       },
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Tekrar Dene'),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('Tekrar Dene'),
+                      ),
                     ),
                   ],
                 ),
@@ -700,46 +715,52 @@ class _QuickAccessGrid extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    emoji,
-                    style: TextStyle(
-                      fontSize: isCompact ? 20 : 22,
-                      shadows: <Shadow>[
-                        Shadow(
-                          color: accent.withValues(alpha: 0.6),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: isCompact ? 4 : 6),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: FittedBox(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        label,
-                        maxLines: 1,
+                        emoji,
                         style: TextStyle(
-                          color: accent,
-                          fontSize: isCompact ? 10.0 : 10.5,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.3,
-                          shadows: const <Shadow>[
+                          fontSize: isCompact ? 20 : 22,
+                          shadows: <Shadow>[
                             Shadow(
-                              color: Colors.black,
-                              blurRadius: 4,
-                              offset: Offset(0, 1),
+                              color: accent.withValues(alpha: 0.6),
+                              blurRadius: 10,
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(height: isCompact ? 4 : 6),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: isCompact ? 10.0 : 10.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.3,
+                            shadows: const <Shadow>[
+                              Shadow(
+                                color: Colors.black,
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -877,17 +898,26 @@ class _WarningStack extends StatelessWidget {
 
     if (banners.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: banners
-          .map(
-            (banner) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: banner,
-            ),
-          )
-          .toList(),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+      ),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        clipBehavior: Clip.none,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: banners
+              .map(
+                (banner) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: banner,
+                ),
+              )
+              .toList(),
+        ),
+      ),
     );
   }
 }
@@ -936,27 +966,38 @@ class _StaticStatusPill extends StatelessWidget {
             ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(icon, style: const TextStyle(fontSize: 16)),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyBold.copyWith(
-                    color: color,
-                    fontSize: 12,
-                    letterSpacing: 0.3,
-                    shadows: <Shadow>[
-                      Shadow(color: color.withValues(alpha: 0.6), blurRadius: 6),
-                    ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(icon, style: const TextStyle(fontSize: 16)),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyBold.copyWith(
+                        color: color,
+                        fontSize: 12,
+                        letterSpacing: 0.3,
+                        shadows: <Shadow>[
+                          Shadow(color: color.withValues(alpha: 0.6), blurRadius: 6),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1051,29 +1092,43 @@ class _ActiveStatusPillState extends State<_ActiveStatusPill>
                 horizontal: 16,
                 vertical: 10,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(widget.icon, style: const TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      widget.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyBold.copyWith(
-                        color: Colors.white,
-                        fontSize: 13,
-                        letterSpacing: 0.6,
-                        shadows: <Shadow>[
-                          Shadow(color: widget.color, blurRadius: 10),
-                        ],
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(widget.icon, style: const TextStyle(fontSize: 18)),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyBold.copyWith(
+                            color: Colors.white,
+                            fontSize: 13,
+                            letterSpacing: 0.6,
+                            shadows: <Shadow>[
+                              Shadow(color: widget.color, blurRadius: 10),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _CountdownText(until: widget.until),
-                ],
+                    const SizedBox(width: 12),
+                    Flexible(
+                      flex: 0,
+                      child: _CountdownText(until: widget.until),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1132,12 +1187,15 @@ class _CountdownTextState extends State<_CountdownText> {
           width: 0.8,
         ),
       ),
-      child: Text(
-        isFinished ? 'BİTTİ' : _formatDuration(diff),
-        style: AppTextStyles.caption.copyWith(
-          color: isFinished ? AppColors.success : Colors.white,
-          fontWeight: FontWeight.bold,
-          fontFeatures: const [ui.FontFeature.tabularFigures()],
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          isFinished ? 'BİTTİ' : _formatDuration(diff),
+          style: AppTextStyles.caption.copyWith(
+            color: isFinished ? AppColors.success : Colors.white,
+            fontWeight: FontWeight.bold,
+            fontFeatures: const [ui.FontFeature.tabularFigures()],
+          ),
         ),
       ),
     );

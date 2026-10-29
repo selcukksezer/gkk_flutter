@@ -733,6 +733,19 @@ class _HubSceneViewportState extends State<HubSceneViewport>
             final Widget sceneStack = Stack(
               fit: StackFit.expand,
               children: <Widget>[
+                // ── 0. Real Dark Fantasy Capital City Backdrop ────────
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/backgrounds/asmodae/bg_pandaemonium_capital.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                      'assets/images/backgrounds/elysea/bg_sanctum_citadel.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+
                 // ── 1. Dynamic Procedural Skybox (Infinite Celestial Parallax)
                 if (depth.enableSkybox)
                   Positioned.fill(

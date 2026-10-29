@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Cinematic Aion-2 Atmospheric Sky & Celestial Particle Background.
@@ -11,6 +11,7 @@ class AionSkyParticlesBackground extends StatefulWidget {
     this.primaryAura = const Color(0xFF1E3A8A), // Astral Deep Blue
     this.secondaryAura = const Color(0xFF6B21A8), // Celestial Purple
     this.accentEmissive = const Color(0xFFD4AF37), // Aion Gold
+    this.citadelBackgroundAsset = 'assets/images/backgrounds/elysea/bg_sanctum_citadel.png',
   });
 
   final Widget child;
@@ -18,6 +19,7 @@ class AionSkyParticlesBackground extends StatefulWidget {
   final Color primaryAura;
   final Color secondaryAura;
   final Color accentEmissive;
+  final String citadelBackgroundAsset;
 
   @override
   State<AionSkyParticlesBackground> createState() =>
@@ -81,6 +83,34 @@ class _AionSkyParticlesBackgroundState
                   Color(0xFF030712), // Abyssal Floor
                 ],
                 stops: <double>[0.0, 0.35, 0.72, 1.0],
+              ),
+            ),
+          ),
+
+          // Authentic Aion-2 dark-fantasy citadel background art (subtle atmospheric blend)
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.38,
+              child: Image.asset(
+                widget.citadelBackgroundAsset,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+
+          // Dark vignette overlay to maintain crisp UI contrast
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.15,
+                  colors: <Color>[
+                    Colors.transparent,
+                    const Color(0xFF030712).withValues(alpha: 0.78),
+                  ],
+                ),
               ),
             ),
           ),

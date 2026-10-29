@@ -4,10 +4,12 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:gkk_flutter/components/common/gkk_tab_bar.dart';
 import 'package:gkk_flutter/components/common/gkk_tab_page_shell.dart';
+import 'package:gkk_flutter/components/layout/game_chrome.dart';
 import 'package:gkk_flutter/components/layout/game_screen_background.dart';
 import 'package:gkk_flutter/l10n/l10n.dart';
 import 'package:gkk_flutter/models/quest_model.dart';
@@ -371,32 +373,34 @@ Widget buildMobileGoldenTestHarness({
   required GlobalKey repaintKey,
   required Widget child,
 }) {
-  return MaterialApp(
-    debugShowCheckedModeBanner: false,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    locale: const Locale('tr'),
-    theme: ThemeData.dark().copyWith(
-      scaffoldBackgroundColor: AppColors.bgDeep,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.liquidGold,
-        secondary: AppColors.accentBlue,
-        surface: AppColors.bgSurface,
+  return ProviderScope(
+    child: MaterialApp(
+      debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('tr'),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: AppColors.bgDeep,
+        colorScheme: const ColorScheme.dark(
+          primary: AppColors.liquidGold,
+          secondary: AppColors.accentBlue,
+          surface: AppColors.bgSurface,
+        ),
       ),
-    ),
-    home: MediaQuery(
-      data: const MediaQueryData(
-        size: Size(kMobileWidth, kMobileHeight),
-        devicePixelRatio: kDevicePixelRatio,
-        padding: kMobileSafeArea,
-        viewPadding: kMobileSafeArea,
-      ),
-      child: SizedBox(
-        width: kMobileWidth,
-        height: kMobileHeight,
-        child: RepaintBoundary(
-          key: repaintKey,
-          child: child,
+      home: MediaQuery(
+        data: const MediaQueryData(
+          size: Size(kMobileWidth, kMobileHeight),
+          devicePixelRatio: kDevicePixelRatio,
+          padding: kMobileSafeArea,
+          viewPadding: kMobileSafeArea,
+        ),
+        child: SizedBox(
+          width: kMobileWidth,
+          height: kMobileHeight,
+          child: RepaintBoundary(
+            key: repaintKey,
+            child: child,
+          ),
         ),
       ),
     ),

@@ -1745,6 +1745,203 @@ class _InventoryReadyInteractiveState
   }
 }
 
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    super.key,
+    required this.child,
+    this.padding,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding ?? const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: AppColors.borderFaint,
+          width: 1.0,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _InventoryFilterBar extends StatelessWidget {
+  const _InventoryFilterBar({
+    super.key,
+    required this.activeFilter,
+    required this.items,
+    required this.searchQuery,
+    required this.onChanged,
+  });
+
+  final _InventoryFilter activeFilter;
+  final List<InventoryItem> items;
+  final String searchQuery;
+  final ValueChanged<_InventoryFilter> onChanged;
+
+  bool _itemMatchesFilter(InventoryItem item, _InventoryFilter filter) {
+    if (searchQuery.isNotEmpty) {
+      final String q = searchQuery.toLowerCase().trim();
+      final bool nameMatch = item.name.toLowerCase().contains(q);
+      final bool typeMatch = item.itemType.name.toLowerCase().contains(q);
+      final bool rarityMatch = item.rarity.name.toLowerCase().contains(q);
+      if (!nameMatch && !typeMatch && !rarityMatch) {
+        return false;
+      }
+    }
+
+    switch (filter) {
+      case _InventoryFilter.all:
+        return true;
+      case _InventoryFilter.weapon:
+        return item.itemType == ItemType.weapon;
+      case _InventoryFilter.armor:
+        return item.itemType == ItemType.armor;
+      case _InventoryFilter.consumable:
+        return item.itemType == ItemType.potion ||
+            item.itemType == ItemType.consumable ||
+            item.itemType == ItemType.scroll;
+      case _InventoryFilter.material:
+        return item.itemType == ItemType.material ||
+            item.itemType == ItemType.recipe ||
+            item.itemType == ItemType.rune;
+      case _InventoryFilter.quest:
+        return item.isHanOnly == true ||
+            (!item.isTradeable && item.itemType == ItemType.cosmetic) ||
+            item.itemId.startsWith('quest_') ||
+            item.itemId.startsWith('key_');
+    }
+  }
+
+  int _countFor(_InventoryFilter filter) {
+    if (filter == _InventoryFilter.all) {
+      if (searchQuery.isEmpty) return items.length;
+      return items.where((InventoryItem it) => _itemMatchesFilter(it, _InventoryFilter.all)).length;
+    }
+    return items.where((InventoryItem it) => _itemMatchesFilter(it, filter)).length;
+  }
+
+  String _labelFor(_InventoryFilter filter) {
+    return switch (filter) {
+      _InventoryFilter.all => 'Tümü',
+      _InventoryFilter.weapon => 'Silah',
+      _InventoryFilter.armor => 'Zırh',
+      _InventoryFilter.consumable => 'Tüketim',
+      _InventoryFilter.material => 'Materyal',
+      _InventoryFilter.quest => 'Görev',
+    };
+  }
+
+  IconData _iconFor(_InventoryFilter filter) {
+    return switch (filter) {
+      _InventoryFilter.all => Icons.grid_view_rounded,
+      _InventoryFilter.weapon => Icons.gps_fixed,
+      _InventoryFilter.armor => Icons.shield,
+      _InventoryFilter.consumable => Icons.local_drink,
+      _InventoryFilter.material => Icons.diamond_outlined,
+      _InventoryFilter.quest => Icons.auto_awesome_rounded,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: _InventoryFilter.values.map((_InventoryFilter filter) {
+          final bool isSelected = activeFilter == filter;
+          final int count = _countFor(filter);
+
+          return Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.xs + 2),
+            child: InkWell(
+              onTap: () async {
+                await AionHaptics.tabSwitch();
+                onChanged(filter);
+              },
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm + 2,
+                  vertical: AppSpacing.xs + 2,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  color: isSelected
+                      ? AppColors.gold.withValues(alpha: 0.16)
+                      : AppColors.bgSurface,
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.gold
+                        : AppColors.borderFaint,
+                    width: isSelected ? 1.2 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      _iconFor(filter),
+                      size: 13,
+                      color: isSelected ? AppColors.gold : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      _labelFor(filter),
+                      style: AppTextStyles.label.copyWith(
+                        color: isSelected
+                            ? AppColors.gold
+                            : AppColors.textSecondary,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.gold.withValues(alpha: 0.22)
+                            : AppColors.bgDeep.withValues(alpha: 0.6),
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusXs),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: AppTextStyles.micro.copyWith(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? AppColors.gold
+                              : AppColors.textTertiary,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 class _InventorySearchBar extends StatelessWidget {
   const _InventorySearchBar({
     required this.controller,
@@ -2274,13 +2471,7 @@ class _EquippedPanel extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(7),
                       child: Center(
-                        child: ItemIconView(
-                          iconValue: item.icon,
-                          itemId: item.itemId,
-                          itemType: item.itemType,
-                          size: 38,
-                          expand: true,
-                        ),
+                        child: _buildEquippedSlotArtwork(slotMeta.$1, item),
                       ),
                     ),
                   ),
@@ -2381,6 +2572,58 @@ class _EquippedPanel extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildEquippedSlotArtwork(String slotKey, InventoryItem item) {
+    String? beautyAsset;
+    final String lowerId = item.itemId.toLowerCase();
+    final String lowerName = item.name.toLowerCase();
+
+    if (slotKey == 'weapon' || item.itemType == ItemType.weapon) {
+      if (lowerId.contains('bow') || lowerName.contains('yay')) {
+        beautyAsset = 'assets/renders/weapons/Bow_Golden_beauty.png';
+      } else if (lowerId.contains('axe') || lowerName.contains('balta')) {
+        beautyAsset = 'assets/renders/weapons/Axe_Double_beauty.png';
+      } else if (lowerId.contains('dagger') || lowerName.contains('hançer')) {
+        beautyAsset = 'assets/renders/weapons/Dagger_beauty.png';
+      } else if (lowerId.contains('spear') || lowerName.contains('mızrak')) {
+        beautyAsset = 'assets/renders/weapons/Spear_beauty.png';
+      } else if (lowerId.contains('hammer') || lowerName.contains('çekiç')) {
+        beautyAsset = 'assets/renders/weapons/Hammer_Double_beauty.png';
+      } else if (item.enhancementLevel >= 10 || lowerId.contains('claymore')) {
+        beautyAsset = 'assets/renders/weapons/Claymore_beauty.png';
+      } else {
+        beautyAsset = 'assets/renders/weapons/Sword_beauty.png';
+      }
+    } else if (slotKey == 'head') {
+      beautyAsset = 'assets/renders/weapons/DamagedHelmet_beauty.png';
+    } else if (slotKey == 'chest') {
+      beautyAsset = 'assets/renders/weapons/Shield_Celtic_Golden_beauty.png';
+    }
+
+    if (beautyAsset != null) {
+      return Image.asset(
+        beautyAsset,
+        width: 38,
+        height: 38,
+        fit: BoxFit.contain,
+        errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => ItemIconView(
+          iconValue: item.icon,
+          itemId: item.itemId,
+          itemType: item.itemType,
+          size: 38,
+          expand: true,
+        ),
+      );
+    }
+
+    return ItemIconView(
+      iconValue: item.icon,
+      itemId: item.itemId,
+      itemType: item.itemType,
+      size: 38,
+      expand: true,
     );
   }
 }

@@ -212,33 +212,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         primaryAura: const Color(0xFF0F1E3D),
         secondaryAura: const Color(0xFF28103A),
         accentEmissive: AppColors.liquidGold,
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: AionRuneCard(
-                borderRadius: 24,
-                accentColor: AppColors.liquidGold,
-                glowColor: AppColors.accentCyan,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xl,
-                  vertical: AppSpacing.xl,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    _buildCrest(),
-                    const SizedBox(height: AppSpacing.lg),
-                    _buildBrandTypography(),
-                    const SizedBox(height: AppSpacing.xl),
-                    if (_errorMessage != null)
-                      _buildErrorRecovery()
-                    else
-                      _buildWarmupProgress(),
-                    const SizedBox(height: AppSpacing.lg),
-                    _buildEngineTierBadge(),
-                  ],
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: AionRuneCard(
+                  borderRadius: 24,
+                  accentColor: AppColors.liquidGold,
+                  glowColor: AppColors.accentCyan,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                    vertical: AppSpacing.xl,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      _buildCrest(),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildBrandTypography(),
+                      const SizedBox(height: AppSpacing.xl),
+                      if (_errorMessage != null)
+                        _buildErrorRecovery()
+                      else
+                        _buildWarmupProgress(),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildEngineTierBadge(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -299,23 +302,33 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget _buildBrandTypography() {
     return Column(
       children: <Widget>[
-        Text(
-          'GÖK KURT',
-          style: GoogleFonts.cinzel(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 4.0,
-            color: AppColors.textPrimary,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'GÖK KURT',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.cinzel(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 4.0,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          'KRALLIK ÇAĞI • 2027',
-          style: GoogleFonts.urbanist(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 2.2,
-            color: AppColors.liquidGold,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'KRALLIK ÇAĞI • 2027',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.urbanist(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.2,
+              color: AppColors.liquidGold,
+            ),
           ),
         ),
       ],
@@ -330,6 +343,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         Text(
           _statusMessage,
           textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.urbanist(
             fontSize: 13,
             fontWeight: FontWeight.w500,
@@ -416,19 +431,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           ),
         ),
         const SizedBox(height: AppSpacing.base),
-        Text(
-          'BAĞLANTI GEREKİYOR',
-          style: GoogleFonts.urbanist(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.4,
-            color: AppColors.textPrimary,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'BAĞLANTI GEREKİYOR',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.urbanist(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.4,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
           _errorMessage!,
           textAlign: TextAlign.center,
+          maxLines: 4,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.urbanist(
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -450,13 +472,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: Text(
-              'GİRİŞ EKRANINA DEVAM ET',
-              style: GoogleFonts.urbanist(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
-                color: AppColors.liquidGold,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'GİRİŞ EKRANINA DEVAM ET',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.urbanist(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                  color: AppColors.liquidGold,
+                ),
               ),
             ),
           ),
@@ -479,29 +506,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           width: 1,
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(
-            Icons.speed_rounded,
-            size: 13,
-            color: _detectedTier == HardwareTier.high
-                ? AppColors.accentCyan
-                : (_detectedTier == HardwareTier.mid
-                    ? AppColors.liquidGold
-                    : AppColors.textSecondary),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'ENGINE TIER $tierName • $fpsInt FPS • ZERO-JANK',
-            style: GoogleFonts.jetBrainsMono(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              color: AppColors.textSecondary,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.speed_rounded,
+              size: 13,
+              color: _detectedTier == HardwareTier.high
+                  ? AppColors.accentCyan
+                  : (_detectedTier == HardwareTier.mid
+                      ? AppColors.liquidGold
+                      : AppColors.textSecondary),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'ENGINE TIER $tierName • $fpsInt FPS • ZERO-JANK',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/live_ticker_model.dart';
 import '../../providers/live_ticker_provider.dart';
+import '../../theme/app_colors.dart';
 import 'ticker_design.dart';
 
 /// Single-line announcement strip.
@@ -120,11 +121,12 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
 
             return Row(
               children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    _playingVisual.icon,
-                    style: const TextStyle(fontSize: 14),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(
+                    Icons.campaign_rounded,
+                    size: 16,
+                    color: AppColors.gold,
                   ),
                 ),
                 Expanded(
@@ -178,7 +180,14 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ],
             );
           },

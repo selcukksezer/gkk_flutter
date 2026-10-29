@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../../../core/engine/adaptive_quality_scaler.dart';
 import '../../../core/engine/zero_jank_preloader.dart';
+import '../../../core/shaders/shader_pipeline.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../settings/graphics_settings_service.dart';
@@ -509,11 +511,83 @@ class ForgeFireProceduralPainter extends CustomPainter {
 // 5. RUNTIME SHADER ÇİZİCİSİ (ForgeFireShaderPainter)
 // ────────────────────────────────────────────────────────────────────────────
 
+/// In-memory uniform buffer wrapper for `shaders/vfx/forge_fire.frag` (18 floats: 0..17).
+class ForgeFireShaderUniformBuffer {
+  const ForgeFireShaderUniformBuffer({
+    required this.resolution,
+    required this.timeSeconds,
+    required this.heatIntensity,
+    this.coreColor = const Color(0xFFFFFDE7),
+    this.flameColor = const Color(0xFFFF6D00),
+    this.emberColor = const Color(0xFFD50000),
+    this.turbulence,
+    this.heightFactor = 1.0,
+  });
+
+  static const int kUniformFloatCount = 18;
+
+  final Size resolution;
+  final double timeSeconds;
+  final double heatIntensity;
+  final Color coreColor;
+  final Color flameColor;
+  final Color emberColor;
+  final double? turbulence;
+  final double heightFactor;
+
+  double get effectiveTurbulence => turbulence ?? (1.0 + heatIntensity * 0.5);
+
+  Float32List toFloat32List() {
+    final Float32List buffer = Float32List(kUniformFloatCount);
+    buffer[0] = resolution.width;
+    buffer[1] = resolution.height;
+    buffer[2] = timeSeconds;
+    buffer[3] = heatIntensity;
+    buffer[4] = (coreColor.r * 255.0) / 255.0;
+    buffer[5] = (coreColor.g * 255.0) / 255.0;
+    buffer[6] = (coreColor.b * 255.0) / 255.0;
+    buffer[7] = coreColor.a;
+    buffer[8] = (flameColor.r * 255.0) / 255.0;
+    buffer[9] = (flameColor.g * 255.0) / 255.0;
+    buffer[10] = (flameColor.b * 255.0) / 255.0;
+    buffer[11] = flameColor.a;
+    buffer[12] = (emberColor.r * 255.0) / 255.0;
+    buffer[13] = (emberColor.g * 255.0) / 255.0;
+    buffer[14] = (emberColor.b * 255.0) / 255.0;
+    buffer[15] = emberColor.a;
+    buffer[16] = effectiveTurbulence;
+    buffer[17] = heightFactor;
+    return buffer;
+  }
+
+  void applyTo(ShaderUniformTarget target) {
+    target.setFloat(0, resolution.width);
+    target.setFloat(1, resolution.height);
+    target.setFloat(2, timeSeconds);
+    target.setFloat(3, heatIntensity);
+    target.setFloat(4, (coreColor.r * 255.0) / 255.0);
+    target.setFloat(5, (coreColor.g * 255.0) / 255.0);
+    target.setFloat(6, (coreColor.b * 255.0) / 255.0);
+    target.setFloat(7, coreColor.a);
+    target.setFloat(8, (flameColor.r * 255.0) / 255.0);
+    target.setFloat(9, (flameColor.g * 255.0) / 255.0);
+    target.setFloat(10, (flameColor.b * 255.0) / 255.0);
+    target.setFloat(11, flameColor.a);
+    target.setFloat(12, (emberColor.r * 255.0) / 255.0);
+    target.setFloat(13, (emberColor.g * 255.0) / 255.0);
+    target.setFloat(14, (emberColor.b * 255.0) / 255.0);
+    target.setFloat(15, emberColor.a);
+    target.setFloat(16, effectiveTurbulence);
+    target.setFloat(17, heightFactor);
+  }
+}
+
 /// Flutter Impeller/SkSL ui.FragmentShader kullanarak ocak alevini GPU üzerinde
 /// 60 FPS çizer. Shader hazır değilse otomatik olarak prosedürel motora düşer.
 class ForgeFireShaderPainter extends CustomPainter {
   ForgeFireShaderPainter({
-    required this.shader,
+    this.shader,
+    this.uniformTarget,
     required this.heatIntensity,
     required this.timeSeconds,
     this.primaryGold = const Color(0xFFFFB300),
@@ -523,6 +597,7 @@ class ForgeFireShaderPainter extends CustomPainter {
   });
 
   final ui.FragmentShader? shader;
+  final ShaderUniformTarget? uniformTarget;
   final double heatIntensity;
   final double timeSeconds;
   final Color primaryGold;
@@ -532,9 +607,36 @@ class ForgeFireShaderPainter extends CustomPainter {
 
   static final Paint _shaderPaint = Paint()..isAntiAlias = true;
 
+  /// Total number of uniform float slots declared in `forge_fire.frag`.
+  static const int kUniformFloatCount = ForgeFireShaderUniformBuffer.kUniformFloatCount;
+
+  /// Binds all 18 uniforms to any [ShaderUniformTarget] (or [FragmentShaderTarget]).
+  static void bindUniforms({
+    required ShaderUniformTarget target,
+    required Size size,
+    required double heatIntensity,
+    required double timeSeconds,
+    Color coreWhite = const Color(0xFFFFFDE7),
+    Color flameOrange = const Color(0xFFFF6D00),
+    Color emberCrimson = const Color(0xFFD50000),
+    double? turbulence,
+    double heightFactor = 1.0,
+  }) {
+    ForgeFireShaderUniformBuffer(
+      resolution: size,
+      timeSeconds: timeSeconds,
+      heatIntensity: heatIntensity,
+      coreColor: coreWhite,
+      flameColor: flameOrange,
+      emberColor: emberCrimson,
+      turbulence: turbulence,
+      heightFactor: heightFactor,
+    ).applyTo(target);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    if (shader == null) {
+    if (shader == null && uniformTarget == null) {
       ForgeFireProceduralPainter(
         heatIntensity: heatIntensity,
         timeSeconds: timeSeconds,
@@ -546,34 +648,30 @@ class ForgeFireShaderPainter extends CustomPainter {
       return;
     }
 
+    if (uniformTarget != null) {
+      bindUniforms(
+        target: uniformTarget!,
+        size: size,
+        heatIntensity: heatIntensity,
+        timeSeconds: timeSeconds,
+        coreWhite: coreWhite,
+        flameOrange: flameOrange,
+        emberCrimson: emberCrimson,
+      );
+      canvas.drawRect(Offset.zero & size, _shaderPaint);
+      return;
+    }
+
     final ui.FragmentShader s = shader!;
-    s.setFloat(0, size.width);
-    s.setFloat(1, size.height);
-    s.setFloat(2, timeSeconds);
-    s.setFloat(3, heatIntensity);
-
-    // uCoreColor
-    s.setFloat(4, (coreWhite.r * 255.0) / 255.0);
-    s.setFloat(5, (coreWhite.g * 255.0) / 255.0);
-    s.setFloat(6, (coreWhite.b * 255.0) / 255.0);
-    s.setFloat(7, coreWhite.a);
-
-    // uFlameColor
-    s.setFloat(8, (flameOrange.r * 255.0) / 255.0);
-    s.setFloat(9, (flameOrange.g * 255.0) / 255.0);
-    s.setFloat(10, (flameOrange.b * 255.0) / 255.0);
-    s.setFloat(11, flameOrange.a);
-
-    // uEmberColor
-    s.setFloat(12, (emberCrimson.r * 255.0) / 255.0);
-    s.setFloat(13, (emberCrimson.g * 255.0) / 255.0);
-    s.setFloat(14, (emberCrimson.b * 255.0) / 255.0);
-    s.setFloat(15, emberCrimson.a);
-
-    // uTurbulence
-    s.setFloat(16, 1.0 + heatIntensity * 0.5);
-    // uHeightFactor
-    s.setFloat(17, 1.0);
+    bindUniforms(
+      target: FragmentShaderTarget(s),
+      size: size,
+      heatIntensity: heatIntensity,
+      timeSeconds: timeSeconds,
+      coreWhite: coreWhite,
+      flameOrange: flameOrange,
+      emberCrimson: emberCrimson,
+    );
 
     _shaderPaint.shader = s;
     canvas.drawRect(Offset.zero & size, _shaderPaint);
@@ -582,6 +680,7 @@ class ForgeFireShaderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ForgeFireShaderPainter oldDelegate) {
     return oldDelegate.shader != shader ||
+        oldDelegate.uniformTarget != uniformTarget ||
         oldDelegate.heatIntensity != heatIntensity ||
         oldDelegate.timeSeconds != timeSeconds;
   }

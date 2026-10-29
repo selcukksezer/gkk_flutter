@@ -87,15 +87,15 @@ class _HeroShowcaseState extends State<HeroShowcase>
     widget.onHeroTap?.call();
   }
 
-  static const List<({String key, String label, IconData icon})> _equipSlots = [
-    (key: 'weapon', label: 'Silah', icon: Icons.sports_martial_arts_rounded),
-    (key: 'head', label: 'Kask', icon: Icons.shield_moon_outlined),
-    (key: 'chest', label: 'Zırh', icon: Icons.shield_outlined),
-    (key: 'gloves', label: 'Eldiven', icon: Icons.back_hand_outlined),
-    (key: 'legs', label: 'Bacak', icon: Icons.accessibility_new_rounded),
-    (key: 'boots', label: 'Bot', icon: Icons.hiking_outlined),
-    (key: 'necklace', label: 'Aksesuar', icon: Icons.diamond_outlined),
-    (key: 'ring', label: 'Yüzük', icon: Icons.circle_outlined),
+  static const List<({String key, String label, IconData icon, String watermarkAsset})> _equipSlots = [
+    (key: 'weapon', label: 'Silah', icon: Icons.sports_martial_arts_rounded, watermarkAsset: 'assets/images/icons/weapons/weapon_sun_blade.png'),
+    (key: 'head', label: 'Kask', icon: Icons.shield_moon_outlined, watermarkAsset: 'assets/images/icons/armor/armor_abyssal_dread_helm.png'),
+    (key: 'chest', label: 'Zırh', icon: Icons.shield_outlined, watermarkAsset: 'assets/images/icons/armor/armor_empyrean_plate_chest.png'),
+    (key: 'gloves', label: 'Eldiven', icon: Icons.back_hand_outlined, watermarkAsset: 'assets/images/icons/armor/armor_draconic_gauntlets.png'),
+    (key: 'legs', label: 'Bacak', icon: Icons.accessibility_new_rounded, watermarkAsset: 'assets/images/icons/armor/armor_paladin_greaves.png'),
+    (key: 'boots', label: 'Bot', icon: Icons.hiking_outlined, watermarkAsset: 'assets/images/icons/armor/armor_boots_of_wind.png'),
+    (key: 'necklace', label: 'Aksesuar', icon: Icons.diamond_outlined, watermarkAsset: 'assets/images/icons/armor/armor_tiamat_blood_necklace.png'),
+    (key: 'ring', label: 'Yüzük', icon: Icons.circle_outlined, watermarkAsset: 'assets/images/icons/armor/armor_godstone_ring.png'),
   ];
 
   Color _resolveAuraPrimary(CharacterClass? characterClass) {
@@ -162,9 +162,9 @@ class _HeroShowcaseState extends State<HeroShowcase>
 
   @override
   Widget build(BuildContext context) {
-    final List<({String key, String label, IconData icon})> leftSlots =
+    final List<({String key, String label, IconData icon, String watermarkAsset})> leftSlots =
         _equipSlots.sublist(0, 4);
-    final List<({String key, String label, IconData icon})> rightSlots =
+    final List<({String key, String label, IconData icon, String watermarkAsset})> rightSlots =
         _equipSlots.sublist(4, 8);
     final double blurSigma = _resolveBlurSigma();
 
@@ -247,11 +247,11 @@ class _HeroShowcaseState extends State<HeroShowcase>
                 AnimatedBuilder(
                   animation: Listenable.merge([_breathingController, _pulseController]),
                   builder: (context, child) {
-                    String imageAsset = 'assets/characters/savasci.png';
+                    String imageAsset = 'assets/renders/characters/Knight_beauty.png';
                     if (widget.profile.characterClass == CharacterClass.shadow) {
-                      imageAsset = 'assets/characters/golge.png';
+                      imageAsset = 'assets/images/portraits/asmodian/asmodian_assassin.png';
                     } else if (widget.profile.characterClass == CharacterClass.alchemist) {
-                      imageAsset = 'assets/characters/simyaci.png';
+                      imageAsset = 'assets/images/portraits/asmodian/asmodian_sorcerer.png';
                     }
 
                     final double pulseScale =
@@ -283,6 +283,7 @@ class _HeroShowcaseState extends State<HeroShowcase>
                         child: _buildEquipSlot(
                           equipped: widget.inventoryState.equippedItems[slot.key],
                           fallbackIcon: slot.icon,
+                          watermarkAsset: slot.watermarkAsset,
                           type: slot.label,
                           size: slotSize,
                           blurSigma: blurSigma,
@@ -302,6 +303,7 @@ class _HeroShowcaseState extends State<HeroShowcase>
                         child: _buildEquipSlot(
                           equipped: widget.inventoryState.equippedItems[slot.key],
                           fallbackIcon: slot.icon,
+                          watermarkAsset: slot.watermarkAsset,
                           type: slot.label,
                           size: slotSize,
                           blurSigma: blurSigma,
@@ -500,6 +502,7 @@ class _HeroShowcaseState extends State<HeroShowcase>
   Widget _buildEquipSlot({
     required InventoryItem? equipped,
     required IconData fallbackIcon,
+    required String watermarkAsset,
     required String type,
     required double size,
     required double blurSigma,
@@ -507,6 +510,7 @@ class _HeroShowcaseState extends State<HeroShowcase>
     return _EquipSlotCard(
       equipped: equipped,
       fallbackIcon: fallbackIcon,
+      watermarkAsset: watermarkAsset,
       type: type,
       size: size,
       blurSigma: blurSigma,
@@ -527,6 +531,7 @@ class _EquipSlotCard extends StatefulWidget {
   const _EquipSlotCard({
     required this.equipped,
     required this.fallbackIcon,
+    required this.watermarkAsset,
     required this.type,
     required this.size,
     required this.blurSigma,
@@ -535,6 +540,7 @@ class _EquipSlotCard extends StatefulWidget {
 
   final InventoryItem? equipped;
   final IconData fallbackIcon;
+  final String watermarkAsset;
   final String type;
   final double size;
   final double blurSigma;
@@ -632,10 +638,18 @@ class _EquipSlotCardState extends State<_EquipSlotCard> {
                   ),
                   if (isEmpty)
                     Center(
-                      child: Icon(
-                        widget.fallbackIcon,
-                        size: (widget.size * 0.44).clamp(18.0, 22.0),
-                        color: const Color(0x738A9BBE),
+                      child: Image.asset(
+                        widget.watermarkAsset,
+                        width: (widget.size * 0.65).clamp(24.0, 32.0),
+                        height: (widget.size * 0.65).clamp(24.0, 32.0),
+                        fit: BoxFit.contain,
+                        color: const Color(0x608A9BBE),
+                        colorBlendMode: BlendMode.srcIn,
+                        errorBuilder: (_, __, ___) => Icon(
+                          widget.fallbackIcon,
+                          size: (widget.size * 0.44).clamp(18.0, 22.0),
+                          color: const Color(0x738A9BBE),
+                        ),
                       ),
                     )
                   else ...[
@@ -781,6 +795,7 @@ class _HeroDaisPainter extends CustomPainter {
           Colors.white.withValues(alpha: 0.30),
           Colors.transparent,
         ],
+        const <double>[0.0, 0.25, 0.5, 0.75, 1.0],
       );
     canvas.drawOval(
       Rect.fromCenter(

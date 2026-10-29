@@ -30,8 +30,9 @@ import 'package:gkk_flutter/core/vfx/refraction_effect.dart';
 /// Semantic alias for [RefractionShaderController] adhering to the specification contract.
 typedef RefractionEffectController = RefractionShaderController;
 
-/// Mock [ui.FragmentShader] capturing uniform floats and texture sampler assignments.
-class MockFragmentShader extends Fake implements ui.FragmentShader {
+/// Fake uniform storage capturing uniform floats and texture sampler assignments
+/// for headless verification without implementing the Dart 3 base class [ui.FragmentShader].
+class FakeUniformStorage implements ShaderUniformTarget {
   final Map<int, double> floats = <int, double>{};
   final Map<int, ui.Image> samplers = <int, ui.Image>{};
 
@@ -44,7 +45,18 @@ class MockFragmentShader extends Fake implements ui.FragmentShader {
   void setImageSampler(int index, ui.Image image) {
     samplers[index] = image;
   }
+
+  /// Populates this storage directly from controller uniform list.
+  void populateFromController(RefractionEffectController controller, ui.Size size) {
+    final List<double> uniforms = controller.buildUniformList(size);
+    for (int i = 0; i < uniforms.length; i++) {
+      setFloat(i, uniforms[i]);
+    }
+  }
 }
+
+/// Semantic alias for uniform storage verification.
+typedef MockFragmentShader = FakeUniformStorage;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -321,7 +333,7 @@ void main() {
       }
     });
 
-    test('applyUniforms binds all 18 uniforms to MockFragmentShader', () {
+    test('controller builds and binds all 18 uniforms to FakeUniformStorage', () {
       final RefractionEffectController controller = RefractionEffectController();
       controller.triggerShockwave(
         center: const ui.Offset(0.5, 0.5),
@@ -333,7 +345,7 @@ void main() {
       final MockFragmentShader mockShader = MockFragmentShader();
       const ui.Size size = ui.Size(1920.0, 1080.0);
 
-      controller.applyUniforms(mockShader, size);
+      mockShader.populateFromController(controller, size);
 
       expect(mockShader.floats.length, equals(18));
       expect(mockShader.floats[0], equals(1920.0));

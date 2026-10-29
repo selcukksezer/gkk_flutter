@@ -9,7 +9,11 @@ import 'package:flutter/services.dart';
 import '../../../core/assets/mesh_asset_registry.dart';
 import '../../../models/guild_war_model.dart';
 import '../../../theme/app_colors.dart';
+import '../../../theme/app_spacing.dart';
+import 'faction_crest_painter.dart';
 import 'guild_war_design.dart';
+
+export 'faction_crest_painter.dart' show FactionType;
 
 /// Inspection and cinematic focus mode for the 3D Siege War viewport.
 enum SiegeViewportMode {

@@ -330,7 +330,7 @@ class _ReputationShopGridState extends State<ReputationShopGrid> {
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: MekanPalette.textMid,
-                            side: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
@@ -496,7 +496,7 @@ class _ReputationShopGridState extends State<ReputationShopGrid> {
                         foregroundColor: MekanPalette.textHi,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
-                          side: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -616,7 +616,7 @@ class _ReputationShopGridState extends State<ReputationShopGrid> {
                         foregroundColor: MekanPalette.textHi,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
-                          side: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -994,7 +994,7 @@ class _ReputationShopHorizontalCard extends StatelessWidget {
                           minimumSize: const Size(64, 28),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           side: isLocked
-                              ? Border.all(color: MekanPalette.ruby.withValues(alpha: 0.3))
+                              ? BorderSide(color: MekanPalette.ruby.withValues(alpha: 0.3))
                               : null,
                         ),
                         onPressed: loading ? null : onTap,
@@ -1210,7 +1210,7 @@ class _ReputationShopVerticalCard extends StatelessWidget {
                       minimumSize: const Size(double.infinity, 26),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       side: isLocked
-                          ? Border.all(color: MekanPalette.ruby.withValues(alpha: 0.3))
+                          ? BorderSide(color: MekanPalette.ruby.withValues(alpha: 0.3))
                           : null,
                     ),
                     onPressed: loading ? null : onTap,

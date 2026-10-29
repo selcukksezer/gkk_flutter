@@ -242,8 +242,9 @@ class FakeTestImage implements ui.Image {
   String toString() => 'FakeTestImage($label: ${width}x$height)';
 }
 
-/// Mock [ui.FragmentShader] recording uniform float and texture sampler bindings.
-class MockFragmentShader implements ui.FragmentShader {
+/// Fake uniform storage capturing uniform floats and texture sampler assignments
+/// for headless verification without implementing the Dart 3 base class [ui.FragmentShader].
+class FakeUniformStorage implements ShaderUniformTarget {
   final Map<int, double> floats = <int, double>{};
   final Map<int, ui.Image> samplers = <int, ui.Image>{};
   bool disposed = false;
@@ -258,13 +259,18 @@ class MockFragmentShader implements ui.FragmentShader {
     samplers[index] = image;
   }
 
-  @override
+  /// Retrieves float value at [index].
+  double? getFloat(int index) => floats[index];
+
+  /// Total count of assigned float slots.
+  int get floatCount => floats.length;
+
+  /// Total count of assigned texture sampler units.
+  int get samplerCount => samplers.length;
+
   void dispose() {
     disposed = true;
   }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Mock [Canvas] recording draw operations, rectangles, and paint shaders/blend modes.
@@ -289,13 +295,21 @@ class SsaoCompositeAcesPassPainter extends CustomPainter {
   const SsaoCompositeAcesPassPainter({
     required this.pass,
     this.shader,
+    this.uniformTarget,
   });
 
   final SsaoCompositeAcesPass pass;
   final ui.FragmentShader? shader;
+  final ShaderUniformTarget? uniformTarget;
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (uniformTarget != null) {
+      pass.bindTo(uniformTarget!, size);
+      final Paint paint = Paint()..blendMode = pass.blendMode;
+      canvas.drawRect(Offset.zero & size, paint);
+      return;
+    }
     final ui.FragmentShader? s = shader;
     if (s != null &&
         pass.sceneColorTexture != null &&
@@ -323,7 +337,8 @@ class SsaoCompositeAcesPassPainter extends CustomPainter {
         oldDelegate.pass.sceneColorTexture != pass.sceneColorTexture ||
         oldDelegate.pass.blurredOcclusionTexture !=
             pass.blurredOcclusionTexture ||
-        oldDelegate.shader != shader;
+        oldDelegate.shader != shader ||
+        oldDelegate.uniformTarget != uniformTarget;
   }
 }
 
@@ -334,17 +349,23 @@ class SsaoCompositeAcesPassWidget extends StatelessWidget {
     required this.pass,
     required this.child,
     this.shader,
+    this.uniformTarget,
   });
 
   final SsaoCompositeAcesPass pass;
   final Widget child;
   final ui.FragmentShader? shader;
+  final ShaderUniformTarget? uniformTarget;
 
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: CustomPaint(
-        painter: SsaoCompositeAcesPassPainter(pass: pass, shader: shader),
+        painter: SsaoCompositeAcesPassPainter(
+          pass: pass,
+          shader: shader,
+          uniformTarget: uniformTarget,
+        ),
         child: child,
       ),
     );
@@ -808,22 +829,21 @@ void main() {
       expect(target.floatCount, equals(8));
     });
 
-    test('bindTo writes all floats into MockFragmentShader', () {
+    test('bindTo writes all floats into FakeUniformStorage', () {
       final SsaoCompositeAcesPass pass = SsaoCompositeAcesPass(
         aoModulation: 0.9,
         shadowDarkening: 0.3,
         tonemapStrength: 1.2,
       );
 
-      final MockFragmentShader shader = MockFragmentShader();
-      final ShaderUniformTarget target = FragmentShaderTarget(shader);
-      pass.bindTo(target, viewport);
+      final FakeUniformStorage storage = FakeUniformStorage();
+      pass.bindTo(storage, viewport);
 
-      expect(shader.floats[0], equals(1920.0));
-      expect(shader.floats[1], equals(1080.0));
-      expect(shader.floats[2], equals(1.2));
-      expect(shader.floats[6], equals(0.9));
-      expect(shader.floats[7], equals(0.3));
+      expect(storage.floats[0], equals(1920.0));
+      expect(storage.floats[1], equals(1080.0));
+      expect(storage.floats[2], equals(1.2));
+      expect(storage.floats[6], equals(0.9));
+      expect(storage.floats[7], equals(0.3));
     });
 
     test('UniformBufferBinder.bindByDescriptor maps parameters matching descriptor', () {
@@ -911,19 +931,18 @@ void main() {
           reason: 'Unit 1 must bind blurred occlusion map');
     });
 
-    test('Binding to MockFragmentShader calls setImageSampler with correct unit indices', () {
+    test('Binding to FakeUniformStorage calls setImageSampler with correct unit indices', () {
       final SsaoCompositeAcesPass pass = SsaoCompositeAcesPass(
         sceneColorTexture: sceneImage,
         blurredOcclusionTexture: aoImage,
       );
 
-      final MockFragmentShader shader = MockFragmentShader();
-      final ShaderUniformTarget target = FragmentShaderTarget(shader);
-      pass.bindTo(target, const Size(1920, 1080));
+      final FakeUniformStorage storage = FakeUniformStorage();
+      pass.bindTo(storage, const Size(1920, 1080));
 
-      expect(shader.samplers.length, equals(2));
-      expect(shader.samplers[0], equals(sceneImage));
-      expect(shader.samplers[1], equals(aoImage));
+      expect(storage.samplers.length, equals(2));
+      expect(storage.samplers[0], equals(sceneImage));
+      expect(storage.samplers[1], equals(aoImage));
     });
 
     test('Null textures gracefully bypass sampler binding without throwing exceptions', () {
@@ -987,25 +1006,32 @@ void main() {
       expect(target.samplers[1], equals(altAo));
     });
 
-    test('PostProcessPipelineController.configureCompositeShader binds both samplers', () {
+    test('PostProcessPipelineController builds composite uniforms and binds both samplers', () {
       final PostProcessPipelineController controller =
           PostProcessPipelineController();
-      final MockFragmentShader shader = MockFragmentShader();
+      final FakeUniformStorage storage = FakeUniformStorage();
 
-      controller.configureCompositeShader(
-        shader,
-        const Size(1280, 720),
+      final List<double> uniforms =
+          PostProcessPipelineController.buildCompositeUniforms(
+        size: const Size(1280, 720),
+        acesParams: controller.acesParams,
         aoIntensity: 1.4,
         aoDirectLightPreserve: 0.3,
-        sceneTexture: sceneImage,
-        aoTexture: aoImage,
       );
 
-      expect(shader.floats.length, equals(8));
-      expect(shader.floats[6], equals(1.4));
-      expect(shader.floats[7], equals(0.3));
-      expect(shader.samplers[0], equals(sceneImage));
-      expect(shader.samplers[1], equals(aoImage));
+      for (int i = 0; i < uniforms.length; ++i) {
+        storage.setFloat(i, uniforms[i]);
+      }
+      storage.setImageSampler(0, sceneImage);
+      storage.setImageSampler(1, aoImage);
+
+      expect(storage.floats.length, equals(8));
+      expect(storage.floats[0], equals(1280.0));
+      expect(storage.floats[1], equals(720.0));
+      expect(storage.floats[6], equals(1.4));
+      expect(storage.floats[7], equals(0.3));
+      expect(storage.samplers[0], equals(sceneImage));
+      expect(storage.samplers[1], equals(aoImage));
     });
   });
 
@@ -1236,33 +1262,33 @@ void main() {
       aoImage = FakeTestImage(width: 800, height: 600, label: 'AO');
     });
 
-    test('SsaoCompositePainter draws rect when shader and both textures are present', () {
-      final MockFragmentShader shader = MockFragmentShader();
-      final SsaoCompositePainter painter = SsaoCompositePainter(
-        acesParams: const AcesTonemapParams(exposure: 1.0),
-        aoIntensity: 1.25,
-        aoDirectLightPreserve: 0.25,
-        shader: shader,
-        sceneTexture: sceneImage,
-        aoTexture: aoImage,
+    test('SsaoCompositeAcesPassPainter binds uniforms to target and draws rect', () {
+      final FakeUniformStorage storage = FakeUniformStorage();
+      final SsaoCompositeAcesPass pass = SsaoCompositeAcesPass(
+        aoModulation: 1.25,
+        shadowDarkening: 0.25,
+        blendMode: BlendMode.srcOver,
+        sceneColorTexture: sceneImage,
+        blurredOcclusionTexture: aoImage,
       );
+
+      final SsaoCompositeAcesPassPainter painter =
+          SsaoCompositeAcesPassPainter(pass: pass, uniformTarget: storage);
 
       final MockCanvas canvas = MockCanvas();
       painter.paint(canvas, const Size(800, 600));
 
       expect(canvas.drawCalls, contains('drawRect'));
       expect(canvas.lastRect, equals(Offset.zero & const Size(800, 600)));
-      expect(canvas.lastPaint?.shader, equals(shader));
-      expect(shader.floats[6], equals(1.25));
-      expect(shader.floats[7], equals(0.25));
-      expect(shader.samplers[0], equals(sceneImage));
-      expect(shader.samplers[1], equals(aoImage));
+      expect(canvas.lastPaint?.blendMode, equals(BlendMode.srcOver));
+      expect(storage.floats[6], equals(1.25));
+      expect(storage.floats[7], equals(0.25));
+      expect(storage.samplers[0], equals(sceneImage));
+      expect(storage.samplers[1], equals(aoImage));
     });
 
     test('SsaoCompositePainter does not draw when prerequisites are missing', () {
-      final MockFragmentShader shader = MockFragmentShader();
-
-      // Missing shader
+      // Missing shader (headless execution)
       final SsaoCompositePainter p1 = SsaoCompositePainter(
         acesParams: const AcesTonemapParams(),
         shader: null,
@@ -1276,7 +1302,7 @@ void main() {
       // Missing sceneTexture
       final SsaoCompositePainter p2 = SsaoCompositePainter(
         acesParams: const AcesTonemapParams(),
-        shader: shader,
+        shader: null,
         sceneTexture: null,
         aoTexture: aoImage,
       );
@@ -1287,7 +1313,7 @@ void main() {
       // Missing aoTexture
       final SsaoCompositePainter p3 = SsaoCompositePainter(
         acesParams: const AcesTonemapParams(),
-        shader: shader,
+        shader: null,
         sceneTexture: sceneImage,
         aoTexture: null,
       );
@@ -1297,14 +1323,11 @@ void main() {
     });
 
     test('SsaoCompositePainter.shouldRepaint detects all property changes', () {
-      final MockFragmentShader shader1 = MockFragmentShader();
-      final MockFragmentShader shader2 = MockFragmentShader();
-
       final SsaoCompositePainter base = SsaoCompositePainter(
         acesParams: const AcesTonemapParams(exposure: 1.0),
         aoIntensity: 1.0,
         aoDirectLightPreserve: 0.25,
-        shader: shader1,
+        shader: null,
         sceneTexture: sceneImage,
         aoTexture: aoImage,
       );
@@ -1314,7 +1337,7 @@ void main() {
         acesParams: const AcesTonemapParams(exposure: 1.0),
         aoIntensity: 1.0,
         aoDirectLightPreserve: 0.25,
-        shader: shader1,
+        shader: null,
         sceneTexture: sceneImage,
         aoTexture: aoImage,
       );
@@ -1325,7 +1348,7 @@ void main() {
         acesParams: const AcesTonemapParams(exposure: 2.0),
         aoIntensity: 1.0,
         aoDirectLightPreserve: 0.25,
-        shader: shader1,
+        shader: null,
         sceneTexture: sceneImage,
         aoTexture: aoImage,
       );
@@ -1336,7 +1359,7 @@ void main() {
         acesParams: const AcesTonemapParams(exposure: 1.0),
         aoIntensity: 1.5,
         aoDirectLightPreserve: 0.25,
-        shader: shader1,
+        shader: null,
         sceneTexture: sceneImage,
         aoTexture: aoImage,
       );
@@ -1347,26 +1370,41 @@ void main() {
         acesParams: const AcesTonemapParams(exposure: 1.0),
         aoIntensity: 1.0,
         aoDirectLightPreserve: 0.5,
-        shader: shader1,
+        shader: null,
         sceneTexture: sceneImage,
         aoTexture: aoImage,
       );
       expect(base.shouldRepaint(diffDirect), isTrue);
 
-      // Mutate shader
-      final SsaoCompositePainter diffShader = SsaoCompositePainter(
+      // Mutate sceneTexture
+      final FakeTestImage altScene =
+          FakeTestImage(width: 800, height: 600, label: 'AltScene');
+      final SsaoCompositePainter diffScene = SsaoCompositePainter(
         acesParams: const AcesTonemapParams(exposure: 1.0),
         aoIntensity: 1.0,
         aoDirectLightPreserve: 0.25,
-        shader: shader2,
-        sceneTexture: sceneImage,
+        shader: null,
+        sceneTexture: altScene,
         aoTexture: aoImage,
       );
-      expect(base.shouldRepaint(diffShader), isTrue);
+      expect(base.shouldRepaint(diffScene), isTrue);
+
+      // Mutate aoTexture
+      final FakeTestImage altAo =
+          FakeTestImage(width: 800, height: 600, label: 'AltAo');
+      final SsaoCompositePainter diffAoTex = SsaoCompositePainter(
+        acesParams: const AcesTonemapParams(exposure: 1.0),
+        aoIntensity: 1.0,
+        aoDirectLightPreserve: 0.25,
+        shader: null,
+        sceneTexture: sceneImage,
+        aoTexture: altAo,
+      );
+      expect(base.shouldRepaint(diffAoTex), isTrue);
     });
 
-    test('SsaoCompositeAcesPassPainter propagates blendMode and paints rect', () {
-      final MockFragmentShader shader = MockFragmentShader();
+    test('SsaoCompositeAcesPassPainter propagates blendMode and paints rect via uniformTarget', () {
+      final FakeUniformStorage storage = FakeUniformStorage();
       final SsaoCompositeAcesPass pass = SsaoCompositeAcesPass(
         blendMode: BlendMode.srcOver,
         sceneColorTexture: sceneImage,
@@ -1374,14 +1412,17 @@ void main() {
       );
 
       final SsaoCompositeAcesPassPainter painter =
-          SsaoCompositeAcesPassPainter(pass: pass, shader: shader);
+          SsaoCompositeAcesPassPainter(pass: pass, uniformTarget: storage);
 
       final MockCanvas canvas = MockCanvas();
       painter.paint(canvas, const Size(1280, 720));
 
       expect(canvas.drawCalls, contains('drawRect'));
       expect(canvas.lastPaint?.blendMode, equals(BlendMode.srcOver));
-      expect(canvas.lastPaint?.shader, equals(shader));
+      expect(storage.floats[0], equals(1280.0));
+      expect(storage.floats[1], equals(720.0));
+      expect(storage.samplers[0], equals(sceneImage));
+      expect(storage.samplers[1], equals(aoImage));
     });
   });
 

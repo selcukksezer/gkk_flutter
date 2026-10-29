@@ -375,18 +375,16 @@ class DungeonCombatVfxController extends ChangeNotifier {
         playerRimFlash = RimHitFlashController(),
         ribbonTrail = ribbon.RibbonTrail(
           config: const ribbon.RibbonTrailConfig(
-            maxSamples: 32,
-            sampleLifetime: 0.28,
+            lifetime: 0.28,
             baseColor: BattlePalette.liquidGold,
             glowColor: BattlePalette.coralFlare,
             glowIntensity: 3.2,
-            headWidth: 16.0,
-            tailWidth: 2.0,
+            startWidthMultiplier: 1.0,
+            endWidthMultiplier: 0.1,
           ),
         ),
         enemyKnockback = KnockbackRagdollController(
           config: const KnockbackConfig(
-            linearDamping: 6.5,
             groundFriction: 8.0,
             gravity: 18.0,
             blendInDuration: 0.05,
@@ -395,7 +393,6 @@ class DungeonCombatVfxController extends ChangeNotifier {
         ),
         playerKnockback = KnockbackRagdollController(
           config: const KnockbackConfig(
-            linearDamping: 7.0,
             groundFriction: 8.5,
             gravity: 18.0,
             blendInDuration: 0.04,
@@ -460,7 +457,7 @@ class DungeonCombatVfxController extends ChangeNotifier {
     if (dt <= 0.0 || _isDisposed) return;
 
     // Apply Hit-Stop time dilation to game simulation
-    final double timeScale = hitStopManager.globalTimeScale;
+    final double timeScale = hitStopManager.getTimeScale();
     final double scaledDt = dt * timeScale;
 
     cameraShake.update(dt); // Shake continues during hit-stop
@@ -1215,7 +1212,6 @@ class DungeonCombatVfxController extends ChangeNotifier {
       layerIndex: 0,
       count: 35,
       origin: centerPoint,
-      spreadAngle: math.pi * 2, // 360 burst
       speedMultiplier: 1.3,
     );
 

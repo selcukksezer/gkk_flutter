@@ -800,7 +800,20 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
           // 1. Divine Forge Header
           Row(
             children: <Widget>[
-              const Text('⚡', style: TextStyle(fontSize: 14)),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.asset(
+                  'assets/images/icons/skills_physical/skill_holy_aegis.png',
+                  width: 16,
+                  height: 16,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.auto_awesome,
+                    size: 14,
+                    color: AionForgeTokens.celestialGold,
+                  ),
+                ),
+              ),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
@@ -859,7 +872,22 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                               fallback: '📜',
                             ),
                           )
-                        : null,
+                        : Center(
+                            child: Opacity(
+                              opacity: 0.7,
+                              child: Image.asset(
+                                'assets/items/generated/scroll_upgrade_high.png',
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.auto_awesome,
+                                  size: 22,
+                                  color: AionForgeTokens.divineBrass,
+                                ),
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(height: AppSpacing.xs + 2),
                   ForgeSlotContainer(
@@ -887,10 +915,31 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                                   fallback: '🔮',
                                 ),
                               )
-                            : const Center(
-                                child: Text('🔮', style: TextStyle(fontSize: 20)),
+                            : Center(
+                                child: Image.asset(
+                                  'assets/items/generated/rune_protection.png',
+                                  width: 32,
+                                  height: 32,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Text('🔮', style: TextStyle(fontSize: 20)),
+                                ),
                               ))
-                        : null,
+                        : Center(
+                            child: Opacity(
+                              opacity: 0.65,
+                              child: Image.asset(
+                                'assets/items/generated/rune_protection.png',
+                                width: 30,
+                                height: 30,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.flare_rounded,
+                                  size: 22,
+                                  color: AionForgeTokens.divineBrass,
+                                ),
+                              ),
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -961,10 +1010,21 @@ class _EnhancementScreenState extends ConsumerState<EnhancementScreen>
                       activeRune: activeRune,
                     ),
                     child: Center(
-                      child: Icon(
-                        protIcon,
-                        size: 24,
-                        color: protColor,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusXs),
+                        child: Image.asset(
+                          currentLevel >= 6
+                              ? 'assets/images/icons/skills_physical/skill_shield_bastion.png'
+                              : 'assets/images/icons/skills_physical/skill_holy_aegis.png',
+                          width: 34,
+                          height: 34,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(
+                            protIcon,
+                            size: 24,
+                            color: protColor,
+                          ),
+                        ),
                       ),
                     ),
                   ),

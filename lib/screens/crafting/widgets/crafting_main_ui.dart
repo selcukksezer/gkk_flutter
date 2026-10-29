@@ -1019,6 +1019,7 @@ class _AionGlassBorderPainter extends CustomPainter {
           AppColors.liquidGold.withValues(alpha: 0.25),
           Colors.transparent,
         ],
+        const <double>[0.0, 0.35, 0.65, 1.0],
       )
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;

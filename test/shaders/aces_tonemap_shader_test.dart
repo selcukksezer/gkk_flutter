@@ -278,6 +278,61 @@ void main() {
       expect(buffer[7], closeTo(0.0, 1e-4));
     });
 
+    test('AcesTonemapCurve.buildUniforms matches toUniformList output and packs 8 floats', () {
+      const AcesTonemapParams params = AcesTonemapParams(
+        exposure: 1.25,
+        exposureMode: ExposureMode.evStops,
+        fitType: AcesFitType.stephenHill,
+        gammaMode: GammaMode.accurateSrgb,
+        preGain: 1.05,
+        whitePoint: 8.0,
+      );
+
+      final List<double> uniformsFromCurve = AcesTonemapCurve.buildUniforms(
+        width: 1920.0,
+        height: 1080.0,
+        params: params,
+      );
+      final List<double> uniformsFromParams = params.toUniformList(
+        width: 1920.0,
+        height: 1080.0,
+      );
+
+      expect(uniformsFromCurve, equals(uniformsFromParams));
+      expect(uniformsFromCurve.length, equals(AcesTonemapCurve.uniformFloatCount));
+    });
+
+    test('Simulated uniform buffer storage receives exact float bindings from buildAcesUniforms', () {
+      // Simulating a GPU uniform buffer storage array without illegally implementing FragmentShader
+      final Float32List uniformStorage = Float32List(AcesTonemapCurve.uniformFloatCount);
+      const Size viewport = Size(1920.0, 1080.0);
+      const AcesTonemapParams params = AcesTonemapParams(
+        exposure: 0.5,
+        exposureMode: ExposureMode.evStops,
+        fitType: AcesFitType.stephenHill,
+        gammaMode: GammaMode.accurateSrgb,
+        preGain: 1.1,
+        whitePoint: 6.0,
+      );
+
+      final List<double> values = PostProcessPipelineController.buildAcesUniforms(
+        size: viewport,
+        params: params,
+      );
+      for (int i = 0; i < values.length; ++i) {
+        uniformStorage[i] = values[i];
+      }
+
+      expect(uniformStorage[0], equals(1920.0));
+      expect(uniformStorage[1], equals(1080.0));
+      expect(uniformStorage[2], equals(0.5));
+      expect(uniformStorage[3], equals(1.0)); // evStops
+      expect(uniformStorage[4], equals(0.0)); // stephenHill
+      expect(uniformStorage[5], equals(0.0)); // accurateSrgb
+      expect(uniformStorage[6], closeTo(1.1, 1e-5));
+      expect(uniformStorage[7], equals(6.0));
+    });
+
     test('ShaderCatalog.acesTonemap descriptor in ShaderRegistry aligns with GLSL layout', () {
       final ShaderRegistry registry = ShaderRegistry(loadDefaults: true);
       final ShaderDescriptor? desc = registry.getShaderDescriptor(ShaderCatalog.acesTonemap);

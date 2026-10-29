@@ -20,6 +20,7 @@ import '../../routing/app_router.dart';
 import 'widgets/dungeon_battle_effects.dart';
 import 'widgets/dungeon_cave_theme.dart';
 import 'widgets/dungeon_cinematic_atmosphere.dart';
+import '../../core/vfx/directional_camera_shake.dart';
 import 'widgets/dungeon_combat_vfx.dart';
 import 'widgets/dungeon_monster_glb_viewport.dart';
 import 'package:gkk_flutter/components/common/app_messenger.dart';

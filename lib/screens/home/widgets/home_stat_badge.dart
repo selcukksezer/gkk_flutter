@@ -498,8 +498,8 @@ class _AionGlassOrnamentPainter extends CustomPainter {
     canvas.drawLine(Offset(size.width - 2, 4), Offset(size.width - 2, 4 + corner), linePaint);
 
     // Bottom-Left
-    canvas.drawLine(const Offset(4, size.height - 2), Offset(4 + corner, size.height - 2), linePaint);
-    canvas.drawLine(const Offset(2, size.height - 4), Offset(2, size.height - 4 - corner), linePaint);
+    canvas.drawLine(Offset(4, size.height - 2), Offset(4 + corner, size.height - 2), linePaint);
+    canvas.drawLine(Offset(2, size.height - 4), Offset(2, size.height - 4 - corner), linePaint);
 
     // Bottom-Right
     canvas.drawLine(Offset(size.width - 4, size.height - 2),
@@ -800,7 +800,7 @@ class _PowerDetailPopover extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           'EKİPMAN VE KARAKTERİ İNCELE',
-                          style: AppTextStyles.bodySmall.copyWith(
+                          style: AppTextStyles.caption.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
                             fontSize: 11.5,
@@ -1118,7 +1118,7 @@ class _ReputationDetailPopover extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           'İTİBAR MERKEZİNE GİT',
-                          style: AppTextStyles.bodySmall.copyWith(
+                          style: AppTextStyles.caption.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
                             fontSize: 11.5,

@@ -239,6 +239,30 @@ class PlanarReflectionMatrix {
 }
 
 // -----------------------------------------------------------------------------
+// Fake Uniform Storage for Uniform Buffer Verification (Dart 3 Compliant)
+// -----------------------------------------------------------------------------
+
+/// Recording uniform storage capturing [setFloat] and [setImageSampler] invocations
+/// without violating Dart 3's `base class` restriction on `ui.FragmentShader`.
+class FakeUniformBufferStorage {
+  final Map<int, double> floats = <int, double>{};
+  final Map<int, ui.Image> samplers = <int, ui.Image>{};
+
+  void setFloat(int index, double value) {
+    floats[index] = value;
+  }
+
+  void setImageSampler(int index, ui.Image image) {
+    samplers[index] = image;
+  }
+
+  void clear() {
+    floats.clear();
+    samplers.clear();
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Test Suite
 // -----------------------------------------------------------------------------
 
@@ -459,6 +483,75 @@ void main() {
       // Night Hub: vibrant specular reflections
       expect(night.reflectivity, greaterThan(calm.reflectivity));
       expect(night.maxRaySteps, greaterThanOrEqualTo(30.0));
+    });
+
+    test('Simulated uniform buffer receives exact 27 uniform float bindings without base class violation', () {
+      final PuddleReflectionConfig cfg = PuddleReflectionConfig(
+        rainIntensity: 0.72,
+        rippleSpeed: 1.35,
+        puddleRoughness: 0.08,
+        reflectivity: 1.25,
+        fresnelR0: 0.024,
+        waterDepthScale: 1.15,
+        waterColor: const ui.Color(0x40112A3D),
+        mudColor: const ui.Color(0x80251A10),
+        maxRaySteps: 24.0,
+        rayStepSize: 0.022,
+        planarReflectionHeight: 0.68,
+        edgeFadeMargin: 0.09,
+        cameraPosition: const WorldVector3(0.5, 1.7, 3.2),
+        cameraDirection: const WorldVector3(0.1, -0.34, -0.93),
+      );
+
+      const ui.Size viewport = ui.Size(1920.0, 1080.0);
+      const double time = 5.678;
+
+      final List<double> uniforms = cfg.buildUniformList(
+        viewportSize: viewport,
+        time: time,
+      );
+
+      final FakeUniformBufferStorage buffer = FakeUniformBufferStorage();
+      for (int i = 0; i < uniforms.length; i++) {
+        buffer.setFloat(i, uniforms[i]);
+      }
+
+      expect(buffer.floats.length, equals(27));
+      expect(buffer.floats[0], equals(1920.0));
+      expect(buffer.floats[1], equals(1080.0));
+      expect(buffer.floats[2], equals(5.678));
+      expect(buffer.floats[3], equals(0.5));
+      expect(buffer.floats[4], equals(1.7));
+      expect(buffer.floats[5], equals(3.2));
+      expect(buffer.floats[9], closeTo(0.72, 1e-5));
+      expect(buffer.floats[10], closeTo(1.35, 1e-5));
+      expect(buffer.floats[11], closeTo(0.08, 1e-5));
+      expect(buffer.floats[12], closeTo(1.25, 1e-5));
+      expect(buffer.floats[13], closeTo(0.024, 1e-5));
+      expect(buffer.floats[14], closeTo(1.15, 1e-5));
+      expect(buffer.floats[23], equals(24.0));
+      expect(buffer.floats[24], closeTo(0.022, 1e-5));
+      expect(buffer.floats[25], closeTo(0.68, 1e-5));
+      expect(buffer.floats[26], closeTo(0.09, 1e-5));
+    });
+
+    test('Sampler units are mapped to slot 0 (uSceneTexture) and slot 1 (uPuddleMask)', () async {
+      final FakeUniformBufferStorage storage = FakeUniformBufferStorage();
+
+      final ui.PictureRecorder recorder = ui.PictureRecorder();
+      final Canvas canvas = Canvas(recorder);
+      canvas.drawRect(const Rect.fromLTWH(0, 0, 1, 1), Paint()..color = const ui.Color(0xFF000000));
+      final ui.Image dummyImage = await recorder.endRecording().toImage(1, 1);
+
+      storage.setImageSampler(0, dummyImage);
+      storage.setImageSampler(1, dummyImage);
+
+      expect(storage.samplers.containsKey(0), isTrue);
+      expect(storage.samplers.containsKey(1), isTrue);
+      expect(storage.samplers[0], equals(dummyImage));
+      expect(storage.samplers[1], equals(dummyImage));
+
+      dummyImage.dispose();
     });
   });
 
@@ -996,6 +1089,7 @@ void main() {
               const SizedBox(width: 800, height: 600),
               PuddleReflectionLayer(
                 controller: controller,
+                enablePreload: false,
                 child: const Text('Night Hub Plaza Ground'),
               ),
             ],
@@ -1036,6 +1130,7 @@ void main() {
             height: 400,
             child: PuddleReflectionLayer(
               controller: controller,
+              enablePreload: false,
               customPuddlePath: customPolygon,
             ),
           ),
@@ -1063,7 +1158,10 @@ void main() {
           child: SizedBox(
             width: 0.0,
             height: 0.0,
-            child: PuddleReflectionLayer(controller: controller),
+            child: PuddleReflectionLayer(
+              controller: controller,
+              enablePreload: false,
+            ),
           ),
         ),
       );

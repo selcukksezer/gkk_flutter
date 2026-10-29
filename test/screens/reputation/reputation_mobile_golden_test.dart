@@ -14,7 +14,6 @@ import 'package:gkk_flutter/providers/reputation_provider.dart';
 import 'package:gkk_flutter/repositories/player_repository.dart';
 import 'package:gkk_flutter/repositories/reputation_repository.dart';
 import 'package:gkk_flutter/screens/reputation/reputation_screen.dart';
-import 'package:gkk_flutter/screens/reputation/widgets/faction_standings_hub.dart';
 import 'package:gkk_flutter/screens/reputation/widgets/reputation_activity_log.dart';
 import 'package:gkk_flutter/screens/reputation/widgets/reputation_design.dart';
 import 'package:gkk_flutter/screens/reputation/widgets/reputation_earn_section.dart';
@@ -163,7 +162,10 @@ PlayerProfile _mockPlayer() {
     id: 'player_aion_01',
     authId: 'auth_aion_01',
     username: 'SanctumArchdaeva',
+    email: 'archdaeva@aion.test',
     displayName: 'SanctumArchdaeva',
+    avatarUrl: null,
+    avatarFrame: 'glow',
     level: 55,
     xp: 350000,
     gold: 150000,
@@ -178,6 +180,8 @@ PlayerProfile _mockPlayer() {
     isOnline: true,
     isBanned: false,
     tutorialCompleted: true,
+    guildId: 'guild_aion_01',
+    guildRole: 'Commander',
     characterClass: CharacterClass.warrior,
     reputation: 42500,
     statPoints: 10,
@@ -186,7 +190,19 @@ PlayerProfile _mockPlayer() {
     pvpRating: 1850,
     tolerance: 0,
     addictionLevel: 0,
-    isVip: true,
+    referralCode: null,
+    referredBy: null,
+    lastPotionUsedAt: null,
+    warriorBloodlustUntil: null,
+    hospitalUntil: null,
+    prisonUntil: null,
+    prisonReason: null,
+    globalSuspicionLevel: 0,
+    lastBribeAt: null,
+    lastLoginAt: '2026-10-28T00:00:00Z',
+    lastLogin: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-10-28T00:00:00Z',
   );
 }
 

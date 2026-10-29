@@ -351,19 +351,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(
-                l10n.auth_policy_logout,
-                style: GoogleFonts.urbanist(color: const Color(0xFF94A3B8)),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  l10n.auth_policy_logout,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.urbanist(color: const Color(0xFF94A3B8)),
+                ),
               ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AuthDesign.gold),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(
-                l10n.auth_policy_retry,
-                style: GoogleFonts.urbanist(
-                  color: AuthDesign.void_,
-                  fontWeight: FontWeight.w700,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  l10n.auth_policy_retry,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.urbanist(
+                    color: AuthDesign.void_,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -386,6 +396,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_referralChecking) {
       return Text(
         l10n.auth_referral_validating,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
         style: AuthDesign.bodyMuted(color: AuthDesign.titanium),
       );
     }
@@ -396,6 +408,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!preview.valid) {
       return Text(
         l10n.auth_referral_invalid,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
         style: AuthDesign.bodyMuted(color: AuthDesign.fuchsia),
       );
     }
@@ -405,6 +419,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         preview.referredGems,
         preview.referrerGems,
       ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
       style: AuthDesign.bodyMuted(color: AuthDesign.gold),
     );
   }
@@ -521,6 +537,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               children: <Widget>[
                 Text(
                   'Lonca Sefer & Ganimet Bildirimleri',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.urbanist(
                     color: Colors.white,
                     fontSize: 13,
@@ -529,6 +547,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 Text(
                   'Canlı baskın ve ödül uyarılarını anında al.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.urbanist(
                     color: const Color(0xFF94A3B8),
                     fontSize: 11,
@@ -537,32 +557,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
             ),
           ),
-          Switch.adaptive(
-            value: _guildDispatchAlerts,
-            onChanged: (bool value) {
-              HapticFeedback.selectionClick();
-              setState(() => _guildDispatchAlerts = value);
-            },
-            activeColor: AppColors.cyberFuchsia,
-            activeTrackColor: AppColors.cyberFuchsia.withValues(alpha: 0.38),
-            thumbColor: WidgetStateProperty.resolveWith<Color>(
-              (Set<WidgetState> states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const Color(0xFFFF4D8D);
-                }
-                return const Color(0xFF94A3B8);
+          const SizedBox(width: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Switch.adaptive(
+              value: _guildDispatchAlerts,
+              onChanged: (bool value) {
+                HapticFeedback.selectionClick();
+                setState(() => _guildDispatchAlerts = value);
               },
-            ),
-            trackColor: WidgetStateProperty.resolveWith<Color>(
-              (Set<WidgetState> states) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.cyberFuchsia.withValues(alpha: 0.45);
-                }
-                return const Color(0xFF0F172A);
-              },
-            ),
-            trackOutlineColor: WidgetStateProperty.all(
-              Colors.white.withValues(alpha: 0.12),
+              activeColor: AppColors.cyberFuchsia,
+              activeTrackColor: AppColors.cyberFuchsia.withValues(alpha: 0.38),
+              thumbColor: WidgetStateProperty.resolveWith<Color>(
+                (Set<WidgetState> states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const Color(0xFFFF4D8D);
+                  }
+                  return const Color(0xFF94A3B8);
+                },
+              ),
+              trackColor: WidgetStateProperty.resolveWith<Color>(
+                (Set<WidgetState> states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return AppColors.cyberFuchsia.withValues(alpha: 0.45);
+                  }
+                  return const Color(0xFF0F172A);
+                },
+              ),
+              trackOutlineColor: WidgetStateProperty.all(
+                Colors.white.withValues(alpha: 0.12),
+              ),
             ),
           ),
         ],
@@ -608,24 +632,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          l10n.krallik_kapisi.toUpperCase(),
-          textAlign: TextAlign.center,
-          style: GoogleFonts.urbanist(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2.2,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            l10n.krallik_kapisi.toUpperCase(),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.urbanist(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.2,
+            ),
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          l10n.auth_register_subtitle,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.urbanist(
-            color: const Color(0xFF94A3B8),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            l10n.auth_register_subtitle,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.urbanist(
+              color: const Color(0xFF94A3B8),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -749,6 +783,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     _usernameTaken
                                         ? l10n.auth_username_taken
                                         : '...',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: AuthDesign.bodyMuted(
                                       color: _usernameTaken
                                           ? AppColors.cyberFuchsia
@@ -886,35 +922,41 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 const SizedBox(height: AppSpacing.base),
 
                                 // Navigation to Login
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: <Widget>[
-                                    Text(
-                                      'Zaten bir hesabın var mı? ',
-                                      style: GoogleFonts.urbanist(
-                                        color: const Color(0xFF94A3B8),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        context.go(AppRoutes.login);
-                                      },
-                                      child: Text(
-                                        'Giriş Yap',
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: <Widget>[
+                                      Text(
+                                        'Zaten bir hesabın var mı? ',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.urbanist(
-                                          color: const Color(0xFFFFD700),
+                                          color: const Color(0xFF94A3B8),
                                           fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          decoration: TextDecoration.underline,
-                                          decorationColor:
-                                              const Color(0xFFFFD700),
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      GestureDetector(
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          context.go(AppRoutes.login);
+                                        },
+                                        child: Text(
+                                          'Giriş Yap',
+                                          maxLines: 1,
+                                          style: GoogleFonts.urbanist(
+                                            color: const Color(0xFFFFD700),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            decoration: TextDecoration.underline,
+                                            decorationColor:
+                                                const Color(0xFFFFD700),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

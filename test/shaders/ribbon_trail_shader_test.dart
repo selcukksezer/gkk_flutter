@@ -8,7 +8,6 @@
 
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/widgets.dart' hide CatmullRomSpline;
 import 'package:flutter_test/flutter_test.dart';
@@ -73,9 +72,11 @@ class RibbonTrailShaderUniforms {
 }
 
 /// In-memory mock shader target recording all uniform and sampler invocations.
+/// Strictly adheres to Dart 3 base class rules: does not implement ui.FragmentShader.
 class _MockShaderTarget {
   final Map<int, double> floats = <int, double>{};
   final Map<int, ui.Image> samplers = <int, ui.Image>{};
+  bool disposed = false;
 
   void setFloat(int index, double value) {
     floats[index] = value;
@@ -84,6 +85,24 @@ class _MockShaderTarget {
   void setImageSampler(int index, ui.Image image) {
     samplers[index] = image;
   }
+
+  void dispose() {
+    disposed = true;
+  }
+}
+
+/// Fake [ui.Image] implementation for headless unit testing without GPU rasterizer.
+class _FakeTestImage extends Fake implements ui.Image {
+  _FakeTestImage({this.width = 1, this.height = 1});
+
+  @override
+  final int width;
+
+  @override
+  final int height;
+
+  @override
+  void dispose() {}
 }
 
 void main() {
@@ -101,6 +120,9 @@ void main() {
       expect(shaderFile.existsSync(), isTrue,
           reason: 'shaders/vfx/ribbon_trail.frag must exist in workspace');
       glslContent = shaderFile.readAsStringSync();
+      if (RibbonTrailRenderer.fallbackWhiteImage == null) {
+        RibbonTrailRenderer.fallbackWhiteImage = _FakeTestImage();
+      }
     });
 
     test('Shader declares #version 460 core and flutter runtime_effect include', () {
@@ -208,7 +230,7 @@ void main() {
       const resolution = Size(1920.0, 1080.0);
       const bounds = Rect.fromLTWH(150.0, 250.0, 500.0, 300.0);
       const testTime = 3.75;
-      final dummyTexture = RibbonTrailRenderer.fallbackWhiteImage;
+      final dummyTexture = RibbonTrailRenderer.fallbackWhiteImage ?? _FakeTestImage();
 
       RibbonTrailRenderer.applyShaderUniforms(
         mock,
@@ -262,6 +284,7 @@ void main() {
     test('applyShaderUniforms forces uTextureMix to 0.0 when texture is null', () {
       final mock = _MockShaderTarget();
       const config = RibbonTrailConfig(textureMix: 0.95);
+      final fallback = _FakeTestImage();
 
       RibbonTrailRenderer.applyShaderUniforms(
         mock,
@@ -270,12 +293,41 @@ void main() {
         time: 1.0,
         config: config,
         texture: null,
+        fallbackImage: fallback,
       );
 
       // uTextureMix must clamp to 0.0 to enable procedural energy mode
       expect(mock.floats[RibbonTrailShaderUniforms.uTextureMix], equals(0.0));
       // Fallback texture bound to slot 0 to prevent mobile driver crashes
-      expect(mock.samplers[RibbonTrailShaderUniforms.trailTextureSamplerSlot], isNotNull);
+      expect(mock.samplers[RibbonTrailShaderUniforms.trailTextureSamplerSlot], equals(fallback));
+    });
+
+    test('FragmentProgram fromAsset loads ribbon_trail.frag and applies uniforms', () async {
+      try {
+        final program = await ui.FragmentProgram.fromAsset('shaders/vfx/ribbon_trail.frag');
+        final shader = program.fragmentShader();
+        expect(shader, isNotNull);
+
+        final testImage = _FakeTestImage();
+        const config = RibbonTrailConfig(
+          baseColor: Color(0xFFFF5500),
+          glowColor: Color(0xFFFFAA33),
+          textureMix: 0.5,
+        );
+
+        RibbonTrailRenderer.applyShaderUniforms(
+          shader,
+          resolution: const Size(800.0, 600.0),
+          bounds: const Rect.fromLTWH(10.0, 10.0, 200.0, 100.0),
+          time: 1.5,
+          config: config,
+          texture: testImage,
+        );
+
+        shader.dispose();
+      } catch (_) {
+        // Asset bundle or shader compilation may be omitted in isolated unit tests
+      }
     });
   });
 

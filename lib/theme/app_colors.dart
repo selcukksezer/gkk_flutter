@@ -34,6 +34,7 @@ abstract final class AppColors {
   static const Color textSecondary = Color(0xFF8A9BBE);
   static const Color textTertiary = Color(0xFF4D5F80);
   static const Color textDisabled = Color(0xFF2E3D5C);
+  static const Color textMuted = Color(0xFF6B7D99);
 
   // ──────────────────────────── Gold / Primary ─────────────────────────────
 

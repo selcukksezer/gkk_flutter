@@ -60,8 +60,40 @@ class GuildNoGuildView extends StatelessWidget {
               child: GuildGlassCard(
                 accent: GuildPalette.fuchsia,
                 glow: true,
-                padding: const EdgeInsets.all(16),
-                child: Column(
+                padding: EdgeInsets.zero,
+                child: Stack(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                        child: Image.asset(
+                          'assets/images/backgrounds/elysea/bg_sanctum_citadel.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox(),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: <Color>[
+                                const Color(0xFF090E1A).withValues(alpha: 0.94),
+                                const Color(0xFF0C1322).withValues(alpha: 0.88),
+                                const Color(0xFF0F1A2E).withValues(alpha: 0.72),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Row(
@@ -111,11 +143,30 @@ class GuildNoGuildView extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
-                        const GuildCelestialEmblem(
-                          level: 1,
-                          monogram: '🏰',
-                          size: 64,
-                          showGlow: true,
+                        Stack(
+                          alignment: Alignment.center,
+                          children: <Widget>[
+                            const GuildCelestialEmblem(
+                              level: 1,
+                              monogram: '',
+                              size: 64,
+                              showGlow: true,
+                            ),
+                            Center(
+                              child: Image.asset(
+                                'assets/renders/weapons/Shield_Celtic_Golden_beauty.png',
+                                width: 38,
+                                height: 38,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Image.asset(
+                                  'assets/images/icons/armor/armor_crown_of_light.png',
+                                  width: 34,
+                                  height: 34,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -169,6 +220,9 @@ class GuildNoGuildView extends StatelessWidget {
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
             ),
             const SizedBox(height: 14),
             Row(

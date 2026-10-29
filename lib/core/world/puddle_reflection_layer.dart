@@ -36,6 +36,8 @@ class WorldVector3 {
   WorldVector3 operator -(WorldVector3 other) =>
       WorldVector3(x - other.x, y - other.y, z - other.z);
 
+  WorldVector3 operator -() => WorldVector3(-x, -y, -z);
+
   WorldVector3 operator *(double scalar) =>
       WorldVector3(x * scalar, y * scalar, z * scalar);
 

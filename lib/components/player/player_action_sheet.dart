@@ -1603,6 +1603,7 @@ class _PlayerActionSheetState extends ConsumerState<_PlayerActionSheet> {
           ),
         ),
       ),
+    );
   }
 
   Widget _actionGrid(List<_StaffActionItem> items, double maxWidth) {

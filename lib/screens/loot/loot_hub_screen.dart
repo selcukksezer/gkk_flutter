@@ -8,6 +8,7 @@ import '../../components/common/app_messenger.dart';
 import '../../components/common/inline_error_retry.dart';
 import '../../components/common/item_icon_view.dart';
 import '../../components/layout/game_chrome.dart';
+import '../../components/layout/game_screen_background.dart';
 import '../../core/errors/user_facing_error.dart';
 import '../../core/services/supabase_service.dart';
 import '../../l10n/l10n.dart';

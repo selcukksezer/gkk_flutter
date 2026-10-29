@@ -1359,6 +1359,8 @@ class DungeonArena3DPainter extends CustomPainter {
           case dls.LightType.etherealSoul:
             _paintSoulWispVisual(canvas, screenPos, light, flicker, time);
             break;
+          case dls.LightType.spot:
+            break;
         }
       }
     }

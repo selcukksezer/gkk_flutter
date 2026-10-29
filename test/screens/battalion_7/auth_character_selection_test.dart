@@ -132,18 +132,18 @@ void main() {
   group('Character Class Stats & Slot Selection Logic Tests', () {
     test('CharacterClassStats produces correct archetypal stats for all classes', () {
       final warriorStats = CharacterClassStats.forClass('warrior');
-      expect(warriorStats.attack, greaterThan(0));
-      expect(warriorStats.defense, greaterThan(0));
-      expect(warriorStats.health, greaterThan(0));
+      expect(warriorStats.strPercent, greaterThan(0));
+      expect(warriorStats.defPercent, greaterThan(0));
+      expect(warriorStats.combatPower, greaterThan(0));
 
       final assassinStats = CharacterClassStats.forClass('assassin');
-      expect(assassinStats.attack, greaterThan(0));
+      expect(assassinStats.strPercent, greaterThan(0));
 
       final mageStats = CharacterClassStats.forClass('mage');
-      expect(mageStats.attack, greaterThan(0));
+      expect(mageStats.strPercent, greaterThan(0));
 
       final alchemistStats = CharacterClassStats.forClass('alchemist');
-      expect(alchemistStats.health, greaterThan(0));
+      expect(alchemistStats.combatPower, greaterThan(0));
     });
 
     testWidgets('CharacterSlotSelector renders all slots and fires callback on tap', (WidgetTester tester) async {

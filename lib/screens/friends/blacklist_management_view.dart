@@ -75,11 +75,12 @@ class BlacklistManagementView extends StatefulWidget {
               ),
             ],
           ),
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   State<BlacklistManagementView> createState() => _BlacklistManagementViewState();

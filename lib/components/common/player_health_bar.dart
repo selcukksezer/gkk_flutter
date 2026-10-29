@@ -43,19 +43,36 @@ class PlayerHealthBar extends StatelessWidget {
               children: <Widget>[
                 Icon(Icons.favorite_rounded, size: compactLabel ? 12 : 14, color: fill),
                 const SizedBox(width: 4),
-                Text(
-                  compactLabel
-                      ? formatHealthRatio(health, maxHealth)
-                      : 'Can ${formatHealthRatio(health, maxHealth)}',
-                  style: (compactLabel ? AppTextStyles.micro : AppTextStyles.captionBold).copyWith(
-                    color: AppColors.textSecondary,
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      compactLabel
+                          ? formatHealthRatio(health, maxHealth)
+                          : 'Can ${formatHealthRatio(health, maxHealth)}',
+                      style: (compactLabel ? AppTextStyles.micro : AppTextStyles.captionBold).copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                    ),
                   ),
                 ),
                 if (critical) ...<Widget>[
-                  const Spacer(),
-                  Text(
-                    'PvP için yetersiz',
-                    style: AppTextStyles.micro.copyWith(color: AppColors.mysticRuby),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'PvP için yetersiz',
+                          style: AppTextStyles.micro.copyWith(color: AppColors.mysticRuby),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/guild_war_model.dart';
+import 'faction_crest_painter.dart';
 import 'guild_war_siege_3d_viewport.dart';
 
 /// Dark fantasy 3D Fortress Bastion card for TerritoryDetailScreen and Tactical Map:

@@ -341,7 +341,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       currency: currency,
       walletBalance: wallet,
       hasBlessingDiscount: blessing.hasDiscountForCurrency(currency) && unitPrice < baseUnitPrice,
-      blessingDiscountPct: blessing.discountPercent,
+      blessingDiscountPct: blessing.discountPctForCurrency(currency),
       maxQuantityAvailable: isStackable ? maxStack : 1,
       onConfirm: (int quantity) async {
         await _buyShopItem(item, quantity);

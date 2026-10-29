@@ -1391,45 +1391,53 @@ class _Hero3dGlbViewportState extends State<Hero3dGlbViewport>
                     widget.fallbackAsset,
                     height: effectiveHeight,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Center(
-                      child: Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const RadialGradient(
-                            colors: <Color>[
-                              Color(0x660B0F19),
-                              Color(0x441E293B),
-                              Color(0x220F172A),
-                            ],
-                            stops: <double>[0.0, 0.65, 1.0],
-                          ),
-                          border: Border.all(
-                            color: const Color(0x66D4AF37),
-                            width: 1.5,
-                          ),
-                          boxShadow: const <BoxShadow>[
-                            BoxShadow(
-                              color: Color(0x3300B4FF),
-                              blurRadius: 18,
-                              spreadRadius: -4,
+                    errorBuilder: (context, error, stackTrace) {
+                      final String fallbackPortrait = switch (widget.characterClass) {
+                        CharacterClass.warrior || null => 'assets/images/portraits/elyos/elyos_gladiator.png',
+                        CharacterClass.shadow => 'assets/images/portraits/asmodian/asmodian_assassin.png',
+                        CharacterClass.alchemist => 'assets/images/portraits/elyos/elyos_sorcerer.png',
+                      };
+                      return Center(
+                        child: Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const RadialGradient(
+                              colors: <Color>[
+                                Color(0x660B0F19),
+                                Color(0x441E293B),
+                                Color(0x220F172A),
+                              ],
+                              stops: <double>[0.0, 0.65, 1.0],
                             ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            switch (widget.characterClass) {
-                              CharacterClass.warrior || null => Icons.shield_rounded,
-                              CharacterClass.shadow => Icons.flash_on_rounded,
-                              CharacterClass.alchemist => Icons.auto_awesome_rounded,
-                            },
-                            size: 64,
-                            color: classAesthetics.heroGlow,
+                            border: Border.all(
+                              color: const Color(0x66D4AF37),
+                              width: 1.5,
+                            ),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: classAesthetics.heroGlow.withValues(alpha: 0.45),
+                                blurRadius: 22,
+                                spreadRadius: -2,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              fallbackPortrait,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Image.asset(
+                                  'assets/characters/savasci.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),

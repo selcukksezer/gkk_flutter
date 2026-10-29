@@ -46,6 +46,10 @@ class KingdomMarketBlessingStatus {
 
   bool hasDiscountForCurrency(String currency) => discountPctForCurrency(currency) > 0;
 
+  /// Effective discount percent: defaults to [goldDiscountPct], fallback to [gemDiscountPct].
+  int get discountPercent =>
+      goldDiscountPct > 0 ? goldDiscountPct : gemDiscountPct;
+
   String get activatorLabel {
     final String? guild = activatedByGuildName?.trim();
     final String? user = activatedByUsername?.trim();

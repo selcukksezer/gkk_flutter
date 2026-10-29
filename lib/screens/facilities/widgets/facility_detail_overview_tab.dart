@@ -122,7 +122,7 @@ class _FacDetailOverviewTabState extends ConsumerState<FacDetailOverviewTab>
   @override
   Widget build(BuildContext context) {
     final List<String> previewLabels = widget.preview.items
-        .map((FacilityProductionItem item) =>
+        .map((FacilityPreviewItem item) =>
             '${facilityResourceNameByRarity(widget.facilityType, item.rarity)} ×${item.quantity}')
         .toList();
 

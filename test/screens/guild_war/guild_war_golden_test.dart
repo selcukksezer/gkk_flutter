@@ -9,7 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:gkk_flutter/l10n/l10n.dart';
 import 'package:gkk_flutter/models/guild_war_model.dart';
-import 'package:gkk_flutter/screens/guild_war/battle_result_screen.dart';
+import 'package:gkk_flutter/screens/guild_war/guild_war_battle_result_screen.dart';
 import 'package:gkk_flutter/screens/guild_war/guild_war_siege_lighting.dart';
 import 'package:gkk_flutter/screens/guild_war/widgets/faction_crest_painter.dart';
 import 'package:gkk_flutter/screens/guild_war/widgets/faction_war_banner.dart';

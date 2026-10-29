@@ -1118,23 +1118,67 @@ class AionForgePedestal extends StatelessWidget {
                     children: <Widget>[
                       if (child != null)
                         child!
-                      else
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Stack(
+                          alignment: Alignment.center,
                           children: <Widget>[
-                            Icon(
-                              Icons.add_circle_outline_rounded,
-                              size: 26,
-                              color: accentColor.withValues(alpha: 0.65),
+                            // Dark fantasy volcanic backdrop
+                            Positioned.fill(
+                              child: Opacity(
+                                opacity: 0.38,
+                                child: Image.asset(
+                                  'assets/images/backgrounds/asmodae/bg_morheim_volcano.png',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const SizedBox(),
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              'EŞYA SEÇ',
-                              style: AppTextStyles.micro.copyWith(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.2,
-                                color: accentColor.withValues(alpha: 0.85),
+                            // Forge embers glow
+                            Positioned.fill(
+                              child: Opacity(
+                                opacity: 0.45,
+                                child: Image.asset(
+                                  'assets/renders/props/Brazier_IronEmbers_beauty.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const SizedBox(),
+                                ),
+                              ),
+                            ),
+                            // Authentic Aion dark fantasy sword centerpiece
+                            Positioned(
+                              top: 6,
+                              bottom: 12,
+                              child: Image.asset(
+                                'assets/renders/weapons/Sword_beauty.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.auto_awesome,
+                                  size: 26,
+                                  color: accentColor.withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ),
+                            // Frosted selection tag
+                            Positioned(
+                              bottom: 5,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(AppSpacing.radiusXs),
+                                  border: Border.all(
+                                    color: accentColor.withValues(alpha: 0.6),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  'EŞYA SEÇ',
+                                  style: AppTextStyles.micro.copyWith(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.2,
+                                    color: accentColor.withValues(alpha: 0.95),
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -1417,19 +1461,22 @@ class RiskMeterGauge extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm - 2, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: dangerColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusXs - 2),
-                      ),
-                      child: Text(
-                        dangerTitle,
-                        style: AppTextStyles.micro.copyWith(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color: dangerColor,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm - 2, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: dangerColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusXs - 2),
+                        ),
+                        child: Text(
+                          dangerTitle,
+                          style: AppTextStyles.micro.copyWith(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                            color: dangerColor,
+                          ),
                         ),
                       ),
                     ),

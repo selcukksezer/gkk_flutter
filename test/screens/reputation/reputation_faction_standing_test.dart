@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gkk_flutter/screens/reputation/widgets/faction_emblem_shader.dart';
 import 'package:gkk_flutter/screens/reputation/widgets/faction_standing_card.dart';
@@ -54,13 +54,13 @@ void main() {
 
       // Verify category filter chips
       expect(find.text('Tümü'), findsOneWidget);
-      expect(find.text('Hanedan'), findsOneWidget);
+      expect(find.text('Hanedanlar'), findsOneWidget);
       expect(find.text('Zanaat'), findsOneWidget);
-      expect(find.text('Konsey'), findsOneWidget);
+      expect(find.text('Konseyler'), findsOneWidget);
 
       // Verify default order faction cards
-      expect(find.text('Sanctum Işık Düzeni'), findsOneWidget);
-      expect(find.text('Pandaemonium Gölge Lejyonu'), findsOneWidget);
+      expect(find.text('Miragent Kutsal Tapınakçıları'), findsOneWidget);
+      expect(find.text('Fenris Pençesi Lejyonu'), findsOneWidget);
 
       // Verify category badge icon and standing tier badges
       expect(find.byType(FactionStandingCard), findsWidgets);
@@ -78,10 +78,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Aether Simyacıları Loncası'), findsOneWidget);
-      expect(find.text('Sanctum Işık Düzeni'), findsNothing);
+      expect(find.text('Miragent Kutsal Tapınakçıları'), findsNothing);
 
       // Tap 'Konsey' (Council) category chip
-      await tester.tap(find.text('Konsey'));
+      await tester.tap(find.text('Konseyler'));
       await tester.pumpAndSettle();
 
       expect(find.text('Inggison Sınır Muhafızları'), findsOneWidget);
@@ -91,7 +91,7 @@ void main() {
       await tester.tap(find.text('Tümü'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Sanctum Işık Düzeni'), findsOneWidget);
+      expect(find.text('Miragent Kutsal Tapınakçıları'), findsOneWidget);
     });
 
     testWidgets('expands faction standing card to show lore, perks, and milestone rewards', (
@@ -135,7 +135,7 @@ void main() {
     testWidgets('standing tier calculations and Roman badges are mathematically exact', (
       WidgetTester tester,
     ) async {
-      const List<FactionStandingData> customFactions = <FactionStandingData>[
+      final List<FactionStandingData> customFactions = <FactionStandingData>[
         FactionStandingData(
           id: 'test_neutral',
           name: 'Acemi Birliği',
@@ -145,6 +145,8 @@ void main() {
           points: 1200,
           headquarters: 'Test Karargahı',
           loreDescription: 'Test nötr açıklaması.',
+          perks: const <FactionPerk>[],
+          milestones: const <FactionMilestoneReward>[],
         ),
         FactionStandingData(
           id: 'test_exalted',
@@ -155,6 +157,8 @@ void main() {
           points: 55000,
           headquarters: 'Yüce Saray',
           loreDescription: 'Test yüce açıklaması.',
+          perks: const <FactionPerk>[],
+          milestones: const <FactionMilestoneReward>[],
         ),
       ];
 
@@ -164,14 +168,14 @@ void main() {
       // Test Tier calculations
       expect(fNeutral.currentTier, FactionStandingTier.neutral);
       expect(fNeutral.currentTier.romanBadge, 'I');
-      expect(fNeutral.pointsToNextTier, 1800); // 3000 - 1200
+      expect(fNeutral.remainingPointsToNext, 1800); // 3000 - 1200
       expect(fNeutral.tierProgress, closeTo(1200 / 3000, 0.001));
 
       expect(fExalted.currentTier, FactionStandingTier.exalted);
       expect(fExalted.currentTier.romanBadge, 'V');
-      expect(fExalted.pointsToNextTier, 0);
+      expect(fExalted.remainingPointsToNext, 0);
       expect(fExalted.tierProgress, 1.0);
-      expect(fExalted.isMaxTier, isTrue);
+      expect(fExalted.currentTier == FactionStandingTier.exalted, isTrue);
 
       await tester.pumpWidget(
         _wrapInMobileHarness(

@@ -57,22 +57,22 @@ void main() {
     test('LiveGuildWarClash time calculation and rally eligibility logic', () {
       final now = DateTime.now().toUtc();
       final clash = LiveGuildWarClash(
-        matchId: 'clash-123',
+        matchId: 123,
         tournamentId: 'tourn-99',
-        tournamentTitle: 'Büyük Kuşatma',
+        tournamentName: 'Büyük Kuşatma',
         guild1Id: 'g1',
         guild1Name: 'Elyos Öncüleri',
         guild2Id: 'g2',
         guild2Name: 'Asmodian Lejyonu',
         guild1Score: 1250,
         guild2Score: 980,
-        startAt: now.subtract(const Duration(hours: 1)),
-        endAt: now.add(const Duration(hours: 3)),
-        status: 'active',
+        windowStart: now.subtract(const Duration(hours: 1)),
+        windowEnd: now.add(const Duration(hours: 3)),
+        status: 'live',
       );
 
       expect(clash.isLive, isTrue);
-      expect(clash.matchId, equals('clash-123'));
+      expect(clash.matchId, equals(123));
       expect(clash.guild1Score, greaterThan(clash.guild2Score));
     });
 

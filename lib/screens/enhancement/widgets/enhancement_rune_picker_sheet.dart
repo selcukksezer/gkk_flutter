@@ -694,7 +694,8 @@ class _Aion2RunePickerSheetBodyState extends State<_Aion2RunePickerSheetBody> {
                           selected: isSelected,
                           onTap: () => _onRuneTapped(type),
                           onDoubleTap: () => _confirmAndClose(type),
-                        );
+                        ),
+                      );
                       },
                     ),
                 ],

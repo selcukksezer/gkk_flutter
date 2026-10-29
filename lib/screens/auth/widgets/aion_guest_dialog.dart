@@ -66,13 +66,19 @@ class AionGuestLoginCta extends StatelessWidget {
                 size: 18,
               ),
             const SizedBox(width: 8),
-            Text(
-              'MİSAFİR OLARAK HIZLI BAŞLA',
-              style: GoogleFonts.urbanist(
-                color: const Color(0xFFE2E8F0),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'MİSAFİR OLARAK HIZLI BAŞLA',
+                  maxLines: 1,
+                  style: GoogleFonts.urbanist(
+                    color: const Color(0xFFE2E8F0),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
+                ),
               ),
             ),
           ],

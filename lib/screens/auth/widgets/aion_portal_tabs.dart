@@ -131,14 +131,20 @@ class _TabButton extends StatelessWidget {
               size: 16,
               color: isSelected ? accentColor : AuthDesign.textLow,
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.urbanist(
-                color: isSelected ? Colors.white : AuthDesign.textLow,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                letterSpacing: 1.2,
+            const SizedBox(width: 6),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: GoogleFonts.urbanist(
+                    color: isSelected ? Colors.white : AuthDesign.textLow,
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    letterSpacing: 1.0,
+                  ),
+                ),
               ),
             ),
           ],

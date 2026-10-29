@@ -20,6 +20,7 @@ typedef OrientedBoundingBox3D = OrientedBoundingBox;
 class GroundDecalShaderPainter extends CustomPainter {
   final GroundDecalSystem system;
   final ui.FragmentShader? shader;
+  final ShaderUniformTarget? uniformTarget;
   final Offset cameraOffset;
   final double pixelsPerUnit;
   final double currentTime;
@@ -28,6 +29,7 @@ class GroundDecalShaderPainter extends CustomPainter {
   GroundDecalShaderPainter({
     required this.system,
     this.shader,
+    this.uniformTarget,
     this.cameraOffset = Offset.zero,
     this.pixelsPerUnit = 24.0,
     this.currentTime = 0.0,
@@ -140,6 +142,20 @@ class GroundDecalShaderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (uniformTarget != null) {
+      for (final decal in system.activeDecals) {
+        if (decal.currentOpacity <= 0.001) continue;
+        bindUniforms(
+          target: uniformTarget!,
+          decal: decal,
+          resolution: size,
+          groundViewportOrigin: cameraOffset,
+          currentTime: currentTime,
+          surfaceNormal: surfaceNormal,
+        );
+      }
+    }
+
     if (shader != null) {
       final s = shader!;
       for (final decal in system.activeDecals) {
@@ -926,6 +942,38 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     });
 
+    testWidgets(
+        'GroundDecalShaderPainter populates ShaderUniformTarget during CustomPaint hierarchy paint',
+        (tester) async {
+      final target = BufferUniformTarget();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: CustomPaint(
+                size: const Size(800, 600),
+                painter: GroundDecalShaderPainter(
+                  system: system,
+                  uniformTarget: target,
+                  currentTime: 2.0,
+                  pixelsPerUnit: 20.0,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(CustomPaint), findsWidgets);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(target.floatCount, greaterThanOrEqualTo(26));
+      expect(target.getFloat(0), equals(800.0));
+      expect(target.getFloat(1), equals(600.0));
+      expect(target.getFloat(23), equals(2.0));
+      expect(target.getFloat(25), equals(1.0));
+    });
+
     test('GroundDecalShaderPainter shouldRepaint returns true', () {
       final p1 = GroundDecalShaderPainter(system: system, currentTime: 0.1);
       final p2 = GroundDecalShaderPainter(system: system, currentTime: 0.2);
@@ -996,6 +1044,144 @@ void main() {
       pool.clear();
       expect(pool.activeCount, equals(0));
       expect(pool.activeDecals.isEmpty, isTrue);
+    });
+  });
+
+  group('GPU Decal Batching & Distance Culling (GroundDecalBatch)', () {
+    late GroundDecalSystem batchSystem;
+
+    setUp(() {
+      batchSystem = GroundDecalSystem(maxDecals: 32);
+    });
+
+    test('generateRenderBatch collects active decals within maxDistance radius', () {
+      final d1 = batchSystem.spawnScorchMark(position: const Vector3D(0, 0, 10), radius: 2.0);
+      final d2 = batchSystem.spawnBloodSplatter(position: const Vector3D(20, 0, 20), radius: 1.5);
+      final d3 = batchSystem.spawnCrackedEarth(position: const Vector3D(0, 0, 45), radius: 2.0);
+      batchSystem.spawnScorchMark(position: const Vector3D(0, 0, 100), radius: 2.0);
+      batchSystem.spawnBloodSplatter(position: const Vector3D(200, 0, 200), radius: 1.5);
+
+      final GroundDecalBatch batch = batchSystem.generateRenderBatch(
+        cameraPosition: Vector3D.zero,
+        maxDistance: 50.0,
+      );
+
+      expect(batch.count, equals(3));
+      expect(batch.items.length, equals(3));
+
+      expect(batch.items[0].distanceToCamera, greaterThanOrEqualTo(batch.items[1].distanceToCamera));
+      expect(batch.items[1].distanceToCamera, greaterThanOrEqualTo(batch.items[2].distanceToCamera));
+
+      final batchDecals = batch.items.map((item) => item.decal).toList();
+      expect(batchDecals, contains(d1));
+      expect(batchDecals, contains(d2));
+      expect(batchDecals, contains(d3));
+    });
+
+    test('generateRenderBatch accounts for OBB bounding radius in culling envelope', () {
+      final onBorder = batchSystem.spawnCrackedEarth(
+        position: const Vector3D(0, 0, 52.0),
+        radius: 3.0,
+      );
+
+      batchSystem.spawnCrackedEarth(
+        position: const Vector3D(0, 0, 75.0),
+        radius: 3.0,
+      );
+
+      final batch = batchSystem.generateRenderBatch(
+        cameraPosition: Vector3D.zero,
+        maxDistance: 50.0,
+      );
+
+      expect(batch.count, equals(1));
+      expect(batch.items.first.decal, equals(onBorder));
+    });
+
+    test('generateRenderBatch returns empty batch when all decals are expired', () {
+      batchSystem.spawnScorchMark(
+        position: const Vector3D(0, 0, 10),
+        lifetime: 1.0,
+        fadeDuration: 0.5,
+      );
+
+      batchSystem.update(2.0);
+
+      final batch = batchSystem.generateRenderBatch(
+        cameraPosition: Vector3D.zero,
+        maxDistance: 50.0,
+      );
+
+      expect(batch.count, equals(0));
+      expect(batch.items.isEmpty, isTrue);
+    });
+  });
+
+  group('Dart 3 FragmentShader & Uniform Buffer Architecture Compliance', () {
+    test('BufferUniformTarget implements ShaderUniformTarget without implementing base class FragmentShader', () {
+      final ShaderUniformTarget target = BufferUniformTarget();
+      expect(target, isA<ShaderUniformTarget>());
+      expect(target, isA<BufferUniformTarget>());
+
+      target.setFloat(0, 1920.0);
+      target.setFloat(1, 1080.0);
+      target.setFloat(25, 1.0);
+
+      final bufferTarget = target as BufferUniformTarget;
+      expect(bufferTarget.getFloat(0), equals(1920.0));
+      expect(bufferTarget.getFloat(1), equals(1080.0));
+      expect(bufferTarget.getFloat(25), equals(1.0));
+      expect(bufferTarget.floatCount, equals(3));
+
+      final floatList = bufferTarget.toFloatList(minLength: 26);
+      expect(floatList.length, equals(26));
+      expect(floatList[0], equals(1920.0));
+      expect(floatList[1], equals(1080.0));
+      expect(floatList[25], equals(1.0));
+      expect(floatList[2], equals(0.0));
+    });
+
+    test('Decal uniform mapping strictly adheres to 26 floats without mock FragmentShader', () {
+      final target = BufferUniformTarget();
+      final decal = DecalInstance(
+        type: DecalType.slashGouge,
+        position: const Vector3D(15.0, 0.0, 30.0),
+        size: const Vector3D(2.0, 4.0, 1.0),
+        color: const ui.Color(0xFFFFAA00),
+        baseOpacity: 0.95,
+        roughness: 0.7,
+        normalStrength: 1.3,
+        angleCutoff: 0.5,
+        edgeSoftness: 0.2,
+        proceduralSeed: 99.0,
+      );
+
+      GroundDecalShaderPainter.bindUniforms(
+        target: target,
+        decal: decal,
+        resolution: const Size(1280.0, 720.0),
+        groundViewportOrigin: const Offset(5.0, 10.0),
+        currentTime: 3.5,
+        surfaceNormal: Vector3D.groundUp,
+      );
+
+      final list = target.toFloatList(minLength: 26);
+      expect(list.length, equals(26));
+      expect(list[0], equals(1280.0));
+      expect(list[1], equals(720.0));
+      expect(list[2], equals(10.0));
+      expect(list[3], equals(20.0));
+      expect(list[4], equals(20.0));
+      expect(list[5], equals(40.0));
+      expect(list[7], closeTo(0.95, 1e-5));
+      expect(list[12], equals(1.3));
+      expect(list[13], equals(0.7));
+      expect(list[14], equals(3.0));
+      expect(list[21], equals(0.5));
+      expect(list[22], equals(0.2));
+      expect(list[23], equals(3.5));
+      expect(list[24], equals(99.0));
+      expect(list[25], equals(1.0));
     });
   });
 }

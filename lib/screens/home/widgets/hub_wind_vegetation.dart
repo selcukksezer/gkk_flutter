@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -866,98 +867,8 @@ class HubWindVegetationPainter extends CustomPainter {
     WindSimulationConfig config,
     HardwareTier tier,
   ) {
-    final Offset root = tree.basePos + Offset(parallaxOffset.dx * 0.6, parallaxOffset.dy * 0.6);
-    final Offset trunkTipOriginal = Offset(root.dx, root.dy - tree.height);
-
-    // Displace trunk tip with species stiffness modifier
-    final Offset trunkDisplacement = WindDisplacementMath.evaluateFoliageDisplacement(
-      vertexPos: trunkTipOriginal,
-      rootY: root.dy,
-      totalHeight: tree.height,
-      time: time,
-      config: config,
-      vertexWeightTip: 1.0,
-      vertexWeightFlutter: 0.15,
-      stiffness: tree.stiffness,
-    );
-
-    final Offset trunkTipDisplaced = trunkTipOriginal + trunkDisplacement;
-
-    // Draw trunk (cubic curve bending smoothly under wind)
-    final double trunkBaseWidth = (tree.height * 0.05).clamp(3.0, 7.5);
-    final Path trunkPath = Path();
-    trunkPath.moveTo(root.dx - trunkBaseWidth, root.dy);
-    trunkPath.lineTo(root.dx + trunkBaseWidth, root.dy);
-    trunkPath.quadraticBezierTo(
-      root.dx + trunkDisplacement.dx * 0.35,
-      root.dy - tree.height * 0.5,
-      trunkTipDisplaced.dx + (trunkBaseWidth * 0.4),
-      trunkTipDisplaced.dy,
-    );
-    trunkPath.lineTo(trunkTipDisplaced.dx - (trunkBaseWidth * 0.4), trunkTipDisplaced.dy);
-    trunkPath.close();
-
-    _trunkPaint.color = tree.trunkColor;
-    canvas.drawPath(trunkPath, _trunkPaint);
-
-    // Draw foliage canopy clusters with multi-vertex wind oscillation
-    final int clusters = tree.canopyClusters;
-    for (int c = 0; c < clusters; c++) {
-      final double angle = (c * (2.0 * math.pi / clusters)) + 0.3;
-      final double clusterDist = tree.crownRadius * (tree.species == FoliageSpecies.pine ? 0.35 : 0.55);
-      final Offset clusterLocalCenter = Offset(
-        math.cos(angle) * clusterDist,
-        math.sin(angle) * (clusterDist * (tree.species == FoliageSpecies.willow ? 1.2 : 0.8)),
-      );
-
-      final Offset clusterOrigin = trunkTipDisplaced + clusterLocalCenter;
-
-      // Leaf vertex flutter
-      final Offset clusterDisplacement = WindDisplacementMath.evaluateFoliageDisplacement(
-        vertexPos: clusterOrigin,
-        rootY: root.dy,
-        totalHeight: tree.height,
-        time: time + c * 0.42,
-        config: config,
-        vertexWeightTip: 0.65,
-        vertexWeightFlutter: 1.0,
-        stiffness: tree.stiffness,
-      );
-
-      final Offset finalClusterCenter = clusterOrigin + clusterDisplacement;
-      final double radius = tree.crownRadius * (0.65 + (c % 2) * 0.15);
-
-      final double rMod = controller.ambientSkylight.r * 0.18 + controller.directionalRadiance.r * 0.12;
-      final double gMod = controller.ambientSkylight.g * 0.18 + controller.directionalRadiance.g * 0.12;
-      final double bMod = controller.ambientSkylight.b * 0.18 + controller.directionalRadiance.b * 0.12;
-
-      final Color sunLitFoliage = Color.fromARGB(
-        255,
-        ((tree.foliageColor.r * 255.0) * (1.0 + rMod)).clamp(0.0, 255.0).toInt(),
-        ((tree.foliageColor.g * 255.0) * (1.0 + gMod)).clamp(0.0, 255.0).toInt(),
-        ((tree.foliageColor.b * 255.0) * (1.0 + bMod)).clamp(0.0, 255.0).toInt(),
-      );
-
-      if (config.enableFoliageRimLighting && tier != HardwareTier.eco) {
-        _foliagePaint.shader = ui.Gradient.radial(
-          finalClusterCenter - Offset(radius * 0.28, radius * 0.32),
-          radius * 1.15,
-          <Color>[sunLitFoliage, tree.foliageColorShadow],
-          <double>[0.1, 1.0],
-        );
-      } else {
-        _foliagePaint.shader = null;
-        _foliagePaint.color = tree.foliageColor;
-      }
-
-      canvas.drawCircle(finalClusterCenter, radius, _foliagePaint);
-
-      // Bio-luminescent runic vein core for Aion-2 Elder trees
-      if (tree.bioLuminescentGlow != null && tier != HardwareTier.eco) {
-        _haloPaint.color = tree.bioLuminescentGlow!;
-        canvas.drawCircle(finalClusterCenter, radius * 0.45, _haloPaint);
-      }
-    }
+    // Removed cartoon lollipop tree painter in favor of authentic Aion-2 dark fantasy background
+    return;
   }
 
   void _paintSwayingGrassCluster(

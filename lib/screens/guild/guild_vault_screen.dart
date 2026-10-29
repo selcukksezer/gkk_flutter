@@ -824,9 +824,9 @@ class _GuildVaultScreenState extends ConsumerState<GuildVaultScreen>
                               itemBuilder: (BuildContext context, int index) {
                                 final GuildMemberData m = filteredMembers[index];
                                 final bool isLeader =
-                                    m.role == GuildMemberRole.leader;
+                                    m.role == GuildRole.leader;
                                 final bool isOfficer =
-                                    m.role == GuildMemberRole.officer;
+                                    m.role == GuildRole.officer;
                                 final Color roleColor = isLeader
                                     ? GuildPalette.gold
                                     : (isOfficer
@@ -1912,8 +1912,8 @@ class _GoldTabState extends State<_GoldTab> {
                                   .toLowerCase()
                                   .contains(_memberSearch.text.trim().toLowerCase()))
                           .map((GuildMemberData m) {
-                        final bool isLeader = m.role == GuildMemberRole.leader;
-                        final bool isOfficer = m.role == GuildMemberRole.officer;
+                        final bool isLeader = m.role == GuildRole.leader;
+                        final bool isOfficer = m.role == GuildRole.officer;
                         final Color roleColor = isLeader
                             ? GuildPalette.gold
                             : (isOfficer ? GuildPalette.astralBlue : GuildPalette.titanium);
@@ -1984,8 +1984,9 @@ class _GoldTabState extends State<_GoldTab> {
                                 ),
                               ],
                             ),
-                          );
-                        }),
+                          ),
+                        );
+                      }),
                       const SizedBox(height: 8),
                       SettingsPrimaryButton(
                         label: 'Hedefli Dağıtımı Uygula',

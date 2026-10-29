@@ -31,6 +31,7 @@ import 'dungeon_result_widgets.dart';
 import '../reputation/widgets/reputation_gain_banner.dart';
 import 'widgets/dungeon_battle_effects.dart';
 import 'widgets/dungeon_cave_theme.dart';
+import '../../core/vfx/directional_camera_shake.dart';
 import 'widgets/dungeon_cinematic_atmosphere.dart';
 import 'widgets/dungeon_combat_vfx.dart';
 import 'widgets/dungeon_monster_glb_viewport.dart';
@@ -1076,6 +1077,14 @@ class _IdleViewState extends State<_IdleView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = widget.theme;
+    final dungeonName = widget.dungeonName;
+    final zone = widget.zone;
+    final dungeonNumber = widget.dungeonNumber;
+    final energyCost = widget.energyCost;
+    final onAttack = widget.onAttack;
+    final onBack = widget.onBack;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -1205,8 +1214,16 @@ class _IdleViewState extends State<_IdleView> {
                       widget.characterAsset,
                       fit: BoxFit.contain,
                       errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                          Icon(Icons.person_pin,
-                              size: 140, color: widget.theme.accentGlow),
+                          Image.asset(
+                        'assets/renders/characters/Knight_beauty.png',
+                        fit: BoxFit.contain,
+                        height: 140,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/characters/savasci.png',
+                          fit: BoxFit.contain,
+                          height: 140,
+                        ),
+                      ),
                     ),
                   ),
           ),
@@ -1419,6 +1436,24 @@ class _VsIntroViewState extends State<_VsIntroView>
         _ => BattlePalette.mysticRuby,
       };
 
+  String _resolveBossPortrait(Aion2BossArtDefinition boss) {
+    final String id = boss.bossId.toLowerCase();
+    if (id.contains('kromede')) return 'assets/images/portraits/bosses/boss_kromede.png';
+    if (id.contains('stormwing')) return 'assets/images/portraits/bosses/boss_stormwing.png';
+    if (id.contains('tahabata')) return 'assets/images/portraits/bosses/boss_tahabata.png';
+    if (id.contains('beritra')) return 'assets/images/portraits/bosses/boss_beritra.png';
+    if (id.contains('ereshkigal')) return 'assets/images/portraits/bosses/boss_ereshkigal.png';
+    if (id.contains('tiamat')) return 'assets/images/portraits/bosses/boss_tiamat.png';
+    return switch (boss.zone) {
+      1 => 'assets/images/portraits/bosses/boss_kromede.png',
+      2 => 'assets/images/portraits/bosses/boss_stormwing.png',
+      3 => 'assets/images/portraits/bosses/boss_tahabata.png',
+      4 => 'assets/images/portraits/bosses/boss_beritra.png',
+      5 => 'assets/images/portraits/bosses/boss_ereshkigal.png',
+      _ => 'assets/images/portraits/bosses/boss_tiamat.png',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final CaveCardTheme theme = widget.theme;
@@ -1534,7 +1569,7 @@ class _VsIntroViewState extends State<_VsIntroView>
                       Transform.translate(
                         offset: Offset(300 * (1 - slideT), 0),
                         child: _DuelPortrait(
-                          asset: theme.assetPath,
+                          asset: _resolveBossPortrait(bossArt),
                           borderColor: bossArt.goldFiligreeColor,
                           label: bossArt.name,
                           cover: true,
@@ -2368,7 +2403,12 @@ class _DuelPortrait extends StatelessWidget {
                     fit: cover ? BoxFit.cover : BoxFit.contain,
                     alignment: cover ? Alignment.center : Alignment.topCenter,
                     errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                        Icon(Icons.shield_rounded, color: effectiveBorder, size: 40),
+                        Image.asset(
+                          'assets/images/portraits/bosses/boss_tiamat.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Icon(Icons.shield_rounded, color: effectiveBorder, size: 40),
+                        ),
                   ),
                 ),
 
@@ -3000,7 +3040,7 @@ class _HitStopFreezeOverlay extends StatelessWidget {
     return ListenableBuilder(
       listenable: vfxController.hitStopManager,
       builder: (BuildContext context, Widget? child) {
-        final bool isPaused = vfxController.hitStopManager.globalTimeScale < 0.95 ||
+        final bool isPaused = vfxController.hitStopManager.getTimeScale() < 0.95 ||
             vfxController.hitStopManager.activeCount > 0;
         if (!isPaused) return const SizedBox.shrink();
 
@@ -3118,13 +3158,15 @@ class _GhostButton extends StatelessWidget {
 // =============================================================================
 class _ResultEmblem extends StatelessWidget {
   const _ResultEmblem({
-    required this.icon,
+    this.icon,
+    this.artworkAsset,
     required this.colors,
     required this.glowColor,
     required this.ambient,
   });
 
-  final IconData icon;
+  final IconData? icon;
+  final String? artworkAsset;
   final List<Color> colors;
   final Color glowColor;
   final AnimationController ambient;
@@ -3163,8 +3205,9 @@ class _ResultEmblem extends StatelessWidget {
                 final double pulse =
                     0.35 + 0.3 * math.sin(ambient.value * 2 * math.pi).abs();
                 return Container(
-                  width: 92,
-                  height: 92,
+                  width: 96,
+                  height: 96,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -3173,11 +3216,11 @@ class _ResultEmblem extends StatelessWidget {
                       colors: colors,
                     ),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.35), width: 1.5),
                     boxShadow: <BoxShadow>[
                       BoxShadow(
                         color: glowColor.withValues(alpha: pulse),
-                        blurRadius: 34,
+                        blurRadius: 36,
                         spreadRadius: 2,
                       ),
                     ],
@@ -3185,7 +3228,17 @@ class _ResultEmblem extends StatelessWidget {
                   child: child,
                 );
               },
-              child: Icon(icon, color: Colors.white, size: 44),
+              child: artworkAsset != null
+                  ? Image.asset(
+                      artworkAsset!,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(
+                        icon ?? Icons.star_rounded,
+                        color: Colors.white,
+                        size: 44,
+                      ),
+                    )
+                  : Icon(icon ?? Icons.star_rounded, color: Colors.white, size: 44),
             ),
           ),
         ],
@@ -3324,6 +3377,7 @@ class _VictoryView extends StatelessWidget {
                 children: <Widget>[
                   _ResultEmblem(
                     icon: Icons.emoji_events_rounded,
+                    artworkAsset: 'assets/renders/environment/Chest_gold_beauty.png',
                     colors: const <Color>[
                       Color(0xFFFFD700),
                       Color(0xFFB8860B),
@@ -3497,6 +3551,7 @@ class _DefeatView extends StatelessWidget {
                     icon: hospitalized
                         ? Icons.local_hospital_rounded
                         : Icons.heart_broken_rounded,
+                    artworkAsset: 'assets/renders/weapons/DamagedHelmet_beauty.png',
                     colors: const <Color>[
                       Color(0xFFE52E2E),
                       Color(0xFF7F1D1D),

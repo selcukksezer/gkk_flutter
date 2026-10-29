@@ -189,12 +189,18 @@ class _SlotItem extends StatelessWidget {
                         : (isLocked ? Colors.white30 : Colors.white60),
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    slot.title,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : (isLocked ? Colors.white38 : Colors.white70),
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        slot.title,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : (isLocked ? Colors.white38 : Colors.white70),
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],

@@ -1206,6 +1206,108 @@ void main() {
       expect(buffer[4], equals(0.0));
     });
   });
+
+  // ===========================================================================
+  // 13. SocialShaderCache Lifecycle & Fallback Safety (Dart 3 Compliant)
+  // ===========================================================================
+  group('SocialShaderCache Lifecycle & Fallback Safety', () {
+    test('SocialShaderCache singleton contract and clear() lifecycle', () {
+      final SocialShaderCache cache1 = SocialShaderCache.instance;
+      final SocialShaderCache cache2 = SocialShaderCache();
+      expect(identical(cache1, cache2), isTrue);
+
+      cache1.clear();
+      expect(cache1.isInitialized, isFalse);
+      expect(cache1.celestialBannerProgram, isNull);
+      expect(cache1.emblemAuraProgram, isNull);
+      expect(cache1.lastError, isNull);
+    });
+
+    test('SocialShaderPaths declares canonical and alternative asset paths', () {
+      expect(SocialShaderPaths.celestialBanner, equals('shaders/social/celestial_banner.frag'));
+      expect(SocialShaderPaths.celestialBannerAlt, equals('lib/shaders/social/glsl/celestial_banner.frag'));
+      expect(SocialShaderPaths.emblemAura, equals('shaders/social/emblem_aura.frag'));
+      expect(SocialShaderPaths.emblemAuraAlt, equals('lib/shaders/social/glsl/emblem_aura.frag'));
+    });
+
+    test('SocialShaderCache init handles headless test environment gracefully without throwing', () async {
+      final SocialShaderCache cache = SocialShaderCache.instance;
+      cache.clear();
+
+      final bool hasSupport = await cache.init();
+      expect(cache.isInitialized, isTrue);
+      if (!hasSupport) {
+        expect(cache.celestialBannerProgram, isNull);
+        expect(cache.createCelestialBannerShader(), isNull);
+      }
+    });
+  });
+
+  // ===========================================================================
+  // 14. CelestialBannerWidget GPU & CPU Fallback Toggle Verification
+  // ===========================================================================
+  group('CelestialBannerWidget GPU & CPU Fallback Toggle Verification', () {
+    testWidgets('renders cleanly with enableShader set to false (pure CPU CustomPaint)', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: CelestialBannerWidget(
+                title: 'CPU Fallback Banner',
+                subtitle: 'No Hardware Shader',
+                enableShader: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('CPU Fallback Banner'), findsOneWidget);
+      expect(find.text('No Hardware Shader'), findsOneWidget);
+      expect(find.byType(CustomPaint), findsWidgets);
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
+    testWidgets('dynamically toggles enableShader between true and false via didUpdateWidget', (tester) async {
+      bool enableShader = true;
+
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) {
+            return MaterialApp(
+              home: Scaffold(
+                body: Column(
+                  children: [
+                    CelestialBannerWidget(
+                      title: 'Toggle Banner',
+                      enableShader: enableShader,
+                    ),
+                    ElevatedButton(
+                      onPressed: () => setState(() => enableShader = !enableShader),
+                      child: const Text('Toggle Shader'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+
+      expect(find.text('Toggle Banner'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Toggle off
+      await tester.tap(find.text('Toggle Shader'));
+      await tester.pumpAndSettle();
+      expect(find.text('Toggle Banner'), findsOneWidget);
+
+      // Toggle back on
+      await tester.tap(find.text('Toggle Shader'));
+      await tester.pumpAndSettle();
+      expect(find.text('Toggle Banner'), findsOneWidget);
+    });
+  });
 }
 
 // =============================================================================

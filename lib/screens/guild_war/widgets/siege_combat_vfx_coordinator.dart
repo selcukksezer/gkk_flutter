@@ -516,7 +516,7 @@ class GuildWarCombatVfxCoordinator extends ChangeNotifier {
     hitStopManager.update(dt);
     if (hitStopManager.activeCount > 0) {
       _isHitStopped = true;
-      _timeDilation = hitStopManager.effectiveTimeScale(TimeDilationChannel.target);
+      _timeDilation = hitStopManager.getTimeScale(TimeDilationChannel.target);
       dt *= _timeDilation;
     } else if (_isHitStopped) {
       dt *= _timeDilation;

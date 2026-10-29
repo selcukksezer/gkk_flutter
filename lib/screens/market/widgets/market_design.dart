@@ -223,121 +223,203 @@ class MarketHeroBanner extends StatelessWidget {
       borderColor: AppColors.liquidGold.withValues(alpha: 0.40),
       glowColor: AppColors.liquidGold.withValues(alpha: 0.20),
       borderRadius: 18,
-      padding: const EdgeInsets.all(15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.zero,
+      child: Stack(
         children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          // 1. Grand Bazaar Citadel Background
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Image.asset(
+                'assets/images/backgrounds/elysea/bg_sanctum_citadel.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox(),
+              ),
+            ),
+          ),
+          // 2. Atmospheric Gradient Overlay (High Readability)
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
                 decoration: BoxDecoration(
-                  gradient: MarketDesign.fuchsiaGradient,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: AppColors.cyberFuchsia.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                    ),
-                  ],
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: <Color>[
+                      const Color(0xFF090E1A).withValues(alpha: 0.94),
+                      const Color(0xFF0C1322).withValues(alpha: 0.88),
+                      const Color(0xFF0F1A2E).withValues(alpha: 0.60),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              ),
+            ),
+          ),
+          // 3. 3D Golden Treasure Chest Hero Centerpiece
+          Positioned(
+            right: 8,
+            top: 14,
+            bottom: 14,
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/renders/environment/Chest_gold_beauty.png',
+                width: 90,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox(),
+              ),
+            ),
+          ),
+          // 4. Foreground Content & Controls
+          Padding(
+            padding: const EdgeInsets.all(15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
                     Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: MarketDesign.fuchsiaGradient,
+                        borderRadius: BorderRadius.circular(999),
                         boxShadow: <BoxShadow>[
-                          BoxShadow(color: Colors.white, blurRadius: 4),
+                          BoxShadow(
+                            color: AppColors.cyberFuchsia.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(color: Colors.white, blurRadius: 4),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'CANLI PAZAR • MEZAT',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 5),
-                    const Text(
-                      'CANLI PAZAR • MEZAT',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.liquidGold.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.50)),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: AppColors.liquidGold.withValues(alpha: 0.20),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          ClipOval(
+                            child: Image.asset(
+                              'assets/renders/environment/Chest_gold_beauty.png',
+                              width: 14,
+                              height: 14,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.storefront_rounded,
+                                size: 14,
+                                color: AppColors.liquidGold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'ATREİA BAZAAR',
+                            style: TextStyle(
+                              color: AppColors.liquidGold,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppColors.liquidGold.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.liquidGold.withValues(alpha: 0.35)),
-                ),
-                child: Icon(
-                  Icons.storefront_rounded,
-                  size: 16,
-                  color: AppColors.liquidGold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const <Widget>[
-                    Text(
-                      'OYUNCU MEZAT HANESİ',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                        height: 1.1,
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const <Widget>[
+                          Text(
+                            'OYUNCU MEZAT HANESİ',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                              height: 1.1,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Atreia gezginleri arası canlı alım-satım ve takas ağı.',
+                            style: TextStyle(
+                              color: AppColors.mutedTitanium,
+                              fontSize: 11,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Atreia gezginleri arası canlı alım-satım ve takas ağı.',
-                      style: TextStyle(
-                        color: AppColors.mutedTitanium,
-                        fontSize: 11,
-                        height: 1.25,
-                      ),
+                    const SizedBox(width: 80),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: <Widget>[
+                    _statPill(
+                      icon: Icons.inventory_2_rounded,
+                      label: '$listingCount aktif ilan',
+                      accent: AppColors.accentCyan,
+                    ),
+                    _statPill(
+                      icon: Icons.percent_rounded,
+                      label: '%5 pazar vergisi',
+                      accent: AppColors.liquidGold,
+                    ),
+                    _statPill(
+                      icon: Icons.verified_user_rounded,
+                      label: 'Güvenli teslimat',
+                      accent: AppColors.toxicNeon,
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: <Widget>[
-              _statPill(
-                icon: Icons.inventory_2_rounded,
-                label: '$listingCount aktif ilan',
-                accent: AppColors.accentCyan,
-              ),
-              _statPill(
-                icon: Icons.percent_rounded,
-                label: '%5 pazar vergisi',
-                accent: AppColors.liquidGold,
-              ),
-              _statPill(
-                icon: Icons.verified_user_rounded,
-                label: 'Güvenli teslimat',
-                accent: AppColors.toxicNeon,
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

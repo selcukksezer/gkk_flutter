@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gkk_flutter/core/combat/combat_juice_coordinator.dart';
 import 'package:gkk_flutter/core/lighting/dungeon_light_system.dart' as dls;
 import 'package:gkk_flutter/core/vfx/ground_decal_system.dart' as gds;
 import 'package:gkk_flutter/models/auth_model.dart';
@@ -61,10 +62,10 @@ class _FakeDungeonNotifier extends DungeonNotifier {
 
 class _FakeInventoryNotifier extends InventoryNotifier {
   _FakeInventoryNotifier(this._snapshot);
-  final InventorySnapshot _snapshot;
+  final InventoryState _snapshot;
 
   @override
-  InventorySnapshot build() => _snapshot;
+  InventoryState build() => _snapshot;
 }
 
 class _FakeDungeonSiegeNotifier extends DungeonSiegeNotifier {
@@ -165,7 +166,7 @@ DungeonData _testDungeon({
     energyCost: energyCost,
     minGold: 100,
     maxGold: 250,
-    lootTable: 'standard_cave',
+    lootTable: const <String>['standard_cave'],
     isGroup: false,
     powerRequirement: powerRequirement,
     zone: zone,
@@ -176,7 +177,7 @@ Widget buildDungeonScreenHarness({
   required String initialLocation,
   PlayerProfile? profile,
   List<DungeonData>? dungeons,
-  InventorySnapshot? inventorySnapshot,
+  InventoryState? inventorySnapshot,
   Size size = const Size(390, 844),
 }) {
   final PlayerProfile testProfile = profile ?? _testProfile();
@@ -185,10 +186,11 @@ Widget buildDungeonScreenHarness({
         _testDungeon(id: 'dungeon_1', name: 'Karanlık Mağara', zone: 1, powerRequirement: 300),
         _testDungeon(id: 'dungeon_2', name: 'Kristal Yarık', zone: 2, powerRequirement: 500),
       ];
-  final InventorySnapshot testInventory = inventorySnapshot ??
-      const InventorySnapshot(
-        items: <InventoryItem>[],
-        equippedItems: <String, InventoryItem?>{},
+  final InventoryState testInventory = inventorySnapshot ??
+      InventoryState(
+        status: InventoryStatus.ready,
+        items: const <InventoryItem>[],
+        equippedItems: const <String, InventoryItem?>{},
       );
 
   final GoRouter router = GoRouter(
@@ -1200,7 +1202,7 @@ void main() {
       );
 
       expect(vfxController.cameraShake.trauma, greaterThan(0.0));
-      expect(vfxController.activeDamageNumbersCount, greaterThan(0));
+      expect(vfxController.damageNumbers.length, greaterThan(0));
 
       vfxController.update(0.05);
       expect(vfxController.cameraShake.trauma, greaterThan(0.0));

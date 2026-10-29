@@ -57,6 +57,24 @@ class DungeonMonsterMeta {
   final double scaleFactor;
   final bool isWinged;
   final double baseYaw;
+
+  String get beautyRenderAsset {
+    if (primaryGlbPath.contains('Dragon') ||
+        tier == DungeonMonsterTier.abyssalBoss ||
+        tier == DungeonMonsterTier.siegeGuardian) {
+      return 'assets/renders/monsters/DragonAttenuation_beauty.png';
+    }
+    if (primaryGlbPath.contains('Spider')) {
+      return 'assets/renders/monsters/Spider_beauty.png';
+    }
+    if (primaryGlbPath.contains('Wasp')) {
+      return 'assets/renders/monsters/Wasp_beauty.png';
+    }
+    if (primaryGlbPath.contains('zombie') || name.contains('Gulyabani')) {
+      return 'assets/renders/monsters/character-zombie_beauty.png';
+    }
+    return 'assets/renders/monsters/character-zombie_beauty.png';
+  }
 }
 
 /// Registry mapping dungeon zones and challenge types to authentic 3D GLB monsters.
@@ -526,20 +544,46 @@ class _DungeonMonsterGlbViewportState extends State<DungeonMonsterGlbViewport>
 
                   return Transform.translate(
                     offset: Offset(shakeX, shakeY),
-                    child: CustomPaint(
-                      size: Size(vpWidth, vpHeight),
-                      painter: _DungeonMonster3DPainter(
-                        yaw: idleYaw,
-                        pitch: idlePitch,
-                        zoom: _zoom * _meta.scaleFactor,
-                        animValue: _animController.value,
-                        meta: _meta,
-                        parsedMesh: _parsedMesh,
-                        isLoading: _isLoadingMesh,
-                        showPedestal: widget.showPedestal,
-                        showAura: widget.showAura,
-                        hitFlashIntensity: _controller.hitFlashIntensity,
-                      ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: <Widget>[
+                        CustomPaint(
+                          size: Size(vpWidth, vpHeight),
+                          painter: _DungeonMonster3DPainter(
+                            yaw: idleYaw,
+                            pitch: idlePitch,
+                            zoom: _zoom * _meta.scaleFactor,
+                            animValue: _animController.value,
+                            meta: _meta,
+                            parsedMesh: _parsedMesh,
+                            isLoading: _isLoadingMesh,
+                            showPedestal: widget.showPedestal,
+                            showAura: widget.showAura,
+                            hitFlashIntensity: _controller.hitFlashIntensity,
+                          ),
+                        ),
+
+                        // Real terrifying monster boss artwork/render asset
+                        if (_parsedMesh == null)
+                          Positioned(
+                            top: vpHeight * 0.12,
+                            bottom: vpHeight * 0.18,
+                            child: Center(
+                              child: Image.asset(
+                                _meta.beautyRenderAsset,
+                                fit: BoxFit.contain,
+                                errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => Image.asset(
+                                  'assets/renders/monsters/DragonAttenuation_beauty.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => Image.asset(
+                                    'assets/renders/monsters/character-zombie_beauty.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   );
                 },
@@ -841,8 +885,7 @@ class _DungeonMonster3DPainter extends CustomPainter {
     }
 
     if (!renderedMesh) {
-      // Graceful high-fidelity dark fantasy procedural silhouette with runic wings & horns
-      _paintProceduralAbyssalCreature(canvas, size, cosYaw, sinYaw);
+      // Replaced flat polygon with genuine dark fantasy monster render in the widget stack
     }
 
     canvas.restore();

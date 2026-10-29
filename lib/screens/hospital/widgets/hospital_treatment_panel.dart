@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../components/layout/game_screen_background.dart';
 import '../../../components/restriction/restriction_screen_ui.dart';
 import '../../../core/utils/player_health.dart';
 import '../../../core/utils/restriction_reason_labels.dart';

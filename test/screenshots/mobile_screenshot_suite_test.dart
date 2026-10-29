@@ -2,11 +2,16 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// ignore: invalid_use_of_internal_member
+import 'package:flutter_riverpod/src/internals.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import 'golden_font_loader.dart';
 
 import 'package:gkk_flutter/core/tutorial/tutorial_controller.dart';
 import 'package:gkk_flutter/core/tutorial/tutorial_persistence.dart';
@@ -69,13 +74,73 @@ const EdgeInsets kMobileSafeArea = EdgeInsets.only(top: 47.0, bottom: 34.0);
 
 const String kOutputDir = 'reports/screenshots/mobile_goldens';
 
-/// Utility to capture widget to PNG file on disk.
+/// Precache all Image widgets and DecoratedBox decoration images in the widget tree.
+/// Must be invoked before capturing screenshots so raster images are decoded in PaintingBinding.imageCache.
+Future<void> precacheAllImages(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    final Set<ImageProvider> precached = <ImageProvider>{};
+
+    // 1. Precache all Image widgets (Image.asset, Image.network, Image.memory, Image.file)
+    for (final Element el in find.byType(Image).evaluate()) {
+      final Image widget = el.widget as Image;
+      if (precached.add(widget.image)) {
+        await precacheImage(
+          widget.image,
+          el,
+          onError: (Object error, StackTrace? stack) {
+            FlutterError.reportError(
+              FlutterErrorDetails(
+                exception: error,
+                stack: stack,
+                library: 'image resource service',
+                context: ErrorDescription('Failed to precache Image widget (${widget.image}) in test harness'),
+              ),
+            );
+          },
+        );
+      }
+    }
+
+    // 2. Precache DecoratedBox widgets with BoxDecoration.image if present
+    for (final Element el in find.byType(DecoratedBox).evaluate()) {
+      final DecoratedBox box = el.widget as DecoratedBox;
+      final Decoration decoration = box.decoration;
+      if (decoration is BoxDecoration && decoration.image != null) {
+        final ImageProvider provider = decoration.image!.image;
+        if (precached.add(provider)) {
+          await precacheImage(
+            provider,
+            el,
+            onError: (Object error, StackTrace? stack) {
+              FlutterError.reportError(
+                FlutterErrorDetails(
+                  exception: error,
+                  stack: stack,
+                  library: 'image resource service',
+                  context: ErrorDescription('Failed to precache DecoratedBox image ($provider) in test harness'),
+                ),
+              );
+            },
+          );
+        }
+      }
+    }
+  });
+
+  // Pump once outside runAsync to allow _ImageState stream listeners to rebuild with decoded frame
+  await tester.pump();
+}
+
+/// Utility to capture widget to PNG file on disk with automatic precaching and boundary validation.
 Future<File> captureWidgetToPng({
   required WidgetTester tester,
   required GlobalKey repaintKey,
   required String filename,
   List<String> additionalAliases = const <String>[],
 }) async {
+  // Precache all images before capturing
+  await precacheAllImages(tester);
+
   final Directory dir = Directory(kOutputDir);
   if (!dir.existsSync()) {
     dir.createSync(recursive: true);
@@ -580,9 +645,22 @@ class _FakeAuthNotifier extends AuthNotifier {
           refreshToken: 'fake_test_refresh',
           expiresAt: 9999999999,
         ),
-        user: AuthUser(
+        user: const AuthUser(
           id: 'auth_screenshot_mobile',
+          username: 'Kaelen',
           email: 'kaelen@aion2.mobile',
+          level: 45,
+          gold: 12500,
+          gems: 250,
+          energy: 100,
+          maxEnergy: 100,
+          attack: 420,
+          defense: 310,
+          health: 1500,
+          maxHealth: 1500,
+          power: 2500,
+          guildId: 'guild_screenshot_1',
+          guildRole: 'member',
         ),
       );
 
@@ -716,10 +794,13 @@ class _FakeMarketNotifier extends MarketNotifier {
       );
 
   @override
-  Future<void> loadTickers({bool reset = false}) async {}
+  Future<void> loadTickers({
+    bool force = false,
+    MarketTickerQuery? query,
+  }) async {}
 
   @override
-  Future<void> loadMyOrders() async {}
+  Future<void> loadMyOrders({bool force = false}) async {}
 }
 
 List<Override> _createDefaultTestOverrides() {
@@ -872,6 +953,87 @@ Widget buildMobileTestHarness({
   );
 }
 
+/// Fail-fast assertion boundary capturing RenderFlex overflow and image loading errors.
+class StrictAssertionScope {
+  StrictAssertionScope() {
+    _originalOnError = FlutterError.onError;
+    FlutterError.onError = _handleError;
+  }
+
+  late final FlutterExceptionHandler? _originalOnError;
+  final List<FlutterErrorDetails> recordedErrors = <FlutterErrorDetails>[];
+
+  void _handleError(FlutterErrorDetails details) {
+    recordedErrors.add(details);
+    _originalOnError?.call(details);
+
+    final String exStr = details.exceptionAsString();
+    final String summaryStr = details.summary.toString();
+
+    final bool isOverflow = exStr.contains('overflowed') ||
+        summaryStr.contains('overflowed') ||
+        exStr.contains('RenderFlex overflowed');
+
+    final bool isImageError = details.library == 'image resource service' ||
+        details.context?.toString().contains('precache') == true ||
+        exStr.contains('ImageCodecException') ||
+        exStr.contains('NetworkImageLoadException') ||
+        exStr.contains('Unable to load asset');
+
+    if (isOverflow) {
+      fail(
+        'STRICT ASSERTION VIOLATION: RenderFlex overflow detected!\n'
+        'Summary: $summaryStr\n'
+        'Details: $exStr\n'
+        'Context: ${details.context}\n'
+        'Screen has overflowing elements that violate 390x844 layout constraint!',
+      );
+    }
+
+    if (isImageError) {
+      fail(
+        'STRICT ASSERTION VIOLATION: Image loading failure detected!\n'
+        'Summary: $summaryStr\n'
+        'Details: $exStr\n'
+        'Context: ${details.context}\n'
+        'Image asset failed to load or precache during golden screenshot capture!',
+      );
+    }
+  }
+
+  void checkErrors() {
+    final List<String> violations = <String>[];
+    for (final FlutterErrorDetails details in recordedErrors) {
+      final String exStr = details.exceptionAsString();
+      final String summaryStr = details.summary.toString();
+      if (exStr.contains('overflowed') || summaryStr.contains('overflowed')) {
+        violations.add('RenderFlex overflow: $exStr (summary: $summaryStr)');
+      }
+      if (details.library == 'image resource service' ||
+          exStr.contains('ImageCodecException') ||
+          exStr.contains('NetworkImageLoadException') ||
+          exStr.contains('Unable to load asset')) {
+        violations.add('Image error: $exStr (context: ${details.context})');
+      }
+    }
+
+    if (violations.isNotEmpty) {
+      fail(
+        'STRICT ASSERTION FAILED: ${violations.length} layout/image violation(s) detected:\n'
+        '${violations.map((String v) => ' - $v').join('\n')}',
+      );
+    }
+  }
+
+  void dispose() {
+    try {
+      checkErrors();
+    } finally {
+      FlutterError.onError = _originalOnError;
+    }
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN REAL SCREEN SCREENSHOT & GOLDEN TEST SUITE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -880,11 +1042,22 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Automated Flutter Golden & Mobile Screenshot Capture Suite (Real Production Screens)', () {
-    setUpAll(() {
+    late StrictAssertionScope strictScope;
+
+    setUpAll(() async {
+      await GoldenFontLoader.loadAll();
       final Directory dir = Directory(kOutputDir);
       if (!dir.existsSync()) {
         dir.createSync(recursive: true);
       }
+    });
+
+    setUp(() {
+      strictScope = StrictAssertionScope();
+    });
+
+    tearDown(() {
+      strictScope.dispose();
     });
 
     testWidgets('Screen 1: Real HomeScreen renders and captures cleanly', (WidgetTester tester) async {

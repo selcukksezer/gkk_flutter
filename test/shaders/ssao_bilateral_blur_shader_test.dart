@@ -569,6 +569,51 @@ void main() {
       // Edge rejection keeps the result strictly near 0.4
       expect(filtered2D, closeTo(0.4, 0.01));
     });
+
+    test('BilateralFilter.buildUniformList produces 6-float array matching GLSL layout', () {
+      const ui.Size size = ui.Size(1920.0, 1080.0);
+      const BilateralFilterParams params = BilateralFilterParams(
+        spatialSigma: 2.75,
+        depthThreshold: 0.065,
+      );
+
+      final List<double> uniforms = BilateralFilter.buildUniformList(
+        viewportSize: size,
+        blurDirection: BilateralFilter.horizontalDirection,
+        params: params,
+      );
+
+      expect(uniforms.length, equals(BilateralFilter.totalUniformFloats));
+      expect(uniforms[BilateralFilter.uniformResolutionX], equals(1920.0));
+      expect(uniforms[BilateralFilter.uniformResolutionY], equals(1080.0));
+      expect(uniforms[BilateralFilter.uniformBlurDirectionX], equals(1.0));
+      expect(uniforms[BilateralFilter.uniformBlurDirectionY], equals(0.0));
+      expect(uniforms[BilateralFilter.uniformSpatialSigma], equals(2.75));
+      expect(uniforms[BilateralFilter.uniformDepthThreshold], equals(0.065));
+    });
+
+    test('BilateralFilter.packToFloat32List returns contiguous Float32List buffer for GPU upload', () {
+      const ui.Size size = ui.Size(2560.0, 1440.0);
+      const BilateralFilterParams params = BilateralFilterParams(
+        spatialSigma: 3.2,
+        depthThreshold: 0.12,
+      );
+
+      final Float32List buffer = BilateralFilter.packToFloat32List(
+        viewportSize: size,
+        blurDirection: BilateralFilter.verticalDirection,
+        params: params,
+      );
+
+      expect(buffer, isA<Float32List>());
+      expect(buffer.length, equals(BilateralFilter.totalUniformFloats));
+      expect(buffer[0], equals(2560.0));
+      expect(buffer[1], equals(1440.0));
+      expect(buffer[2], equals(0.0));
+      expect(buffer[3], equals(1.0));
+      expect(buffer[4], closeTo(3.2, 1e-5));
+      expect(buffer[5], closeTo(0.12, 1e-5));
+    });
   });
 
   group('PostProcessPipelineController Bilateral Uniform Integration', () {

@@ -521,9 +521,9 @@ void main() {
       expect(radiance.x, greaterThan(0.0));
       expect(radiance.y, greaterThan(0.0));
       expect(radiance.z, greaterThan(0.0));
-      expect(radiance.x, isFinite);
-      expect(radiance.y, isFinite);
-      expect(radiance.z, isFinite);
+      expect(radiance.x.isFinite, isTrue);
+      expect(radiance.y.isFinite, isTrue);
+      expect(radiance.z.isFinite, isTrue);
     });
   });
 

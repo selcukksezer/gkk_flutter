@@ -376,50 +376,61 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.shield_outlined,
-                        size: 14,
-                        color: currentColor,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isTr ? 'GÜVENLİK DERECESİ' : 'SECURITY LEVEL',
-                        style: GoogleFonts.urbanist(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.3,
-                          color: AuthDesign.textMid,
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 14,
+                          color: currentColor,
                         ),
-                      ),
-                    ],
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: currentColor.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: currentColor.withValues(alpha: 0.55),
-                        width: 1,
-                      ),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: currentColor.withValues(alpha: 0.25),
-                          blurRadius: 8,
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            isTr ? 'GÜVENLİK DERECESİ' : 'SECURITY LEVEL',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.urbanist(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.1,
+                              color: AuthDesign.textMid,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    child: Text(
-                      _strengthLabel(isTr),
-                      style: GoogleFonts.urbanist(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
-                        color: currentColor,
+                  ),
+                  const SizedBox(width: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: currentColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: currentColor.withValues(alpha: 0.55),
+                          width: 1,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: currentColor.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        _strengthLabel(isTr),
+                        style: GoogleFonts.urbanist(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: currentColor,
+                        ),
                       ),
                     ),
                   ),

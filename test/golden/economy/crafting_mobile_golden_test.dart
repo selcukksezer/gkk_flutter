@@ -22,6 +22,7 @@ import 'package:gkk_flutter/providers/player_provider.dart';
 import 'package:gkk_flutter/providers/staff_provider.dart';
 import 'package:gkk_flutter/screens/crafting/crafting_screen.dart';
 import 'package:gkk_flutter/screens/crafting/widgets/crafting_main_ui.dart';
+import 'package:gkk_flutter/screens/crafting/widgets/crafting_preview_panel.dart';
 import 'package:gkk_flutter/screens/crafting/widgets/crafting_recipe_preview_dialog.dart';
 import 'package:gkk_flutter/theme/app_colors.dart';
 
@@ -651,7 +652,7 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'Modal dialog must open without overflow on 390x844');
 
       // Verify modal contents
-      expect(find.byType(CraftingRecipePreviewDialog), findsOneWidget);
+      expect(find.byType(CraftingPreviewPanel), findsOneWidget);
       expect(find.text('Gereken Malzemeler'), findsOneWidget);
 
       final File screenshot = await captureWidgetToPngFile(

@@ -1019,7 +1019,8 @@ void main() {
         );
       });
 
-      final metrics = batcher.batchEntities(lod2Entities);
+      final batches = batcher.batchAndPack(lod2Entities);
+      final metrics = batcher.lastMetrics!;
 
       expect(metrics.totalEntitiesProcessed, equals(10000));
       expect(metrics.totalEntitiesPacked, equals(10000));
@@ -1027,7 +1028,7 @@ void main() {
 
       // 10,000 / 1024 = 10 draw calls (9 full of 1024 + 1 remainder of 784)
       expect(metrics.totalDrawCalls, equals(10));
-      expect(batcher.activeBatchCount, equals(10));
+      expect(batches.length, equals(10));
 
       // Total uploaded bytes: 10,000 * 96 bytes = 960,000 bytes
       expect(metrics.totalBytesUploaded, equals(960000));

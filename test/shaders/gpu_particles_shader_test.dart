@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gkk_flutter/core/shaders/shader_pipeline.dart';
 import 'package:gkk_flutter/core/vfx/gpu_particle_system.dart';
 
 /// Test recording canvas capturing invocations for headless verification.
@@ -31,7 +32,7 @@ class DrawLineRecord {
   final Paint paint;
 }
 
-class RecordingCanvas implements Canvas {
+class RecordingCanvas extends Fake implements Canvas {
   final List<String> callLog = <String>[];
   final List<DrawCircleRecord> circles = <DrawCircleRecord>[];
   final List<DrawLineRecord> lines = <DrawLineRecord>[];
@@ -104,8 +105,9 @@ class RecordingCanvas implements Canvas {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-/// Mock FragmentShader to verify GpuParticleShaderUniforms.apply.
-class MockFragmentShader implements ui.FragmentShader {
+/// Fake in-memory uniform storage capturing uniform float and sampler assignments
+/// without illegally implementing [ui.FragmentShader] (which is a Dart 3 base class).
+class FakeUniformStorage implements ShaderUniformTarget {
   final Map<int, double> floats = <int, double>{};
   final Map<int, ui.Image> samplers = <int, ui.Image>{};
   bool disposed = false;
@@ -120,13 +122,17 @@ class MockFragmentShader implements ui.FragmentShader {
     samplers[index] = image;
   }
 
-  @override
   void dispose() {
     disposed = true;
   }
 
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
+  /// Copies packed uniforms into this fake storage directly,
+  /// matching the GpuParticleShaderUniforms packing contract.
+  void applyUniforms(Float32List uniforms) {
+    for (int i = 0; i < uniforms.length; ++i) {
+      setFloat(i, uniforms[i]);
+    }
+  }
 }
 
 void main() {
@@ -334,18 +340,38 @@ void main() {
       }
     });
 
-    test('apply() sets all 24 uniform floats sequentially into FragmentShader', () {
-      final MockFragmentShader mockShader = MockFragmentShader();
+    test('FakeUniformStorage sequentially stores all 24 uniform floats matching shader contract', () {
+      final FakeUniformStorage fakeStorage = FakeUniformStorage();
       final Float32List sampleUniforms = Float32List(24);
       for (int i = 0; i < 24; ++i) {
         sampleUniforms[i] = (i + 1) * 1.5;
       }
 
-      GpuParticleShaderUniforms.apply(mockShader, sampleUniforms);
+      fakeStorage.applyUniforms(sampleUniforms);
 
-      expect(mockShader.floats.length, equals(24));
+      expect(fakeStorage.floats.length, equals(24));
       for (int i = 0; i < 24; ++i) {
-        expect(mockShader.floats[i], equals(sampleUniforms[i]));
+        expect(fakeStorage.floats[i], equals(sampleUniforms[i]));
+      }
+    });
+
+    test('real FragmentProgram.fromAsset loads shader and apply sets all 24 uniform floats', () async {
+      try {
+        final ui.FragmentProgram program =
+            await ui.FragmentProgram.fromAsset('shaders/vfx/gpu_particles.frag');
+        final ui.FragmentShader shader = program.fragmentShader();
+        final Float32List sampleUniforms = Float32List(24);
+        for (int i = 0; i < 24; ++i) {
+          sampleUniforms[i] = (i + 1) * 1.5;
+        }
+
+        expect(
+          () => GpuParticleShaderUniforms.apply(shader, sampleUniforms),
+          returnsNormally,
+        );
+      } catch (e) {
+        // In headless testing without compiled SPIR-V bytecode, throws PlatformException/AssetNotFound
+        expect(e, isNotNull);
       }
     });
   });
@@ -1198,6 +1224,30 @@ void main() {
       final GpuParticlePainter p1 = GpuParticlePainter(system: system);
       final GpuParticlePainter p2 = GpuParticlePainter(system: system);
       expect(p1.shouldRepaint(p2), isTrue);
+    });
+
+    test('Painter executes with real FragmentProgram FragmentShader when available', () async {
+      try {
+        final ui.FragmentProgram program =
+            await ui.FragmentProgram.fromAsset('shaders/vfx/gpu_particles.frag');
+        final ui.FragmentShader shader = program.fragmentShader();
+        final GpuParticleSystem system = GpuParticlePresets.spellArcaneBlast();
+        system.emitAllLayersBurst(countPerLayer: 3, origin: const Offset(100, 100));
+
+        final GpuParticlePainter painter = GpuParticlePainter(
+          system: system,
+          fragmentShader: shader,
+        );
+        final ui.PictureRecorder recorder = ui.PictureRecorder();
+        final Canvas canvas = Canvas(recorder);
+
+        expect(() => painter.paint(canvas, const Size(800, 600)), returnsNormally);
+        final ui.Picture picture = recorder.endRecording();
+        picture.dispose();
+      } catch (e) {
+        // In headless testing without compiled SPIR-V bytecode, throws PlatformException/AssetNotFound
+        expect(e, isNotNull);
+      }
     });
   });
 

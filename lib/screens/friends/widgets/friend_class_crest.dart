@@ -422,7 +422,7 @@ class ClassCrestBadge extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             // Elemental Rune / Icon with luminous aura glow
             Icon(
@@ -564,7 +564,7 @@ class CombatPowerBadge extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Icon(
               Icons.bolt_rounded,
@@ -630,7 +630,7 @@ class LocationBadge extends StatelessWidget {
 
     final Widget badgeRow = Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         Icon(
           isOnline ? Icons.location_on_outlined : Icons.schedule_rounded,

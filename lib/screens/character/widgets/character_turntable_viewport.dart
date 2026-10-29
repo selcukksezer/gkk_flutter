@@ -291,10 +291,10 @@ class _CharacterTurntableViewportState extends State<CharacterTurntableViewport>
 
   String _imageAssetForClass(CharacterClass? cClass) {
     return switch (cClass) {
-      CharacterClass.warrior => 'assets/characters/savasci.png',
-      CharacterClass.alchemist => 'assets/characters/simyaci.png',
-      CharacterClass.shadow => 'assets/characters/golge.png',
-      null => 'assets/characters/savasci.png',
+      CharacterClass.warrior => 'assets/renders/characters/Knight_beauty.png',
+      CharacterClass.alchemist => 'assets/renders/characters/Mage_beauty.png',
+      CharacterClass.shadow => 'assets/images/portraits/asmodian/asmodian_assassin.png',
+      null => 'assets/renders/characters/Knight_beauty.png',
     };
   }
 
@@ -426,12 +426,28 @@ class _CharacterTurntableViewportState extends State<CharacterTurntableViewport>
             });
           }
         }, onError: (Object err, StackTrace? stack) {
-          // Graceful fallback to procedural canvas rendering
+          _loadFallbackSprite();
         }),
       );
     } catch (_) {
-      // Graceful fallback
+      _loadFallbackSprite();
     }
+  }
+
+  void _loadFallbackSprite() {
+    try {
+      final ImageProvider fallbackProvider = const AssetImage('assets/characters/savasci.png');
+      final ImageStream fallbackStream = fallbackProvider.resolve(ImageConfiguration.empty);
+      fallbackStream.addListener(
+        ImageStreamListener((ImageInfo info, bool _) {
+          if (mounted) {
+            setState(() {
+              _characterImage = info.image;
+            });
+          }
+        }),
+      );
+    } catch (_) {}
   }
 
   Future<void> _loadActive3dMesh() async {
@@ -766,29 +782,28 @@ class _CharacterTurntableViewportState extends State<CharacterTurntableViewport>
                 top: AppSpacing.md,
                 left: AppSpacing.md,
                 right: AppSpacing.md,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    // Left: Mode Switcher (Character vs Weapon)
-                    if (widget.showModeToggle)
-                      _buildModeToggleChip(),
-
-                    const Spacer(),
-
-                    // Right: Lighting Preset, Runic Glow Toggle, 360 Badge, Reset Button
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        _buildLightingPresetButton(),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildRuneGlowButton(),
-                        const SizedBox(width: AppSpacing.xs),
-                        _build360Badge(),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildResetButton(),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // Left: Mode Switcher (Character vs Weapon)
+                      if (widget.showModeToggle) ...<Widget>[
+                        _buildModeToggleChip(),
+                        const SizedBox(width: AppSpacing.sm),
                       ],
-                    ),
-                  ],
+
+                      // Right: Lighting Preset, Runic Glow Toggle, 360 Badge, Reset Button
+                      _buildLightingPresetButton(),
+                      const SizedBox(width: AppSpacing.xs),
+                      _buildRuneGlowButton(),
+                      const SizedBox(width: AppSpacing.xs),
+                      _build360Badge(),
+                      const SizedBox(width: AppSpacing.xs),
+                      _buildResetButton(),
+                    ],
+                  ),
                 ),
               ),
 
