@@ -427,7 +427,9 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      // Use pump with duration instead of pumpAndSettle to avoid timeout
+      // from continuous CinematicCamera animation tickers.
+      await tester.pump(const Duration(milliseconds: 500));
 
       // Verify Player Status Bar renders
       expect(find.text('Valerius the Brave'), findsOneWidget);
@@ -456,6 +458,11 @@ void main() {
 
       // Controller target azimuth must have responded to drag
       expect(controller.state.orbital.azimuth, isNot(equals(initialAzimuth + 100.0)));
+
+      // Dispose the controller and flush pending timers before test teardown
+      controller.dispose();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('GlassmorphicCard renders frosted blur and borders', (tester) async {
