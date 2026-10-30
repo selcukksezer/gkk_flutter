@@ -707,6 +707,13 @@ class CinematicCameraController extends ChangeNotifier {
   double orbitSensitivity = 0.005;
   double zoomSensitivity = 0.01;
 
+  // Angular and zoom momentum state (AAA touch fling inertia & friction)
+  double _momentumAzimuth = 0.0;
+  double _momentumElevation = 0.0;
+  double _momentumDistance = 0.0;
+  double momentumDecayRate = 4.2; // 1/s exponential friction decay
+  double maxAngularMomentum = 12.0; // rad/s clamp
+
   // Collision clamping override
   double? _collisionMaxDistance;
 
@@ -785,9 +792,71 @@ class CinematicCameraController extends ChangeNotifier {
     _targetElevation = (_targetElevation + deltaElevation).clamp(minElevation, maxElevation);
   }
 
-  /// Adjusts camera zoom distance.
-  void zoom(double deltaDistance) {
+  /// Imparts physical angular fling momentum (rad/s) from touch gestures.
+  /// Decelerates smoothly via exponential friction decay in [update].
+  void fling(double velocityAzimuth, double velocityElevation) {
+    _momentumAzimuth = velocityAzimuth.clamp(-maxAngularMomentum, maxAngularMomentum);
+    _momentumElevation = velocityElevation.clamp(-maxAngularMomentum, maxAngularMomentum);
+  }
+
+  /// Imparts physical zoom fling momentum (distance units/s) from pinch release.
+  void flingZoom(double velocityDistance) {
+    _momentumDistance = velocityDistance.clamp(-20.0, 20.0);
+  }
+
+  /// Adjusts camera zoom distance with optional dynamic FOV interpolation.
+  /// Modulates FOV: tighter focal perspective on hero close-ups,
+  /// wider panoramic FOV on distant vistas.
+  void zoom(double deltaDistance, {bool dynamicFov = true}) {
     _targetDistance = (_targetDistance + deltaDistance).clamp(minDistance, maxDistance);
+    if (dynamicFov) {
+      _updateDynamicFovForDistance(_targetDistance);
+    }
+  }
+
+  /// Calculates dynamic FOV target from camera distance using an S-curve blend.
+  void _updateDynamicFovForDistance(double dist) {
+    final t = ((dist - minDistance) / (maxDistance - minDistance)).clamp(0.0, 1.0);
+    final smoothT = 0.5 - 0.5 * math.cos(t * math.pi);
+    final baseFov = _profile.fieldOfViewDegrees;
+    _targetFov = (baseFov * 0.85) + smoothT * (baseFov * 0.30);
+  }
+
+  /// Smoothly re-centers the camera on the target/character or specific landmark.
+  /// Uses critically damped harmonic motion (zero overshoot) to return to default framing.
+  void recenter({
+    WorldVector3? focalPoint,
+    double? azimuth,
+    double? elevation,
+    double? distance,
+    double? fov,
+    bool snap = false,
+  }) {
+    _targetAzimuth = azimuth ?? 0.0;
+    _targetElevation = elevation ?? _profile.defaultElevation;
+    _targetDistance = distance ?? _profile.targetDistance;
+    _targetFov = fov ?? _profile.fieldOfViewDegrees;
+    if (focalPoint != null) {
+      _targetPosition = focalPoint;
+    }
+
+    _momentumAzimuth = 0.0;
+    _momentumElevation = 0.0;
+    _momentumDistance = 0.0;
+
+    if (snap) {
+      snapToTarget();
+    } else {
+      notifyListeners();
+    }
+  }
+
+  /// Convenience method to smoothly re-center on the Sanctum Citadel courtyard.
+  void recenterOnCitadel({
+    WorldVector3 citadelPosition = const WorldVector3(0.0, 0.05, 7.4),
+    bool snap = false,
+  }) {
+    recenter(focalPoint: citadelPosition, snap: snap);
   }
 
   /// Applies collision detection constraint from physics raycast.
@@ -804,6 +873,9 @@ class CinematicCameraController extends ChangeNotifier {
 
   /// Instantly snaps the camera to target without damping.
   void snapToTarget() {
+    _momentumAzimuth = 0.0;
+    _momentumElevation = 0.0;
+    _momentumDistance = 0.0;
     _currentAzimuth = _targetAzimuth;
     _azimuthVelocity = 0.0;
     _currentElevation = _targetElevation;
@@ -826,6 +898,33 @@ class CinematicCameraController extends ChangeNotifier {
   /// Advances the cinematic camera simulation forward by [dt] seconds.
   void update(double dt) {
     if (dt <= 0.0) return;
+
+    // 0. Process momentum friction & damping inertia
+    if (_momentumAzimuth.abs() > 1e-5 || _momentumElevation.abs() > 1e-5) {
+      final decay = math.exp(-momentumDecayRate * dt);
+      _targetAzimuth += _momentumAzimuth * dt;
+      _targetElevation += _momentumElevation * dt;
+      _momentumAzimuth *= decay;
+      _momentumElevation *= decay;
+
+      // Elastic boundary resistance (yaylanma)
+      if (_targetElevation < minElevation) {
+        final diff = minElevation - _targetElevation;
+        _targetElevation = minElevation - diff * 0.15;
+        _momentumElevation = 0.0;
+      } else if (_targetElevation > maxElevation) {
+        final diff = _targetElevation - maxElevation;
+        _targetElevation = maxElevation + diff * 0.15;
+        _momentumElevation = 0.0;
+      }
+    }
+
+    if (_momentumDistance.abs() > 1e-5) {
+      final decay = math.exp(-momentumDecayRate * dt);
+      _targetDistance = (_targetDistance + _momentumDistance * dt).clamp(minDistance, maxDistance);
+      _momentumDistance *= decay;
+      _updateDynamicFovForDistance(_targetDistance);
+    }
 
     // 1. Smooth look-ahead vector based on velocity
     final desiredLookAhead = _targetVelocity * _profile.lookAheadFactor;

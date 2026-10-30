@@ -707,13 +707,13 @@ class _CompactActionButton extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.accent,
-    required this.onTap,
+    this.onTap,
   });
 
   final String label;
   final IconData icon;
   final Color accent;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

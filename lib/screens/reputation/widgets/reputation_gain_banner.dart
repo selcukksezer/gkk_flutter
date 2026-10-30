@@ -122,9 +122,9 @@ class _ReputationGainBannerState extends State<ReputationGainBanner>
                           fontSize: 12.5,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.4,
-                          shadows: <Shadow>[
+                          shadows: const <Shadow>[
                             Shadow(
-                              color: Colors.black80,
+                              color: Colors.black87,
                               blurRadius: 4,
                               offset: Offset(0, 1),
                             ),

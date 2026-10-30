@@ -178,6 +178,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(viewportController.crowdController.totalTime, greaterThan(0.0));
 
+      // Unmount widgets before disposing controller to stop layer tickers
+      await tester.pumpWidget(const SizedBox());
       viewportController.dispose();
     });
   });

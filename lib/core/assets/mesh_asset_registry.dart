@@ -72,6 +72,70 @@ class DracoFormatException implements Exception {
       : 'DracoFormatException: $message';
 }
 
+/// Structured validation outcome for GLB binary container and Draco bitstream verification.
+class GlbValidationResult {
+  final bool isValid;
+  final int? version;
+  final int? totalLength;
+  final int? actualLength;
+  final bool hasJsonChunk;
+  final bool hasBinChunk;
+  final bool isDracoCompressed;
+  final DracoHeaderInfo? dracoHeader;
+  final String? errorMessage;
+  final int? errorOffset;
+
+  const GlbValidationResult({
+    required this.isValid,
+    this.version,
+    this.totalLength,
+    this.actualLength,
+    this.hasJsonChunk = false,
+    this.hasBinChunk = false,
+    this.isDracoCompressed = false,
+    this.dracoHeader,
+    this.errorMessage,
+    this.errorOffset,
+  });
+
+  factory GlbValidationResult.valid({
+    required int version,
+    required int totalLength,
+    required int actualLength,
+    required bool hasJsonChunk,
+    required bool hasBinChunk,
+    required bool isDracoCompressed,
+    DracoHeaderInfo? dracoHeader,
+  }) {
+    return GlbValidationResult(
+      isValid: true,
+      version: version,
+      totalLength: totalLength,
+      actualLength: actualLength,
+      hasJsonChunk: hasJsonChunk,
+      hasBinChunk: hasBinChunk,
+      isDracoCompressed: isDracoCompressed,
+      dracoHeader: dracoHeader,
+    );
+  }
+
+  factory GlbValidationResult.invalid(String message, [int? offset]) {
+    return GlbValidationResult(
+      isValid: false,
+      errorMessage: message,
+      errorOffset: offset,
+    );
+  }
+
+  @override
+  String toString() {
+    if (isValid) {
+      return 'GlbValidationResult(valid, v$version, len: $actualLength, draco: $isDracoCompressed)';
+    }
+    return 'GlbValidationResult(invalid: $errorMessage at offset $errorOffset)';
+  }
+}
+
 // ============================================================================
 // 3D MATH & BOUNDS
 // ============================================================================
@@ -352,6 +416,43 @@ class MeshAssetMetadata {
     this.properties = const <String, dynamic>{},
   });
 
+  /// Factory for dynamic models acquired from remote network URLs, base64 data URIs, or 3D generation pipelines.
+  factory MeshAssetMetadata.remote({
+    required String id,
+    required String name,
+    required String remoteUrl,
+    ModelCategory category = ModelCategory.dungeonProp,
+    String license = 'CC0 1.0 Universal',
+    String licenseSource = 'Remote 3D Provider',
+    BoundingBox3D? bounds,
+    Set<String> tags = const <String>{'remote', 'dynamic'},
+    int triangleCount = 0,
+    int vertexCount = 0,
+    int fileSizeBytes = 0,
+    bool isDraco = false,
+  }) {
+    return MeshAssetMetadata(
+      id: id,
+      name: name,
+      category: category,
+      license: license,
+      licenseSource: licenseSource,
+      bounds: bounds ?? BoundingBox3D.zero(),
+      tags: tags,
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: remoteUrl,
+          triangleCount: triangleCount,
+          vertexCount: vertexCount,
+          fileSizeBytes: fileSizeBytes,
+          isDracoCompressed: isDraco,
+        ),
+      },
+      defaultLod: LodLevel.lod0,
+    );
+  }
+
   bool get isCc0 =>
       license.toUpperCase().contains('CC0') ||
       license.toUpperCase().contains('PUBLIC DOMAIN');
@@ -549,6 +650,8 @@ class ParsedModelMesh {
   final BoundingBox3D bounds;
   final Map<String, dynamic> rawJson;
   final int approximateMemoryBytes;
+  final bool isFallback;
+  final String? fallbackReason;
 
   const ParsedModelMesh({
     required this.modelId,
@@ -560,7 +663,26 @@ class ParsedModelMesh {
     required this.bounds,
     this.rawJson = const <String, dynamic>{},
     required this.approximateMemoryBytes,
+    this.isFallback = false,
+    this.fallbackReason,
   });
+
+  /// Produces a copy marked as a graceful fallback for an unavailable target model.
+  ParsedModelMesh asFallback({required String originalModelId, String? reason}) {
+    return ParsedModelMesh(
+      modelId: originalModelId,
+      sourcePath: sourcePath,
+      isDracoCompressed: isDracoCompressed,
+      dracoHeader: dracoHeader,
+      submeshes: submeshes,
+      materials: materials,
+      bounds: bounds,
+      rawJson: rawJson,
+      approximateMemoryBytes: approximateMemoryBytes,
+      isFallback: true,
+      fallbackReason: reason ?? 'Fallback model substituted',
+    );
+  }
 
   int get totalVertices => submeshes.fold<int>(
       0, (int sum, ParsedSubmesh sub) => sum + sub.vertexCount);
@@ -573,7 +695,7 @@ class ParsedModelMesh {
 
   @override
   String toString() =>
-      'ParsedModelMesh($modelId, submeshes: ${submeshes.length}, tris: $totalTriangles, draco: $isDracoCompressed, mem: ${(approximateMemoryBytes / 1024).toStringAsFixed(1)} KB)';
+      'ParsedModelMesh($modelId, submeshes: ${submeshes.length}, tris: $totalTriangles, draco: $isDracoCompressed, fallback: $isFallback, mem: ${(approximateMemoryBytes / 1024).toStringAsFixed(1)} KB)';
 }
 
 /// Binary parser for Khronos glTF 2.0 Binary (.glb) files and Draco compressed chunks.
@@ -582,6 +704,118 @@ class DracoGlbParser {
   static const int jsonChunkType = 0x4E4F534A; // "JSON"
   static const int binChunkType = 0x004E4942; // "BIN\0"
   static const String dracoExtension = 'KHR_draco_mesh_compression';
+
+  /// Performs non-destructive header and chunk verification of GLB binary data.
+  static GlbValidationResult validateBytes(Uint8List bytes) {
+    if (bytes.length < 12) {
+      return GlbValidationResult.invalid(
+        'File too short to contain GLB header (${bytes.length} bytes)',
+        0,
+      );
+    }
+
+    final ByteData byteData = ByteData.sublistView(bytes);
+    final int magic = byteData.getUint32(0, Endian.little);
+    if (magic != glbMagic) {
+      return GlbValidationResult.invalid(
+        'Invalid GLB magic header: 0x${magic.toRadixString(16)}. Expected 0x${glbMagic.toRadixString(16)} ("glTF")',
+        0,
+      );
+    }
+
+    final int version = byteData.getUint32(4, Endian.little);
+    if (version != 2) {
+      return GlbValidationResult.invalid(
+        'Unsupported glTF version: $version. Expected 2',
+        4,
+      );
+    }
+
+    final int totalLength = byteData.getUint32(8, Endian.little);
+    if (bytes.length < totalLength) {
+      return GlbValidationResult.invalid(
+        'Truncated GLB container: byte length is ${bytes.length}, expected $totalLength',
+        8,
+      );
+    }
+
+    int offset = 12;
+    bool hasJson = false;
+    bool hasBin = false;
+    bool isDraco = false;
+    DracoHeaderInfo? dracoHeader;
+
+    while (offset + 8 <= totalLength && offset + 8 <= bytes.length) {
+      final int chunkLength = byteData.getUint32(offset, Endian.little);
+      final int chunkType = byteData.getUint32(offset + 4, Endian.little);
+      offset += 8;
+
+      if (offset + chunkLength > bytes.length) {
+        return GlbValidationResult.invalid(
+          'Chunk length exceeds container: chunkLength=$chunkLength, remaining=${bytes.length - offset}',
+          offset,
+        );
+      }
+
+      if (chunkType == jsonChunkType) {
+        hasJson = true;
+        try {
+          final String jsonStr =
+              utf8.decode(bytes.sublist(offset, offset + chunkLength));
+          final dynamic decoded = json.decode(jsonStr);
+          if (decoded is Map<String, dynamic>) {
+            final List<dynamic> extsUsed =
+                (decoded['extensionsUsed'] as List<dynamic>?) ?? <dynamic>[];
+            if (extsUsed.contains(dracoExtension)) {
+              isDraco = true;
+            }
+          }
+        } catch (_) {
+          return GlbValidationResult.invalid('Malformed JSON chunk in GLB', offset);
+        }
+      } else if (chunkType == binChunkType) {
+        hasBin = true;
+        if (isDraco && chunkLength >= 8) {
+          final int binStart = offset;
+          for (int i = 0; i <= chunkLength - 8; i++) {
+            if (bytes[binStart + i] == 0x44 && // 'D'
+                bytes[binStart + i + 1] == 0x52 && // 'R'
+                bytes[binStart + i + 2] == 0x41 && // 'A'
+                bytes[binStart + i + 3] == 0x43 && // 'C'
+                bytes[binStart + i + 4] == 0x4F) { // 'O'
+              try {
+                dracoHeader = _parseDracoHeader(
+                  binBytes: bytes,
+                  offset: binStart + i,
+                  length: chunkLength - i,
+                );
+                break;
+              } catch (_) {}
+            }
+          }
+        }
+      }
+
+      offset += chunkLength;
+      while (offset % 4 != 0 && offset < totalLength) {
+        offset++;
+      }
+    }
+
+    if (!hasJson) {
+      return GlbValidationResult.invalid('GLB missing mandatory JSON chunk', 12);
+    }
+
+    return GlbValidationResult.valid(
+      version: version,
+      totalLength: totalLength,
+      actualLength: bytes.length,
+      hasJsonChunk: hasJson,
+      hasBinChunk: hasBin,
+      isDracoCompressed: isDraco,
+      dracoHeader: dracoHeader,
+    );
+  }
 
   /// Parses raw byte data of a GLB file into a structured [ParsedModelMesh].
   ParsedModelMesh parse({
@@ -1228,6 +1462,15 @@ class MeshAssetRegistry {
   static const String pathAion2PillarLod2 = 'assets/models/aion2/aion2_gothic_dungeon_pillar_LOD2.glb';
   static const String pathAion2PillarImpostor = 'assets/models/aion2/aion2_gothic_dungeon_pillar_Impostor.glb';
 
+  // ==========================================================================
+  // CC0 FALLBACK MODEL CONSTANTS
+  // ==========================================================================
+  static const String fallbackStoneAltar = pathStoneAltar;
+  static const String fallbackBrazier = pathBrazier;
+  static const String fallbackBoulder = pathRockBoulder;
+  static const String fallbackGargoyle = pathGargoyle;
+  static const String fallbackGothicArch = pathGothicArch;
+
   final Map<String, MeshAssetMetadata> _registry =
       <String, MeshAssetMetadata>{};
   final Map<ModelCategory, Set<String>> _byCategory =
@@ -1263,6 +1506,11 @@ class MeshAssetRegistry {
     for (final String tag in metadata.tags) {
       _byTag.putIfAbsent(tag.toLowerCase(), () => <String>{}).add(metadata.id);
     }
+  }
+
+  /// Registers a dynamic or remote asset metadata into the registry.
+  void registerRemoteAsset(MeshAssetMetadata metadata) {
+    register(metadata);
   }
 
   /// Removes a model from registry.

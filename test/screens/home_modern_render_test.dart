@@ -1022,6 +1022,8 @@ void main() {
       expect(find.byType(HubSceneViewport), findsOneWidget);
       expect(find.byType(HeroShowcase), findsOneWidget);
       expect(find.byType(HomePromoCarousel), findsOneWidget);
+      final pRect = tester.getRect(find.byType(PantheonBoard, skipOffstage: false));
+      debugPrint('PANTHEON RECT: $pRect');
       expect(find.byType(PantheonBoard), findsOneWidget);
 
       // Verify character name and quick access shortcuts

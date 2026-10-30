@@ -758,14 +758,14 @@ class _HubSceneViewportState extends State<HubSceneViewport>
                     ),
                   ),
 
-                // ── 2. Hub Environment Architecture (Far Horizon, Gothic Spires, Cobblestone)
-                if (depth.enableEnvironment)
-                  Positioned.fill(
-                    child: HubEnvironmentLayer(
-                      controller: widget.controller.environmentController,
-                      parallaxOffset: parallax * depth.farEnvironmentDepthFactor,
-                    ),
+                // ── 2. Open World 3D Spatial Canvas (Real GLB 3D Meshes & Interactive Camera)
+                const Positioned.fill(
+                  child: OpenWorldHubCanvas(
+                    height: double.infinity,
+                    showCompass: true,
+                    showInfoCard: true,
                   ),
+                ),
 
                 // ── 3. 10,000 Crowd Hub Background Layer (Midground VAT / GPU Instanced Impostors)
                 if (depth.enableCrowd)

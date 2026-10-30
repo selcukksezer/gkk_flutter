@@ -97,6 +97,7 @@ class AppRoutes {
   static const String hospital = '/hospital';
   static const String market = '/market';
   static const String facilities = '/facilities';
+  static String facilityDetail(String type) => '$facilities/$type';
 
   // New routes
 // achievements route removed

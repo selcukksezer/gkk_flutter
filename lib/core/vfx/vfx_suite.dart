@@ -13,8 +13,8 @@ export 'ribbon_trail_renderer.dart';
 // Module 3: Refraction & Shockwave Distortion
 export 'refraction_effect.dart';
 
-// Module 4: Ground Decal Projection System
-export 'ground_decal_system.dart';
+// Module 4: Ground Decal Projection System (hide Vector3D to avoid clash with ribbon_trail_renderer.dart)
+export 'ground_decal_system.dart' hide Vector3D;
 
 // Module 5: Directional Camera Shake & Recoil
 export 'directional_camera_shake.dart';

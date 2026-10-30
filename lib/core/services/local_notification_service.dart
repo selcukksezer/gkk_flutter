@@ -45,7 +45,7 @@ class LocalNotificationService {
 
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+    const DarwinInitializationSettings darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
@@ -54,7 +54,8 @@ class LocalNotificationService {
     await _plugin.initialize(
       settings: const InitializationSettings(
         android: androidSettings,
-        iOS: iosSettings,
+        iOS: darwinSettings,
+        macOS: darwinSettings,
       ),
       onDidReceiveNotificationResponse: _onNotificationTap,
     );

@@ -9,10 +9,14 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
 
 import '../../../core/assets/mesh_asset_registry.dart';
+import '../../../core/assets/remote_glb_loader.dart';
 import '../../../core/engine/adaptive_quality_scaler.dart';
 import '../../../core/world/dynamic_skybox.dart';
 import '../../../models/player_model.dart';
 import 'hub_environment_layer.dart';
+import 'open_world_hub_canvas.dart';
+
+export 'open_world_hub_canvas.dart';
 
 // =============================================================================
 // Production Hub 3D .GLB Viewport & World Props Architecture
@@ -261,11 +265,29 @@ class Hub3dModelController extends ChangeNotifier {
 /// Service caching and loading genuine 3D .glb models into memory.
 class Hub3dAssetLoader {
   static final Hub3dAssetLoader instance = Hub3dAssetLoader._();
-  Hub3dAssetLoader._();
+
+  /// Forces eager singleton initialization and consumer registration with RemoteGlbLoader.
+  static void ensureInitialized() {
+    // Access singleton to trigger constructor execution
+    final _ = instance;
+  }
+
+  Hub3dAssetLoader._() {
+    // Automatically register as a consumer so all models parsed by RemoteGlbLoader
+    // are immediately resident in memory for hub viewports and canvas.
+    RemoteGlbLoader.registerConsumer((String modelId, ParsedModelMesh mesh) {
+      putCached(modelId, mesh);
+    });
+  }
 
   final Map<String, ParsedModelMesh> _parsedCache = <String, ParsedModelMesh>{};
   final Map<String, Future<ParsedModelMesh?>> _pendingLoads =
       <String, Future<ParsedModelMesh?>>{};
+
+  /// Stores an already-parsed mesh directly into memory cache.
+  void putCached(String key, ParsedModelMesh mesh) {
+    _parsedCache[key] = mesh;
+  }
 
   /// Clears in-memory loaded meshes.
   void clearCache() {
@@ -285,10 +307,16 @@ class Hub3dAssetLoader {
   /// Checks whether a mesh modelId/assetPath is already parsed in RAM.
   bool isCached(String key) => _parsedCache.containsKey(key);
 
-  /// Loads and parses a .glb binary asset file from the application asset bundle.
-  Future<ParsedModelMesh?> loadGlbAsset(String assetPath, {String? modelId}) async {
+  /// Loads and parses a .glb binary asset file from the application asset bundle,
+  /// local filesystem, data URI, or external network URL.
+  Future<ParsedModelMesh?> loadGlbAsset(
+    String assetPath, {
+    String? modelId,
+    String? fallbackAssetPath,
+    bool forceRefresh = false,
+  }) async {
     final String key = modelId ?? assetPath;
-    if (_parsedCache.containsKey(key)) {
+    if (!forceRefresh && _parsedCache.containsKey(key)) {
       return _parsedCache[key];
     }
 
@@ -296,24 +324,55 @@ class Hub3dAssetLoader {
       return _pendingLoads[key];
     }
 
-    final Future<ParsedModelMesh?> task = _doLoadGlb(assetPath, key);
+    final Future<ParsedModelMesh?> task = _doLoadGlb(
+      assetPath,
+      key,
+      fallbackAssetPath: fallbackAssetPath,
+      forceRefresh: forceRefresh,
+    );
     _pendingLoads[key] = task;
     return task;
   }
 
-  Future<ParsedModelMesh?> _doLoadGlb(String assetPath, String key) async {
+  Future<ParsedModelMesh?> _doLoadGlb(
+    String assetPath,
+    String key, {
+    String? fallbackAssetPath,
+    bool forceRefresh = false,
+  }) async {
     try {
+      // 1. If path is a remote network URL or data URI, route through RemoteGlbLoader
+      if (RemoteGlbLoader.isRemoteSource(assetPath)) {
+        final ParsedModelMesh remoteMesh = await RemoteGlbLoader.instance.loadGlb(
+          assetPath,
+          modelId: key,
+          fallbackAssetPath: fallbackAssetPath,
+          forceRefresh: forceRefresh,
+        );
+        _parsedCache[key] = remoteMesh;
+        return remoteMesh;
+      }
+
       Uint8List bytes;
-      // 1. Check local file system (for test environments & rapid dev)
+      // 2. Check local file system (for test environments & rapid dev)
       final io.File localFile = io.File(assetPath);
       if (localFile.existsSync()) {
         bytes = await localFile.readAsBytes();
       } else {
-        // 2. Load from Flutter rootBundle
+        // 3. Load from Flutter rootBundle
         final ByteData byteData = await rootBundle.load(assetPath);
         bytes = byteData.buffer.asUint8List(
           byteData.offsetInBytes,
           byteData.lengthInBytes,
+        );
+      }
+
+      // Pre-flight header validation
+      final GlbValidationResult validation = DracoGlbParser.validateBytes(bytes);
+      if (!validation.isValid) {
+        throw GlbFormatException(
+          validation.errorMessage ?? 'GLB container validation failed for "$assetPath"',
+          validation.errorOffset,
         );
       }
 
@@ -325,20 +384,32 @@ class Hub3dAssetLoader {
       );
 
       _parsedCache[key] = parsed;
-      _pendingLoads.remove(key);
       return parsed;
     } on GlbFormatException catch (e, st) {
       debugPrint('Hub3dAssetLoader: GLB container format error for "$assetPath": $e\n$st');
-      _pendingLoads.remove(key);
-      return null;
+      return _resolveFallback(key, fallbackAssetPath);
     } on DracoFormatException catch (e, st) {
       debugPrint('Hub3dAssetLoader: Draco decompression error for "$assetPath": $e\n$st');
-      _pendingLoads.remove(key);
-      return null;
+      return _resolveFallback(key, fallbackAssetPath);
     } catch (e, st) {
-      // Graceful fallback logging
       debugPrint('Hub3dAssetLoader: Warning - failed to load GLB "$assetPath": $e\n$st');
+      return _resolveFallback(key, fallbackAssetPath);
+    } finally {
       _pendingLoads.remove(key);
+    }
+  }
+
+  Future<ParsedModelMesh?> _resolveFallback(String key, String? fallbackAssetPath) async {
+    try {
+      final ParsedModelMesh fallback = await RemoteGlbLoader.instance.loadGlb(
+        fallbackAssetPath ?? MeshAssetRegistry.fallbackStoneAltar,
+        modelId: key,
+        fallbackAssetPath: MeshAssetRegistry.fallbackBoulder,
+      );
+      _parsedCache[key] = fallback;
+      return fallback;
+    } catch (e) {
+      debugPrint('Hub3dAssetLoader: Fallback resolution also failed: $e');
       return null;
     }
   }
@@ -503,7 +574,8 @@ class Hub3dModelPainter extends CustomPainter {
       }
 
       final int triangleCount = ind != null ? ind.length ~/ 3 : pos.length ~/ 9;
-      // Step strictly equals 1 to preserve index buffer topology and eliminate exploding polygon artifacts.
+      // Do NOT decimate indexed geometry with stride steps > 1, because skipping
+      // indices tears polygon connectivity and creates giant exploded triangle artifacts!
       const int step = 1;
 
       for (int t = 0; t < triangleCount; t += step) {
@@ -569,7 +641,7 @@ class Hub3dModelPainter extends CustomPainter {
         if (s0x.isNaN || s0y.isNaN || s1x.isNaN || s1y.isNaN || s2x.isNaN || s2y.isNaN) continue;
         final double triW = (math.max(s0x, math.max(s1x, s2x)) - math.min(s0x, math.min(s1x, s2x))).abs();
         final double triH = (math.max(s0y, math.max(s1y, s2y)) - math.min(s0y, math.min(s1y, s2y))).abs();
-        if (triW > size.width * 1.5 || triH > size.height * 1.5) continue;
+        if (triW > size.width * 0.75 || triH > size.height * 0.75) continue;
 
         // Screen-space frustum bounds culling with 80px safety margin
         const double margin = 80.0;
@@ -743,6 +815,7 @@ class Hub3dModelViewport extends StatefulWidget {
     this.emissiveGlowColor = const Color(0xFF00B4FF),
     this.emissiveIntensity = 0.4,
     this.fallbackWidget,
+    this.fallbackAssetPath,
     this.maxTriangles = 3500,
     this.interactive = true,
     this.qualityScaler,
@@ -751,6 +824,7 @@ class Hub3dModelViewport extends StatefulWidget {
 
   final String assetPath;
   final String? modelId;
+  final String? fallbackAssetPath;
   final Hub3dModelController? controller;
   final double scale;
   final Offset offset;
@@ -799,7 +873,9 @@ class _Hub3dModelViewportState extends State<Hub3dModelViewport>
   @override
   void didUpdateWidget(covariant Hub3dModelViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.assetPath != widget.assetPath || oldWidget.modelId != widget.modelId) {
+    if (oldWidget.assetPath != widget.assetPath ||
+        oldWidget.modelId != widget.modelId ||
+        oldWidget.fallbackAssetPath != widget.fallbackAssetPath) {
       _loadMesh();
     }
     if (oldWidget.qualityScaler != widget.qualityScaler) {
@@ -820,6 +896,7 @@ class _Hub3dModelViewportState extends State<Hub3dModelViewport>
       final ParsedModelMesh? mesh = await Hub3dAssetLoader.instance.loadGlbAsset(
         widget.assetPath,
         modelId: widget.modelId,
+        fallbackAssetPath: widget.fallbackAssetPath,
       );
 
       if (!mounted) return;
@@ -968,18 +1045,28 @@ class _Hub3dModelViewportState extends State<Hub3dModelViewport>
 }
 
 /// Integrated 3D world props layer for the Main Hub viewport.
-/// Renders authentic Gothic pillars, iron braziers, and stone altar landmarks.
+/// Renders authentic Gothic pillars, iron braziers, dungeon gates, and stone altar landmarks.
 class Hub3dWorldPropsLayer extends StatefulWidget {
   const Hub3dWorldPropsLayer({
     super.key,
     required this.controller,
     this.parallaxOffset = Offset.zero,
     this.qualityScaler,
+    this.useOpenWorldMatrix = false,
+    this.openWorldMatrix,
+    this.cameraController,
+    this.isInteractive = false,
+    this.onNodeTap,
   });
 
   final HubEnvironmentController controller;
   final Offset parallaxOffset;
   final AdaptiveQualityScaler? qualityScaler;
+  final bool useOpenWorldMatrix;
+  final OpenWorldMatrix? openWorldMatrix;
+  final OpenWorldCameraController? cameraController;
+  final bool isInteractive;
+  final ValueChanged<WorldNode3D>? onNodeTap;
 
   @override
   State<Hub3dWorldPropsLayer> createState() => _Hub3dWorldPropsLayerState();
@@ -990,6 +1077,12 @@ class _Hub3dWorldPropsLayerState extends State<Hub3dWorldPropsLayer> {
   ParsedModelMesh? _rightPillar;
   ParsedModelMesh? _brazier;
   ParsedModelMesh? _altar;
+  ParsedModelMesh? _dungeonGate;
+  ParsedModelMesh? _portcullis;
+  ParsedModelMesh? _castleWall;
+  ParsedModelMesh? _oakTree;
+  ParsedModelMesh? _pineTree;
+  ParsedModelMesh? _boulder;
 
   @override
   void initState() {
@@ -1035,6 +1128,30 @@ class _Hub3dWorldPropsLayerState extends State<Hub3dWorldPropsLayer> {
         'assets/models/environment/altar-stone.glb',
         modelId: 'hub_altar',
       ),
+      Hub3dAssetLoader.instance.loadGlbAsset(
+        'assets/models/environment/dungeon_gate.glb',
+        modelId: 'hub_dungeon_gate',
+      ),
+      Hub3dAssetLoader.instance.loadGlbAsset(
+        'assets/models/props/Portcullis_HeavyIron.glb',
+        modelId: 'hub_portcullis',
+      ),
+      Hub3dAssetLoader.instance.loadGlbAsset(
+        'assets/models/props/GothicArch_Lancet.glb',
+        modelId: 'hub_castle_wall',
+      ),
+      Hub3dAssetLoader.instance.loadGlbAsset(
+        'assets/models/environment/oak_tree.glb',
+        modelId: 'hub_oak_tree',
+      ),
+      Hub3dAssetLoader.instance.loadGlbAsset(
+        'assets/models/environment/pine_tree.glb',
+        modelId: 'hub_pine_tree',
+      ),
+      Hub3dAssetLoader.instance.loadGlbAsset(
+        'assets/models/environment/rock_boulder.glb',
+        modelId: 'hub_rock_boulder',
+      ),
     ];
 
     final List<ParsedModelMesh?> results = await Future.wait(futures);
@@ -1045,11 +1162,42 @@ class _Hub3dWorldPropsLayerState extends State<Hub3dWorldPropsLayer> {
       _rightPillar = results[1];
       _brazier = results[2];
       _altar = results[3];
+      _dungeonGate = results[4];
+      _portcullis = results[5];
+      _castleWall = results[6];
+      _oakTree = results[7];
+      _pineTree = results[8];
+      _boulder = results[9];
     });
+  }
+
+  void _handlePropTap(String id, String name, WorldNodeCategory cat, String path) {
+    if (!widget.isInteractive) return;
+    HapticFeedback.mediumImpact();
+    widget.onNodeTap?.call(WorldNode3D(
+      id: id,
+      name: name,
+      category: cat,
+      assetPath: path,
+      position: Vector3D.zero,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.useOpenWorldMatrix) {
+      return OpenWorldHubCanvas(
+        matrix: widget.openWorldMatrix,
+        controller: widget.cameraController,
+        qualityScaler: widget.qualityScaler,
+        onNodeSelected: (node) {
+          if (node != null) widget.onNodeTap?.call(node);
+        },
+        showCompass: false,
+        showInfoCard: widget.isInteractive,
+      );
+    }
+
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
@@ -1070,59 +1218,301 @@ class _Hub3dWorldPropsLayerState extends State<Hub3dWorldPropsLayer> {
           builder: (context, constraints) {
             final double screenW = constraints.maxWidth.isFinite ? constraints.maxWidth : 390.0;
             final double screenH = constraints.maxHeight.isFinite ? constraints.maxHeight : 844.0;
-            final double responsiveScale = (screenW / 390.0).clamp(0.75, 1.25);
+            final double responsiveScale = math.min(screenW / 390.0, screenH / 844.0).clamp(0.75, 1.25);
             final double pillarW = (130 * responsiveScale).clamp(95.0, 160.0);
             final double pillarH = (380 * responsiveScale).clamp(280.0, 440.0);
 
             return IgnorePointer(
+              ignoring: !widget.isInteractive,
               child: Stack(
                 fit: StackFit.expand,
                 children: <Widget>[
-                  // ── Left Gothic Monumental Pillar ────────────────────────
+                  // ── 1. Distant Ridge Pine Trees (Background Nature) ──────
+                  if (_pineTree != null && !isEcoOrSevere) ...<Widget>[
+                    Positioned(
+                      left: 16 * responsiveScale + parallax.dx * 0.15,
+                      top: 10 * responsiveScale + parallax.dy * 0.12,
+                      width: 110 * responsiveScale,
+                      height: 170 * responsiveScale,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'pine_tree_bg_left',
+                          'Kuzey Dağ Çamı',
+                          WorldNodeCategory.natureTree,
+                          'assets/models/environment/pine_tree.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _pineTree!,
+                            rotationY: 0.15,
+                            rotationX: 0.05,
+                            scale: 1.0,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFF10B981),
+                            emissiveIntensity: 0.2,
+                            maxTriangles: 1400,
+                            qualityScaler: widget.qualityScaler,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 18 * responsiveScale + parallax.dx * 0.15,
+                      top: 12 * responsiveScale + parallax.dy * 0.12,
+                      width: 105 * responsiveScale,
+                      height: 165 * responsiveScale,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'pine_tree_bg_right',
+                          'Sisli Yamaç Çamı',
+                          WorldNodeCategory.natureTree,
+                          'assets/models/environment/pine_tree.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _pineTree!,
+                            rotationY: -0.4,
+                            rotationX: 0.05,
+                            scale: 0.95,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFF10B981),
+                            emissiveIntensity: 0.2,
+                            maxTriangles: 1400,
+                            qualityScaler: widget.qualityScaler,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // ── 2. Grand Dungeon Gate & Portcullis (Central Portal) ───
+                  if (_dungeonGate != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 15 * responsiveScale + parallax.dy * 0.18,
+                      height: 220 * responsiveScale,
+                      child: Center(
+                        child: SizedBox(
+                          width: 240 * responsiveScale,
+                          height: 220 * responsiveScale,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _handlePropTap(
+                              'dungeon_gate',
+                              'Kadim Zindan Kapısı',
+                              WorldNodeCategory.dungeonGate,
+                              'assets/models/environment/dungeon_gate.glb',
+                            ),
+                            child: CustomPaint(
+                              painter: Hub3dModelPainter(
+                                mesh: _dungeonGate!,
+                                rotationY: 0.0,
+                                rotationX: 0.04,
+                                scale: 1.25,
+                                sunColor: sunColor,
+                                emissiveGlowColor: const Color(0xFF60A5FA),
+                                emissiveIntensity: 0.45,
+                                maxTriangles: 2200,
+                                qualityScaler: widget.qualityScaler,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (_portcullis != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 38 * responsiveScale + parallax.dy * 0.18,
+                      height: 170 * responsiveScale,
+                      child: Center(
+                        child: SizedBox(
+                          width: 170 * responsiveScale,
+                          height: 160 * responsiveScale,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _handlePropTap(
+                              'portcullis',
+                              'Ağır Demir Parmaklık',
+                              WorldNodeCategory.portcullis,
+                              'assets/models/props/Portcullis_HeavyIron.glb',
+                            ),
+                            child: CustomPaint(
+                              painter: Hub3dModelPainter(
+                                mesh: _portcullis!,
+                                rotationY: 0.0,
+                                rotationX: 0.02,
+                                scale: 0.95,
+                                sunColor: sunColor,
+                                emissiveGlowColor: const Color(0xFF38BDF8),
+                                emissiveIntensity: 0.35,
+                                maxTriangles: 1400,
+                                qualityScaler: widget.qualityScaler,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // ── 3. Flanking Castle Rampart Walls ───────────────────────
+                  if (_castleWall != null && !isEcoOrSevere) ...<Widget>[
+                    Positioned(
+                      left: -20 * responsiveScale + parallax.dx * 0.25,
+                      top: 45 * responsiveScale + parallax.dy * 0.22,
+                      width: 120 * responsiveScale,
+                      height: 200 * responsiveScale,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'castle_wall_west',
+                          'Batı Hisar Kemeri',
+                          WorldNodeCategory.castleWall,
+                          'assets/models/props/GothicArch_Lancet.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _castleWall!,
+                            rotationY: 0.45,
+                            rotationX: 0.04,
+                            scale: 0.95,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFF818CF8),
+                            emissiveIntensity: 0.25,
+                            maxTriangles: 1500,
+                            qualityScaler: widget.qualityScaler,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: -20 * responsiveScale + parallax.dx * 0.25,
+                      top: 45 * responsiveScale + parallax.dy * 0.22,
+                      width: 120 * responsiveScale,
+                      height: 200 * responsiveScale,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'castle_wall_east',
+                          'Doğu Hisar Kemeri',
+                          WorldNodeCategory.castleWall,
+                          'assets/models/props/GothicArch_Lancet.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _castleWall!,
+                            rotationY: -0.45,
+                            rotationX: 0.04,
+                            scale: 0.95,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFF818CF8),
+                            emissiveIntensity: 0.25,
+                            maxTriangles: 1500,
+                            qualityScaler: widget.qualityScaler,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // ── 4. Mystical Oak Trees (Midground Nature) ───────────────
+                  if (_oakTree != null)
+                    Positioned(
+                      left: -12 * responsiveScale + parallax.dx * 0.3,
+                      top: 140 * responsiveScale + parallax.dy * 0.25,
+                      width: 130 * responsiveScale,
+                      height: 190 * responsiveScale,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'oak_tree_west',
+                          'Kadim Sığınak Meşesi',
+                          WorldNodeCategory.natureTree,
+                          'assets/models/environment/oak_tree.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _oakTree!,
+                            rotationY: 0.35,
+                            rotationX: 0.08,
+                            scale: 1.05,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFF34D399),
+                            emissiveIntensity: 0.25,
+                            maxTriangles: 1600,
+                            qualityScaler: widget.qualityScaler,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // ── 5. Left Gothic Monumental Pillar ───────────────────────
                   if (_leftPillar != null)
                     Positioned(
                       left: -32 * responsiveScale + parallax.dx * 0.35,
                       top: 36 * responsiveScale + parallax.dy * 0.3,
                       width: pillarW,
                       height: pillarH,
-                      child: CustomPaint(
-                        painter: Hub3dModelPainter(
-                          mesh: _leftPillar!,
-                          rotationY: 0.35,
-                          rotationX: 0.04,
-                          scale: 1.15,
-                          sunColor: sunColor,
-                          emissiveGlowColor: const Color(0xFF60A5FA),
-                          emissiveIntensity: 0.28,
-                          maxTriangles: 2200,
-                          qualityScaler: widget.qualityScaler,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'gothic_pillar_west',
+                          'Gotik Muhafız Sütunu',
+                          WorldNodeCategory.gothicPillar,
+                          'assets/models/aion2/aion2_gothic_dungeon_pillar.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _leftPillar!,
+                            rotationY: 0.35,
+                            rotationX: 0.04,
+                            scale: 1.15,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFF60A5FA),
+                            emissiveIntensity: 0.28,
+                            maxTriangles: 2200,
+                            qualityScaler: widget.qualityScaler,
+                          ),
                         ),
                       ),
                     ),
 
-                  // ── Right Architectural Column (omitted on Eco to save fill-rate) ───
+                  // ── 6. Right Architectural Column ──────────────────────────
                   if (_rightPillar != null && !isEcoOrSevere)
                     Positioned(
                       right: -36 * responsiveScale + parallax.dx * 0.35,
                       top: 36 * responsiveScale + parallax.dy * 0.3,
                       width: pillarW,
                       height: pillarH,
-                      child: CustomPaint(
-                        painter: Hub3dModelPainter(
-                          mesh: _rightPillar!,
-                          rotationY: -0.42,
-                          rotationX: 0.04,
-                          scale: 1.15,
-                          sunColor: sunColor,
-                          emissiveGlowColor: const Color(0xFF60A5FA),
-                          emissiveIntensity: 0.28,
-                          maxTriangles: 2200,
-                          qualityScaler: widget.qualityScaler,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'column_large_east',
+                          'Antik Mermer Kolon',
+                          WorldNodeCategory.gothicPillar,
+                          'assets/models/environment/column-large.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _rightPillar!,
+                            rotationY: -0.42,
+                            rotationX: 0.04,
+                            scale: 1.15,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFF60A5FA),
+                            emissiveIntensity: 0.28,
+                            maxTriangles: 2200,
+                            qualityScaler: widget.qualityScaler,
+                          ),
                         ),
                       ),
                     ),
 
-                  // ── Central Ritual Altar ─────────────────────────────────
+                  // ── 7. Central Ritual Altar ────────────────────────────────
                   if (_altar != null)
                     Positioned(
                       left: 0,
@@ -1133,41 +1523,90 @@ class _Hub3dWorldPropsLayerState extends State<Hub3dWorldPropsLayer> {
                         child: SizedBox(
                           width: (210 * responsiveScale).clamp(160.0, 260.0),
                           height: (135 * responsiveScale).clamp(100.0, 170.0),
-                          child: CustomPaint(
-                            painter: Hub3dModelPainter(
-                              mesh: _altar!,
-                              rotationY: 0.25,
-                              rotationX: 0.18,
-                              scale: 0.85,
-                              sunColor: sunColor,
-                              emissiveGlowColor: const Color(0xFF00B4FF),
-                              emissiveIntensity: 0.45,
-                              maxTriangles: 1800,
-                              qualityScaler: widget.qualityScaler,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _handlePropTap(
+                              'stone_altar',
+                              'Kutsal Aether Sunağı',
+                              WorldNodeCategory.stoneAltar,
+                              'assets/models/environment/altar-stone.glb',
+                            ),
+                            child: CustomPaint(
+                              painter: Hub3dModelPainter(
+                                mesh: _altar!,
+                                rotationY: 0.25,
+                                rotationX: 0.18,
+                                scale: 0.85,
+                                sunColor: sunColor,
+                                emissiveGlowColor: const Color(0xFF00B4FF),
+                                emissiveIntensity: 0.45,
+                                maxTriangles: 1800,
+                                qualityScaler: widget.qualityScaler,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
 
-                  // ── Iron Brazier with Glowing Embers ─────────────────────
+                  // ── 8. Granite Boulder (Natural Accent) ─────────────────────
+                  if (_boulder != null)
+                    Positioned(
+                      right: (38 * responsiveScale) - parallax.dx * 0.35,
+                      bottom: (88 * responsiveScale) + parallax.dy * 0.22,
+                      width: (95 * responsiveScale).clamp(70.0, 120.0),
+                      height: (85 * responsiveScale).clamp(65.0, 110.0),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'rock_boulder_east',
+                          'Kadim Granit Kaya',
+                          WorldNodeCategory.boulder,
+                          'assets/models/environment/rock_boulder.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _boulder!,
+                            rotationY: 0.65,
+                            rotationX: 0.14,
+                            scale: 0.82,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFFA78BFA),
+                            emissiveIntensity: 0.25,
+                            maxTriangles: 1200,
+                            qualityScaler: widget.qualityScaler,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // ── 9. Iron Brazier with Glowing Embers ────────────────────
                   if (_brazier != null)
                     Positioned(
                       left: (32 * responsiveScale) + parallax.dx * 0.45,
                       bottom: (80 * responsiveScale) + parallax.dy * 0.25,
                       width: (88 * responsiveScale).clamp(65.0, 110.0),
                       height: (118 * responsiveScale).clamp(90.0, 145.0),
-                      child: CustomPaint(
-                        painter: Hub3dModelPainter(
-                          mesh: _brazier!,
-                          rotationY: widget.controller.elapsedTime * 0.2,
-                          rotationX: 0.12,
-                          scale: 0.95,
-                          sunColor: sunColor,
-                          emissiveGlowColor: const Color(0xFFFF7A00),
-                          emissiveIntensity: 0.85,
-                          maxTriangles: 1400,
-                          qualityScaler: widget.qualityScaler,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _handlePropTap(
+                          'brazier_left',
+                          'Alevli Meşale Kazanı',
+                          WorldNodeCategory.brazier,
+                          'assets/models/props/Brazier_IronEmbers.glb',
+                        ),
+                        child: CustomPaint(
+                          painter: Hub3dModelPainter(
+                            mesh: _brazier!,
+                            rotationY: widget.controller.elapsedTime * 0.2,
+                            rotationX: 0.12,
+                            scale: 0.95,
+                            sunColor: sunColor,
+                            emissiveGlowColor: const Color(0xFFFF7A00),
+                            emissiveIntensity: 0.85,
+                            maxTriangles: 1400,
+                            qualityScaler: widget.qualityScaler,
+                          ),
                         ),
                       ),
                     ),
@@ -1433,7 +1872,7 @@ class _Hero3dGlbViewportState extends State<Hero3dGlbViewport>
                             child: Image.asset(
                               fallbackPortrait,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                              errorBuilder: (context, error, stackTrace) => Center(
                                 child: Image.asset(
                                   'assets/characters/savasci.png',
                                   fit: BoxFit.contain,

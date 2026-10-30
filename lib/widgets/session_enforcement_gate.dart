@@ -303,9 +303,15 @@ class _SessionEnforcementGateState extends ConsumerState<SessionEnforcementGate>
     await performLogout(ref);
     if (!mounted) return;
     if (showMessage) {
-      AppMessenger.showError(context, message);
+      final navContext = appRootNavigatorKey.currentContext ?? context;
+      AppMessenger.showError(navContext, message);
     }
-    context.go(AppRoutes.login);
+    final navContext = appRootNavigatorKey.currentContext;
+    if (navContext != null && navContext.mounted) {
+      navContext.go(AppRoutes.login);
+    } else {
+      context.go(AppRoutes.login);
+    }
   }
 
   Widget _overlayShell({required Widget child}) {
