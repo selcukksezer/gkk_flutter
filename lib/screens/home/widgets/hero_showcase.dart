@@ -249,9 +249,9 @@ class _HeroShowcaseState extends State<HeroShowcase>
                   builder: (context, child) {
                     String imageAsset = 'assets/renders/characters/Knight_beauty.png';
                     if (widget.profile.characterClass == CharacterClass.shadow) {
-                      imageAsset = 'assets/images/portraits/asmodian/asmodian_assassin.png';
+                      imageAsset = 'assets/renders/characters/Soldier_beauty.png';
                     } else if (widget.profile.characterClass == CharacterClass.alchemist) {
-                      imageAsset = 'assets/images/portraits/asmodian/asmodian_sorcerer.png';
+                      imageAsset = 'assets/renders/characters/Mage_beauty.png';
                     }
 
                     final double pulseScale =

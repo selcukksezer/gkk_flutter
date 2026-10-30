@@ -1136,7 +1136,7 @@ class _LootHubScreenState extends ConsumerState<LootHubScreen> {
 
   Widget _buildTierSelector() {
     return Container(
-      height: 40,
+      height: 48,
       margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -1158,9 +1158,10 @@ class _LootHubScreenState extends ConsumerState<LootHubScreen> {
               borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
+                alignment: Alignment.center,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical: 6,
+                  vertical: 10,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected

@@ -572,7 +572,7 @@ class _GuildHeroCard extends StatelessWidget {
                   ),
                   Center(
                     child: Image.asset(
-                      'assets/renders/weapons/Shield_Celtic_Golden_beauty.png',
+                      'assets/images/icons/weapons/weapon_kallida_shield.png',
                       width: 42,
                       height: 42,
                       fit: BoxFit.contain,

@@ -503,8 +503,8 @@ class Hub3dModelPainter extends CustomPainter {
       }
 
       final int triangleCount = ind != null ? ind.length ~/ 3 : pos.length ~/ 9;
-      // Stride for mobile 60fps decimation when mesh is very high poly
-      final int step = (triangleCount ~/ effectiveMaxTriangles).clamp(1, 10);
+      // Step strictly equals 1 to preserve index buffer topology and eliminate exploding polygon artifacts.
+      const int step = 1;
 
       for (int t = 0; t < triangleCount; t += step) {
         int i0, i1, i2;
@@ -564,6 +564,12 @@ class Hub3dModelPainter extends CustomPainter {
         final double s1y = (y1r * focal) / z1r + cy;
         final double s2x = (x2r * focal) / z2r + cx;
         final double s2y = (y2r * focal) / z2r + cy;
+
+        // Strict clamp to prevent infinite projection artifacts
+        if (s0x.isNaN || s0y.isNaN || s1x.isNaN || s1y.isNaN || s2x.isNaN || s2y.isNaN) continue;
+        final double triW = (math.max(s0x, math.max(s1x, s2x)) - math.min(s0x, math.min(s1x, s2x))).abs();
+        final double triH = (math.max(s0y, math.max(s1y, s2y)) - math.min(s0y, math.min(s1y, s2y))).abs();
+        if (triW > size.width * 1.5 || triH > size.height * 1.5) continue;
 
         // Screen-space frustum bounds culling with 80px safety margin
         const double margin = 80.0;

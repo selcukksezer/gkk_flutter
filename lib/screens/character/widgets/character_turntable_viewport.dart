@@ -848,53 +848,58 @@ class _CharacterTurntableViewportState extends State<CharacterTurntableViewport>
     final bool isChar = _currentMode == TurntableMode.character;
     return GestureDetector(
       onTap: _toggleInspectionMode,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs + 1,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.spaceNavy.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-          border: Border.all(
-            color: isChar
-                ? AppColors.liquidGold.withValues(alpha: 0.5)
-                : AppColors.accentCyan.withValues(alpha: 0.6),
-            width: 1.2,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs + 2,
           ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: (isChar ? AppColors.liquidGold : AppColors.accentCyan)
-                  .withValues(alpha: 0.2),
-              blurRadius: 10,
+          decoration: BoxDecoration(
+            color: AppColors.spaceNavy.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+            border: Border.all(
+              color: isChar
+                  ? AppColors.liquidGold.withValues(alpha: 0.5)
+                  : AppColors.accentCyan.withValues(alpha: 0.6),
+              width: 1.2,
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(
-              isChar ? Icons.person_rounded : Icons.colorize_rounded,
-              size: 14,
-              color: isChar ? AppColors.liquidGold : AppColors.accentCyan,
-            ),
-            const SizedBox(width: AppSpacing.xs + 2),
-            Text(
-              isChar ? 'Karakter Vitrini' : 'Silah Teftişi',
-              style: AppTextStyles.label.copyWith(
-                color: isChar ? AppColors.liquidGold : AppColors.accentCyan,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: (isChar ? AppColors.liquidGold : AppColors.accentCyan)
+                    .withValues(alpha: 0.2),
+                blurRadius: 10,
               ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            const Icon(
-              Icons.swap_horiz_rounded,
-              size: 13,
-              color: AppColors.textSecondary,
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                isChar ? Icons.person_rounded : Icons.colorize_rounded,
+                size: 15,
+                color: isChar ? AppColors.liquidGold : AppColors.accentCyan,
+              ),
+              const SizedBox(width: AppSpacing.xs + 2),
+              Text(
+                isChar ? 'Karakter Vitrini' : 'Silah Teftişi',
+                style: AppTextStyles.label.copyWith(
+                  color: isChar ? AppColors.liquidGold : AppColors.accentCyan,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              const Icon(
+                Icons.swap_horiz_rounded,
+                size: 14,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -905,43 +910,48 @@ class _CharacterTurntableViewportState extends State<CharacterTurntableViewport>
         _currentLightingPreset.keyLightColor(AppColors.liquidGold);
     return GestureDetector(
       onTap: _cycleLightingPreset,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs + 1,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.spaceNavy.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(
-            color: highlight.withValues(alpha: 0.45),
-            width: 1,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm + 2,
+            vertical: AppSpacing.xs + 2,
           ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: highlight.withValues(alpha: 0.15),
-              blurRadius: 6,
+          decoration: BoxDecoration(
+            color: AppColors.spaceNavy.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            border: Border.all(
+              color: highlight.withValues(alpha: 0.45),
+              width: 1,
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(
-              _currentLightingPreset.icon,
-              size: 13,
-              color: highlight,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              _currentLightingPreset.displayName,
-              style: AppTextStyles.micro.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: highlight.withValues(alpha: 0.15),
+                blurRadius: 6,
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                _currentLightingPreset.icon,
+                size: 14,
+                color: highlight,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                _currentLightingPreset.displayName,
+                style: AppTextStyles.micro.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -950,39 +960,44 @@ class _CharacterTurntableViewportState extends State<CharacterTurntableViewport>
   Widget _buildRuneGlowButton() {
     return GestureDetector(
       onTap: _toggleRunicEmission,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs + 1,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.spaceNavy.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(
-            color: _runesActive
-                ? AppColors.accentCyan.withValues(alpha: 0.5)
-                : AppColors.borderBright.withValues(alpha: 0.35),
-            width: 1,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm + 2,
+            vertical: AppSpacing.xs + 2,
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(
-              Icons.auto_awesome,
-              size: 13,
-              color: _runesActive ? AppColors.accentCyan : AppColors.textTertiary,
+          decoration: BoxDecoration(
+            color: AppColors.spaceNavy.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            border: Border.all(
+              color: _runesActive
+                  ? AppColors.accentCyan.withValues(alpha: 0.5)
+                  : AppColors.borderBright.withValues(alpha: 0.35),
+              width: 1,
             ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              _runesActive ? 'Rün: Açık' : 'Rün: Kapalı',
-              style: AppTextStyles.micro.copyWith(
-                color: _runesActive ? AppColors.textPrimary : AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                Icons.auto_awesome,
+                size: 14,
+                color: _runesActive ? AppColors.accentCyan : AppColors.textTertiary,
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                _runesActive ? 'Rün: Açık' : 'Rün: Kapalı',
+                style: AppTextStyles.micro.copyWith(
+                  color: _runesActive ? AppColors.textPrimary : AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -991,72 +1006,81 @@ class _CharacterTurntableViewportState extends State<CharacterTurntableViewport>
   Widget _build360Badge() {
     return GestureDetector(
       onTap: _toggleAutoRotate,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm + 1,
-          vertical: AppSpacing.xs + 1,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.spaceNavy.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(
-            color: _autoRotateActive
-                ? AppColors.liquidGold
-                : AppColors.liquidGold.withValues(alpha: 0.4),
-            width: 1,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm + 2,
+            vertical: AppSpacing.xs + 2,
           ),
-          boxShadow: _autoRotateActive
-              ? <BoxShadow>[
-                  BoxShadow(
-                    color: AppColors.liquidGold.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Icon(Icons.threesixty, size: 14, color: AppColors.liquidGold),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              '360°',
-              style: AppTextStyles.label.copyWith(
-                color: AppColors.liquidGold,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              ),
+          decoration: BoxDecoration(
+            color: AppColors.spaceNavy.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            border: Border.all(
+              color: _autoRotateActive
+                  ? AppColors.liquidGold
+                  : AppColors.liquidGold.withValues(alpha: 0.4),
+              width: 1,
             ),
-            if (_autoRotateActive) ...<Widget>[
-              const SizedBox(width: 3),
-              Container(
-                width: 4,
-                height: 4,
-                decoration: const BoxDecoration(
+            boxShadow: _autoRotateActive
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: AppColors.liquidGold.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(Icons.threesixty, size: 15, color: AppColors.liquidGold),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                '360°',
+                style: AppTextStyles.label.copyWith(
                   color: AppColors.liquidGold,
-                  shape: BoxShape.circle,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
                 ),
               ),
+              if (_autoRotateActive) ...<Widget>[
+                const SizedBox(width: 4),
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(
+                    color: AppColors.liquidGold,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildResetButton() {
-    return IconButton(
-      iconSize: 16,
-      visualDensity: VisualDensity.compact,
-      style: IconButton.styleFrom(
-        backgroundColor: AppColors.spaceNavy.withValues(alpha: 0.75),
-        foregroundColor: AppColors.textSecondary,
-        side: BorderSide(color: AppColors.borderBright.withValues(alpha: 0.25)),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+      child: IconButton(
+        iconSize: 18,
+        visualDensity: VisualDensity.compact,
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.spaceNavy.withValues(alpha: 0.75),
+          foregroundColor: AppColors.textSecondary,
+          side: BorderSide(color: AppColors.borderBright.withValues(alpha: 0.25)),
+          minimumSize: const Size(48, 48),
+        ),
+        tooltip: 'Açıyı Sıfırla',
+        onPressed: _resetOrientation,
+        icon: const Icon(Icons.refresh_rounded),
       ),
-      tooltip: 'Açıyı Sıfırla',
-      onPressed: _resetOrientation,
-      icon: const Icon(Icons.refresh_rounded),
     );
   }
 
@@ -1787,25 +1811,20 @@ class _Aion2CharacterPainter extends CustomPainter {
     double cosYaw,
     double sinYaw,
   ) {
-    // Check if any submesh has positions and indices
-    final ParsedSubmesh prim = parsedMesh!.submeshes.firstWhere(
-      (ParsedSubmesh s) => s.positions != null && s.indices != null,
-      orElse: () => const ParsedSubmesh(
-        name: '',
-        vertexCount: 0,
-        indexCount: 0,
-        bounds: BoundingBox3D(minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0),
-      ),
-    );
+    // Filter all valid submeshes with non-empty vertex buffers and index lists
+    final List<ParsedSubmesh> validSubmeshes = parsedMesh!.submeshes
+        .where((ParsedSubmesh s) =>
+            s.positions != null &&
+            s.indices != null &&
+            s.indices!.isNotEmpty &&
+            s.positions!.isNotEmpty)
+        .toList(growable: false);
 
-    if (prim.positions == null || prim.indices == null) {
+    if (validSubmeshes.isEmpty) {
       return false;
     }
 
-    final Float32List pos = prim.positions!;
-    final Uint32List ind = prim.indices!;
     final BoundingBox3D bounds = parsedMesh!.bounds;
-
     final double maxDim = bounds.maxDimension > 0.001 ? bounds.maxDimension : 1.0;
     final double targetHeight = size.height * 0.58 * zoom;
     final double scale = targetHeight / maxDim;
@@ -1814,7 +1833,7 @@ class _Aion2CharacterPainter extends CustomPainter {
     final double bCenterY = bounds.centerY;
     final double bCenterZ = bounds.centerZ;
 
-    // Camera setup
+    // Camera setup: camera sits at (0, 0, cameraZ) looking toward origin
     const double cameraZ = 3.8;
     final double fov = size.height * 0.72;
 
@@ -1826,14 +1845,28 @@ class _Aion2CharacterPainter extends CustomPainter {
     final double cosR = math.cos(roll);
     final double sinR = math.sin(roll);
 
-    // Light direction vector from lighting preset
+    // Light direction vector in camera space from lighting preset
     final double lx = lightingPreset.lightVector2D.x;
     final double ly = lightingPreset.lightVector2D.y;
     final double lz = lightingPreset.lightZ;
     final double lLen = math.sqrt(lx * lx + ly * ly + lz * lz);
-    final double nLx = lx / lLen;
-    final double nLy = ly / lLen;
-    final double nLz = lz / lLen;
+    final double nLx = lLen > 0.001 ? lx / lLen : 0.0;
+    final double nLy = lLen > 0.001 ? ly / lLen : 0.8;
+    final double nLz = lLen > 0.001 ? lz / lLen : 0.6;
+
+    // View direction vector towards camera is (0, 0, 1) in camera coordinates
+    const double vx = 0.0;
+    const double vy = 0.0;
+    const double vz = 1.0;
+
+    // Halfway vector H = normalize(L + V) for physical Blinn-Phong specular microfacet
+    final double hx = nLx + vx;
+    final double hy = nLy + vy;
+    final double hz = nLz + vz;
+    final double hLen = math.sqrt(hx * hx + hy * hy + hz * hz);
+    final double nhx = hLen > 0.001 ? hx / hLen : 0.0;
+    final double nhy = hLen > 0.001 ? hy / hLen : 0.0;
+    final double nhz = hLen > 0.001 ? hz / hLen : 1.0;
 
     final Color primaryColor = _getClassPrimaryColor();
     final Color keyColor = lightingPreset.keyLightColor(primaryColor);
@@ -1841,79 +1874,142 @@ class _Aion2CharacterPainter extends CustomPainter {
         ? lightingPreset.rimLightColor(_getClassSecondaryColor())
         : Colors.transparent;
 
-    // Collect triangles for depth sorting
-    final int triCount = ind.length ~/ 3;
+    // Collect projected triangles across all valid submeshes for accurate depth sorting
     final List<_ProjectedTriangle> triangles = <_ProjectedTriangle>[];
 
-    for (int t = 0; t < triCount; t++) {
-      final int i0 = ind[t * 3];
-      final int i1 = ind[t * 3 + 1];
-      final int i2 = ind[t * 3 + 2];
+    for (final ParsedSubmesh submesh in validSubmeshes) {
+      final Float32List pos = submesh.positions!;
+      final Uint32List ind = submesh.indices!;
+      final int triCount = ind.length ~/ 3;
 
-      if ((i0 * 3 + 2) >= pos.length ||
-          (i1 * 3 + 2) >= pos.length ||
-          (i2 * 3 + 2) >= pos.length) {
-        continue;
+      for (int t = 0; t < triCount; t++) {
+        final int i0 = ind[t * 3];
+        final int i1 = ind[t * 3 + 1];
+        final int i2 = ind[t * 3 + 2];
+
+        if ((i0 * 3 + 2) >= pos.length ||
+            (i1 * 3 + 2) >= pos.length ||
+            (i2 * 3 + 2) >= pos.length) {
+          continue;
+        }
+
+        // Vertex 0 (Model space normalized to center)
+        final double x0 = (pos[i0 * 3] - bCenterX) * scale;
+        final double y0 = (pos[i0 * 3 + 1] - bCenterY) * scale;
+        final double z0 = (pos[i0 * 3 + 2] - bCenterZ) * scale;
+
+        // Vertex 1
+        final double x1 = (pos[i1 * 3] - bCenterX) * scale;
+        final double y1 = (pos[i1 * 3 + 1] - bCenterY) * scale;
+        final double z1 = (pos[i1 * 3 + 2] - bCenterZ) * scale;
+
+        // Vertex 2
+        final double x2 = (pos[i2 * 3] - bCenterX) * scale;
+        final double y2 = (pos[i2 * 3 + 1] - bCenterY) * scale;
+        final double z2 = (pos[i2 * 3 + 2] - bCenterZ) * scale;
+
+        // 3D Transform: Roll (Z) -> Pitch (X) -> Yaw (Y) into Camera Space
+        // Vertex 0 Camera Space
+        final double x0R = x0 * cosR - y0 * sinR;
+        final double y0R = x0 * sinR + y0 * cosR;
+        final double z0R = z0;
+        final double x0P = x0R;
+        final double y0P = y0R * cosP - z0R * sinP;
+        final double z0P = y0R * sinP + z0R * cosP;
+        final double x0Y = x0P * cosYaw + z0P * sinYaw;
+        final double y0Y = y0P;
+        final double z0Y = -x0P * sinYaw + z0P * cosYaw;
+        final double dist0 = z0Y + cameraZ;
+
+        // Vertex 1 Camera Space
+        final double x1R = x1 * cosR - y1 * sinR;
+        final double y1R = x1 * sinR + y1 * cosR;
+        final double z1R = z1;
+        final double x1P = x1R;
+        final double y1P = y1R * cosP - z1R * sinP;
+        final double z1P = y1R * sinP + z1R * cosP;
+        final double x1Y = x1P * cosYaw + z1P * sinYaw;
+        final double y1Y = y1P;
+        final double z1Y = -x1P * sinYaw + z1P * cosYaw;
+        final double dist1 = z1Y + cameraZ;
+
+        // Vertex 2 Camera Space
+        final double x2R = x2 * cosR - y2 * sinR;
+        final double y2R = x2 * sinR + y2 * cosR;
+        final double z2R = z2;
+        final double x2P = x2R;
+        final double y2P = y2R * cosP - z2R * sinP;
+        final double z2P = y2R * sinP + z2R * cosP;
+        final double x2Y = x2P * cosYaw + z2P * sinYaw;
+        final double y2Y = y2P;
+        final double z2Y = -x2P * sinYaw + z2P * cosYaw;
+        final double dist2 = z2Y + cameraZ;
+
+        // Robust near-plane culling: guarantees zero exploding/inverted triangles
+        if (dist0 < 0.22 || dist1 < 0.22 || dist2 < 0.22) {
+          continue;
+        }
+
+        // Perspective Screen Space Projection
+        final Offset p0 = Offset((x0Y / dist0) * fov, -(y0Y / dist0) * fov);
+        final Offset p1 = Offset((x1Y / dist1) * fov, -(y1Y / dist1) * fov);
+        final Offset p2 = Offset((x2Y / dist2) * fov, -(y2Y / dist2) * fov);
+
+        // Screen-space backface culling (signed area cross product)
+        final double crossZ = (p1.dx - p0.dx) * (p2.dy - p0.dy) - (p1.dy - p0.dy) * (p2.dx - p0.dx);
+        if (crossZ <= 0) continue;
+
+        // Transformed camera-space face normal computation
+        final double v1x = x1Y - x0Y;
+        final double v1y = y1Y - y0Y;
+        final double v1z = z1Y - z0Y;
+        final double v2x = x2Y - x0Y;
+        final double v2y = y2Y - y0Y;
+        final double v2z = z2Y - z0Y;
+
+        final double nx = v1y * v2z - v1z * v2y;
+        final double ny = v1z * v2x - v1x * v2z;
+        final double nz = v1x * v2y - v1y * v2x;
+        final double nMag = math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (nMag <= 0.00001) continue;
+
+        final double normX = nx / nMag;
+        final double normY = ny / nMag;
+        final double normZ = nz / nMag;
+
+        // 1. PBR Diffuse Shading (N · L)
+        final double dotL = (normX * nLx + normY * nLy + normZ * nLz).clamp(0.0, 1.0);
+        final double diffuse = dotL * 0.65 + 0.35;
+
+        // 2. Physical Specular Highlight (N · H)^shininess
+        final double dotH = (normX * nhx + normY * nhy + normZ * nhz).clamp(0.0, 1.0);
+        final double specular = math.pow(dotH, 24.0).toDouble() * 0.70;
+
+        // 3. Fresnel Rim Reflection (1 - N · V)^3 (Schlick approximation)
+        final double dotV = (normX * vx + normY * vy + normZ * vz).clamp(0.0, 1.0);
+        final double fresnel = math.pow(1.0 - dotV, 3.2).toDouble();
+
+        // True Camera Depth for Painter's algorithm
+        final double avgDist = (dist0 + dist1 + dist2) / 3.0;
+
+        triangles.add(_ProjectedTriangle(
+          p0: p0,
+          p1: p1,
+          p2: p2,
+          depth: avgDist,
+          diffuse: diffuse,
+          specular: specular,
+          fresnel: fresnel,
+        ));
       }
-
-      // Vertex 0
-      final double x0 = (pos[i0 * 3] - bCenterX) * scale;
-      final double y0 = (pos[i0 * 3 + 1] - bCenterY) * scale;
-      final double z0 = (pos[i0 * 3 + 2] - bCenterZ) * scale;
-
-      // Vertex 1
-      final double x1 = (pos[i1 * 3] - bCenterX) * scale;
-      final double y1 = (pos[i1 * 3 + 1] - bCenterY) * scale;
-      final double z1 = (pos[i1 * 3 + 2] - bCenterZ) * scale;
-
-      // Vertex 2
-      final double x2 = (pos[i2 * 3] - bCenterX) * scale;
-      final double y2 = (pos[i2 * 3 + 1] - bCenterY) * scale;
-      final double z2 = (pos[i2 * 3 + 2] - bCenterZ) * scale;
-
-      // 3D Transform: Roll (Z) -> Pitch (X) -> Yaw (Y)
-      final Offset p0 = _projectPoint(x0, y0, z0, cosR, sinR, cosP, sinP, cosYaw, sinYaw, cameraZ, fov);
-      final Offset p1 = _projectPoint(x1, y1, z1, cosR, sinR, cosP, sinP, cosYaw, sinYaw, cameraZ, fov);
-      final Offset p2 = _projectPoint(x2, y2, z2, cosR, sinR, cosP, sinP, cosYaw, sinYaw, cameraZ, fov);
-
-      // Backface culling in screen space (signed triangle area)
-      final double crossZ = (p1.dx - p0.dx) * (p2.dy - p0.dy) - (p1.dy - p0.dy) * (p2.dx - p0.dx);
-      if (crossZ <= 0) continue;
-
-      // Face normal for lighting
-      final double v1x = x1 - x0;
-      final double v1y = y1 - y0;
-      final double v1z = z1 - z0;
-      final double v2x = x2 - x0;
-      final double v2y = y2 - y0;
-      final double v2z = z2 - z0;
-
-      final double nx = v1y * v2z - v1z * v2y;
-      final double ny = v1z * v2x - v1x * v2z;
-      final double nz = v1x * v2y - v1y * v2x;
-      final double nMag = math.sqrt(nx * nx + ny * ny + nz * nz);
-
-      double diffuse = 0.4;
-      if (nMag > 0.0001) {
-        final double dotL = (nx / nMag) * nLx + (ny / nMag) * nLy + (nz / nMag) * nLz;
-        diffuse = (dotL.clamp(0.0, 1.0) * 0.6) + 0.35;
-      }
-
-      final double avgZ = (z0 + z1 + z2) / 3.0;
-
-      triangles.add(_ProjectedTriangle(
-        p0: p0,
-        p1: p1,
-        p2: p2,
-        depth: avgZ,
-        diffuse: diffuse,
-      ));
     }
 
-    // Depth sort far-to-near (Painter's algorithm)
-    triangles.sort((a, b) => a.depth.compareTo(b.depth));
+    if (triangles.isEmpty) return false;
 
-    // Render sorted triangles
+    // Depth sort far-to-near (Painter's algorithm: largest camera distance drawn first)
+    triangles.sort((_ProjectedTriangle a, _ProjectedTriangle b) => b.depth.compareTo(a.depth));
+
+    // Render sorted triangles with PBR lighting, specular glints, and Fresnel rim
     for (final _ProjectedTriangle tri in triangles) {
       final Path triPath = Path()
         ..moveTo(tri.p0.dx, tri.p0.dy)
@@ -1921,67 +2017,47 @@ class _Aion2CharacterPainter extends CustomPainter {
         ..lineTo(tri.p2.dx, tri.p2.dy)
         ..close();
 
-      final Color triColor = Color.lerp(
+      final Color baseShade = Color.lerp(
         AppColors.spaceNavy,
         keyColor,
-        tri.diffuse * (runesActive ? 0.9 : 0.6),
+        (tri.diffuse * (runesActive ? 0.95 : 0.65)).clamp(0.0, 1.0),
       )!;
 
+      final Color shadedWithSpec = Color.lerp(
+        baseShade,
+        Colors.white,
+        tri.specular.clamp(0.0, 0.7),
+      )!;
+
+      final Color finalTriColor = enableSecondaryRimLight
+          ? Color.lerp(
+              shadedWithSpec,
+              rimColor,
+              (tri.fresnel * (runesActive ? 0.75 : 0.4)).clamp(0.0, 0.8),
+            )!
+          : shadedWithSpec;
+
       final Paint triPaint = Paint()
-        ..color = triColor
+        ..color = finalTriColor
         ..style = PaintingStyle.fill;
 
       canvas.drawPath(triPath, triPaint);
 
-      // Edge wireframe highlight for runic mesh definition (secondary rim light calculation)
+      // Edge wireframe definition (arcane rune resonance)
       if (runesActive && enableSecondaryRimLight) {
         final Paint wirePaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.6
-          ..color = rimColor.withValues(alpha: (tri.diffuse * 0.4).clamp(0.0, 0.8));
+          ..color = rimColor.withValues(
+            alpha: ((tri.diffuse * 0.4) + (tri.fresnel * 0.4)).clamp(0.0, 0.85),
+          );
         canvas.drawPath(triPath, wirePaint);
       }
     }
 
-    return triangles.isNotEmpty;
+    return true;
   }
 
-  Offset _projectPoint(
-    double x,
-    double y,
-    double z,
-    double cosR,
-    double sinR,
-    double cosP,
-    double sinP,
-    double cosY,
-    double sinY,
-    double cameraZ,
-    double fov,
-  ) {
-    // Roll (Z)
-    final double xR = x * cosR - y * sinR;
-    final double yR = x * sinR + y * cosR;
-    final double zR = z;
-
-    // Pitch (X)
-    final double xP = xR;
-    final double yP = yR * cosP - zR * sinP;
-    final double zP = yR * sinP + zR * cosP;
-
-    // Yaw (Y)
-    final double xY = xP * cosY + zP * sinY;
-    final double yY = yP;
-    final double zY = -xP * sinY + zP * cosY;
-
-    // Perspective projection
-    final double dist = zY + cameraZ;
-    final double safeDist = dist > 0.1 ? dist : 0.1;
-    final double px = (xY / safeDist) * fov;
-    final double py = -(yY / safeDist) * fov;
-
-    return Offset(px, py);
-  }
 
   // --------------------------------------------------------------------------
   // HIGH-FIDELITY SPRITE WITH IRIDESCENT ARMOR SHEEN FALLBACK
@@ -2350,6 +2426,8 @@ class _ProjectedTriangle {
   final Offset p2;
   final double depth;
   final double diffuse;
+  final double specular;
+  final double fresnel;
 
   const _ProjectedTriangle({
     required this.p0,
@@ -2357,5 +2435,7 @@ class _ProjectedTriangle {
     required this.p2,
     required this.depth,
     required this.diffuse,
+    this.specular = 0.0,
+    this.fresnel = 0.0,
   });
 }

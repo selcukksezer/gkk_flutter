@@ -247,6 +247,33 @@ class _HorseRaceLivingTrackBackdrop extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: <Widget>[
+          // Genuine high-res lush open racecourse grassland landscape
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/backgrounds/elysea/bg_poeta_clovers.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              errorBuilder: (_, __, ___) =>
+                  const ColoredBox(color: HorseRaceDesign.void_),
+            ),
+          ),
+          // Dark twilight stadium floodlight vignette for clear track contrast
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    HorseRaceDesign.void_.withValues(alpha: 0.65),
+                    HorseRaceDesign.void_.withValues(alpha: 0.82),
+                    HorseRaceDesign.void_.withValues(alpha: 0.95),
+                  ],
+                  stops: const <double>[0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ),
           // Dual ambient arena glow orbs
           Positioned(
             top: -90,

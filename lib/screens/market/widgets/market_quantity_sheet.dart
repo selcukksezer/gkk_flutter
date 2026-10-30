@@ -76,6 +76,7 @@ class MarketQuantitySheet extends StatefulWidget {
 class _MarketQuantitySheetState extends State<MarketQuantitySheet> {
   late int _quantity;
   late final TextEditingController _priceController;
+  bool _isSubmitting = false;
 
   int get _unitPrice {
     if (widget.allowPriceEdit) {
@@ -93,6 +94,7 @@ class _MarketQuantitySheetState extends State<MarketQuantitySheet> {
   int get _fee => marketFeeAmount(_unitPrice, _quantity);
 
   bool get _canConfirm {
+    if (_isSubmitting) return false;
     if (_quantity < 1 || _quantity > _effectiveMax) return false;
     if (_unitPrice <= 0) return false;
     if (widget.mode == MarketQuantityMode.buy && widget.playerGold != null) {
@@ -254,10 +256,14 @@ class _MarketQuantitySheetState extends State<MarketQuantitySheet> {
               Expanded(
                 child: MarketPrimaryButton(
                   label: widget.confirmLabel,
-                  onPressed: _canConfirm
-                      ? () => Navigator.of(context).pop(
+                  onPressed: (_canConfirm && !_isSubmitting)
+                      ? () {
+                          if (_isSubmitting) return;
+                          setState(() => _isSubmitting = true);
+                          Navigator.of(context).pop(
                             MarketQuantityResult(quantity: _quantity, unitPrice: _unitPrice),
-                          )
+                          );
+                        }
                       : null,
                 ),
               ),

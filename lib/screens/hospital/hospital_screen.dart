@@ -1171,6 +1171,7 @@ class _TabButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
+        constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),

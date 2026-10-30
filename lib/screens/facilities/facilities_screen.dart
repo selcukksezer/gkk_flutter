@@ -24,6 +24,7 @@ import 'facility_detail_data.dart';
 import 'widgets/facilities_dialogs.dart';
 import 'widgets/facilities_hub_design.dart';
 import 'widgets/facilities_ui.dart';
+import 'widgets/facility_3d_hub_showcase.dart';
 import 'widgets/facility_hub_cards.dart';
 
 /// Durum Filtresi Seçenekleri
@@ -50,6 +51,7 @@ class FacilitiesScreen extends ConsumerStatefulWidget {
 class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
   String _selectedCategory = 'all';
   FacilityStatusFilter _selectedStatus = FacilityStatusFilter.all;
+  String _previewFacilityType = 'tahil_ambari';
 
   @override
   void initState() {
@@ -200,6 +202,17 @@ class _FacilitiesScreenState extends ConsumerState<FacilitiesScreen> {
                         bribeGemCost,
                       ),
                     ),
+                    Facility3dHubShowcase(
+                      selectedType: _previewFacilityType,
+                      unlockedByType: unlockedByType,
+                      onFacilitySelected: (String type) {
+                        setState(() => _previewFacilityType = type);
+                      },
+                      onInspectTap: () {
+                        context.go(AppRoutes.facilityDetail(_previewFacilityType));
+                      },
+                    ),
+                    const SizedBox(height: FacilitiesUi.gap),
                     _buildRevenueHeroCard(
                       unlockedCount: unlockedByType.length,
                       totalCount: 15,

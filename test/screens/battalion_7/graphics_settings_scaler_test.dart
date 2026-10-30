@@ -263,11 +263,13 @@ void main() {
       expect(find.text('DONANIM VE CİHAZ PROFİLİ'), findsOneWidget);
 
       // Verify Fine Tuning
+      await tester.scrollUntilVisible(find.text('İNCE MOTOR AYARLARI'), 200);
       expect(find.text('İNCE MOTOR AYARLARI'), findsOneWidget);
       expect(find.text('KADEMELİ GÖLGE ÇÖZÜNÜRLÜĞÜ'), findsOneWidget);
       expect(find.text('VOLÜMETRİK SİS IŞIN ADIMLARI'), findsOneWidget);
 
       // Verify Live Test Bench & Telemetry
+      await tester.scrollUntilVisible(find.text('CANLI ÖLÇEKLEYİCİ TELEMETRİSİ'), 200);
       expect(find.text('CANLI ÖLÇEKLEYİCİ TELEMETRİSİ'), findsOneWidget);
       expect(find.text('Kare Düşüşü Simüle Et'), findsOneWidget);
       expect(find.text('Toparlanma Simüle Et'), findsOneWidget);

@@ -49,16 +49,28 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
     });
   }
 
-  void _measureText(String text) {
+  static const TextStyle _textStyle = TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 13,
+    color: Colors.white,
+    height: 1.1,
+  );
+
+  double _measureText(String text, [BuildContext? context]) {
     final TextPainter painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        style: _textStyle,
       ),
-      textDirection: TextDirection.ltr,
+      textDirection: context != null
+          ? (Directionality.maybeOf(context) ?? TextDirection.ltr)
+          : TextDirection.ltr,
+      textScaler: context != null
+          ? (MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling)
+          : TextScaler.noScaling,
       maxLines: 1,
     )..layout();
-    _textWidth = painter.width + 8;
+    return painter.width + 8;
   }
 
   void _syncAndPlay({bool forceRestart = false}) {
@@ -75,7 +87,7 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
     _playingId = nextId;
     _playingText = nextText;
     _playingVisual = nextVisual;
-    _measureText(nextText);
+    _textWidth = _measureText(nextText);
     _ctrl
       ..duration = _passDuration
       ..forward(from: 0);
@@ -94,14 +106,18 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
     final LiveTickerVisual visual =
         current?.visual ?? LiveTickerVisual.forType('ambient');
 
+    final double measured = _measureText(text, context);
+    _textWidth = measured;
+
+    final bool idChanged = headId != _playingId;
     if (!_kickStarted) {
       _kickStarted = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncAndPlay(forceRestart: true);
       });
-    } else if (headId != _playingId) {
+    } else if (idChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _syncAndPlay();
+        if (mounted) _syncAndPlay(forceRestart: true);
       });
     }
 
@@ -117,7 +133,7 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final double viewW = constraints.maxWidth;
-            final double tw = _textWidth > 0 ? _textWidth : viewW * 0.75;
+            final double tw = _textWidth > 0 ? _textWidth : measured;
 
             return Row(
               children: <Widget>[
@@ -135,13 +151,13 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
                       child: AnimatedBuilder(
                         animation: _ctrl,
                         builder: (BuildContext context, Widget? child) {
-                          final double start = viewW * 0.95;
+                          final double start = viewW;
                           final double end = -tw;
                           final double left = start +
                               (end - start) *
                                   Curves.linear.transform(_ctrl.value);
                           return Stack(
-                            clipBehavior: Clip.hardEdge,
+                            clipBehavior: Clip.none,
                             children: <Widget>[
                               Positioned(
                                 left: left,
@@ -167,12 +183,7 @@ class _LiveTickerState extends ConsumerState<LiveTicker>
                               text,
                               maxLines: 1,
                               softWrap: false,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: Colors.white,
-                                height: 1.1,
-                              ),
+                              style: _textStyle,
                             ),
                           ),
                         ),

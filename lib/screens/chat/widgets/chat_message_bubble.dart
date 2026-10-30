@@ -280,8 +280,10 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
     ChatChannel channel,
   ) {
     if (isOwn) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
+      return Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 5,
+        runSpacing: 3,
         children: <Widget>[
           // Miniature Channel luminescence indicator pill
           Container(
@@ -304,16 +306,11 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
               ),
             ),
           ),
-          const SizedBox(width: 5),
 
-          if (m.senderClass != null) ...<Widget>[
+          if (m.senderClass != null)
             SenderClassInsignia(senderClass: m.senderClass!, size: 14),
-            const SizedBox(width: 4),
-          ],
-          if (m.senderLevel != null) ...<Widget>[
+          if (m.senderLevel != null)
             SenderLevelBadge(level: m.senderLevel!, compact: true),
-            const SizedBox(width: 4),
-          ],
 
           // Own "Sen" badge
           Container(
@@ -347,7 +344,6 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
               ],
             ),
           ),
-          const SizedBox(width: 6),
 
           // Timestamp elegance with double checkmark
           Row(

@@ -785,6 +785,7 @@ class KnockbackRagdollController {
         .clamp(0.0, 1.0);
 
     _startBlendWeight = _ragdollWeight;
+    _ragdollWeight = math.max(_ragdollWeight, _currentMaxRagdollWeight * 0.20);
     _phase = RagdollPhase.blendingIn;
     _phaseTime = 0.0;
 

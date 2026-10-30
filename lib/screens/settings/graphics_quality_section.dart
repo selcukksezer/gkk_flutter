@@ -417,30 +417,40 @@ class _MemoryAndPerfIndicator extends StatelessWidget {
                 color: GraphicsQualitySection.cyanAion,
               ),
               const SizedBox(width: 6),
-              Text(
-                'TAHMİNİ BELLEK VE MOTOR YÜKÜ',
-                style: AppTextStyles.captionBold.copyWith(
-                  color: SettingsPalette.titanium,
-                  letterSpacing: 0.8,
-                  fontSize: 10,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: SettingsPalette.neon,
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: SettingsPalette.neon.withValues(alpha: 0.8),
-                      blurRadius: 6,
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(
+                        'TAHMİNİ BELLEK VE MOTOR YÜKÜ',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.captionBold.copyWith(
+                          color: SettingsPalette.titanium,
+                          letterSpacing: 0.8,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: SettingsPalette.neon,
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: SettingsPalette.neon.withValues(alpha: 0.8),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Text(
                 config.tier.badgeDescription,
                 style: AppTextStyles.caption.copyWith(
@@ -926,14 +936,18 @@ class _ResolutionScaleSlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            Text(
-              'DAHİLİ ÇÖZÜNÜRLÜK ÖLÇEĞİ',
-              style: AppTextStyles.captionBold.copyWith(
-                color: SettingsPalette.titanium,
-                letterSpacing: 0.8,
-                fontSize: 11,
+            Expanded(
+              child: Text(
+                'DAHİLİ ÇÖZÜNÜRLÜK ÖLÇEĞİ',
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.captionBold.copyWith(
+                  color: SettingsPalette.titanium,
+                  letterSpacing: 0.8,
+                  fontSize: 11,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(

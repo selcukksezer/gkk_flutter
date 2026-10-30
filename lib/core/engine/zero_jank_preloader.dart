@@ -7,6 +7,40 @@ import 'dart:math' as math;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
+import 'adaptive_quality_scaler.dart';
+
+/// Telemetry report validating asset and shader preloading against the strict < 2ms/frame budget.
+class WarmupValidationReport {
+  /// Total number of individual assets/shaders warmed up.
+  final int totalWarmedUp;
+
+  /// Cumulative elapsed duration in milliseconds.
+  final double totalElapsedMs;
+
+  /// Peak frame-slice duration encountered across all warmup tasks.
+  final double maxSliceMs;
+
+  /// Mean frame-slice duration in milliseconds.
+  final double averageSliceMs;
+
+  /// Whether all slice times remained strictly < 2.0ms as required by the engine specification.
+  final bool budgetStrictlyRespected;
+
+  const WarmupValidationReport({
+    required this.totalWarmedUp,
+    required this.totalElapsedMs,
+    required this.maxSliceMs,
+    required this.averageSliceMs,
+    required this.budgetStrictlyRespected,
+  });
+
+  @override
+  String toString() =>
+      'WarmupValidationReport(warmedUp: $totalWarmedUp, totalMs: ${totalElapsedMs.toStringAsFixed(2)}, '
+      'maxSlice: ${maxSliceMs.toStringAsFixed(3)}ms, avgSlice: ${averageSliceMs.toStringAsFixed(3)}ms, '
+      'passed: $budgetStrictlyRespected)';
+}
+
 /// Loading priorities strictly enforced by the Zero-Jank Preloader.
 /// Ordered from highest urgency (0) to lowest urgency (3).
 enum PreloadPriority {
@@ -87,14 +121,25 @@ class ZeroJankConfig {
     this.touchCooldown = const Duration(milliseconds: 100),
     this.highWatermark = 0.95,
     this.lowWatermark = 0.80,
-  })  : assert(frameBudgetMs > 0.0 && frameBudgetMs <= 5.0, 'Frame budget must be between 0.1ms and 5.0ms'),
+  })  : assert(frameBudgetMs > 0.0 && frameBudgetMs < 2.0, 'Frame budget must be strictly less than 2.0ms for zero-jank compliance'),
         assert(ramCeilingBytes > 0, 'RAM ceiling must be positive'),
         assert(vramCeilingBytes > 0, 'VRAM ceiling must be positive'),
         assert(highWatermark > lowWatermark, 'High watermark must be greater than low watermark');
 
+  /// 90MB total memory ceiling for eco-spec ultra-budget devices (30MB RAM + 60MB VRAM).
+  factory ZeroJankConfig.eco() => const ZeroJankConfig(
+        frameBudgetMs: 1.0,
+        ramCeilingBytes: 30 * 1024 * 1024, // 30 MB
+        vramCeilingBytes: 60 * 1024 * 1024, // 60 MB -> 90 MB total
+        yieldOnTouch: true,
+        touchCooldown: Duration(milliseconds: 180),
+        highWatermark: 0.85,
+        lowWatermark: 0.70,
+      );
+
   /// 150MB total memory ceiling for low-spec mobile/SoC (50MB RAM + 100MB VRAM).
   factory ZeroJankConfig.lowSpec() => const ZeroJankConfig(
-        frameBudgetMs: 1.5,
+        frameBudgetMs: 1.4,
         ramCeilingBytes: 50 * 1024 * 1024, // 50 MB
         vramCeilingBytes: 100 * 1024 * 1024, // 100 MB -> 150 MB total
         yieldOnTouch: true,
@@ -105,7 +150,7 @@ class ZeroJankConfig {
 
   /// 300MB total memory ceiling for mid-range hardware (100MB RAM + 200MB VRAM).
   factory ZeroJankConfig.midSpec() => const ZeroJankConfig(
-        frameBudgetMs: 1.8,
+        frameBudgetMs: 1.6,
         ramCeilingBytes: 100 * 1024 * 1024, // 100 MB
         vramCeilingBytes: 200 * 1024 * 1024, // 200 MB -> 300 MB total
         yieldOnTouch: true,
@@ -114,7 +159,7 @@ class ZeroJankConfig {
 
   /// 500MB total memory ceiling for high-spec flagship hardware (150MB RAM + 350MB VRAM).
   factory ZeroJankConfig.highSpec() => const ZeroJankConfig(
-        frameBudgetMs: 2.0,
+        frameBudgetMs: 1.8,
         ramCeilingBytes: 150 * 1024 * 1024, // 150 MB
         vramCeilingBytes: 350 * 1024 * 1024, // 350 MB -> 500 MB total
         yieldOnTouch: true,
@@ -123,12 +168,21 @@ class ZeroJankConfig {
 
   /// 1000MB total memory ceiling for ultra / desktop PC / flagship 2027 Aion 2 standard.
   factory ZeroJankConfig.ultraSpec() => const ZeroJankConfig(
-        frameBudgetMs: 2.2,
+        frameBudgetMs: 1.9,
         ramCeilingBytes: 300 * 1024 * 1024, // 300 MB
         vramCeilingBytes: 700 * 1024 * 1024, // 700 MB -> 1000 MB total
         yieldOnTouch: true,
         touchCooldown: Duration(milliseconds: 50),
       );
+
+  /// Preset matching [HardwareTier].
+  factory ZeroJankConfig.forTier(HardwareTier tier) => switch (tier) {
+        HardwareTier.eco => ZeroJankConfig.eco(),
+        HardwareTier.low => ZeroJankConfig.lowSpec(),
+        HardwareTier.mid => ZeroJankConfig.midSpec(),
+        HardwareTier.high => ZeroJankConfig.highSpec(),
+        HardwareTier.ultra => ZeroJankConfig.ultraSpec(),
+      };
 
   ZeroJankConfig copyWith({
     double? frameBudgetMs,
@@ -949,6 +1003,85 @@ class ZeroJankPreloader {
       cancellationToken: cancellationToken,
       tags: tags,
       isPinned: isPinned,
+    );
+  }
+
+  /// Batch pre-warms a collection of GLSL Impeller shader programs within time-sliced budgets,
+  /// collecting high-precision timing telemetry and verifying that all frame slices remain strictly < 2.0ms.
+  Future<WarmupValidationReport> warmupShaderPipelineBatch({
+    required List<String> shaderIds,
+    required Future<void> Function(String shaderId, PreloadExecutionContext ctx) warmuper,
+    PreloadPriority priority = PreloadPriority.criticalHud,
+  }) async {
+    double maxSliceMs = 0.0;
+    double totalElapsedMs = 0.0;
+    int sliceCount = 0;
+    bool allUnder2ms = true;
+
+    for (final id in shaderIds) {
+      final start = timeSource.nowMicroseconds;
+      await preloadShader<bool>(
+        id: id,
+        priority: priority,
+        shaderWarmupLoader: (PreloadExecutionContext ctx) async {
+          await warmuper(id, ctx);
+          return true;
+        },
+      );
+      final elapsedMs = (timeSource.nowMicroseconds - start) / 1000.0;
+      if (elapsedMs > maxSliceMs) maxSliceMs = elapsedMs;
+      totalElapsedMs += elapsedMs;
+      sliceCount++;
+      if (elapsedMs >= 2.0) allUnder2ms = false;
+    }
+
+    return WarmupValidationReport(
+      totalWarmedUp: shaderIds.length,
+      totalElapsedMs: totalElapsedMs,
+      maxSliceMs: maxSliceMs,
+      averageSliceMs: sliceCount > 0 ? (totalElapsedMs / sliceCount) : 0.0,
+      budgetStrictlyRespected: allUnder2ms && maxSliceMs < 2.0,
+    );
+  }
+
+  /// Batch pre-warms 3D GLB meshes or PBR textures within time-sliced budgets,
+  /// yielding to UI frames to prevent jank.
+  Future<WarmupValidationReport> warmupAssetBatch({
+    required List<String> assetKeys,
+    required Future<void> Function(String assetKey, PreloadExecutionContext ctx) warmuper,
+    PreloadPriority priority = PreloadPriority.nearbyLod0,
+    CacheTarget targetCache = CacheTarget.vram,
+  }) async {
+    double maxSliceMs = 0.0;
+    double totalElapsedMs = 0.0;
+    int sliceCount = 0;
+    bool allUnder2ms = true;
+
+    for (final key in assetKeys) {
+      final start = timeSource.nowMicroseconds;
+      await preload<bool>(
+        id: key,
+        priority: priority,
+        targetCache: targetCache,
+        estimatedSizeBytes: 2 * 1024 * 1024,
+        loader: (PreloadExecutionContext ctx) async {
+          await warmuper(key, ctx);
+          return true;
+        },
+      );
+      final elapsedMs = (timeSource.nowMicroseconds - start) / 1000.0;
+      if (elapsedMs > maxSliceMs) maxSliceMs = elapsedMs;
+      totalElapsedMs += elapsedMs;
+      sliceCount++;
+      if (elapsedMs >= 2.0) allUnder2ms = false;
+    }
+
+    return WarmupValidationReport(
+      totalWarmedUp: assetKeys.length,
+      totalElapsedMs: totalElapsedMs,
+      maxSliceMs: maxSliceMs,
+      averageSliceMs: sliceCount > 0 ? (totalElapsedMs / sliceCount) : 0.0,
+      budgetStrictlyRespected: allUnder2ms && maxSliceMs < 2.0,
     );
   }
 

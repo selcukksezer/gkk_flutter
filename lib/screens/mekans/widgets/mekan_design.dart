@@ -271,26 +271,57 @@ abstract final class MekanTypography {
 
 /// Full-bleed animated backdrop: deep gradient + runic geometry + starmap + glow orbs.
 class MekanBackdrop extends StatelessWidget {
-  const MekanBackdrop({super.key, required this.child, this.accent = MekanPalette.aqua});
+  const MekanBackdrop({
+    super.key,
+    required this.child,
+    this.accent = MekanPalette.aqua,
+    this.imageAsset = 'assets/images/backgrounds/asmodae/bg_pandaemonium_capital.png',
+  });
 
   final Widget child;
   final Color accent;
+  final String? imageAsset;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[MekanPalette.void_, MekanPalette.navy, MekanPalette.void_],
-          stops: <double>[0.0, 0.5, 1.0],
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        // 1. Deep atmospheric city/capital architectural artwork
+        if (imageAsset != null)
+          Positioned.fill(
+            child: Image.asset(
+              imageAsset!,
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
+        // 2. Dark fantasy vignette gradient overlay
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  MekanPalette.void_.withValues(alpha: 0.72),
+                  MekanPalette.navy.withValues(alpha: 0.88),
+                  MekanPalette.void_.withValues(alpha: 0.96),
+                ],
+                stops: const <double>[0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
         ),
-      ),
-      child: CustomPaint(
-        painter: _BackdropPainter(accent: accent),
-        child: child,
-      ),
+        // 3. Starmap & celestial glow nebulae
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _BackdropPainter(accent: accent),
+            child: child,
+          ),
+        ),
+      ],
     );
   }
 }

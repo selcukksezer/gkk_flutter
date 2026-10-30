@@ -331,6 +331,12 @@ class ShaderCatalog {
 
   // Lighting Shaders
   static const String dungeonLighting = 'shaders/lighting/dungeon_lighting.frag';
+  static const String clusteredCrowdLighting =
+      'shaders/lighting/clustered_crowd_lighting.frag';
+
+  // Master Material Shaders
+  static const String aion2PbrMaster =
+      'shaders/materials/aion2_pbr_master.frag';
 
   // VFX Shaders
   static const String gpuParticles = 'shaders/vfx/gpu_particles.frag';
@@ -350,6 +356,13 @@ class ShaderCatalog {
   static const String windVegetation = 'shaders/world/wind_vegetation.frag';
   static const String waterPuddle = 'shaders/world/water_puddle.frag';
   static const String volumetricFog = 'shaders/world/volumetric_fog.frag';
+  static const String atmosphericSky = 'shaders/world/atmospheric_sky.frag';
+  static const String puddleSsr = 'shaders/world/puddle_ssr.frag';
+
+  // Social Shaders
+  static const String celestialBanner =
+      'shaders/social/celestial_banner.frag';
+  static const String emblemAura = 'shaders/social/emblem_aura.frag';
 
   /// Default registry descriptor list for all shaders in the project.
   static final List<ShaderDescriptor> defaultDescriptors = <ShaderDescriptor>[
@@ -625,13 +638,93 @@ class ShaderCatalog {
           floatCount: 2,
           defaultValue: <double>[1920.0, 1080.0],
         ),
+        UniformDefinition(
+          name: 'uTime',
+          type: UniformType.float,
+          floatOffset: 2,
+          floatCount: 1,
+          defaultValue: <double>[0.0],
+        ),
+        UniformDefinition(
+          name: 'uAmbientColor',
+          type: UniformType.vec3,
+          floatOffset: 3,
+          floatCount: 3,
+          defaultValue: <double>[0.04, 0.05, 0.08],
+        ),
+        UniformDefinition(
+          name: 'uAmbientIntensity',
+          type: UniformType.float,
+          floatOffset: 6,
+          floatCount: 1,
+          defaultValue: <double>[0.8],
+        ),
+        UniformDefinition(
+          name: 'uLightCount',
+          type: UniformType.float,
+          floatOffset: 7,
+          floatCount: 1,
+          defaultValue: <double>[1.0],
+        ),
+        UniformDefinition(
+          name: 'uAoModulation',
+          type: UniformType.float,
+          floatOffset: 8,
+          floatCount: 1,
+          defaultValue: <double>[0.6],
+        ),
+        UniformDefinition(
+          name: 'uShadowSoftness',
+          type: UniformType.float,
+          floatOffset: 9,
+          floatCount: 1,
+          defaultValue: <double>[1.0],
+        ),
+        UniformDefinition(
+          name: 'uCameraPos',
+          type: UniformType.vec3,
+          floatOffset: 10,
+          floatCount: 3,
+          defaultValue: <double>[0.0, 0.0, 200.0],
+        ),
+        UniformDefinition(
+          name: 'uLightPosRadius',
+          type: UniformType.vec4,
+          floatOffset: 13,
+          floatCount: 32,
+        ),
+        UniformDefinition(
+          name: 'uLightColorIntensity',
+          type: UniformType.vec4,
+          floatOffset: 45,
+          floatCount: 32,
+        ),
+        UniformDefinition(
+          name: 'uLightParams',
+          type: UniformType.vec4,
+          floatOffset: 77,
+          floatCount: 32,
+        ),
       ],
       samplers: <SamplerDefinition>[
         SamplerDefinition(name: 'uTexture', samplerIndex: 0),
       ],
       fallbackStrategy: ShaderFallbackStrategy.bypass,
       minPerformanceTier: DevicePerformanceTier.ultraLow,
-      warmupParameters: <double>[1.0, 1.0],
+      warmupParameters: <double>[
+        1920.0, 1080.0, 0.0, 0.04, 0.05, 0.08, 0.8, 1.0, 0.6, 1.0,
+        0.0, 0.0, 200.0,
+        // Light 0
+        0.0, 0.0, 0.0, 100.0, 1.0, 0.8, 0.4, 1.0, 0.0, 0.0, 0.75, 32.0,
+        // Lights 1-7 padded
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      ],
     ),
 
     // 6. GPU Particles
@@ -1453,10 +1546,17 @@ class ShaderCatalog {
           floatCount: 1,
           defaultValue: <double>[0.3],
         ),
+        UniformDefinition(
+          name: 'uTier',
+          type: UniformType.float,
+          floatOffset: 7,
+          floatCount: 1,
+          defaultValue: <double>[2.0],
+        ),
       ],
       fallbackStrategy: ShaderFallbackStrategy.bypass,
       minPerformanceTier: DevicePerformanceTier.low,
-      warmupParameters: <double>[1.0, 1.0, 0.0, 1.5, 1.0, 0.0, 0.3],
+      warmupParameters: <double>[1.0, 1.0, 0.0, 1.5, 1.0, 0.0, 0.3, 2.0],
     ),
 
     // 15. World Water Puddle

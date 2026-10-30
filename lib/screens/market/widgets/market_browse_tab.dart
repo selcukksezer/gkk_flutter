@@ -38,6 +38,7 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
   MarketPriceSort _priceSort = MarketPriceSort.lowToHigh;
   Timer? _searchDebounce;
   int _resetKey = 0;
+  bool _isPurchasing = false;
 
   bool get _hasActiveFilters =>
       _search.isNotEmpty || _categoryFilter.isNotEmpty || _rarityFilter.isNotEmpty;
@@ -667,7 +668,7 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
       iconValue: refItem?.icon ?? '',
       itemType: refItem?.itemType ?? marketItemTypeFromString(ticker.itemType),
       stockLabel: '${marketRarityLabel(ticker.rarity)} • ${ticker.volume} stok',
-      canBuy: canBuy,
+      canBuy: canBuy && !_isPurchasing,
       onBuy: () => _openBuySheet(
         context,
         ticker: ticker,
@@ -683,6 +684,7 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
     required int gold,
     required int unitPrice,
   }) async {
+    if (_isPurchasing) return;
     if (ticker.cheapestOrderId == null || ticker.maxAvailableQty <= 0) return;
 
     final MarketQuantityResult? result = await MarketQuantitySheet.show(
@@ -698,24 +700,32 @@ class _MarketBrowseTabState extends ConsumerState<MarketBrowseTab> {
     );
 
     if (result == null || !context.mounted) return;
+    if (_isPurchasing) return;
 
-    final bool ok = await ref.read(marketProvider.notifier).purchaseListing(
-          orderId: ticker.cheapestOrderId!,
-          itemId: ticker.itemId,
-          quantity: result.quantity,
-          unitPrice: result.unitPrice,
-          sellerId: ticker.cheapestSellerId,
-        );
+    setState(() => _isPurchasing = true);
+    try {
+      final bool ok = await ref.read(marketProvider.notifier).purchaseListing(
+            orderId: ticker.cheapestOrderId!,
+            itemId: ticker.itemId,
+            quantity: result.quantity,
+            unitPrice: result.unitPrice,
+            sellerId: ticker.cheapestSellerId,
+          );
 
-    if (!context.mounted) return;
-    if (ok) {
-      HapticFeedback.selectionClick();
-      GoldCoinParticleBurst.trigger(context);
+      if (!context.mounted) return;
+      if (ok) {
+        HapticFeedback.selectionClick();
+        GoldCoinParticleBurst.trigger(context);
+      }
+      showMarketSnackBar(
+        context,
+        ok ? 'Satin alindi' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
+        isError: !ok,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isPurchasing = false);
+      }
     }
-    showMarketSnackBar(
-      context,
-      ok ? 'Satin alindi' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
-      isError: !ok,
-    );
   }
 }

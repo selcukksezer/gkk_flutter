@@ -177,7 +177,7 @@ class _InventoryItemDetailPanelState extends State<InventoryItemDetailPanel>
                 setState(() => _isProcessing = true);
                 try {
                   await AionHaptics.slotSelect();
-                  await onPressed?.call();
+                  await onPressed.call();
                 } catch (e) {
                   debugPrint('Action execution error: $e');
                 } finally {
@@ -189,7 +189,7 @@ class _InventoryItemDetailPanelState extends State<InventoryItemDetailPanel>
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          height: isPrimary ? 46 : 38,
+          height: isPrimary ? 50 : 48,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),

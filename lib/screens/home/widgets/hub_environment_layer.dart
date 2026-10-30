@@ -517,10 +517,14 @@ class HubEnvironmentPainter extends CustomPainter {
       (controller.ambientGround.b * 255.0).clamp(18.0, 54.0).toInt(),
     );
 
+    // Seamless atmospheric blending so the high-resolution Aion-2 capital city background shines through
     _farPaint.shader = ui.Gradient.linear(
       Offset(0.0, horizonY - size.height * 0.38),
       Offset(0.0, horizonY),
-      <Color>[topFarColor, botFarColor],
+      <Color>[
+        topFarColor.withValues(alpha: 0.15),
+        botFarColor.withValues(alpha: 0.35),
+      ],
     );
     canvas.drawPath(_fortressPath, _farPaint);
 

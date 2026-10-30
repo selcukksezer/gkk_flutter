@@ -1001,7 +1001,36 @@ class HospitalSanctuaryBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: Stack(
+        fit: StackFit.expand,
         children: <Widget>[
+          // 1. High-fidelity celestial sanctuary temple artwork
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/backgrounds/elysea/bg_heiron_temple.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              errorBuilder: (_, __, ___) =>
+                  const ColoredBox(color: AppColors.bgDeep),
+            ),
+          ),
+          // 2. Atmospheric vignette & darkening gradient for crystal-clear HUD legibility
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    AppColors.bgDeep.withValues(alpha: 0.50),
+                    AppColors.bgDeep.withValues(alpha: 0.75),
+                    AppColors.bgDeep.withValues(alpha: 0.94),
+                  ],
+                  stops: const <double>[0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // 3. Central divine aura rays
           Positioned(
             top: topOffset,
             left: 0,
@@ -1012,22 +1041,6 @@ class HospitalSanctuaryBackdrop extends StatelessWidget {
                 isHealing: isHealing,
                 showAltarCross: false,
                 intensity: 0.85,
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    Colors.transparent,
-                    AppColors.bgDeep.withValues(alpha: 0.35),
-                    AppColors.bgDeep.withValues(alpha: 0.85),
-                  ],
-                  stops: const <double>[0.0, 0.45, 1.0],
-                ),
               ),
             ),
           ),

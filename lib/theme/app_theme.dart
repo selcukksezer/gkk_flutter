@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 import 'app_spacing.dart';
+import 'obsidian_glass_theme.dart';
 
 class AppTheme {
   const AppTheme._();
@@ -229,6 +230,11 @@ class AppTheme {
         labelMedium: AppTextStyles.caption,
         labelSmall: AppTextStyles.micro,
       ),
+
+      // ── Extensions ──────────────────────────────────────────────────────
+      extensions: const <ThemeExtension<dynamic>>[
+        ObsidianGlassTheme.dark,
+      ],
     );
   }
 }

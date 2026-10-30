@@ -695,6 +695,9 @@ class ScalerTelemetry {
   final Duration stableUnderThresholdDuration;
   final int totalDownscaleEvents;
   final int totalUpscaleEvents;
+  final double p95FrameBudgetMs;
+  final bool isMemoryConstrained;
+  final int? availableRamMb;
 
   const ScalerTelemetry({
     required this.tier,
@@ -712,6 +715,9 @@ class ScalerTelemetry {
     required this.stableUnderThresholdDuration,
     required this.totalDownscaleEvents,
     required this.totalUpscaleEvents,
+    this.p95FrameBudgetMs = 0.0,
+    this.isMemoryConstrained = false,
+    this.availableRamMb,
   });
 
   Map<String, dynamic> toJson() => {
@@ -730,14 +736,18 @@ class ScalerTelemetry {
         'stableUnderThresholdMs': stableUnderThresholdDuration.inMilliseconds,
         'totalDownscaleEvents': totalDownscaleEvents,
         'totalUpscaleEvents': totalUpscaleEvents,
+        'p95FrameBudgetMs': p95FrameBudgetMs,
+        'isMemoryConstrained': isMemoryConstrained,
+        'availableRamMb': availableRamMb,
       };
 
   @override
   String toString() =>
       'ScalerTelemetry(tier: ${tier.name}, throttle: $throttleLevel, scale: ${resolutionScale.toStringAsFixed(2)}x, '
       'FPS: ${rollingFps.toStringAsFixed(1)}, AvgTime: ${rollingAvgFrameTimeMs.toStringAsFixed(2)}ms, '
-      'P95: ${p95FrameTimeMs.toStringAsFixed(2)}ms, Jitter: ${jitterStandardDeviationMs.toStringAsFixed(2)}ms, '
-      'Frames: $totalFramesRecorded, Dropped: $droppedFramesCount)';
+      'P95: ${p95FrameTimeMs.toStringAsFixed(2)}ms, Budget: ${p95FrameBudgetMs.toStringAsFixed(2)}ms, '
+      'Jitter: ${jitterStandardDeviationMs.toStringAsFixed(2)}ms, '
+      'Frames: $totalFramesRecorded, Dropped: $droppedFramesCount, LowMem: $isMemoryConstrained)';
 }
 
 /// Production-ready Adaptive Quality Scaler for low-spec and high-spec devices.
@@ -777,6 +787,16 @@ class AdaptiveQualityScaler extends ChangeNotifier {
   /// unless explicitly overridden by [customRecoveryThresholdMs] or [recoveryThresholdMs].
   final double recoveryThresholdMs;
 
+  /// Frame budget for 95th-percentile (P95) latency in milliseconds.
+  /// Violations of this budget indicate micro-stutters and prompt dynamic downscaling.
+  final double p95FrameBudgetMs;
+
+  /// Factor multiplying target frame time to determine [p95FrameBudgetMs] (default: 1.25).
+  final double p95BudgetFactor;
+
+  /// Critical available memory threshold in MB below which downscaling is triggered (default: 250 MB).
+  final int criticalMemoryThresholdMb;
+
   /// Duration for which frame time must remain uninterruptedly <= [recoveryThresholdMs]
   /// before upscaling by one step (5 seconds).
   final Duration requiredStabilityDuration;
@@ -804,6 +824,8 @@ class AdaptiveQualityScaler extends ChangeNotifier {
   int _framesSinceLastThrottleChange = 999;
   int _totalDownscaleEvents = 0;
   int _totalUpscaleEvents = 0;
+  int? _currentAvailableRamMb;
+  bool _isMemoryConstrained = false;
 
   AdaptiveQualityScaler({
     DeviceHardwareProfile? profile,
@@ -815,6 +837,9 @@ class AdaptiveQualityScaler extends ChangeNotifier {
     this.requiredStabilityDuration = const Duration(seconds: 5),
     this.minimumWarmupFrames = 10,
     this.downscaleCooldownFrames = 30,
+    this.p95BudgetFactor = 1.25,
+    double? customP95FrameBudgetMs,
+    this.criticalMemoryThresholdMb = 250,
     DateTime Function()? clock,
   })  : hardwareProfile = profile ?? DeviceHardwareProfile.midSpecSnapdragon720(),
         targetFps = _resolveTargetFps(profile, initialTier, customTargetFps),
@@ -828,6 +853,11 @@ class AdaptiveQualityScaler extends ChangeNotifier {
                   _resolveTargetFps(profile, initialTier, customTargetFps),
                 ) *
                 0.85),
+        p95FrameBudgetMs = customP95FrameBudgetMs ??
+            (_resolveTargetFrameTimeMs(
+                  _resolveTargetFps(profile, initialTier, customTargetFps),
+                ) *
+                p95BudgetFactor),
         _clock = clock,
         _currentTier = initialTier ?? (profile?.autoDetectTier() ?? HardwareTier.mid),
         _currentSettings = QualitySettings.forTier(
@@ -899,6 +929,38 @@ class AdaptiveQualityScaler extends ChangeNotifier {
   /// Broadcast stream emitting whenever quality settings are modified.
   Stream<QualitySettings> get onSettingsChanged => _settingsStreamController.stream;
 
+  /// Whether device system memory is currently under critical pressure.
+  bool get isMemoryConstrained => _isMemoryConstrained;
+
+  /// Currently recorded available system RAM in Megabytes.
+  int? get currentAvailableRamMb => _currentAvailableRamMb;
+
+  /// Ingests system memory diagnostics and dynamically throttles quality settings
+  /// when available RAM falls below [criticalMemoryThresholdMb] or under 12% total capacity.
+  void recordMemoryPressure({
+    required int availableRamMb,
+    int? totalRamMb,
+  }) {
+    _currentAvailableRamMb = availableRamMb;
+    final total = totalRamMb ?? hardwareProfile.totalRamMb;
+    final marginPercent = (availableRamMb / math.max(1, total)) * 100.0;
+
+    final bool underPressure = availableRamMb < criticalMemoryThresholdMb || marginPercent < 12.0;
+
+    if (underPressure != _isMemoryConstrained) {
+      _isMemoryConstrained = underPressure;
+      if (_isMemoryConstrained && _isAutoScalingEnabled) {
+        if (_currentThrottleLevel < maxThrottleLevel) {
+          _applyThrottleLevel(_currentThrottleLevel + 1);
+          _totalDownscaleEvents++;
+          _stableSince = null;
+          _framesSinceLastThrottleChange = 0;
+        }
+      }
+      notifyListeners();
+    }
+  }
+
   DateTime _now() => _clock != null ? _clock() : DateTime.now();
 
   /// Feed a newly completed frame's duration in milliseconds.
@@ -919,15 +981,19 @@ class AdaptiveQualityScaler extends ChangeNotifier {
     }
 
     final rollingFps = _frameTracker.currentFps;
+    final p95 = _frameTracker.p95FrameTimeMs;
 
     // 1. DOWNSCALE CONDITION:
     // Triggers when rolling 60-frame average drops below downscale threshold (e.g. < 54 FPS on 60Hz, or < 28 FPS on 30Hz),
-    // the current frame is actively struggling (frameTimeMs > targetFrameTimeMs),
-    // and the downscale cooldown period has elapsed.
+    // OR P95 frame latency violates frame budget (p95 > p95FrameBudgetMs),
+    // OR device is under critical memory pressure (isMemoryConstrained),
+    // AND the current frame is actively struggling (frameTimeMs > targetFrameTimeMs || isMemoryConstrained),
+    // AND the downscale cooldown period has elapsed.
     final bool fpsUnderThreshold = rollingFps < downscaleFpsThreshold;
-    final bool isCurrentlyStruggling = frameTimeMs > targetFrameTimeMs;
+    final bool p95BudgetViolated = p95 > p95FrameBudgetMs;
+    final bool isCurrentlyStruggling = frameTimeMs > targetFrameTimeMs || _isMemoryConstrained;
 
-    if (fpsUnderThreshold &&
+    if ((fpsUnderThreshold || p95BudgetViolated || _isMemoryConstrained) &&
         isCurrentlyStruggling &&
         _currentThrottleLevel < maxThrottleLevel &&
         _framesSinceLastThrottleChange >= downscaleCooldownFrames) {
@@ -940,7 +1006,7 @@ class AdaptiveQualityScaler extends ChangeNotifier {
     }
 
     // 2. UPSCALE RECOVERY CONDITION WITH HYSTERESIS PREVENTION:
-    // Frame times must remain continuously <= recoveryThresholdMs for > 5 seconds
+    // Frame times must remain continuously <= recoveryThresholdMs and P95 latency within budget for > 5 seconds
     _evaluateStability(frameTimeMs, now);
   }
 
@@ -956,15 +1022,24 @@ class AdaptiveQualityScaler extends ChangeNotifier {
       return;
     }
 
-    if (frameTimeMs <= recoveryThresholdMs) {
-      // Frame is well within smooth performance ceiling
+    // If memory is critically constrained, upscale recovery is prohibited
+    if (_isMemoryConstrained) {
+      _stableSince = null;
+      return;
+    }
+
+    final bool isFrameSmooth = frameTimeMs <= recoveryThresholdMs;
+    final bool isP95Smooth = _frameTracker.p95FrameTimeMs <= (targetFrameTimeMs * 1.05);
+
+    if (isFrameSmooth && isP95Smooth) {
+      // Frame and P95 are well within smooth performance ceiling
       final stable = _stableSince;
       if (stable == null) {
         _stableSince = now;
       } else {
         final elapsed = now.difference(stable);
         if (elapsed >= requiredStabilityDuration) {
-          // Hysteresis condition satisfied: 5+ continuous seconds under recoveryThresholdMs
+          // Hysteresis condition satisfied: 5+ continuous seconds under recoveryThresholdMs & P95 budget
           _applyThrottleLevel(_currentThrottleLevel - 1);
           _totalUpscaleEvents++;
           // Reset stability start time to now so the next upscale step requires
@@ -975,7 +1050,7 @@ class AdaptiveQualityScaler extends ChangeNotifier {
         }
       }
     } else {
-      // Any single frame exceeding recoveryThresholdMs breaks continuous stability and resets counter!
+      // Any single frame or P95 exceeding recovery budget breaks continuous stability and resets counter!
       _stableSince = null;
     }
   }
@@ -1025,6 +1100,7 @@ class AdaptiveQualityScaler extends ChangeNotifier {
     _frameTracker.reset();
     _stableSince = null;
     _framesSinceLastThrottleChange = 999;
+    _isMemoryConstrained = false;
   }
 
   /// Returns a snapshot of performance telemetry and scaling state.
@@ -1045,6 +1121,9 @@ class AdaptiveQualityScaler extends ChangeNotifier {
       stableUnderThresholdDuration: currentStableDuration,
       totalDownscaleEvents: _totalDownscaleEvents,
       totalUpscaleEvents: _totalUpscaleEvents,
+      p95FrameBudgetMs: p95FrameBudgetMs,
+      isMemoryConstrained: _isMemoryConstrained,
+      availableRamMb: _currentAvailableRamMb,
     );
   }
 

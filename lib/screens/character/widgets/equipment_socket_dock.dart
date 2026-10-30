@@ -278,7 +278,7 @@ class EquipmentSocketDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double effectiveSlotSize = slotSize ?? (compact ? 44.0 : 50.0);
+    final double effectiveSlotSize = slotSize ?? (compact ? 48.0 : 50.0);
     final double verticalSpacing = compact ? AppSpacing.xs : AppSpacing.radiusXs;
 
     return Row(
@@ -524,25 +524,27 @@ class _EquipmentSocketButtonState extends State<_EquipmentSocketButton>
                 ? '${widget.item!.name} (+${widget.item!.enhancementLevel}) · ${aionRarity.displayName}'
                 : '${widget.slotDef.name} (${widget.slotDef.subtitle ?? ""})',
         waitDuration: const Duration(milliseconds: 600),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          onLongPress: widget.onLongPress,
-          behavior: HitTestBehavior.opaque,
-          child: AnimatedBuilder(
-            animation: _pulseController,
-            builder: (BuildContext context, Widget? child) {
-              return CustomPaint(
-                painter: AionRarityGlowPainter(
-                  pulseValue: _pulseController.value,
-                  rarity: aionRarity,
-                  isEquipped: isEquipped,
-                  isHighlighted: widget.isHighlighted,
-                  enhancementLevel: enhancementLevel,
-                  isLocked: widget.isLocked,
-                ),
-                child: Container(
-                  width: widget.size,
-                  height: widget.size,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 48.0, minHeight: 48.0),
+          child: GestureDetector(
+            onTap: widget.onTap,
+            onLongPress: widget.onLongPress,
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedBuilder(
+              animation: _pulseController,
+              builder: (BuildContext context, Widget? child) {
+                return CustomPaint(
+                  painter: AionRarityGlowPainter(
+                    pulseValue: _pulseController.value,
+                    rarity: aionRarity,
+                    isEquipped: isEquipped,
+                    isHighlighted: widget.isHighlighted,
+                    enhancementLevel: enhancementLevel,
+                    isLocked: widget.isLocked,
+                  ),
+                  child: Container(
+                    width: math.max(48.0, widget.size),
+                    height: math.max(48.0, widget.size),
                   alignment: Alignment.center,
                   child: Stack(
                     alignment: Alignment.center,
@@ -565,7 +567,7 @@ class _EquipmentSocketButtonState extends State<_EquipmentSocketButton>
                                   fit: BoxFit.contain,
                                   color: Colors.white.withValues(alpha: 0.70),
                                   colorBlendMode: BlendMode.srcIn,
-                                  errorBuilder: (_, __, ___) => Icon(
+                                  errorBuilder: (_, _, _) => Icon(
                                     widget.slotDef.icon,
                                     size: widget.size * 0.44,
                                     color: Colors.white70,
@@ -646,8 +648,9 @@ class _EquipmentSocketButtonState extends State<_EquipmentSocketButton>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// Compact gem socket indicator pips representing inserted elemental manastones
   Widget _buildGemSocketPips(EquipmentSlotDef def, InventoryItem item) {

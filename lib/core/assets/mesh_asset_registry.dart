@@ -1323,6 +1323,28 @@ class MeshAssetRegistry {
     }).toList();
   }
 
+  /// Finds model metadata that contains the specified asset [filePath].
+  MeshAssetMetadata? getByPath(String filePath) {
+    for (final MeshAssetMetadata meta in _registry.values) {
+      for (final ModelLodInfo lod in meta.lods.values) {
+        if (lod.filePath == filePath) return meta;
+      }
+    }
+    return null;
+  }
+
+  /// Returns a set of all registered asset file paths across all models and LODs.
+  Set<String> getAllAssetPaths() {
+    final Set<String> paths = <String>{};
+    for (final MeshAssetMetadata meta in _registry.values) {
+      for (final ModelLodInfo lod in meta.lods.values) {
+        paths.add(lod.filePath);
+      }
+    }
+    return paths;
+  }
+
+
   // --------------------------------------------------------------------------
   // LOD RESOLVER API
   // --------------------------------------------------------------------------
@@ -2261,6 +2283,3541 @@ class MeshAssetRegistry {
           triangleCount: 16,
           vertexCount: 10,
           fileSizeBytes: 1194260,
+        ),
+      },
+    ));
+
+
+    register(MeshAssetMetadata(
+      id: 'char_barbarian',
+      name: 'Barbarian Berserker',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.53,
+        maxX: 0.97,
+        maxY: 2.19,
+        maxZ: 0.74,
+      ),
+      tags: <String>{'character', 'barbarian', 'berserker', 'warrior', 'melee'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Barbarian_LOD0.glb',
+          triangleCount: 6543,
+          vertexCount: 5987,
+          fileSizeBytes: 2883928, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/Barbarian_LOD1.glb',
+          triangleCount: 3268,
+          vertexCount: 3735,
+          fileSizeBytes: 2862012, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/Barbarian_LOD2.glb',
+          triangleCount: 1298,
+          vertexCount: 1762,
+          fileSizeBytes: 2839344, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/Barbarian_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 50352, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_barbarian_master',
+      name: 'Barbarian Berserker (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.53,
+        maxX: 0.97,
+        maxY: 2.19,
+        maxZ: 0.74,
+      ),
+      tags: <String>{'character', 'barbarian', 'berserker', 'warrior', 'melee', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Barbarian.glb',
+          triangleCount: 6543,
+          vertexCount: 5922,
+          fileSizeBytes: 3613268,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_knight',
+      name: 'Heavy Plate Knight',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.54,
+        maxX: 0.97,
+        maxY: 2.31,
+        maxZ: 0.71,
+      ),
+      tags: <String>{'character', 'knight', 'paladin', 'plate', 'armor'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Knight_LOD0.glb',
+          triangleCount: 6952,
+          vertexCount: 7153,
+          fileSizeBytes: 2896532, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/Knight_LOD1.glb',
+          triangleCount: 3473,
+          vertexCount: 4438,
+          fileSizeBytes: 2870680, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/Knight_LOD2.glb',
+          triangleCount: 1381,
+          vertexCount: 2079,
+          fileSizeBytes: 2844248, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/Knight_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 45044, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_knight_master',
+      name: 'Heavy Plate Knight (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.54,
+        maxX: 0.97,
+        maxY: 2.31,
+        maxZ: 0.71,
+      ),
+      tags: <String>{'character', 'knight', 'paladin', 'plate', 'armor', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Knight.glb',
+          triangleCount: 6952,
+          vertexCount: 7024,
+          fileSizeBytes: 3659532,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_knight_crusader',
+      name: 'Crusader Knight',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -3.4,
+        minY: -0.0,
+        minZ: -0.79,
+        maxX: 3.4,
+        maxY: 5.6,
+        maxZ: 0.59,
+      ),
+      tags: <String>{'character', 'knight', 'crusader', 'holy'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/KnightCharacter_LOD0.glb',
+          triangleCount: 956,
+          vertexCount: 2060,
+          fileSizeBytes: 306084, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/KnightCharacter_LOD1.glb',
+          triangleCount: 478,
+          vertexCount: 1102,
+          fileSizeBytes: 294380, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/KnightCharacter_LOD2.glb',
+          triangleCount: 191,
+          vertexCount: 465,
+          fileSizeBytes: 286064, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/KnightCharacter_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 37976, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_knight_crusader_master',
+      name: 'Crusader Knight (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.03,
+        minY: -0.01,
+        minZ: -0.0,
+        maxX: 0.03,
+        maxY: 0.01,
+        maxZ: 0.06,
+      ),
+      tags: <String>{'character', 'knight', 'crusader', 'holy', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/KnightCharacter.glb',
+          triangleCount: 956,
+          vertexCount: 2058,
+          fileSizeBytes: 393060,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_skeleton_mage',
+      name: 'Crypt Skeleton Mage',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.42,
+        minZ: -0.85,
+        maxX: 0.97,
+        maxY: 2.17,
+        maxZ: 0.89,
+      ),
+      tags: <String>{'character', 'skeleton', 'undead', 'mage', 'crypt'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Skeleton_Mage_LOD0.glb',
+          triangleCount: 4588,
+          vertexCount: 4116,
+          fileSizeBytes: 3917400, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/Skeleton_Mage_LOD1.glb',
+          triangleCount: 2292,
+          vertexCount: 2519,
+          fileSizeBytes: 3900784, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/Skeleton_Mage_LOD2.glb',
+          triangleCount: 913,
+          vertexCount: 1167,
+          fileSizeBytes: 3884420, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/Skeleton_Mage_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 40632, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_skeleton_mage_master',
+      name: 'Crypt Skeleton Mage (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.42,
+        minZ: -0.85,
+        maxX: 0.97,
+        maxY: 2.17,
+        maxZ: 0.89,
+      ),
+      tags: <String>{'character', 'skeleton', 'undead', 'mage', 'crypt', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Skeleton_Mage.glb',
+          triangleCount: 4588,
+          vertexCount: 4056,
+          fileSizeBytes: 4761048,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_skeleton_warrior',
+      name: 'Crypt Skeleton Warrior',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.76,
+        maxX: 0.97,
+        maxY: 2.17,
+        maxZ: 0.7,
+      ),
+      tags: <String>{'character', 'skeleton', 'undead', 'warrior', 'crypt'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Skeleton_Warrior_LOD0.glb',
+          triangleCount: 5934,
+          vertexCount: 6364,
+          fileSizeBytes: 3947300, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/Skeleton_Warrior_LOD1.glb',
+          triangleCount: 2967,
+          vertexCount: 4185,
+          fileSizeBytes: 3924520, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/Skeleton_Warrior_LOD2.glb',
+          triangleCount: 1183,
+          vertexCount: 1902,
+          fileSizeBytes: 3896924, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/Skeleton_Warrior_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 45256, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_skeleton_warrior_master',
+      name: 'Crypt Skeleton Warrior (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.76,
+        maxX: 0.97,
+        maxY: 2.17,
+        maxZ: 0.7,
+      ),
+      tags: <String>{'character', 'skeleton', 'undead', 'warrior', 'crypt', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Skeleton_Warrior.glb',
+          triangleCount: 5934,
+          vertexCount: 6117,
+          fileSizeBytes: 4863620,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_soldier',
+      name: 'Infantry Soldier',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.92,
+        minY: -0.0,
+        minZ: -0.22,
+        maxX: 0.92,
+        maxY: 1.83,
+        maxZ: 0.22,
+      ),
+      tags: <String>{'character', 'soldier', 'infantry', 'guard', 'armor'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Soldier_LOD0.glb',
+          triangleCount: 11376,
+          vertexCount: 7434,
+          fileSizeBytes: 1067624, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/Soldier_LOD1.glb',
+          triangleCount: 5687,
+          vertexCount: 4257,
+          fileSizeBytes: 1006028, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/Soldier_LOD2.glb',
+          triangleCount: 2275,
+          vertexCount: 2082,
+          fileSizeBytes: 952864, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/Soldier_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 35972, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_soldier_master',
+      name: 'Infantry Soldier (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -92.39,
+        minY: -22.48,
+        minZ: -0.04,
+        maxX: 92.41,
+        maxY: 21.9,
+        maxZ: 183.18,
+      ),
+      tags: <String>{'character', 'soldier', 'infantry', 'guard', 'armor', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Soldier.glb',
+          triangleCount: 11376,
+          vertexCount: 7434,
+          fileSizeBytes: 2160468,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_archer',
+      name: 'Elven Marksman Archer',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.51,
+        maxX: 0.97,
+        maxY: 2.27,
+        maxZ: 0.54,
+      ),
+      tags: <String>{'character', 'archer', 'ranger', 'bow', 'elf'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/archer_LOD0.glb',
+          triangleCount: 8900,
+          vertexCount: 7901,
+          fileSizeBytes: 117664, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/archer_LOD1.glb',
+          triangleCount: 4448,
+          vertexCount: 4919,
+          fileSizeBytes: 91456, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/archer_LOD2.glb',
+          triangleCount: 1777,
+          vertexCount: 2359,
+          fileSizeBytes: 61700, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/archer_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 46128, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_archer_master',
+      name: 'Elven Marksman Archer (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.51,
+        maxX: 0.97,
+        maxY: 2.27,
+        maxZ: 0.54,
+      ),
+      tags: <String>{'character', 'archer', 'ranger', 'bow', 'elf', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/archer.glb',
+          triangleCount: 8900,
+          vertexCount: 7734,
+          fileSizeBytes: 484712,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_druid',
+      name: 'Sylvan Forest Druid',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -1.04,
+        minY: -0.0,
+        minZ: -0.61,
+        maxX: 1.02,
+        maxY: 2.75,
+        maxZ: 0.61,
+      ),
+      tags: <String>{'character', 'druid', 'nature', 'magic', 'staff'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/druid_LOD0.glb',
+          triangleCount: 7784,
+          vertexCount: 7790,
+          fileSizeBytes: 120296, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/druid_LOD1.glb',
+          triangleCount: 3891,
+          vertexCount: 5020,
+          fileSizeBytes: 93864, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/druid_LOD2.glb',
+          triangleCount: 1554,
+          vertexCount: 2391,
+          fileSizeBytes: 62888, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/druid_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 47436, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_druid_master',
+      name: 'Sylvan Forest Druid (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -1.04,
+        minY: 0,
+        minZ: -0.61,
+        maxX: 1.02,
+        maxY: 2.75,
+        maxZ: 0.61,
+      ),
+      tags: <String>{'character', 'druid', 'nature', 'magic', 'staff', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/druid.glb',
+          triangleCount: 7784,
+          vertexCount: 7481,
+          fileSizeBytes: 465800,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_hero',
+      name: 'Chosen Realm Hero',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.92,
+        minY: -0.0,
+        minZ: -0.22,
+        maxX: 0.92,
+        maxY: 1.83,
+        maxZ: 0.22,
+      ),
+      tags: <String>{'character', 'hero', 'champion', 'adventurer'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/hero_LOD0.glb',
+          triangleCount: 11376,
+          vertexCount: 7434,
+          fileSizeBytes: 1067624, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/hero_LOD1.glb',
+          triangleCount: 5687,
+          vertexCount: 4257,
+          fileSizeBytes: 1006028, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/hero_LOD2.glb',
+          triangleCount: 2275,
+          vertexCount: 2082,
+          fileSizeBytes: 952864, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/hero_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 35960, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_hero_master',
+      name: 'Chosen Realm Hero (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -92.39,
+        minY: -22.48,
+        minZ: -0.04,
+        maxX: 92.41,
+        maxY: 21.9,
+        maxZ: 183.18,
+      ),
+      tags: <String>{'character', 'hero', 'champion', 'adventurer', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/hero.glb',
+          triangleCount: 11376,
+          vertexCount: 7434,
+          fileSizeBytes: 2160468,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_marksman',
+      name: 'Master Crossbow Marksman',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.62,
+        maxX: 0.97,
+        maxY: 2.22,
+        maxZ: 0.77,
+      ),
+      tags: <String>{'character', 'marksman', 'crossbow', 'sniper'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/marksman_LOD0.glb',
+          triangleCount: 7655,
+          vertexCount: 8350,
+          fileSizeBytes: 303952, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/marksman_LOD1.glb',
+          triangleCount: 3826,
+          vertexCount: 5636,
+          fileSizeBytes: 275936, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/marksman_LOD2.glb',
+          triangleCount: 1529,
+          vertexCount: 2673,
+          fileSizeBytes: 237536, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/marksman_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 48276, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_marksman_master',
+      name: 'Master Crossbow Marksman (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: 0,
+        minZ: -0.62,
+        maxX: 0.97,
+        maxY: 2.22,
+        maxZ: 0.77,
+      ),
+      tags: <String>{'character', 'marksman', 'crossbow', 'sniper', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/marksman.glb',
+          triangleCount: 7655,
+          vertexCount: 8070,
+          fileSizeBytes: 664844,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_paladin',
+      name: 'Order of the Sun Paladin',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -3.4,
+        minY: -0.0,
+        minZ: -0.79,
+        maxX: 3.4,
+        maxY: 5.6,
+        maxZ: 0.59,
+      ),
+      tags: <String>{'character', 'paladin', 'holy', 'templar', 'plate'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/paladin_LOD0.glb',
+          triangleCount: 956,
+          vertexCount: 2060,
+          fileSizeBytes: 306084, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/paladin_LOD1.glb',
+          triangleCount: 478,
+          vertexCount: 1102,
+          fileSizeBytes: 294380, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/paladin_LOD2.glb',
+          triangleCount: 191,
+          vertexCount: 465,
+          fileSizeBytes: 286064, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/paladin_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 37944, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_paladin_master',
+      name: 'Order of the Sun Paladin (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.03,
+        minY: -0.01,
+        minZ: -0.0,
+        maxX: 0.03,
+        maxY: 0.01,
+        maxZ: 0.06,
+      ),
+      tags: <String>{'character', 'paladin', 'holy', 'templar', 'plate', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/paladin.glb',
+          triangleCount: 956,
+          vertexCount: 2058,
+          fileSizeBytes: 393060,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_ranger',
+      name: 'Highland Forest Ranger',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.51,
+        maxX: 0.97,
+        maxY: 2.27,
+        maxZ: 0.54,
+      ),
+      tags: <String>{'character', 'ranger', 'scout', 'forest', 'bow'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/ranger_LOD0.glb',
+          triangleCount: 8900,
+          vertexCount: 7901,
+          fileSizeBytes: 117664, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/ranger_LOD1.glb',
+          triangleCount: 4448,
+          vertexCount: 4919,
+          fileSizeBytes: 91456, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/ranger_LOD2.glb',
+          triangleCount: 1777,
+          vertexCount: 2359,
+          fileSizeBytes: 61700, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/ranger_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 46128, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_ranger_master',
+      name: 'Highland Forest Ranger (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.51,
+        maxX: 0.97,
+        maxY: 2.27,
+        maxZ: 0.54,
+      ),
+      tags: <String>{'character', 'ranger', 'scout', 'forest', 'bow', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/ranger.glb',
+          triangleCount: 8900,
+          vertexCount: 7734,
+          fileSizeBytes: 484712,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_rogue',
+      name: 'Shadow Infiltrator Rogue',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.5,
+        maxX: 0.97,
+        maxY: 2.19,
+        maxZ: 1.16,
+      ),
+      tags: <String>{'character', 'rogue', 'shadow', 'assassin', 'stealth'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/rogue_LOD0.glb',
+          triangleCount: 6377,
+          vertexCount: 5979,
+          fileSizeBytes: 2881140, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/rogue_LOD1.glb',
+          triangleCount: 3186,
+          vertexCount: 3641,
+          fileSizeBytes: 2859388, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/rogue_LOD2.glb',
+          triangleCount: 1269,
+          vertexCount: 1729,
+          fileSizeBytes: 2838504, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/rogue_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 50632, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_rogue_master',
+      name: 'Shadow Infiltrator Rogue (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.5,
+        maxX: 0.97,
+        maxY: 2.19,
+        maxZ: 1.16,
+      ),
+      tags: <String>{'character', 'rogue', 'shadow', 'assassin', 'stealth', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/rogue.glb',
+          triangleCount: 6377,
+          vertexCount: 5901,
+          fileSizeBytes: 3616284,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_rogue_hooded',
+      name: 'Hooded Night Assassin',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.57,
+        maxX: 0.97,
+        maxY: 2.25,
+        maxZ: 1.16,
+      ),
+      tags: <String>{'character', 'rogue', 'assassin', 'hooded', 'daggers'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/rogue_hooded_LOD0.glb',
+          triangleCount: 6035,
+          vertexCount: 5662,
+          fileSizeBytes: 2878492, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/rogue_hooded_LOD1.glb',
+          triangleCount: 3014,
+          vertexCount: 3424,
+          fileSizeBytes: 2857440, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/rogue_hooded_LOD2.glb',
+          triangleCount: 1200,
+          vertexCount: 1589,
+          fileSizeBytes: 2837244, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/rogue_hooded_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 49208, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_rogue_hooded_master',
+      name: 'Hooded Night Assassin (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.57,
+        maxX: 0.97,
+        maxY: 2.25,
+        maxZ: 1.16,
+      ),
+      tags: <String>{'character', 'rogue', 'assassin', 'hooded', 'daggers', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/rogue_hooded.glb',
+          triangleCount: 6035,
+          vertexCount: 5586,
+          fileSizeBytes: 3597652,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_witch',
+      name: 'Occult Coven Witch',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.84,
+        maxX: 0.97,
+        maxY: 2.62,
+        maxZ: 0.76,
+      ),
+      tags: <String>{'character', 'witch', 'occult', 'magic', 'curse'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/witch_LOD0.glb',
+          triangleCount: 6210,
+          vertexCount: 4913,
+          fileSizeBytes: 84504, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/witch_LOD1.glb',
+          triangleCount: 3103,
+          vertexCount: 2971,
+          fileSizeBytes: 66420, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/witch_LOD2.glb',
+          triangleCount: 1238,
+          vertexCount: 1485,
+          fileSizeBytes: 49988, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/witch_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 42880, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_witch_master',
+      name: 'Occult Coven Witch (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.84,
+        maxX: 0.97,
+        maxY: 2.62,
+        maxZ: 0.76,
+      ),
+      tags: <String>{'character', 'witch', 'occult', 'magic', 'curse', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/witch.glb',
+          triangleCount: 6210,
+          vertexCount: 4866,
+          fileSizeBytes: 320316,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_wizard',
+      name: 'Grand Arcane Wizard',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -1.04,
+        minY: -0.0,
+        minZ: -0.61,
+        maxX: 1.02,
+        maxY: 2.75,
+        maxZ: 0.61,
+      ),
+      tags: <String>{'character', 'wizard', 'arcane', 'mage', 'sorcerer'},
+      sockets: const <String, List<double>>{
+        'socket_hand_r': <double>[0.35, 0.90, 0.15],
+        'socket_hand_l': <double>[-0.35, 0.90, 0.15],
+        'socket_head': <double>[0.0, 1.70, 0.05],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/wizard_LOD0.glb',
+          triangleCount: 7784,
+          vertexCount: 7790,
+          fileSizeBytes: 120296, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/characters/wizard_LOD1.glb',
+          triangleCount: 3891,
+          vertexCount: 5020,
+          fileSizeBytes: 93864, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/characters/wizard_LOD2.glb',
+          triangleCount: 1554,
+          vertexCount: 2391,
+          fileSizeBytes: 62888, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/characters/wizard_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 47440, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_wizard_master',
+      name: 'Grand Arcane Wizard (Master High-Poly)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -1.04,
+        minY: 0,
+        minZ: -0.61,
+        maxX: 1.02,
+        maxY: 2.75,
+        maxZ: 0.61,
+      ),
+      tags: <String>{'character', 'wizard', 'arcane', 'mage', 'sorcerer', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/wizard.glb',
+          triangleCount: 7784,
+          vertexCount: 7481,
+          fileSizeBytes: 465800,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_warrior_master',
+      name: 'Vanguard Warrior (Master)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.53,
+        maxX: 0.97,
+        maxY: 2.19,
+        maxZ: 0.74,
+      ),
+      tags: const <String>{'character', 'master', 'humanoid'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/warrior.glb',
+          triangleCount: 6543,
+          vertexCount: 5922,
+          fileSizeBytes: 3613268,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'char_mage_master',
+      name: 'Sorcerer Mage (Master)',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Quaternius / KayKit CC0 Animated Characters',
+      bounds: BoundingBox3D(
+        minX: -1.05,
+        minY: -1.16,
+        minZ: -1.07,
+        maxX: 1.05,
+        maxY: 2.2,
+        maxZ: 1.02,
+      ),
+      tags: const <String>{'character', 'master', 'humanoid'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/characters/Mage.glb',
+          triangleCount: 5683,
+          vertexCount: 5279,
+          fileSizeBytes: 3589240,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_dragon_attenuation',
+      name: 'Volumetric Attenuation Dragon Boss',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -7.05,
+        minY: -3.15,
+        minZ: -9.94,
+        maxX: 7.05,
+        maxY: 3.15,
+        maxZ: 1.43,
+      ),
+      tags: <String>{'character', 'boss', 'dragon', 'titan', 'attenuation'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/DragonAttenuation.glb',
+          triangleCount: 134995,
+          vertexCount: 139379,
+          fileSizeBytes: 6401616,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_golem',
+      name: 'Iron Stone Golem',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -32767,
+        minY: -32767,
+        minZ: -27011,
+        maxX: 32767,
+        maxY: 32767,
+        maxZ: 27011,
+      ),
+      tags: <String>{'character', 'monster', 'golem', 'stone', 'boss'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/golem.glb',
+          triangleCount: 7156,
+          vertexCount: 8185,
+          fileSizeBytes: 292776,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_spider',
+      name: 'Dungeon Cave Spider',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.03,
+        minY: -0.03,
+        minZ: -0.0,
+        maxX: 0.03,
+        maxY: 0.03,
+        maxZ: 0.02,
+      ),
+      tags: <String>{'character', 'monster', 'spider', 'beast'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/Spider.glb',
+          triangleCount: 2712,
+          vertexCount: 5461,
+          fileSizeBytes: 449008,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_wasp',
+      name: 'Giant Stinger Wasp',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.01,
+        minZ: 0.0,
+        maxX: 0.02,
+        maxY: 0.01,
+        maxZ: 0.04,
+      ),
+      tags: <String>{'character', 'monster', 'wasp', 'insect', 'flying'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/Wasp.glb',
+          triangleCount: 3734,
+          vertexCount: 7472,
+          fileSizeBytes: 441256,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_character_zombie',
+      name: 'Rotting Crypt Zombie',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.28,
+        minY: -0.2,
+        minZ: -0.16,
+        maxX: 0.28,
+        maxY: 0.4,
+        maxZ: 0.18,
+      ),
+      tags: <String>{'character', 'monster', 'zombie', 'undead'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/character-zombie.glb',
+          triangleCount: 1078,
+          vertexCount: 1992,
+          fileSizeBytes: 245500,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_elemental',
+      name: 'Fire Elemental Spirit',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.68,
+        minY: -0.75,
+        minZ: -0.66,
+        maxX: 0.68,
+        maxY: 0.92,
+        maxZ: 0.66,
+      ),
+      tags: <String>{'character', 'monster', 'elemental', 'fire', 'spirit'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/elemental.glb',
+          triangleCount: 10432,
+          vertexCount: 6312,
+          fileSizeBytes: 255292,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_ghost',
+      name: 'Specter Wraith',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.27,
+        minY: -0.11,
+        minZ: -0.24,
+        maxX: 0.27,
+        maxY: 0.55,
+        maxZ: 0.24,
+      ),
+      tags: <String>{'character', 'monster', 'ghost', 'wraith', 'specter'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/ghost.glb',
+          triangleCount: 413,
+          vertexCount: 593,
+          fileSizeBytes: 114016,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_goblin',
+      name: 'Goblin Scout Skirmisher',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -32767,
+        minY: -11937,
+        minZ: -29983,
+        maxX: 32767,
+        maxY: 11937,
+        maxZ: 29983,
+      ),
+      tags: <String>{'character', 'monster', 'goblin', 'humanoid'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/goblin.glb',
+          triangleCount: 2912,
+          vertexCount: 2738,
+          fileSizeBytes: 48360,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_orc',
+      name: 'Orc Vanguard Berserker',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -32767,
+        minY: -32767,
+        minZ: -22442,
+        maxX: 32767,
+        maxY: 32767,
+        maxZ: 22442,
+      ),
+      tags: <String>{'character', 'monster', 'orc', 'brute', 'humanoid'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/orc.glb',
+          triangleCount: 7344,
+          vertexCount: 4382,
+          fileSizeBytes: 176892,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_skeleton_archer',
+      name: 'Skeleton Bone Archer',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -1.12,
+        minZ: -0.58,
+        maxX: 0.97,
+        maxY: 2.17,
+        maxZ: 0.57,
+      ),
+      tags: <String>{'character', 'monster', 'skeleton', 'archer', 'undead'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/skeleton_archer.glb',
+          triangleCount: 5278,
+          vertexCount: 5259,
+          fileSizeBytes: 4827024,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_skeleton_mage',
+      name: 'Tomb Skeleton Sorcerer',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.42,
+        minZ: -0.85,
+        maxX: 0.97,
+        maxY: 2.17,
+        maxZ: 0.89,
+      ),
+      tags: <String>{'character', 'monster', 'skeleton', 'mage', 'undead'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/skeleton_mage.glb',
+          triangleCount: 4588,
+          vertexCount: 4056,
+          fileSizeBytes: 4761048,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_skeleton_warrior',
+      name: 'Tomb Skeleton Raider',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.97,
+        minY: -0.0,
+        minZ: -0.76,
+        maxX: 0.97,
+        maxY: 2.17,
+        maxZ: 0.7,
+      ),
+      tags: <String>{'character', 'monster', 'skeleton', 'warrior', 'undead'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/skeleton_warrior.glb',
+          triangleCount: 5934,
+          vertexCount: 6117,
+          fileSizeBytes: 4863620,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_slime',
+      name: 'Toxic Cavern Slime',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -1.27,
+        minY: -0.01,
+        minZ: -1.53,
+        maxX: 1.27,
+        maxY: 1.93,
+        maxZ: 1.53,
+      ),
+      tags: <String>{'character', 'monster', 'slime', 'ooze'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/slime.glb',
+          triangleCount: 1440,
+          vertexCount: 2908,
+          fileSizeBytes: 192132,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_wolf',
+      name: 'Shadow Dire Wolf',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.03,
+        minZ: -0.0,
+        maxX: 0.01,
+        maxY: 0.03,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'character', 'monster', 'wolf', 'beast', 'predator'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/wolf.glb',
+          triangleCount: 1962,
+          vertexCount: 3994,
+          fileSizeBytes: 608660,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'mon_zombie',
+      name: 'Plague Walker Zombie',
+      category: ModelCategory.character,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Quaternius Dark Fantasy Models',
+      bounds: BoundingBox3D(
+        minX: -0.28,
+        minY: -0.2,
+        minZ: -0.16,
+        maxX: 0.28,
+        maxY: 0.4,
+        maxZ: 0.18,
+      ),
+      tags: <String>{'character', 'monster', 'zombie', 'plague', 'undead'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/monsters/zombie.glb',
+          triangleCount: 1078,
+          vertexCount: 1992,
+          fileSizeBytes: 245500,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_brazier_lods',
+      name: 'Iron Brazier with Embers (LOD Suite)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -0.59,
+        minY: -0.02,
+        minZ: -0.55,
+        maxX: 0.6,
+        maxY: 1.04,
+        maxZ: 0.55,
+      ),
+      tags: <String>{'dungeon', 'brazier', 'fire'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Brazier_IronEmbers_LOD0.glb',
+          triangleCount: 952,
+          vertexCount: 1207,
+          fileSizeBytes: 45624, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/props/Brazier_IronEmbers_LOD1.glb',
+          triangleCount: 476,
+          vertexCount: 819,
+          fileSizeBytes: 42408, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/props/Brazier_IronEmbers_LOD2.glb',
+          triangleCount: 238,
+          vertexCount: 403,
+          fileSizeBytes: 38560, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/props/Brazier_IronEmbers_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 34636, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_brazier_lods_multilod',
+      name: 'Iron Brazier with Embers (LOD Suite) (MultiLOD Container)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -0.59,
+        minY: -0.02,
+        minZ: -0.57,
+        maxX: 0.6,
+        maxY: 1.04,
+        maxZ: 0.58,
+      ),
+      tags: <String>{'dungeon', 'brazier', 'fire', 'multilod'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Brazier_IronEmbers_MultiLOD.glb',
+          triangleCount: 1668,
+          vertexCount: 2433,
+          fileSizeBytes: 59928, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_flagstones_lods',
+      name: 'Cracked Flagstones Floor (LOD Suite)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -1.25,
+        minY: -0.1,
+        minZ: -1.25,
+        maxX: 1.39,
+        maxY: 0.15,
+        maxZ: 1.25,
+      ),
+      tags: <String>{'dungeon', 'flagstones', 'tile'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Flagstones_CrackedTile_LOD0.glb',
+          triangleCount: 3132,
+          vertexCount: 2784,
+          fileSizeBytes: 43964, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/props/Flagstones_CrackedTile_LOD1.glb',
+          triangleCount: 1566,
+          vertexCount: 1866,
+          fileSizeBytes: 41660, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/props/Flagstones_CrackedTile_LOD2.glb',
+          triangleCount: 783,
+          vertexCount: 1107,
+          fileSizeBytes: 35116, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/props/Flagstones_CrackedTile_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 24948, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_flagstones_lods_multilod',
+      name: 'Cracked Flagstones Floor (LOD Suite) (MultiLOD Container)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -1.25,
+        minY: -0.1,
+        minZ: -1.25,
+        maxX: 1.39,
+        maxY: 0.4,
+        maxZ: 1.25,
+      ),
+      tags: <String>{'dungeon', 'flagstones', 'tile', 'multilod'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Flagstones_CrackedTile_MultiLOD.glb',
+          triangleCount: 5483,
+          vertexCount: 5761,
+          fileSizeBytes: 73432, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_gargoyle_lods',
+      name: 'Demon Gargoyle Statue (LOD Suite)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -0.63,
+        minY: 0,
+        minZ: -0.45,
+        maxX: 0.63,
+        maxY: 1.62,
+        maxZ: 0.45,
+      ),
+      tags: <String>{'dungeon', 'gargoyle', 'statue'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Gargoyle_DarkStone_LOD0.glb',
+          triangleCount: 1064,
+          vertexCount: 1044,
+          fileSizeBytes: 33936, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/props/Gargoyle_DarkStone_LOD1.glb',
+          triangleCount: 532,
+          vertexCount: 706,
+          fileSizeBytes: 31436, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/props/Gargoyle_DarkStone_LOD2.glb',
+          triangleCount: 266,
+          vertexCount: 436,
+          fileSizeBytes: 28964, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/props/Gargoyle_DarkStone_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 24788, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_gargoyle_lods_multilod',
+      name: 'Demon Gargoyle Statue (LOD Suite) (MultiLOD Container)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -0.63,
+        minY: 0,
+        minZ: -0.45,
+        maxX: 0.63,
+        maxY: 1.62,
+        maxZ: 0.45,
+      ),
+      tags: <String>{'dungeon', 'gargoyle', 'statue', 'multilod'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Gargoyle_DarkStone_MultiLOD.glb',
+          triangleCount: 1864,
+          vertexCount: 2190,
+          fileSizeBytes: 47316, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_stone_altar_lods',
+      name: 'Sacrificial Stone Altar (LOD Suite)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -1.63,
+        minY: 0,
+        minZ: -0.88,
+        maxX: 1.63,
+        maxY: 1.17,
+        maxZ: 0.88,
+      ),
+      tags: <String>{'dungeon', 'altar', 'ritual'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/StoneAltar_Ritual_LOD0.glb',
+          triangleCount: 2932,
+          vertexCount: 2493,
+          fileSizeBytes: 51332, isDracoCompressed: true,
+        ),
+        LodLevel.lod1: ModelLodInfo(
+          lodLevel: LodLevel.lod1,
+          filePath: 'assets/models/props/StoneAltar_Ritual_LOD1.glb',
+          triangleCount: 1466,
+          vertexCount: 1635,
+          fileSizeBytes: 48884, isDracoCompressed: true,
+        ),
+        LodLevel.lod2: ModelLodInfo(
+          lodLevel: LodLevel.lod2,
+          filePath: 'assets/models/props/StoneAltar_Ritual_LOD2.glb',
+          triangleCount: 733,
+          vertexCount: 960,
+          fileSizeBytes: 43240, isDracoCompressed: true,
+        ),
+        LodLevel.impostor: ModelLodInfo(
+          lodLevel: LodLevel.impostor,
+          filePath: 'assets/models/props/StoneAltar_Ritual_Impostor.glb',
+          triangleCount: 2,
+          vertexCount: 4,
+          fileSizeBytes: 35024, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_stone_altar_lods_multilod',
+      name: 'Sacrificial Stone Altar (LOD Suite) (MultiLOD Container)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -1.63,
+        minY: 0,
+        minZ: -0.88,
+        maxX: 1.63,
+        maxY: 1.17,
+        maxZ: 0.88,
+      ),
+      tags: <String>{'dungeon', 'altar', 'ritual', 'multilod'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/StoneAltar_Ritual_MultiLOD.glb',
+          triangleCount: 5133,
+          vertexCount: 5092,
+          fileSizeBytes: 75960, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_gothic_arch_hero_lod0',
+      name: 'Gothic Lancet Arch (Hero LOD0)',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -2.8,
+        minY: 0,
+        minZ: -0.34,
+        maxX: 2.8,
+        maxY: 4.71,
+        maxZ: 0.34,
+      ),
+      tags: <String>{'building', 'arch', 'gothic', 'lod0'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/GothicArch_Lancet_LOD0.glb',
+          triangleCount: 8412,
+          vertexCount: 7360,
+          fileSizeBytes: 74336, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_gothic_arch_multilod',
+      name: 'Gothic Lancet Arch (MultiLOD Container)',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -2.8,
+        minY: 0,
+        minZ: -0.34,
+        maxX: 2.8,
+        maxY: 4.71,
+        maxZ: 0.34,
+      ),
+      tags: <String>{'building', 'arch', 'gothic', 'multilod'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/GothicArch_Lancet_MultiLOD.glb',
+          triangleCount: 14723,
+          vertexCount: 15376,
+          fileSizeBytes: 144532, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_portcullis_hero_lod0',
+      name: 'Iron Dungeon Portcullis (Hero LOD0)',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -1.3,
+        minY: 0,
+        minZ: -0.1,
+        maxX: 1.3,
+        maxY: 3.44,
+        maxZ: 0.1,
+      ),
+      tags: <String>{'building', 'portcullis', 'iron', 'lod0'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Portcullis_HeavyIron_LOD0.glb',
+          triangleCount: 4868,
+          vertexCount: 4856,
+          fileSizeBytes: 50796, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_portcullis_multilod',
+      name: 'Iron Dungeon Portcullis (MultiLOD Container)',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Procedural Dark Fantasy Props Architect (Blender MCP)',
+      bounds: BoundingBox3D(
+        minX: -1.3,
+        minY: 0,
+        minZ: -0.1,
+        maxX: 1.3,
+        maxY: 3.44,
+        maxZ: 0.1,
+      ),
+      tags: <String>{'building', 'portcullis', 'iron', 'multilod'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/props/Portcullis_HeavyIron_MultiLOD.glb',
+          triangleCount: 8521,
+          vertexCount: 10370,
+          fileSizeBytes: 95096, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_chest_gold',
+      name: 'Gilded Royal Treasure Chest',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.01,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.01,
+        maxZ: 0.0,
+      ),
+      tags: <String>{'dungeon', 'chest', 'gold', 'loot', 'treasure'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/Chest_gold.glb',
+          triangleCount: 436,
+          vertexCount: 860,
+          fileSizeBytes: 29924,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_chest_wood',
+      name: 'Reinforced Wooden Chest',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.85,
+        minY: -0.17,
+        minZ: -0.6,
+        maxX: 0.85,
+        maxY: 0.8,
+        maxZ: 1.31,
+      ),
+      tags: <String>{'dungeon', 'chest', 'wood', 'loot'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/chest.glb',
+          triangleCount: 728,
+          vertexCount: 1204,
+          fileSizeBytes: 81412,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_crate_wood',
+      name: 'Supply Wooden Crate',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -1.09,
+        minY: -0.0,
+        minZ: -1.16,
+        maxX: 1.0,
+        maxY: 2.14,
+        maxZ: 1.09,
+      ),
+      tags: <String>{'dungeon', 'crate', 'storage', 'wood'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/crate.glb',
+          triangleCount: 1331,
+          vertexCount: 2457,
+          fileSizeBytes: 103704,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_barrel_wood',
+      name: 'Ale Storage Barrel',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.9,
+        minY: 0.0,
+        minZ: -0.9,
+        maxX: 0.9,
+        maxY: 2.0,
+        maxZ: 0.9,
+      ),
+      tags: <String>{'dungeon', 'barrel', 'ale', 'wood', 'prop'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/barrel.glb',
+          triangleCount: 561,
+          vertexCount: 745,
+          fileSizeBytes: 44292,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_altar_stone',
+      name: 'Ancient Stone Offering Altar',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.52,
+        minY: 0.0,
+        minZ: -0.33,
+        maxX: 0.52,
+        maxY: 0.49,
+        maxZ: 0.33,
+      ),
+      tags: <String>{'dungeon', 'altar', 'stone', 'ancient'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/altar-stone.glb',
+          triangleCount: 166,
+          vertexCount: 300,
+          fileSizeBytes: 17164,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_fire_basket',
+      name: 'Hanging Iron Fire Basket',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.21,
+        minY: 0.0,
+        minZ: -0.21,
+        maxX: 0.21,
+        maxY: 0.17,
+        maxZ: 0.21,
+      ),
+      tags: <String>{'dungeon', 'fire', 'basket', 'light'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/fire-basket.glb',
+          triangleCount: 196,
+          vertexCount: 328,
+          fileSizeBytes: 18740,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_wall_torch',
+      name: 'Wall Mounted Dungeon Torch',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.28,
+        minY: -0.38,
+        minZ: -0.0,
+        maxX: 0.28,
+        maxY: 0.68,
+        maxZ: 0.62,
+      ),
+      tags: <String>{'dungeon', 'torch', 'fire', 'wall'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/torch.glb',
+          triangleCount: 278,
+          vertexCount: 452,
+          fileSizeBytes: 33220,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_column_broken',
+      name: 'Broken Marble Column',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.01,
+        minZ: -0.0,
+        maxX: 0.01,
+        maxY: 0.02,
+        maxZ: 0.01,
+      ),
+      tags: <String>{'building', 'column', 'ruins', 'marble', 'pillar'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/Column_Broken.glb',
+          triangleCount: 140,
+          vertexCount: 272,
+          fileSizeBytes: 9064,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_column_large',
+      name: 'Grand Dungeon Column',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.2,
+        minY: 0.0,
+        minZ: -0.2,
+        maxX: 0.2,
+        maxY: 1.13,
+        maxZ: 0.2,
+      ),
+      tags: <String>{'building', 'column', 'pillar', 'stone'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/column-large.glb',
+          triangleCount: 394,
+          vertexCount: 696,
+          fileSizeBytes: 37540,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_stone_pillar',
+      name: 'Monolithic Stone Pillar',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.75,
+        minY: 0,
+        minZ: -0.75,
+        maxX: 0.75,
+        maxY: 4,
+        maxZ: 0.75,
+      ),
+      tags: <String>{'building', 'pillar', 'stone', 'monolith'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/pillar.glb',
+          triangleCount: 136,
+          vertexCount: 241,
+          fileSizeBytes: 25552,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_pillar_obelisk',
+      name: 'Runic Stone Obelisk',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.17,
+        minY: 0.0,
+        minZ: -0.17,
+        maxX: 0.17,
+        maxY: 1.01,
+        maxZ: 0.17,
+      ),
+      tags: <String>{'building', 'obelisk', 'pillar', 'runes'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/pillar-obelisk.glb',
+          triangleCount: 76,
+          vertexCount: 136,
+          fileSizeBytes: 8552,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_crypt_large',
+      name: 'Catacomb Crypt Portal',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.93,
+        minY: 0.0,
+        minZ: -1.2,
+        maxX: 0.93,
+        maxY: 1.0,
+        maxZ: 1.2,
+      ),
+      tags: <String>{'building', 'crypt', 'catacomb', 'tomb', 'entrance'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/crypt-large.glb',
+          triangleCount: 626,
+          vertexCount: 1028,
+          fileSizeBytes: 54852,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_dungeon_gate',
+      name: 'Heavy Dungeon Gate',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -2,
+        minY: 0,
+        minZ: -0.5,
+        maxX: 2,
+        maxY: 4,
+        maxZ: 0.5,
+      ),
+      tags: <String>{'building', 'gate', 'dungeon', 'portal', 'iron'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/dungeon_gate.glb',
+          triangleCount: 449,
+          vertexCount: 833,
+          fileSizeBytes: 46364,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_dungeon_warkarma',
+      name: 'Warkarma Fortress Dungeon',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -41.3,
+        minY: -40.76,
+        minZ: -33.39,
+        maxX: 37.94,
+        maxY: 41.28,
+        maxZ: 34.81,
+      ),
+      tags: <String>{'building', 'fortress', 'dungeon', 'castle', 'architecture'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/dungeon_warkarma.glb',
+          triangleCount: 72137,
+          vertexCount: 145805,
+          fileSizeBytes: 7990584,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'nat_cliff_rock',
+      name: 'Craggy Cliff Face',
+      category: ModelCategory.natureProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.51,
+        minY: -0.0,
+        minZ: -0.56,
+        maxX: 0.52,
+        maxY: 0.59,
+        maxZ: 0.46,
+      ),
+      tags: <String>{'nature', 'cliff', 'rock', 'crag', 'mountain'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/cliff.glb',
+          triangleCount: 364,
+          vertexCount: 684,
+          fileSizeBytes: 36924,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'nat_grass_clump',
+      name: 'Wild Grass Clump',
+      category: ModelCategory.natureProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.0,
+        maxX: 0.0,
+        maxY: 0.0,
+        maxZ: 0.01,
+      ),
+      tags: <String>{'nature', 'grass', 'foliage', 'vegetation'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/grass_clump.glb',
+          triangleCount: 192,
+          vertexCount: 408,
+          fileSizeBytes: 12632,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'nat_pine_tree',
+      name: 'Alpine Evergreen Pine Tree',
+      category: ModelCategory.natureProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Poly Haven / Kenney CC0 Nature & Dungeon Scans',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.01,
+        minZ: -0.0,
+        maxX: 0.01,
+        maxY: 0.01,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'nature', 'tree', 'pine', 'evergreen', 'forest'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/environment/pine_tree.glb',
+          triangleCount: 1911,
+          vertexCount: 3827,
+          fileSizeBytes: 106060,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_arrow_steel',
+      name: 'Bodkin Steel Arrow',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.03,
+        minZ: -0.0,
+        maxX: 0.0,
+        maxY: 0.0,
+        maxZ: 0.0,
+      ),
+      tags: <String>{'weapon', 'arrow', 'ammo', 'steel', 'archery'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Arrow.glb',
+          triangleCount: 224,
+          vertexCount: 444,
+          fileSizeBytes: 16828,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_axe_iron',
+      name: 'Iron Woodcutters Axe',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.02,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.04,
+      ),
+      tags: <String>{'weapon', 'axe', 'one_handed', 'iron'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Axe.glb',
+          triangleCount: 1130,
+          vertexCount: 2173,
+          fileSizeBytes: 63764,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_axe_double',
+      name: 'Double-Headed Waraxe',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.03,
+        maxX: 0.02,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'axe', 'two_handed', 'heavy'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Axe_Double.glb',
+          triangleCount: 1892,
+          vertexCount: 3558,
+          fileSizeBytes: 101596,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_axe_small',
+      name: 'Small Handaxe',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.02,
+      ),
+      tags: <String>{'weapon', 'axe', 'hatchet', 'one_handed'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Axe_Small.glb',
+          triangleCount: 964,
+          vertexCount: 1838,
+          fileSizeBytes: 54740,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_bow_evil',
+      name: 'Shadow Horn Recurve Bow',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.03,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'bow', 'recurve', 'dark', 'evil'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Bow_Evil.glb',
+          triangleCount: 772,
+          vertexCount: 1506,
+          fileSizeBytes: 44556,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_bow_golden',
+      name: 'Golden Elven Longbow',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.03,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'bow', 'golden', 'elven', 'ranged'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Bow_Golden.glb',
+          triangleCount: 776,
+          vertexCount: 1542,
+          fileSizeBytes: 45448,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_bow_wooden',
+      name: 'Yew Wooden Longbow',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.03,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'bow', 'wood', 'longbow'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Bow_Wooden.glb',
+          triangleCount: 728,
+          vertexCount: 1438,
+          fileSizeBytes: 42668,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_bow_short',
+      name: 'Compact Wooden Shortbow',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.03,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'bow', 'shortbow', 'wood'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Bow_Wooden2.glb',
+          triangleCount: 664,
+          vertexCount: 1314,
+          fileSizeBytes: 39308,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_bow_hunting',
+      name: 'Hunters Composite Bow',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.03,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'bow', 'hunting', 'ranged'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/bow.glb',
+          triangleCount: 728,
+          vertexCount: 1438,
+          fileSizeBytes: 42668,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_broadsword_master',
+      name: 'Mercenary Broadsword (Master)',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.0,
+        maxX: 0.0,
+        maxY: 0.0,
+        maxZ: 0.06,
+      ),
+      tags: <String>{'weapon', 'sword', 'broadsword', 'steel'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/broadsword.glb',
+          triangleCount: 1031,
+          vertexCount: 1787,
+          fileSizeBytes: 54980,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_claymore_highland',
+      name: 'Highland Great Claymore',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.0,
+        maxX: 0.0,
+        maxY: 0.0,
+        maxZ: 0.06,
+      ),
+      tags: <String>{'weapon', 'sword', 'claymore', 'two_handed'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Claymore.glb',
+          triangleCount: 1031,
+          vertexCount: 1787,
+          fileSizeBytes: 54980,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_crossbow_heavy',
+      name: 'Heavy Siege Crossbow',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.61,
+        minY: -0.17,
+        minZ: -0.28,
+        maxX: 0.61,
+        maxY: 0.31,
+        maxZ: 1.16,
+      ),
+      tags: <String>{'weapon', 'crossbow', 'ranged', 'bolt'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/crossbow.glb',
+          triangleCount: 792,
+          vertexCount: 942,
+          fileSizeBytes: 58772,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_dagger_stiletto',
+      name: 'Assassins Stiletto Dagger',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.0,
+        maxY: 0.0,
+        maxZ: 0.02,
+      ),
+      tags: <String>{'weapon', 'dagger', 'stiletto', 'rogue'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Dagger_2.glb',
+          triangleCount: 736,
+          vertexCount: 1252,
+          fileSizeBytes: 40368,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_helmet_damaged',
+      name: 'Battle Damaged Visor Helmet (Source)',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.95,
+        minY: -1.19,
+        minZ: -0.9,
+        maxX: 0.94,
+        maxY: 0.81,
+        maxZ: 0.9,
+      ),
+      tags: <String>{'weapon', 'helmet', 'armor', 'visor', 'damaged'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/DamagedHelmet.glb',
+          triangleCount: 15452,
+          vertexCount: 14556,
+          fileSizeBytes: 3773916,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_helmet_damaged_baked',
+      name: 'Battle Damaged Visor Helmet (PBR Baked)',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.95,
+        minY: -1.19,
+        minZ: -0.9,
+        maxX: 0.94,
+        maxY: 0.81,
+        maxZ: 0.9,
+      ),
+      tags: <String>{'weapon', 'helmet', 'armor', 'pbr', 'baked'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/DamagedHelmet_baked.glb',
+          triangleCount: 15452,
+          vertexCount: 16789,
+          fileSizeBytes: 1142428,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_hammer_double',
+      name: 'Dwarven Double Warhammer',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.02,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'hammer', 'blunt', 'two_handed'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Hammer_Double.glb',
+          triangleCount: 1918,
+          vertexCount: 3724,
+          fileSizeBytes: 105748,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_hammer_small',
+      name: 'Blacksmith Hand Hammer',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'hammer', 'forge', 'one_handed'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Hammer_Small.glb',
+          triangleCount: 1474,
+          vertexCount: 2868,
+          fileSizeBytes: 82540,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_katana_antique',
+      name: 'Antique Samurai Katana',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.05,
+        minY: -0.31,
+        minZ: -0.05,
+        maxX: 0.05,
+        maxY: 0.7,
+        maxZ: 0.05,
+      ),
+      tags: <String>{'weapon', 'sword', 'katana', 'blade', 'steel'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/katana_antique.glb',
+          triangleCount: 6670,
+          vertexCount: 5685,
+          fileSizeBytes: 4368244,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_reaper_scythe',
+      name: 'Death Reapers War Scythe',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.02,
+        maxX: 0.02,
+        maxY: 0.0,
+        maxZ: 0.03,
+      ),
+      tags: <String>{'weapon', 'scythe', 'polearm', 'reaper', 'death'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Scythe.glb',
+          triangleCount: 1310,
+          vertexCount: 2606,
+          fileSizeBytes: 75252,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_shield_kite',
+      name: 'Ironbound Kite Shield',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.01,
+        minZ: -0.02,
+        maxX: 0.01,
+        maxY: 0.01,
+        maxZ: 0.02,
+      ),
+      tags: <String>{'weapon', 'shield', 'defense', 'kite', 'iron'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/shield.glb',
+          triangleCount: 832,
+          vertexCount: 1572,
+          fileSizeBytes: 47584,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_shield_celtic_golden',
+      name: 'Celtic Golden Boss Shield',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.01,
+        minZ: -0.02,
+        maxX: 0.01,
+        maxY: 0.01,
+        maxZ: 0.02,
+      ),
+      tags: <String>{'weapon', 'shield', 'golden', 'celtic', 'defense'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Shield_Celtic_Golden.glb',
+          triangleCount: 832,
+          vertexCount: 1572,
+          fileSizeBytes: 47584,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_shield_heater',
+      name: 'Knights Heater Shield',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.01,
+      ),
+      tags: <String>{'weapon', 'shield', 'heater', 'knight', 'defense'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Shield_Heater.glb',
+          triangleCount: 1948,
+          vertexCount: 3386,
+          fileSizeBytes: 97820,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_shield_heater_2',
+      name: 'Reinforced Spiked Heater Shield',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.01,
+      ),
+      tags: <String>{'weapon', 'shield', 'heater', 'reinforced'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Shield_Heater_2.glb',
+          triangleCount: 1272,
+          vertexCount: 2122,
+          fileSizeBytes: 63424,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_shield_round',
+      name: 'Viking Oak Round Shield',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.01,
+      ),
+      tags: <String>{'weapon', 'shield', 'round', 'viking', 'wood'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Shield_Round.glb',
+          triangleCount: 1056,
+          vertexCount: 2052,
+          fileSizeBytes: 60448,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_shield_round_2',
+      name: 'Studded Iron Round Shield',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.01,
+      ),
+      tags: <String>{'weapon', 'shield', 'round', 'iron', 'studded'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Shield_Round_2.glb',
+          triangleCount: 1204,
+          vertexCount: 2348,
+          fileSizeBytes: 69492,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_spear_halberd',
+      name: 'Guardsman Steel Spear',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.0,
+        minY: -0.0,
+        minZ: -0.02,
+        maxX: 0.0,
+        maxY: 0.0,
+        maxZ: 0.08,
+      ),
+      tags: <String>{'weapon', 'spear', 'polearm', 'thrust', 'steel'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Spear.glb',
+          triangleCount: 1202,
+          vertexCount: 2410,
+          fileSizeBytes: 69892,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_sword_long',
+      name: 'Knights Longsword (Source)',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.05,
+      ),
+      tags: <String>{'weapon', 'sword', 'longsword', 'steel'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/sword.glb',
+          triangleCount: 1006,
+          vertexCount: 1928,
+          fileSizeBytes: 58220,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_sword_baked',
+      name: 'Knights Longsword (PBR Baked)',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.05,
+      ),
+      tags: <String>{'weapon', 'sword', 'longsword', 'pbr', 'baked'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/sword_baked.glb',
+          triangleCount: 1006,
+          vertexCount: 1984,
+          fileSizeBytes: 338640,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_sword_arming',
+      name: 'Crusader Arming Sword',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.05,
+      ),
+      tags: <String>{'weapon', 'sword', 'arming', 'one_handed'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Sword_2.glb',
+          triangleCount: 942,
+          vertexCount: 1775,
+          fileSizeBytes: 54156,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_sword_big',
+      name: 'Executioners Zweihander',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.0,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.06,
+      ),
+      tags: <String>{'weapon', 'sword', 'zweihander', 'greatsword', 'heavy'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Sword_Big.glb',
+          triangleCount: 830,
+          vertexCount: 1644,
+          fileSizeBytes: 50336,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_sword_golden',
+      name: 'Imperial Golden Gladius',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.01,
+        minY: -0.0,
+        minZ: -0.01,
+        maxX: 0.01,
+        maxY: 0.0,
+        maxZ: 0.05,
+      ),
+      tags: <String>{'weapon', 'sword', 'gladius', 'golden', 'royal'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/Sword_Golden.glb',
+          triangleCount: 1006,
+          vertexCount: 1928,
+          fileSizeBytes: 58220,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_wand_sorcerer',
+      name: 'Apprentice Spell Wand',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'KayKit / Kenney CC0 Fantasy Weapons & Armory',
+      bounds: BoundingBox3D(
+        minX: -0.08,
+        minY: -0.27,
+        minZ: -0.08,
+        maxX: 0.08,
+        maxY: 0.7,
+        maxZ: 0.08,
+      ),
+      tags: <String>{'weapon', 'wand', 'magic', 'arcane', 'wood'},
+      sockets: const <String, List<double>>{
+        'socket_grip': <double>[0.0, 0.15, 0.0],
+      },
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/weapons/wand.glb',
+          triangleCount: 150,
+          vertexCount: 158,
+          fileSizeBytes: 29340,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'wpn_aion2_sword_master',
+      name: 'Aion 2 Dark Fantasy Runic Greatsword (Master)',
+      category: ModelCategory.weapon,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Aion 2 Dark Fantasy 3D Asset Studio',
+      bounds: BoundingBox3D(
+        minX: -0.21,
+        minY: -0.41,
+        minZ: -0.2,
+        maxX: 0.21,
+        maxY: 1.3,
+        maxZ: 0.2,
+      ),
+      tags: <String>{'weapon', 'sword', 'aion2', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/aion2/aion2_dark_fantasy_sword.glb',
+          triangleCount: 803,
+          vertexCount: 955,
+          fileSizeBytes: 1856544, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'prop_aion2_wings_master',
+      name: 'Aion 2 Ethereal Daeva Wings (Master)',
+      category: ModelCategory.dungeonProp,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Aion 2 Dark Fantasy 3D Asset Studio',
+      bounds: BoundingBox3D(
+        minX: -3.42,
+        minY: 0.67,
+        minZ: -0.1,
+        maxX: 3.42,
+        maxY: 2.2,
+        maxZ: 1.17,
+      ),
+      tags: <String>{'dungeon', 'wings', 'aion2', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/aion2/aion2_ethereal_wings.glb',
+          triangleCount: 3703,
+          vertexCount: 4366,
+          fileSizeBytes: 1232332, isDracoCompressed: true,
+        ),
+      },
+    ));
+
+    register(MeshAssetMetadata(
+      id: 'bld_aion2_pillar_master',
+      name: 'Aion 2 Gothic Dungeon Pillar (Master)',
+      category: ModelCategory.building,
+      license: 'CC0 1.0 Universal (Public Domain)',
+      licenseSource: 'Aion 2 Dark Fantasy 3D Asset Studio',
+      bounds: BoundingBox3D(
+        minX: -1.35,
+        minY: -0.06,
+        minZ: -1.35,
+        maxX: 1.35,
+        maxY: 6.39,
+        maxZ: 1.35,
+      ),
+      tags: <String>{'building', 'pillar', 'aion2', 'master'},
+      lods: <LodLevel, ModelLodInfo>{
+        LodLevel.lod0: ModelLodInfo(
+          lodLevel: LodLevel.lod0,
+          filePath: 'assets/models/aion2/aion2_gothic_dungeon_pillar.glb',
+          triangleCount: 1173,
+          vertexCount: 1937,
+          fileSizeBytes: 940244, isDracoCompressed: true,
         ),
       },
     ));

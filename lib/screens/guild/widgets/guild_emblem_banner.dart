@@ -958,154 +958,159 @@ class _GuildCelestialBannerState extends State<GuildCelestialBanner>
         ? widget.guildName.characters.first.toUpperCase()
         : '⚔️';
 
-    final Widget bannerContent = SizedBox(
-      width: widget.width,
-      height: widget.height,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.topCenter,
-        children: <Widget>[
-          // Fluttering Aerodynamic Cloth
-          Positioned.fill(
-            child: CustomPaint(
-              painter: GuildBannerClothPainter(
-                waveProgress: _anim.value,
-                tier: tier,
-                monumentLevel: widget.monumentLevel,
-              ),
-            ),
-          ),
-          // Content Stack
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.isCompact ? 4 : 6,
-              vertical: widget.isCompact ? 6 : 8,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                const SizedBox(height: 6),
-                GuildCelestialEmblem(
-                  level: widget.level,
-                  monogram: monogram,
-                  size: widget.isCompact
-                      ? 36.0
-                      : (widget.width >= 120.0 ? 52.0 : 46.0),
-                  showGlow: true,
-                  interactive: false,
-                ),
-                const SizedBox(height: 4),
-                // Guild Title
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Text(
-                    widget.guildName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: widget.isCompact ? 9.5 : 11.5,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                      color: GuildPalette.textHi,
-                      shadows: <Shadow>[
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.85),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                        Shadow(
-                          color: tier.primaryAccent.withValues(alpha: 0.8),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
+    final Widget bannerContent = AnimatedBuilder(
+      animation: _anim,
+      builder: (BuildContext context, Widget? child) {
+        return SizedBox(
+          width: widget.width,
+          height: widget.height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.topCenter,
+            children: <Widget>[
+              // Fluttering Aerodynamic Cloth
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: GuildBannerClothPainter(
+                    waveProgress: _anim.value,
+                    tier: tier,
+                    monumentLevel: widget.monumentLevel,
                   ),
                 ),
-                const SizedBox(height: 3),
-                // Badges Row (Level & Monument Standing)
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 4,
-                  runSpacing: 2,
+              ),
+              // Content Stack
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.isCompact ? 4 : 6,
+                  vertical: widget.isCompact ? 6 : 8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: tier.primaryAccent.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: tier.primaryAccent.withValues(alpha: 0.60),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Text(
-                        'Sv.${widget.level}',
-                        style: TextStyle(
-                          fontSize: 7.5,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.4,
-                          color: tier.primaryAccent,
-                        ),
-                      ),
+                    const SizedBox(height: 6),
+                    GuildCelestialEmblem(
+                      level: widget.level,
+                      monogram: monogram,
+                      size: widget.isCompact
+                          ? 36.0
+                          : (widget.width >= 120.0 ? 52.0 : 46.0),
+                      showGlow: true,
+                      interactive: false,
                     ),
-                    if (widget.showMonumentBadge && widget.monumentLevel > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: GuildPalette.gold.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: GuildPalette.gold.withValues(alpha: 0.70),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Text(
-                              '🏛️',
-                              style: TextStyle(fontSize: widget.isCompact ? 6 : 7),
+                    const SizedBox(height: 4),
+                    // Guild Title
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(
+                        widget.guildName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: widget.isCompact ? 9.5 : 11.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: GuildPalette.textHi,
+                          shadows: <Shadow>[
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.85),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
                             ),
-                            const SizedBox(width: 2),
-                            Text(
-                              'M${widget.monumentLevel}',
-                              style: const TextStyle(
-                                fontSize: 7.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.4,
-                                color: GuildPalette.gold,
-                              ),
+                            Shadow(
+                              color: tier.primaryAccent.withValues(alpha: 0.8),
+                              blurRadius: 8,
                             ),
                           ],
                         ),
+                        textAlign: TextAlign.center,
                       ),
+                    ),
+                    const SizedBox(height: 3),
+                    // Badges Row (Level & Monument Standing)
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 4,
+                      runSpacing: 2,
+                      children: <Widget>[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: tier.primaryAccent.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: tier.primaryAccent.withValues(alpha: 0.60),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            'Sv.${widget.level}',
+                            style: TextStyle(
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.4,
+                              color: tier.primaryAccent,
+                            ),
+                          ),
+                        ),
+                        if (widget.showMonumentBadge && widget.monumentLevel > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: GuildPalette.gold.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: GuildPalette.gold.withValues(alpha: 0.70),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Text(
+                                  '🏛️',
+                                  style: TextStyle(fontSize: widget.isCompact ? 6 : 7),
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'M${widget.monumentLevel}',
+                                  style: const TextStyle(
+                                    fontSize: 7.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.4,
+                                    color: GuildPalette.gold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    // Optional Motto or Subtitle
+                    if (widget.motto != null && !widget.isCompact) ...<Widget>[
+                      const SizedBox(height: 3),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          widget.motto!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 8.0,
+                            fontStyle: FontStyle.italic,
+                            color: GuildPalette.titanium.withValues(alpha: 0.9),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-                // Optional Motto or Subtitle
-                if (widget.motto != null && !widget.isCompact) ...<Widget>[
-                  const SizedBox(height: 3),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      widget.motto!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 8.0,
-                        fontStyle: FontStyle.italic,
-                        color: GuildPalette.titanium.withValues(alpha: 0.9),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
 
     if (widget.onTap != null) {
@@ -1127,10 +1132,7 @@ class _GuildCelestialBannerState extends State<GuildCelestialBanner>
       );
     }
 
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (BuildContext context, Widget? child) => bannerContent,
-    );
+    return bannerContent;
   }
 }
 

@@ -67,7 +67,7 @@ class DungeonDamageNumber {
     if (progress < 0.18) {
       final double t = progress / 0.18;
       // Spring overshoot
-      return isCritical ? (0.6 + 1.25 * _easeOutBack(t)) : (0.7 + 0.6 * _easeOutBack(t));
+      return isCritical ? (1.25 + 0.60 * _easeOutBack(t)) : (1.0 + 0.30 * _easeOutBack(t));
     } else if (progress < 0.35) {
       final double t = (progress - 0.18) / 0.17;
       return isCritical ? ui.lerpDouble(1.85, 1.45, t)! : ui.lerpDouble(1.3, 1.0, t)!;

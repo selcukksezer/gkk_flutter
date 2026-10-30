@@ -372,15 +372,32 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen>
     required String activity,
   }) async {
     try {
-      await SupabaseService.client.rpc(
+      final dynamic res = await SupabaseService.client.rpc(
         'send_notification',
         params: <String, dynamic>{
           'p_username': targetUser,
           'p_type': 'party_invite',
           'p_message': 'Partiye davet edildin: $activity (${role.name})',
         },
-      ).catchError((_) => null);
-    } catch (_) {}
+      );
+      if (res is Map && res['success'] == false) {
+        if (mounted) {
+          AppMessenger.showError(
+            context,
+            res['error']?.toString() ?? 'Davet gönderilemedi.',
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      if (mounted) {
+        AppMessenger.showError(
+          context,
+          'Davet gönderilemedi: $e',
+        );
+      }
+      return false;
+    }
 
     if (mounted) {
       AppMessenger.showSuccess(
@@ -396,15 +413,32 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen>
     required String message,
   }) async {
     try {
-      await SupabaseService.client.rpc(
+      final dynamic res = await SupabaseService.client.rpc(
         'send_notification',
         params: <String, dynamic>{
           'p_username': friend.username,
           'p_type': 'whisper',
           'p_message': message,
         },
-      ).catchError((_) => null);
-    } catch (_) {}
+      );
+      if (res is Map && res['success'] == false) {
+        if (mounted) {
+          AppMessenger.showError(
+            context,
+            res['error']?.toString() ?? 'Fısıltı gönderilemedi.',
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      if (mounted) {
+        AppMessenger.showError(
+          context,
+          'Fısıltı gönderilemedi: $e',
+        );
+      }
+      return false;
+    }
 
     if (mounted) {
       AppMessenger.showSuccess(

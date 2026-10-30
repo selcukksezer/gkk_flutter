@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/services/economy_haptics.dart';
 import '../../../models/item_model.dart';
@@ -255,6 +254,17 @@ class _AionBorderPainter extends CustomPainter {
       // Bottom Right
       canvas.drawLine(Offset(size.width - 3 - notch, size.height - 3), Offset(size.width - 3, size.height - 3), runePaint);
       canvas.drawLine(Offset(size.width - 3, size.height - 3 - notch), Offset(size.width - 3, size.height - 3), runePaint);
+
+      // Aion 2 Archon Divine Gold Rune micro-diamonds
+      if (tier == AionRarityTier.archon) {
+        final Paint goldRunePaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = AppColors.liquidGold;
+        canvas.drawCircle(const Offset(3, 3), 1.5, goldRunePaint);
+        canvas.drawCircle(Offset(size.width - 3, 3), 1.5, goldRunePaint);
+        canvas.drawCircle(Offset(3, size.height - 3), 1.5, goldRunePaint);
+        canvas.drawCircle(Offset(size.width - 3, size.height - 3), 1.5, goldRunePaint);
+      }
     }
   }
 

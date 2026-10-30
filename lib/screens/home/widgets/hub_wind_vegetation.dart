@@ -624,19 +624,19 @@ class HubWindVegetationPainter extends CustomPainter {
   ) {
     try {
       final ui.FragmentShader shader = fragmentProgram!.fragmentShader();
-      // Uniform 0: u_time
-      shader.setFloat(0, time);
-      // Uniforms 1-2: u_resolution
-      shader.setFloat(1, size.width);
-      shader.setFloat(2, size.height);
-      // Uniforms 3-4: u_wind_dir
-      shader.setFloat(3, math.cos(config.windAngleRad));
-      shader.setFloat(4, math.sin(config.windAngleRad));
-      // Uniform 5: u_wind_speed
-      shader.setFloat(5, config.baseSpeed);
-      // Uniform 6: u_gust_intensity
+      // Uniforms 0-1: uResolution (vec2)
+      shader.setFloat(0, size.width);
+      shader.setFloat(1, size.height);
+      // Uniform 2: uTime (float)
+      shader.setFloat(2, time);
+      // Uniform 3: uWindSpeed (float)
+      shader.setFloat(3, config.baseSpeed);
+      // Uniforms 4-5: uWindDirection (vec2)
+      shader.setFloat(4, math.cos(config.windAngleRad));
+      shader.setFloat(5, math.sin(config.windAngleRad));
+      // Uniform 6: uWindStrength (float)
       shader.setFloat(6, controller.currentGustIntensity);
-      // Uniform 7: u_tier
+      // Uniform 7: uTier (float)
       shader.setFloat(7, tier.index.toDouble());
 
       final Paint shaderPaint = Paint()..shader = shader;

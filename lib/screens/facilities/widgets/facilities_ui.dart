@@ -159,7 +159,40 @@ class FacGlassPanel extends StatelessWidget {
 
 /// Screen shell wrapper ensuring seamless dark fantasy gradient background.
 Widget facilitiesScreenShell({required Widget child}) {
-  return GameScreenBackground(child: child);
+  return GameScreenBackground(
+    showAmbientGlow: true,
+    showVignette: true,
+    child: Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/backgrounds/elysea/bg_sanctum_citadel.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  AppColors.bgDeep.withValues(alpha: 0.72),
+                  AppColors.bgDeep.withValues(alpha: 0.88),
+                  AppColors.bgDeep.withValues(alpha: 0.96),
+                ],
+                stops: const <double>[0.0, 0.45, 1.0],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(child: child),
+      ],
+    ),
+  );
 }
 
 /// Frosted glass panel convenience helper.

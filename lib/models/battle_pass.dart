@@ -18,7 +18,7 @@ class BpSeason {
   factory BpSeason.fromJson(Map<String, dynamic> json) {
     return BpSeason(
       id: json['id'] as String,
-      seasonNumber: json['season_number'] as int,
+      seasonNumber: (json['season_number'] as num?)?.toInt() ?? 1,
       startAt: DateTime.parse(json['start_at'] as String),
       endAt: DateTime.parse(json['end_at'] as String),
       isActive: json['is_active'] as bool,
@@ -56,13 +56,19 @@ class BpPlayerStatus {
     return BpPlayerStatus(
       playerId: json['player_id'] as String,
       seasonId: json['season_id'] as String,
-      currentLevel: json['current_level'] as int,
-      currentBpp: json['current_bpp'] as int,
-      dailyGrindBppPool: json['daily_grind_bpp_pool'] as int? ?? 0,
-      dailyPvpBppPool: json['daily_pvp_bpp_pool'] as int? ?? 0,
+      currentLevel: (json['current_level'] as num?)?.toInt() ?? 1,
+      currentBpp: (json['current_bpp'] as num?)?.toInt() ?? 0,
+      dailyGrindBppPool: (json['daily_grind_bpp_pool'] as num?)?.toInt() ?? 0,
+      dailyPvpBppPool: (json['daily_pvp_bpp_pool'] as num?)?.toInt() ?? 0,
       hasVip: json['has_vip'] as bool? ?? false,
-      claimedNormal: List<int>.from(json['claimed_normal'] ?? []),
-      claimedVip: List<int>.from(json['claimed_vip'] ?? []),
+      claimedNormal: (json['claimed_normal'] as List?)
+              ?.map((dynamic e) => (e as num).toInt())
+              .toList() ??
+          <int>[],
+      claimedVip: (json['claimed_vip'] as List?)
+              ?.map((dynamic e) => (e as num).toInt())
+              .toList() ??
+          <int>[],
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
@@ -91,8 +97,8 @@ class BpQuestTemplate {
       description: json['description'] as String,
       questType: json['quest_type'] as String,
       targetSystem: json['target_system'] as String,
-      targetCount: json['target_count'] as int,
-      bppReward: json['bpp_reward'] as int,
+      targetCount: (json['target_count'] as num?)?.toInt() ?? 0,
+      bppReward: (json['bpp_reward'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -126,7 +132,7 @@ class BpPlayerQuest {
       playerId: json['player_id'] as String,
       seasonId: json['season_id'] as String,
       templateId: json['template_id'] as String,
-      currentProgress: json['current_progress'] as int,
+      currentProgress: (json['current_progress'] as num?)?.toInt() ?? 0,
       isCompleted: json['is_completed'] as bool,
       rewardClaimed: json['reward_claimed'] as bool? ?? false,
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -162,13 +168,13 @@ class BpLevelReward {
 
   factory BpLevelReward.fromJson(Map<String, dynamic> json) {
     return BpLevelReward(
-      level: json['level'] as int,
+      level: (json['level'] as num?)?.toInt() ?? 0,
       normalRewardItemId: json['normal_reward_item_id'] as String?,
-      normalRewardQuantity: json['normal_reward_quantity'] as int,
-      normalRewardGold: json['normal_reward_gold'] as int,
+      normalRewardQuantity: (json['normal_reward_quantity'] as num?)?.toInt() ?? 0,
+      normalRewardGold: (json['normal_reward_gold'] as num?)?.toInt() ?? 0,
       vipRewardItemId: json['vip_reward_item_id'] as String?,
-      vipRewardQuantity: json['vip_reward_quantity'] as int,
-      vipRewardGold: json['vip_reward_gold'] as int,
+      vipRewardQuantity: (json['vip_reward_quantity'] as num?)?.toInt() ?? 0,
+      vipRewardGold: (json['vip_reward_gold'] as num?)?.toInt() ?? 0,
       description: json['description'] as String?,
       normalRewardItem: json['normal_reward_item'] as Map<String, dynamic>?,
       vipRewardItem: json['vip_reward_item'] as Map<String, dynamic>?,
@@ -226,7 +232,7 @@ class BpSeasonRewardEntry {
     return BpSeasonRewardEntry(
       id: json['id'] as String?,
       track: json['track'] as String? ?? 'free',
-      level: json['level'] as int? ?? 0,
+      level: (json['level'] as num?)?.toInt() ?? 0,
       rewardType: json['reward_type'] as String? ?? 'mixed',
       gold: (value['gold'] as num?)?.toInt() ?? 0,
       gems: (value['gems'] as num?)?.toInt() ?? 0,
@@ -306,7 +312,7 @@ class BpSeasonRewardsBundle {
 
     return BpSeasonRewardsBundle(
       seasonId: json['season_id'] as String? ?? '',
-      seasonNumber: json['season_number'] as int? ?? 1,
+      seasonNumber: (json['season_number'] as num?)?.toInt() ?? 1,
       levels: levels,
       featuredFree: parseFeatured('featured_free'),
       featuredVip: parseFeatured('featured_vip'),
@@ -336,7 +342,7 @@ class BpSeasonLevelRewards {
     }
 
     return BpSeasonLevelRewards(
-      level: json['level'] as int,
+      level: (json['level'] as num?)?.toInt() ?? 0,
       free: parseTrack('free_reward', 'free'),
       vip: parseTrack('vip_reward', 'vip'),
     );

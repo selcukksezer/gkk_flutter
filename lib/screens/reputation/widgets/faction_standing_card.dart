@@ -371,7 +371,11 @@ class _FactionStandingCardState extends State<FactionStandingCard> {
           orElse: () => null,
         );
 
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 6,
+      runSpacing: 6,
       children: <Widget>[
         // Vendor Discount Pill
         Container(
@@ -397,7 +401,6 @@ class _FactionStandingCardState extends State<FactionStandingCard> {
             ],
           ),
         ),
-        const SizedBox(width: 6),
 
         // Perks Pill with tactile tap
         PressableScale(
@@ -426,7 +429,6 @@ class _FactionStandingCardState extends State<FactionStandingCard> {
             ),
           ),
         ),
-        const Spacer(),
 
         // Reward Preview Pill (Claimable or Upcoming Next Reward)
         if (f.claimableRewardsCount > 0)

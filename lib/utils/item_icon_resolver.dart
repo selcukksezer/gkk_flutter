@@ -48,6 +48,9 @@ class ItemIconResolver {
     if (icon.startsWith('/')) {
       icon = icon.substring(1);
     }
+    if (icon.startsWith('assets/icons/armor/')) {
+      return icon.replaceFirst('assets/icons/armor/', 'assets/items/generated/');
+    }
     if (icon.startsWith('assets/icons/')) {
       return icon.replaceFirst('assets/icons/', 'assets/items/');
     }

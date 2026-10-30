@@ -116,6 +116,58 @@ abstract final class AppColors {
     colors: <Color>[liquidGold, goldLight],
   );
 
+  // ──────────────────────────── Obsidian Glass Tokens ─────────────────────
+
+  /// Deepest obsidian void foundation
+  static const Color obsidianVoid = Color(0xFF07090E);
+
+  /// Deep obsidian base for background surfaces
+  static const Color obsidianDeep = Color(0xFF090D15);
+
+  /// Obsidian surface for cards and dialogs
+  static const Color obsidianSurface = Color(0xFF0F141F);
+
+  /// Standard obsidian card background
+  static const Color obsidianCard = Color(0xFF141B2A);
+
+  /// Elevated obsidian card
+  static const Color obsidianElevated = Color(0xFF1B2438);
+
+  /// Translucent obsidian glass upper layer
+  static const Color obsidianGlassTop = Color(0x4D1B2438);
+
+  /// Translucent obsidian glass lower shadow
+  static const Color obsidianGlassBottom = Color(0x2B07090E);
+
+  /// Obsidian border standard
+  static const Color obsidianBorder = Color(0xFF1C2538);
+
+  /// Obsidian border highlighted
+  static const Color obsidianBorderBright = Color(0xFF2C3B54);
+
+  // ──────────────────────────── Gold Runes Tokens ─────────────────────────
+
+  /// Brilliant gold rune tone
+  static const Color runeGold = Color(0xFFFFD700);
+
+  /// High-radiance gold rune highlight
+  static const Color runeGoldLight = Color(0xFFFFF0A0);
+
+  /// Antique dimmed rune gold
+  static const Color runeGoldDim = Color(0xFFB8860B);
+
+  /// Luminous gold rune halo glow
+  static const Color runeGoldGlow = Color(0x4DFFD700);
+
+  /// Semi-translucent gold rune border
+  static const Color runeGoldBorder = Color(0x66FFD700);
+
+  /// Combat ancient crimson rune
+  static const Color runeCrimson = Color(0xFFFF1744);
+
+  /// Celestial mana cyan rune
+  static const Color runeCyan = Color(0xFF00E5FF);
+
   /// Returns the rarity color for an item rarity string.
   static Color forRarity(String rarity) => switch (rarity.toLowerCase()) {
         'uncommon' => rarityUncommon,

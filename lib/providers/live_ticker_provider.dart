@@ -86,7 +86,6 @@ class LiveTickerNotifier extends Notifier<LiveTickerState> {
     ref.listen<AuthState>(authProvider, (_, _) => _syncPolling());
     ref.onDispose(() {
       AppForegroundService.instance.removeListener(_onForegroundChanged);
-      _broadcastChannel?.unsubscribe();
       _stopPolling();
     });
     Future<void>.microtask(_syncPolling);
@@ -123,6 +122,14 @@ class LiveTickerNotifier extends Notifier<LiveTickerState> {
   void _stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
+    if (_broadcastChannel != null) {
+      if (SupabaseService.isInitialized) {
+        SupabaseService.client.removeChannel(_broadcastChannel!);
+      } else {
+        _broadcastChannel?.unsubscribe();
+      }
+      _broadcastChannel = null;
+    }
   }
 
   String? _staffBroadcastId(String tickerId) {

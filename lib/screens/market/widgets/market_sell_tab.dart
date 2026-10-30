@@ -25,6 +25,7 @@ class _MarketSellTabState extends ConsumerState<MarketSellTab> {
   String _selectedCategory = '';
   String _selectedRarity = '';
   int _filterResetIndex = 0;
+  bool _isCreatingListing = false;
 
   void _clearFilters() {
     HapticFeedback.selectionClick();
@@ -149,7 +150,7 @@ class _MarketSellTabState extends ConsumerState<MarketSellTab> {
               badge: badge,
               metaLine: metaLine,
               priceText: priceText,
-              onTap: locked ? null : () => _openSellSheet(context, item),
+              onTap: (locked || _isCreatingListing) ? null : () => _openSellSheet(context, item),
               trailing: locked
                   ? const MarketSecondaryButton(
                       label: 'Kilitli',
@@ -161,7 +162,7 @@ class _MarketSellTabState extends ConsumerState<MarketSellTab> {
                       label: 'Sat',
                       icon: Icons.sell_rounded,
                       compact: true,
-                      onPressed: () => _openSellSheet(context, item),
+                      onPressed: _isCreatingListing ? null : () => _openSellSheet(context, item),
                     ),
             );
           }),
@@ -494,6 +495,7 @@ class _MarketSellTabState extends ConsumerState<MarketSellTab> {
     BuildContext context,
     InventoryItem item,
   ) async {
+    if (_isCreatingListing) return;
     HapticFeedback.selectionClick();
     final int initialPrice = item.basePrice > 0 ? item.basePrice : 100;
 
@@ -510,23 +512,31 @@ class _MarketSellTabState extends ConsumerState<MarketSellTab> {
     );
 
     if (result == null || !context.mounted) return;
+    if (_isCreatingListing) return;
 
-    final bool ok = await ref.read(marketProvider.notifier).createOrder(
-          itemRowId: item.rowId,
-          quantity: result.quantity,
-          price: result.unitPrice,
-        );
+    setState(() => _isCreatingListing = true);
+    try {
+      final bool ok = await ref.read(marketProvider.notifier).createOrder(
+            itemRowId: item.rowId,
+            quantity: result.quantity,
+            price: result.unitPrice,
+          );
 
-    if (!context.mounted) return;
-    if (ok) {
-      HapticFeedback.selectionClick();
-      GoldCoinParticleBurst.trigger(context);
+      if (!context.mounted) return;
+      if (ok) {
+        HapticFeedback.selectionClick();
+        GoldCoinParticleBurst.trigger(context);
+      }
+      showMarketSnackBar(
+        context,
+        ok ? 'Ilan oluşturuldu' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
+        isError: !ok,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isCreatingListing = false);
+      }
     }
-    showMarketSnackBar(
-      context,
-      ok ? 'Ilan oluşturuldu' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
-      isError: !ok,
-    );
   }
 }
 

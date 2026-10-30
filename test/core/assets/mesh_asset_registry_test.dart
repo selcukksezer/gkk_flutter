@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gkk_flutter/core/assets/mesh_asset_registry.dart';
+import 'package:gkk_flutter/rendering/mesh_asset_registry.dart' as rendering_barrel;
 
 void main() {
   group('MeshAssetRegistry — Default Catalog & Registration', () {
@@ -594,4 +595,63 @@ void main() {
       expect(registry.cache.contains('prop_stone_altar_direct'), isTrue);
     });
   });
+
+  group('MeshAssetRegistry — Forensic 215 Model Coverage & Barrel Parity', () {
+    late MeshAssetRegistry registry;
+
+    setUp(() {
+      registry = MeshAssetRegistry();
+    });
+
+    test('registers 100% of all 215 models on disk without omission', () {
+      final Set<String> registeredPaths = registry.getAllAssetPaths();
+      expect(registeredPaths.length, 215);
+
+      // Verify every registered path exists on disk
+      for (final String path in registeredPaths) {
+        final io.File file = io.File(path);
+        expect(file.existsSync(), isTrue,
+            reason: 'Registered asset must exist on disk: $path');
+        expect(file.lengthSync(), greaterThan(0),
+            reason: 'Registered asset must not be empty: $path');
+      }
+    });
+
+    test('retrieves metadata by asset file path', () {
+      final MeshAssetMetadata? barbMeta =
+          registry.getByPath('assets/models/characters/Barbarian_LOD0.glb');
+      expect(barbMeta, isNotNull);
+      expect(barbMeta!.id, 'char_barbarian');
+      expect(barbMeta.category, ModelCategory.character);
+
+      final MeshAssetMetadata? golemMeta =
+          registry.getByPath('assets/models/monsters/golem.glb');
+      expect(golemMeta, isNotNull);
+      expect(golemMeta!.id, 'mon_golem');
+
+      final MeshAssetMetadata? archMeta =
+          registry.getByPath('assets/models/props/GothicArch_Lancet_MultiLOD.glb');
+      expect(archMeta, isNotNull);
+      expect(archMeta!.id, 'bld_gothic_arch_multilod');
+    });
+
+    test('rendering/mesh_asset_registry barrel export provides identical types and instance', () {
+      final rendering_barrel.MeshAssetRegistry barrelRegistry =
+          rendering_barrel.MeshAssetRegistry.instance;
+      expect(identical(barrelRegistry, MeshAssetRegistry.instance), isTrue);
+      expect(barrelRegistry.getAllAssetPaths().length, 215);
+    });
+
+    test('all registered models are CC0 and possess valid 3D bounds', () {
+      final List<MeshAssetMetadata> allModels = registry.getAll();
+      expect(allModels.length, greaterThanOrEqualTo(80));
+
+      for (final MeshAssetMetadata meta in allModels) {
+        expect(meta.isCc0, isTrue);
+        expect(meta.bounds.boundingRadius, greaterThan(0.0));
+        expect(meta.lods, isNotEmpty);
+      }
+    });
+  });
 }
+

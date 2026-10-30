@@ -291,7 +291,7 @@ class EnhSectionHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (trailing != null) trailing!,
+        ?trailing,
       ],
     );
   }
@@ -488,9 +488,10 @@ class EnhGhostButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        child: Ink(
+        child: Container(
           width: expand ? double.infinity : null,
-          padding: const EdgeInsets.symmetric(vertical: 13),
+          height: 48,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             color: AppColors.darkObsidian.withValues(alpha: 0.55),
@@ -1129,7 +1130,7 @@ class AionForgePedestal extends StatelessWidget {
                                 child: Image.asset(
                                   'assets/images/backgrounds/asmodae/bg_morheim_volcano.png',
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const SizedBox(),
+                                  errorBuilder: (_, _, _) => const SizedBox(),
                                 ),
                               ),
                             ),
@@ -1140,7 +1141,7 @@ class AionForgePedestal extends StatelessWidget {
                                 child: Image.asset(
                                   'assets/renders/props/Brazier_IronEmbers_beauty.png',
                                   fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const SizedBox(),
+                                  errorBuilder: (_, _, _) => const SizedBox(),
                                 ),
                               ),
                             ),
@@ -1151,7 +1152,7 @@ class AionForgePedestal extends StatelessWidget {
                               child: Image.asset(
                                 'assets/renders/weapons/Sword_beauty.png',
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Icon(
+                                errorBuilder: (_, _, _) => Icon(
                                   Icons.auto_awesome,
                                   size: 26,
                                   color: accentColor.withValues(alpha: 0.65),

@@ -24,6 +24,8 @@ class MarketMyMarketTab extends ConsumerStatefulWidget {
 }
 
 class _MarketMyMarketTabState extends ConsumerState<MarketMyMarketTab> {
+  final Set<String> _pendingOrders = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -82,17 +84,17 @@ class _MarketMyMarketTabState extends ConsumerState<MarketMyMarketTab> {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   _CompactActionButton(
-                    label: context.l10n.fiyat,
+                    label: _pendingOrders.contains(order.orderId) ? '...' : context.l10n.fiyat,
                     icon: Icons.edit_note_rounded,
                     accent: AppColors.accentCyan,
-                    onTap: () => _editPrice(context, ref, order),
+                    onTap: _pendingOrders.contains(order.orderId) ? null : () => _editPrice(context, ref, order),
                   ),
                   const SizedBox(width: 6),
                   _CompactActionButton(
-                    label: 'Cek',
+                    label: _pendingOrders.contains(order.orderId) ? '...' : 'Cek',
                     icon: Icons.undo_rounded,
                     accent: AppColors.mysticRuby,
-                    onTap: () => _withdraw(context, ref, order),
+                    onTap: _pendingOrders.contains(order.orderId) ? null : () => _withdraw(context, ref, order),
                   ),
                 ],
               ),
@@ -124,6 +126,8 @@ class _MarketMyMarketTabState extends ConsumerState<MarketMyMarketTab> {
   }
 
   Future<void> _editPrice(BuildContext context, WidgetRef ref, MarketOrder order) async {
+    if (_pendingOrders.contains(order.orderId)) return;
+
     final int? newPrice = await MarketPriceEditSheet.show(
       context,
       itemName: order.itemName,
@@ -132,19 +136,25 @@ class _MarketMyMarketTabState extends ConsumerState<MarketMyMarketTab> {
     );
 
     if (newPrice == null || newPrice == order.price || !context.mounted) return;
+    if (_pendingOrders.contains(order.orderId)) return;
 
-    final bool ok = await ref.read(marketProvider.notifier).updateListingPrice(
-          orderId: order.orderId,
-          newPrice: newPrice,
-        );
+    setState(() => _pendingOrders.add(order.orderId));
+    try {
+      final bool ok = await ref.read(marketProvider.notifier).updateListingPrice(
+            orderId: order.orderId,
+            newPrice: newPrice,
+          );
 
-    if (!context.mounted) return;
-    if (ok) HapticFeedback.selectionClick();
-    showMarketSnackBar(
-      context,
-      ok ? 'Fiyat guncellendi' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
-      isError: !ok,
-    );
+      if (!context.mounted) return;
+      if (ok) HapticFeedback.selectionClick();
+      showMarketSnackBar(
+        context,
+        ok ? 'Fiyat guncellendi' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
+        isError: !ok,
+      );
+    } finally {
+      if (mounted) setState(() => _pendingOrders.remove(order.orderId));
+    }
   }
 
   Future<void> _withdraw(BuildContext context, WidgetRef ref, MarketOrder order) async {
@@ -397,16 +407,22 @@ class _MarketMyMarketTabState extends ConsumerState<MarketMyMarketTab> {
     );
 
     if (confirmed != true || !context.mounted) return;
+    if (_pendingOrders.contains(order.orderId)) return;
 
-    final bool ok = await ref.read(marketProvider.notifier).withdrawListing(orderId: order.orderId);
+    setState(() => _pendingOrders.add(order.orderId));
+    try {
+      final bool ok = await ref.read(marketProvider.notifier).withdrawListing(orderId: order.orderId);
 
-    if (!context.mounted) return;
-    if (ok) HapticFeedback.selectionClick();
-    showMarketSnackBar(
-      context,
-      ok ? 'Ilan cekildi' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
-      isError: !ok,
-    );
+      if (!context.mounted) return;
+      if (ok) HapticFeedback.selectionClick();
+      showMarketSnackBar(
+        context,
+        ok ? 'Ilan cekildi' : (ref.read(marketProvider).errorMessage ?? 'Basarisiz'),
+        isError: !ok,
+      );
+    } finally {
+      if (mounted) setState(() => _pendingOrders.remove(order.orderId));
+    }
   }
 }
 

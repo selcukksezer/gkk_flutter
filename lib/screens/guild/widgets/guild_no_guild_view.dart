@@ -155,7 +155,7 @@ class GuildNoGuildView extends StatelessWidget {
                             ),
                             Center(
                               child: Image.asset(
-                                'assets/renders/weapons/Shield_Celtic_Golden_beauty.png',
+                                'assets/images/icons/weapons/weapon_kallida_shield.png',
                                 width: 38,
                                 height: 38,
                                 fit: BoxFit.contain,

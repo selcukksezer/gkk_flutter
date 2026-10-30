@@ -16,6 +16,7 @@ import '../../providers/player_provider.dart';
 import '../../routing/app_router.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/logout_helper.dart';
+import 'widgets/economy_atmosphere_overlay.dart';
 import 'widgets/gold_coin_particle_burst.dart';
 import 'widgets/market_browse_tab.dart';
 import 'widgets/market_design.dart';
@@ -104,83 +105,86 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       extendBody: true,
       bottomNavigationBar: GameBottomBar(currentRoute: AppRoutes.market, onLogout: _logout),
       body: GameScreenBackground(
-        child: GoldCoinParticleBurst(
-          child: SafeArea(
-            top: false,
-            bottom: true,
-            child: RefreshIndicator(
-              color: AppColors.liquidGold,
-              backgroundColor: AppColors.spaceNavy,
-              strokeWidth: 2.5,
-              onRefresh: _onRefresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: GameScrollLayout.fromLTRB(context, left: 12, top: 8, right: 12),
-                children: <Widget>[
-                  MarketHeroBanner(listingCount: listingCount),
-                  const SizedBox(height: 10),
-                  const KingdomMarketBlessingBanner(locationLabel: 'Pazar'),
-                  MarketTabBar(activeTab: _tab, onTabChanged: _onTabChanged),
-                  const SizedBox(height: 12),
-                  TweenAnimationBuilder<double>(
-                    key: ValueKey<MarketTab>(_tab),
-                    tween: Tween<double>(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 320),
-                    curve: Curves.easeOutCubic,
-                    builder: (BuildContext context, double value, Widget? child) {
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.translate(
-                          offset: Offset(0, 10 * (1 - value)),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        GkkTabSectionTitle(
-                          switch (_tab) {
-                            MarketTab.browse => 'Pazar Vitrini',
-                            MarketTab.sell => 'Eşya Sat',
-                            MarketTab.myMarket => 'Benim Pazarım',
-                          },
-                          accent: switch (_tab) {
-                            MarketTab.browse => AppColors.liquidGold,
-                            MarketTab.sell => AppColors.accentCyan,
-                            MarketTab.myMarket => AppColors.accentPurple,
-                          },
-                          trailing: switch (_tab) {
-                            MarketTab.browse => _MarketCountBadge(
-                                label: '$listingCount İlan',
-                                icon: Icons.local_fire_department_rounded,
-                                color: AppColors.liquidGold,
-                              ),
-                            MarketTab.sell => _MarketCountBadge(
-                                label: '$tradeableCount Satılabilir',
-                                icon: Icons.inventory_2_outlined,
-                                color: AppColors.accentCyan,
-                              ),
-                            MarketTab.myMarket => _MarketCountBadge(
-                                label: '$myOrdersCount Aktif',
-                                icon: Icons.storefront_rounded,
-                                color: AppColors.accentPurple,
-                              ),
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        switch (_tab) {
-                          MarketTab.browse => const MarketBrowseTab(),
-                          MarketTab.sell => const MarketSellTab(),
-                          MarketTab.myMarket => const MarketMyMarketTab(),
-                        },
-                      ],
-                    ),
+        child: EconomyAtmosphereOverlay(
+          heatIntensity: 0.28,
+          child: GoldCoinParticleBurst(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: RefreshIndicator(
+                color: AppColors.liquidGold,
+                backgroundColor: AppColors.spaceNavy,
+                strokeWidth: 2.5,
+                onRefresh: _onRefresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
                   ),
-                ],
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: GameScrollLayout.fromLTRB(context, left: 12, top: 8, right: 12),
+                  children: <Widget>[
+                    MarketHeroBanner(listingCount: listingCount),
+                    const SizedBox(height: 10),
+                    const KingdomMarketBlessingBanner(locationLabel: 'Pazar'),
+                    MarketTabBar(activeTab: _tab, onTabChanged: _onTabChanged),
+                    const SizedBox(height: 12),
+                    TweenAnimationBuilder<double>(
+                      key: ValueKey<MarketTab>(_tab),
+                      tween: Tween<double>(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      builder: (BuildContext context, double value, Widget? child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, 10 * (1 - value)),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          GkkTabSectionTitle(
+                            switch (_tab) {
+                              MarketTab.browse => 'Pazar Vitrini',
+                              MarketTab.sell => 'Eşya Sat',
+                              MarketTab.myMarket => 'Benim Pazarım',
+                            },
+                            accent: switch (_tab) {
+                              MarketTab.browse => AppColors.liquidGold,
+                              MarketTab.sell => AppColors.accentCyan,
+                              MarketTab.myMarket => AppColors.accentPurple,
+                            },
+                            trailing: switch (_tab) {
+                              MarketTab.browse => _MarketCountBadge(
+                                  label: '$listingCount İlan',
+                                  icon: Icons.local_fire_department_rounded,
+                                  color: AppColors.liquidGold,
+                                ),
+                              MarketTab.sell => _MarketCountBadge(
+                                  label: '$tradeableCount Satılabilir',
+                                  icon: Icons.inventory_2_outlined,
+                                  color: AppColors.accentCyan,
+                                ),
+                              MarketTab.myMarket => _MarketCountBadge(
+                                  label: '$myOrdersCount Aktif',
+                                  icon: Icons.storefront_rounded,
+                                  color: AppColors.accentPurple,
+                                ),
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          switch (_tab) {
+                            MarketTab.browse => const MarketBrowseTab(),
+                            MarketTab.sell => const MarketSellTab(),
+                            MarketTab.myMarket => const MarketMyMarketTab(),
+                          },
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

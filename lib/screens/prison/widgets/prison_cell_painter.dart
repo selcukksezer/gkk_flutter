@@ -709,7 +709,43 @@ class _PrisonCellAtmosphereState extends State<PrisonCellAtmosphere>
             child: widget.child,
           );
 
-          return customPaint;
+          if (widget.barsForeground) {
+            return customPaint;
+          }
+
+          return Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              // Genuine high-res gothic dungeon crypt illustration
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/backgrounds/dungeons/bg_beshmundir_crypt.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  errorBuilder: (_, __, ___) =>
+                      const ColoredBox(color: Color(0xFF0A0E15)),
+                ),
+              ),
+              // Cold dark vignette overlay so UI and bars stand out sharply
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        const Color(0xD905070A),
+                        const Color(0xB30A0E15),
+                        const Color(0xF205070A),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Procedural lighting, dust motes & stone masonry
+              Positioned.fill(child: customPaint),
+            ],
+          );
         },
       ),
     );

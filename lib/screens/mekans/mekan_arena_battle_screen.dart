@@ -534,16 +534,44 @@ class _ArenaBattleBackdrop extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        const ColoredBox(color: BattlePalette.carbonVoid),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: const Alignment(0, -0.2),
-              radius: 1.1,
-              colors: <Color>[
-                MekanPalette.ruby.withValues(alpha: 0.22),
-                BattlePalette.carbonVoid,
-              ],
+        // 1. High-fidelity Empyrean Arena duel ground illustration
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/backgrounds/dungeons/bg_empyrean_arena.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            errorBuilder: (_, __, ___) =>
+                const ColoredBox(color: BattlePalette.carbonVoid),
+          ),
+        ),
+        // 2. Dark arena vignette with blood-ruby radial glow
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  BattlePalette.carbonVoid.withValues(alpha: 0.65),
+                  BattlePalette.carbonVoid.withValues(alpha: 0.82),
+                  BattlePalette.carbonVoid.withValues(alpha: 0.94),
+                ],
+                stops: const <double>[0.0, 0.50, 1.0],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.2),
+                radius: 1.1,
+                colors: <Color>[
+                  MekanPalette.ruby.withValues(alpha: 0.28),
+                  Colors.transparent,
+                ],
+              ),
             ),
           ),
         ),
